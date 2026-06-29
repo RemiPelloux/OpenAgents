@@ -10,9 +10,9 @@
   <a href="#"><img src="https://img.shields.io/badge/CLI-openagents-FFD700?style=for-the-badge" alt="CLI: openagents"></a>
 </p>
 
-**OpenAgents** is a self-hosted, multi-provider AI agent platform. Run the same agent from your terminal, messaging apps, desktop app, or web dashboard — with tools, memory, skills, scheduling, and subagent delegation built in.
+**OpenAgents** is a self-hosted, multi-provider AI agent platform from **OpenPro**. Run the same agent from your terminal, messaging apps, desktop app, or web dashboard — with tools, memory, skills, scheduling, subagent delegation, and multi-agent **company workspaces** built in.
 
-This repository is a **professional fork and rename** of [Hermes Agent](https://github.com/NousResearch/Hermes-agent) by Nous Research. The upstream project remains the reference implementation; OpenAgents focuses on a clearer product identity, consistent naming, and a simpler onboarding path for teams building on the codebase.
+This repository is a **professional fork and rename** of [Hermes Agent](https://github.com/NousResearch/Hermes-agent) by Nous Research. The upstream project remains the reference implementation; OpenAgents focuses on OpenPro product identity, consistent naming, and a simpler onboarding path for teams building on the codebase.
 
 ---
 
@@ -23,8 +23,9 @@ This repository is a **professional fork and rename** of [Hermes Agent](https://
 | **Multi-surface** | CLI, gateway (Telegram, Discord, Slack, WhatsApp, and more), TUI, desktop app, local web dashboard |
 | **Model-agnostic** | OpenAI, Anthropic, OpenRouter, local endpoints, and many provider plugins |
 | **Tooling** | Terminal, files, web, browser, MCP, code execution, subagents, cron |
+| **Company workspaces** | `/company` scaffolds a folder with roles, subagent SOUL files, skills map, and CEO orchestration |
 | **Learning loop** | Persistent memory, skills hub, session search, optional Honcho integration |
-| **Production-ready** | Profiles, credential pools, gateway services, Docker, security hardening |
+| **Production-ready** | Profiles, credential pools, gateway services, Docker, Tirith + built-in command scanner |
 | **Extensible** | Plugins, skills, hooks, and optional MCP catalogs |
 
 ---
@@ -76,7 +77,9 @@ uv pip install -e ".[all,dev]"
 openagents setup
 ```
 
-**Theme:** default skin is **OpenCode** (`display.skin: opencode`) — warm dark terminal, blue accent, code-style spinner. Switch anytime with `/skin opencode` or `/skin default`.
+**Theme & daily UX:** default skin is **OpenCode** (`display.skin: opencode`) — OpenPro branding, warm dark terminal, animated little-monster spinner, and `(◕‿◕) OpenPro` in the status bar. On launch: optional slime startup animation, resume-last-session (`session_on_launch: last`), and recent sessions list. Switch skins with `/skin opencode` or `/skin default`.
+
+**Security:** dangerous terminal commands are scanned by a built-in checker and optional [Tirith](https://github.com/NousResearch/tirith) (`security.tirith_enabled: true` when installed via Homebrew).
 
 ### Connect OpenAI Codex (ChatGPT subscription)
 
@@ -91,16 +94,75 @@ Codex uses OAuth (not an API key). Works from CLI and the web dashboard (`openag
 ### Daily usage
 
 ```bash
-openagents              # Interactive CLI
+openagents              # Interactive CLI (resumes last session by default)
 openagents model        # Choose provider and model
 openagents gateway      # Start messaging gateway
 openagents doctor       # Diagnose config and dependencies
 openagents update       # Pull latest code and refresh dependencies
 ```
 
+Inside the CLI:
+
+```text
+/company init           # Guided setup — agent asks name, mission, roles, folder
+/company delegate ceo … # Run work as the CEO orchestrator role
+/sessions               # Browse and resume past sessions
+/help                   # All slash commands
+```
+
 Configuration lives in **`~/.openagents/`** (config, API keys, sessions, skills, memory).
 
+Example `~/.openagents/config.yaml` highlights:
+
+```yaml
+display:
+  skin: opencode
+  startup_animation: true
+  session_on_launch: last      # new | last | prompt
+  startup_show_sessions: true
+security:
+  builtin_command_scanner: true
+  tirith_enabled: true
+```
+
 > **Migrating from Hermes?** Existing installs under `~/.Hermes` or `~/.hermes` are detected automatically. You can also set `OPENAGENTS_HOME` explicitly. The legacy CLI alias `hermes` still works during the transition.
+
+---
+
+## Company workspaces (`/company`)
+
+Spin up a **multi-agent company** in a folder — roles, subagent personas, skills assignments, and a playbook for delegation.
+
+| Command | What it does |
+|---------|----------------|
+| `/company init` | Guided interview (name, mission, template, roles, path) |
+| `/company init Acme mission="…" template=startup` | Direct scaffold (power user) |
+| `/company status` | Show manifest for the company in cwd |
+| `/company roles` | List CEO, engineer, researcher, writer, ops, … |
+| `/company delegate ceo <goal>` | Seed the agent as orchestrator for that goal |
+
+**Templates:** `startup` (product team), `studio` (creative), `minimal` (ceo + worker).
+
+**Folder layout** (created under your chosen path):
+
+```
+my-company/
+├── company.yaml          # manifest — roles, mission, delegation defaults
+├── COMPANY.md            # playbook for humans and agents
+├── AGENTS.md             # auto-loaded when you work in this folder
+├── roles/                # per-role toolsets and skills
+├── agents/<role>/        # SOUL.md + agent.yaml for subagents
+├── skills/assignments.yaml
+└── workspace/            # deliverables
+```
+
+Terminal equivalent (used by the agent after guided init):
+
+```bash
+openagents company apply --name "Acme" --path ./acme --template startup --mission "Build our MVP"
+```
+
+Subagents are spawned via `delegate_task` or `/company delegate <role> …`. The CEO role uses `role='orchestrator'` to fan out parallel workers.
 
 ---
 
