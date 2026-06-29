@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 from typing import Dict, Optional
 
-from hermes_constants import get_hermes_home
+from openagents_constants import get_openagents_home
 
 CAMOFOX_STATE_DIR_NAME = "browser_auth"
 CAMOFOX_STATE_SUBDIR = "camofox"
@@ -21,13 +21,13 @@ CAMOFOX_STATE_SUBDIR = "camofox"
 
 def get_camofox_state_dir() -> Path:
     """Return the profile-scoped root directory for Camofox persistence."""
-    return get_hermes_home() / CAMOFOX_STATE_DIR_NAME / CAMOFOX_STATE_SUBDIR
+    return get_openagents_home() / CAMOFOX_STATE_DIR_NAME / CAMOFOX_STATE_SUBDIR
 
 
 def get_camofox_identity(task_id: Optional[str] = None) -> Dict[str, str]:
     """Return the stable Hermes-managed Camofox identity for this profile.
 
-    The user identity is profile-scoped (same Hermes profile = same userId).
+    The user identity is profile-scoped (same OpenAgents profile = same userId).
     The session key is scoped to the logical browser task so newly created
     tabs within the same profile reuse the same identity contract.
     """

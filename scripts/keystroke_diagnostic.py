@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Diagnose how prompt_toolkit identifies keystrokes in the current terminal.
 
-Useful when adding a keybinding to Hermes (or any prompt_toolkit app) and you
+Useful when adding a keybinding to OpenAgents (or any prompt_toolkit app) and you
 need to know what the terminal actually delivers — particularly on Windows,
 where terminals can collapse, intercept, or silently remap key combinations.
 

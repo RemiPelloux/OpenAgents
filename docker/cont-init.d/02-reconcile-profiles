@@ -3,16 +3,16 @@
 # Container-boot reconciliation of per-profile gateway s6 services.
 #
 # Runs as root after 01-hermes-setup (the stage2 hook) has chowned
-# the volume and seeded $HERMES_HOME, but before s6-rc starts user
+# the volume and seeded $OPENAGENTS_HOME, but before s6-rc starts user
 # services. /etc/cont-init.d/* scripts run in lexicographic order,
 # so the `02-` prefix guarantees ordering.
 #
 # Service directories under /run/service/ live on tmpfs and are
 # wiped on every container restart. Profile directories under
-# $HERMES_HOME/profiles/ live on the persistent VOLUME. This script
+# $OPENAGENTS_HOME/profiles/ live on the persistent VOLUME. This script
 # walks the persistent profiles, recreates the s6 service slots,
 # and auto-starts only those whose last recorded state was
-# `running` — see hermes_cli/container_boot.py.
+# `running` — see openagents_cli/container_boot.py.
 #
 # Phase 4 also needs hermes-user writes to /run/service/ (so the
 # profile create/delete hooks can register/unregister at runtime),
@@ -43,5 +43,5 @@ if [ -d /run/service/.s6-svscan ]; then
 fi
 
 # Skip the drop when already non-root.
-[ "$(id -u)" = 0 ] || exec /opt/hermes/.venv/bin/python -m hermes_cli.container_boot
-exec s6-setuidgid hermes /opt/hermes/.venv/bin/python -m hermes_cli.container_boot
+[ "$(id -u)" = 0 ] || exec /opt/hermes/.venv/bin/python -m openagents_cli.container_boot
+exec s6-setuidgid hermes /opt/hermes/.venv/bin/python -m openagents_cli.container_boot

@@ -2,14 +2,14 @@
 sidebar_position: 11
 sidebar_label: "通过 Webhook 进行 GitHub PR 审查"
 title: "使用 Webhook 自动发布 GitHub PR 评论"
-description: "将 Hermes 连接到 GitHub，使其自动获取 PR diff、审查代码变更并发布评论——由 webhook 触发，无需手动提示"
+description: "将 OpenAgents 连接到 GitHub，使其自动获取 PR diff、审查代码变更并发布评论——由 webhook 触发，无需手动提示"
 ---
 
 # 使用 Webhook 自动发布 GitHub PR 评论
 
-本指南介绍如何将 Hermes Agent 连接到 GitHub，使其自动获取 pull request 的 diff、分析代码变更并发布评论——由 webhook 事件触发，无需手动 prompt（提示词）。
+本指南介绍如何将 OpenAgents 连接到 GitHub，使其自动获取 pull request 的 diff、分析代码变更并发布评论——由 webhook 事件触发，无需手动 prompt（提示词）。
 
-当 PR 被打开或更新时，GitHub 会向你的 Hermes 实例发送一个 webhook POST 请求。Hermes 使用一个 prompt 运行 agent，该 prompt 指示其通过 `gh` CLI 获取 diff，并将响应发布回 PR 线程。
+当 PR 被打开或更新时，GitHub 会向你的 OpenAgents 实例发送一个 webhook POST 请求。Hermes 使用一个 prompt 运行 agent，该 prompt 指示其通过 `gh` CLI 获取 diff，并将响应发布回 PR 线程。
 
 :::tip 想要无需公网端点的更简单配置？
 如果你没有公网 URL，或只是想快速上手，请查看 [构建 GitHub PR 审查 Agent](./github-pr-review-agent.md) —— 使用 cron 作业按计划轮询 PR，可在 NAT 和防火墙后运行。
@@ -27,16 +27,16 @@ Webhook payload 包含攻击者可控的数据——PR 标题、commit 消息和
 
 ## 前提条件
 
-- Hermes Agent 已安装并运行（`hermes gateway`）
+- OpenAgents 已安装并运行（`hermes gateway`）
 - [`gh` CLI](https://cli.github.com/) 已安装并在 gateway 主机上完成认证（`gh auth login`）
-- 你的 Hermes 实例有一个可公网访问的 URL（如果在本地运行，请参阅[使用 ngrok 进行本地测试](#local-testing-with-ngrok)）
+- 你的 OpenAgents 实例有一个可公网访问的 URL（如果在本地运行，请参阅[使用 ngrok 进行本地测试](#local-testing-with-ngrok)）
 - 对 GitHub 仓库的管理员权限（管理 webhook 所需）
 
 ---
 
 ## 第一步——启用 webhook 平台
 
-在你的 `~/.hermes/config.yaml` 中添加以下内容：
+在你的 `~/.openagents/config.yaml` 中添加以下内容：
 
 ```yaml
 platforms:
@@ -135,14 +135,14 @@ GitHub 会立即发送一个 `ping` 事件以确认连接。该事件会被安�
 要实时跟踪 agent 的进度：
 
 ```bash
-tail -f "${HERMES_HOME:-$HOME/.hermes}/logs/gateway.log"
+tail -f "${OPENAGENTS_HOME:-$HOME/.hermes}/logs/gateway.log"
 ```
 
 ---
 
 ## 使用 ngrok 进行本地测试
 
-如果 Hermes 在你的笔记本上运行，使用 [ngrok](https://ngrok.com/) 将其暴露到公网：
+如果 OpenAgents 在你的笔记本上运行，使用 [ngrok](https://ngrok.com/) 将其暴露到公网：
 
 ```bash
 ngrok http 8644
@@ -171,7 +171,7 @@ curl -s -X POST http://localhost:8644/webhooks/github-pr-review \
 
 然后观察 agent 运行：
 ```bash
-tail -f "${HERMES_HOME:-$HOME/.hermes}/logs/gateway.log"
+tail -f "${OPENAGENTS_HOME:-$HOME/.hermes}/logs/gateway.log"
 ```
 
 :::note

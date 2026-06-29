@@ -51,20 +51,26 @@ privvy*
 images/
 __pycache__/
 hermes_agent.egg-info/
+openagents.egg-info/
+openagents_agent.egg-info/
 wandb/
 testlogs
+
+# Editor atomic-save temp files (TextEdit / some IDEs)
+.!*
+**/.!*
 
 # CLI config (may contain sensitive SSH paths)
 cli-config.yaml
 
-# Skills Hub state (lives in ~/.hermes/skills/.hub/ at runtime, but just in case)
+# Skills Hub state (lives in ~/.openagents/skills/.hub/ at runtime, but just in case)
 skills/.hub/
 ignored/
 .worktrees/
 environments/benchmarks/evals/
 
 # Web UI build output
-hermes_cli/web_dist/
+openagents_cli/web_dist/
 apps/desktop/build/
 apps/desktop/dist/
 apps/desktop/release/
@@ -104,13 +110,13 @@ models-dev-upstream/
 opencode.json
 config/mcporter.json
 
-hermes_cli/tui_dist/*
-hermes_cli/scripts/
+openagents_cli/tui_dist/*
+openagents_cli/scripts/
 docs/superpowers/*
-# Working directory for the Hermes Agent's session state (~/.hermes/ at runtime;
-# also created in-repo when an agent operates in this checkout). Plans, audit
-# logs, and per-session caches are never artifacts of the codebase.
+# Working directory for OpenAgents session state (~/.openagents/ at runtime;
+# also created in-repo when an agent operates in this checkout).
 .hermes/
+.openagents/
 
 # Desktop/bootstrap install marker written into the managed checkout root by the
 # bootstrap installer. It is Hermes-managed runtime state, never a code change —
@@ -140,6 +146,6 @@ apps/desktop/demo/
 
 # PR infographics are rendered locally and embedded in PR descriptions via the
 # image-provider (fal.media) URL — they are NEVER committed to the repo. The
-# PR body is the archive. See the hermes-agent-dev skill's
+# PR body is the archive. See the openagents-dev skill's
 # pr-infographic-workflow reference (storage rule + lapse #8 / #COMMIT-1).
 infographic/

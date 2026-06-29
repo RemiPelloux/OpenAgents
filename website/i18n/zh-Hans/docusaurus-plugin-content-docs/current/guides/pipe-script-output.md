@@ -6,7 +6,7 @@ description: "使用 `hermes send` 将任意 shell 脚本、cron 任务、CI hoo
 
 # 将脚本输出推送到消息平台
 
-`hermes send` 是一个轻量、可脚本化的 CLI，能将消息推送到 Hermes 已配置的任意消息平台。可以把它理解为跨平台的通知专用 `curl`——无需运行中的 gateway，无需 LLM，也无需在每个脚本里重复粘贴 bot token。
+`hermes send` 是一个轻量、可脚本化的 CLI，能将消息推送到 OpenAgents 已配置的任意消息平台。可以把它理解为跨平台的通知专用 `curl`——无需运行中的 gateway，无需 LLM，也无需在每个脚本里重复粘贴 bot token。
 
 适用场景：
 
@@ -70,7 +70,7 @@ hermes send --list telegram
 | `platform:#channel` | `discord:#ops` | 易读的频道名称（通过频道目录解析） |
 | `platform:+E164` | `signal:+15551234567` | 以电话号码寻址的平台：Signal、SMS、WhatsApp |
 
-Hermes 附带适配器的所有平台均可作为目标：
+OpenAgents 附带适配器的所有平台均可作为目标：
 `telegram`、`discord`、`slack`、`signal`、`sms`、`whatsapp`、`matrix`、
 `mattermost`、`feishu`、`dingtalk`、`wecom`、`weixin`、`email` 等。
 
@@ -113,7 +113,7 @@ if [ "$ram_pct" -ge 85 ]; then
 fi
 ```
 
-由于 `hermes send` 复用你的 Hermes 配置，同一脚本可在任何安装了 Hermes 的主机上运行——无需手动将 bot token 导出到每台机器的环境变量中。
+由于 `hermes send` 复用你的 OpenAgents 配置，同一脚本可在任何安装了 OpenAgents 的主机上运行——无需手动将 bot token 导出到每台机器的环境变量中。
 
 :::tip 不要用 gateway 监控自身
 对于可能在 gateway 本身出现问题时触发的 watchdog（OOM 告警、磁盘满告警），请继续使用最简单的 `curl` 调用，而非 `hermes send`。如果 Python 解释器因机器抖动无法加载，你仍然希望告警能发出去。
@@ -167,7 +167,7 @@ msg_id=$(hermes send --to discord:#ops --json "build started" \
 
 ## `hermes send` 需要 gateway 运行吗？
 
-**通常不需要。** 对于所有基于 bot token 的平台——Telegram、Discord、Slack、Signal、SMS、WhatsApp Cloud API 等——`hermes send` 直接使用 `~/.hermes/.env` 和 `~/.hermes/config.yaml` 中的凭据调用平台的 REST 接口。它是一个独立的子进程，消息投递完成后即退出。
+**通常不需要。** 对于所有基于 bot token 的平台——Telegram、Discord、Slack、Signal、SMS、WhatsApp Cloud API 等——`hermes send` 直接使用 `~/.openagents/.env` 和 `~/.openagents/config.yaml` 中的凭据调用平台的 REST 接口。它是一个独立的子进程，消息投递完成后即退出。
 
 只有依赖持久适配器连接的**插件平台**才需要运行中的 gateway（例如，某个保持长连接 WebSocket 的自定义插件）。此时你会收到明确的错误提示，指引你启动 gateway；执行 `hermes gateway start` 后重试即可。
 
@@ -188,7 +188,7 @@ hermes send --list telegram
 hermes send --list --json
 ```
 
-列表数据来源于 `~/.hermes/channel_directory.json`，gateway 运行期间每隔几分钟刷新一次。如果看到"尚未发现频道"，请先启动一次 gateway（`hermes gateway start`）以填充缓存。
+列表数据来源于 `~/.openagents/channel_directory.json`，gateway 运行期间每隔几分钟刷新一次。如果看到"尚未发现频道"，请先启动一次 gateway（`hermes gateway start`）以填充缓存。
 
 易读名称（`discord:#ops`、`slack:#engineering`）在发送时通过该缓存解析，无需记忆数字 ID。
 
@@ -196,7 +196,7 @@ hermes send --list --json
 
 ## 与其他方案的对比
 
-| 方案 | 多平台 | 复用 Hermes 凭据 | 需要 gateway | 最适合 |
+| 方案 | 多平台 | 复用 OpenAgents 凭据 | 需要 gateway | 最适合 |
 |----------|----------------|---------------------|---------------|----------|
 | `hermes send` | ✅ | ✅ | 否（bot token） | 以下所有场景 |
 | 对各平台直接 `curl` | 各自单独编写 | 手动管理 | 否 | 关键 watchdog |

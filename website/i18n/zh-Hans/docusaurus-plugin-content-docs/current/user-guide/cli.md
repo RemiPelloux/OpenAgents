@@ -1,15 +1,15 @@
 ---
 sidebar_position: 1
 title: "CLI 界面"
-description: "掌握 Hermes Agent 终端界面——命令、快捷键、人格设定等"
+description: "掌握 OpenAgents 终端界面——命令、快捷键、人格设定等"
 ---
 
 # CLI 界面
 
-Hermes Agent 的 CLI 是一个完整的终端用户界面（TUI），而非 Web UI。它支持多行编辑、斜杠命令自动补全、对话历史、中断并重定向，以及流式工具输出。专为常驻终端的用户而生。
+OpenAgents 的 CLI 是一个完整的终端用户界面（TUI），而非 Web UI。它支持多行编辑、斜杠命令自动补全、对话历史、中断并重定向，以及流式工具输出。专为常驻终端的用户而生。
 
 :::tip
-Hermes 还提供了一个现代 TUI，支持模态覆盖层、鼠标选择和非阻塞输入。使用 `hermes --tui` 启动——参见 [TUI](tui.md) 指南。
+OpenAgents 还提供了一个现代 TUI，支持模态覆盖层、鼠标选择和非阻塞输入。使用 `hermes --tui` 启动——参见 [TUI](tui.md) 指南。
 :::
 
 ## 运行 CLI
@@ -32,7 +32,7 @@ hermes chat --provider openrouter  # 强制使用 OpenRouter
 hermes chat --toolsets "web,terminal,skills"
 
 # 启动时预加载一个或多个 skill
-hermes -s hermes-agent-dev,github-auth
+hermes -s openagents-dev,github-auth
 hermes chat -s github-pr-workflow -q "open a draft PR"
 
 # 恢复之前的会话
@@ -49,8 +49,8 @@ hermes -w -z "Fix issue #123"     # 在 worktree 中以单次查询模式运行
 
 ## 界面布局
 
-<img className="docs-terminal-figure" src="/img/docs/cli-layout.svg" alt="Hermes CLI 布局的风格化预览，展示了横幅、对话区域和固定输入提示符。" />
-<p className="docs-figure-caption">Hermes CLI 横幅、对话流和固定输入提示符，以稳定的文档图示形式呈现，而非脆弱的文字艺术。</p>
+<img className="docs-terminal-figure" src="/img/docs/cli-layout.svg" alt="OpenAgents CLI 布局的风格化预览，展示了横幅、对话区域和固定输入提示符。" />
+<p className="docs-figure-caption">OpenAgents CLI 横幅、对话流和固定输入提示符，以稳定的文档图示形式呈现，而非脆弱的文字艺术。</p>
 
 欢迎横幅一目了然地显示当前模型、终端后端、工作目录、可用工具和已安装的 skill。
 
@@ -103,7 +103,7 @@ hermes -w -z "Fix issue #123"     # 在 worktree 中以单次查询模式运行
 | `Ctrl+X Ctrl+E` | 外部编辑器的 Emacs 风格备用绑定（与 `Ctrl+G` 行为相同）。 |
 | `Ctrl+C` | 中断 agent（2 秒内双击强制退出） |
 | `Ctrl+D` | 退出 |
-| `Ctrl+Z` | 将 Hermes 挂起到后台（仅 Unix）。在 shell 中运行 `fg` 恢复。 |
+| `Ctrl+Z` | 将 OpenAgents 挂起到后台（仅 Unix）。在 shell 中运行 `fg` 恢复。 |
 | `Tab` | 接受自动建议（ghost text）或自动补全斜杠命令 |
 
 **多行粘贴预览。** 粘贴多行内容时，CLI 会显示一行简洁的单行预览（`[pasted: 47 lines, 1,842 chars — press Enter to send]`），而非将全部内容倾倒到滚动缓冲区。实际发送的仍是完整内容；这只是显示上的优化。
@@ -125,7 +125,7 @@ hermes -w -z "Fix issue #123"     # 在 worktree 中以单次查询模式运行
 | `/background <prompt>` | 在独立后台会话中运行一个 prompt |
 | `/skin` | 显示或切换当前 CLI 皮肤 |
 | `/voice on` | 启用 CLI 语音模式（按 `Ctrl+B` 录音） |
-| `/voice tts` | 切换 Hermes 回复的语音播放 |
+| `/voice tts` | 切换 OpenAgents 回复的语音播放 |
 | `/reasoning high` | 提高推理强度 |
 | `/title My Session` | 为当前会话命名 |
 | `/status` | 显示会话信息——模型/配置/token/时长——以及本地**会话摘要**块（近期轮次数、常用工具、涉及文件、最新用户 prompt + 助手回复）。纯本地计算，不调用 LLM。 |
@@ -144,11 +144,11 @@ hermes -w -z "Fix issue #123"     # 在 worktree 中以单次查询模式运行
 你可以定义自定义命令，无需调用 LLM 即可立即执行 shell 命令。这些命令在 CLI 和消息平台（Telegram、Discord 等）中均可使用。
 
 ```yaml
-# ~/.hermes/config.yaml
+# ~/.openagents/config.yaml
 quick_commands:
   status:
     type: exec
-    command: systemctl status hermes-agent
+    command: systemctl status openagents
   gpu:
     type: exec
     command: nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader
@@ -164,15 +164,15 @@ quick_commands:
 如果你已知道本次会话需要哪些 skill，可在启动时传入：
 
 ```bash
-hermes -s hermes-agent-dev,github-auth
+hermes -s openagents-dev,github-auth
 hermes chat -s github-pr-workflow -s github-auth
 ```
 
-Hermes 会在第一轮对话前将每个指定的 skill 加载到会话 prompt 中。该标志在交互模式和单次查询模式下均有效。
+OpenAgents 会在第一轮对话前将每个指定的 skill 加载到会话 prompt 中。该标志在交互模式和单次查询模式下均有效。
 
 ## Skill 斜杠命令
 
-`~/.hermes/skills/` 中每个已安装的 skill 都会自动注册为斜杠命令。skill 名称即为命令名：
+`~/.openagents/skills/` 中每个已安装的 skill 都会自动注册为斜杠命令。skill 名称即为命令名：
 
 ```
 /gif-search funny cats
@@ -195,7 +195,7 @@ Hermes 会在第一轮对话前将每个指定的 skill 加载到会话 prompt �
 
 内置人格包括：`helpful`、`concise`、`technical`、`creative`、`teacher`、`kawaii`、`catgirl`、`pirate`、`shakespeare`、`surfer`、`noir`、`uwu`、`philosopher`、`hype`。
 
-你也可以在 `~/.hermes/config.yaml` 中定义自定义人格：
+你也可以在 `~/.openagents/config.yaml` 中定义自定义人格：
 
 ```yaml
 personalities:
@@ -255,7 +255,7 @@ personalities:
 | `"steer"` | 你的消息通过 `/steer` 注入当前运行，在下一次工具调用后到达 agent——不中断，不开启新轮次 |
 
 ```yaml
-# ~/.hermes/config.yaml
+# ~/.openagents/config.yaml
 display:
   busy_input_mode: "steer"   # 或 "queue" 或 "interrupt"（默认）
 ```
@@ -274,15 +274,15 @@ display:
 ```
 
 :::tip 首次提示
-第一次在 Hermes 工作时按下 Enter，Hermes 会打印一行提示，说明 `/busy` 选项（`"(tip) Your message interrupted the current run…"`）。每次安装只触发一次——`config.yaml` 中 `onboarding.seen.busy_input_prompt` 下的标志会锁定它。删除该键可再次看到提示。
+第一次在 OpenAgents 工作时按下 Enter，Hermes 会打印一行提示，说明 `/busy` 选项（`"(tip) Your message interrupted the current run…"`）。每次安装只触发一次——`config.yaml` 中 `onboarding.seen.busy_input_prompt` 下的标志会锁定它。删除该键可再次看到提示。
 :::
 
 ### 挂起到后台
 
-在 Unix 系统上，按 **`Ctrl+Z`** 将 Hermes 挂起到后台——与任何终端进程一样。shell 会打印确认信息：
+在 Unix 系统上，按 **`Ctrl+Z`** 将 OpenAgents 挂起到后台——与任何终端进程一样。shell 会打印确认信息：
 
 ```
-Hermes Agent has been suspended. Run `fg` to bring Hermes Agent back.
+OpenAgents has been suspended. Run `fg` to bring OpenAgents back.
 ```
 
 在 shell 中输入 `fg` 即可从中断处恢复会话。Windows 不支持此功能。
@@ -312,7 +312,7 @@ CLI 在 agent 工作时显示动态反馈：
 `display.tool_preview_length` 配置项控制工具调用预览行（如文件路径、终端命令）中显示的最大字符数。默认值为 `0`，表示无限制——显示完整路径和命令。
 
 ```yaml
-# ~/.hermes/config.yaml
+# ~/.openagents/config.yaml
 display:
   tool_preview_length: 80   # 将工具预览截断为 80 个字符（0 = 无限制）
 ```
@@ -351,7 +351,7 @@ hermes -r 20260225_143052_a1b2c3           # 简写形式
 
 ### 会话存储
 
-CLI 会话存储在 Hermes 的 SQLite 状态数据库 `~/.hermes/state.db` 中。数据库保存：
+CLI 会话存储在 OpenAgents 的 SQLite 状态数据库 `~/.openagents/state.db` 中。数据库保存：
 
 - 会话元数据（ID、标题、时间戳、token 计数器）
 - 消息历史
@@ -365,7 +365,7 @@ CLI 会话存储在 Hermes 的 SQLite 状态数据库 `~/.hermes/state.db` 中�
 长对话在接近上下文限制时会自动摘要：
 
 ```yaml
-# 在 ~/.hermes/config.yaml 中
+# 在 ~/.openagents/config.yaml 中
 compression:
   enabled: true
   threshold: 0.50    # 默认在上下文限制的 50% 时压缩
@@ -386,7 +386,7 @@ auxiliary:
 /background Analyze the logs in /var/log and summarize any errors from today
 ```
 
-Hermes 立即确认任务并将提示符还给你：
+OpenAgents 立即确认任务并将提示符还给你：
 
 ```
 🔄 Background task #1 started: "Analyze the logs in /var/log and summarize..."
@@ -407,7 +407,7 @@ Hermes 立即确认任务并将提示符还给你：
 后台任务完成时，结果会以面板形式出现在终端中：
 
 ```
-╭─ ⚕ Hermes (background #1) ──────────────────────────────────╮
+╭─ ⚕ OpenAgents (background #1) ──────────────────────────────────╮
 │ Found 3 errors in syslog from today:                         │
 │ 1. OOM killer invoked at 03:22 — killed process nginx        │
 │ 2. Disk I/O error on /dev/sda1 at 07:15                      │

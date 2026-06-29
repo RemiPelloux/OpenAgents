@@ -8,11 +8,11 @@ description: "Agent 创建的技能的后台维护——使用跟踪、过期检
 
 Curator 是针对 **agent 创建的技能**的后台维护流程。它跟踪每个技能被查看、使用和修补的频率，将长期未使用的技能经历 `active → stale → archived` 状态流转，并定期启动一个短暂的辅助模型审查，提出合并或修补漂移的建议。
 
-它的存在是为了防止通过[自我改进循环](/user-guide/features/skills#agent-managed-skills-skill_manage-tool)创建的技能无限堆积。每次 agent 解决新问题并保存技能时，该技能都会落入 `~/.hermes/skills/`。若没有维护，最终会出现数十个范围狭窄的近似重复项，污染技能目录并浪费 token（令牌）。
+它的存在是为了防止通过[自我改进循环](/user-guide/features/skills#agent-managed-skills-skill_manage-tool)创建的技能无限堆积。每次 agent 解决新问题并保存技能时，该技能都会落入 `~/.openagents/skills/`。若没有维护，最终会出现数十个范围狭窄的近似重复项，污染技能目录并浪费 token（令牌）。
 
-默认情况下（`prune_builtins: true`），Curator 在 `archive_after_days` 天未使用后，可以归档**未使用的捆绑内置技能**（随仓库附带），与它主要管理的 agent 自创技能一并处理。通过 [agentskills.io](https://agentskills.io) 安装的 hub 技能始终不受影响。设置 `curator.prune_builtins: false` 可恢复旧的“仅 agent 自创”行为，此时捆绑技能绝不会被触碰。Curator 也**绝不自动删除**——最坏的结果是归档到 `~/.hermes/skills/.archive/`，这是可恢复的。
+默认情况下（`prune_builtins: true`），Curator 在 `archive_after_days` 天未使用后，可以归档**未使用的捆绑内置技能**（随仓库附带），与它主要管理的 agent 自创技能一并处理。通过 [agentskills.io](https://agentskills.io) 安装的 hub 技能始终不受影响。设置 `curator.prune_builtins: false` 可恢复旧的“仅 agent 自创”行为，此时捆绑技能绝不会被触碰。Curator 也**绝不自动删除**——最坏的结果是归档到 `~/.openagents/skills/.archive/`，这是可恢复的。
 
-跟踪 [issue #7816](https://github.com/NousResearch/hermes-agent/issues/7816)。
+跟踪 [issue #7816](https://github.com/NousResearch/openagents/issues/7816)。
 
 ## 运行方式
 
@@ -31,7 +31,7 @@ Curator 由空闲检查触发，而非 cron 守护进程。在 CLI 会话启动�
 
 一次运行分为两个阶段：
 
-1. **自动状态转换**（确定性，无 LLM）。未使用时间超过 `stale_after_days`（30 天）的技能变为 `stale`；未使用时间超过 `archive_after_days`（90 天）的技能被移至 `~/.hermes/skills/.archive/`。
+1. **自动状态转换**（确定性，无 LLM）。未使用时间超过 `stale_after_days`（30 天）的技能变为 `stale`；未使用时间超过 `archive_after_days`（90 天）的技能被移至 `~/.openagents/skills/.archive/`。
 2. **LLM 审查**（单次辅助模型 pass，`max_iterations=8`）。派生的 agent 审查 agent 创建的技能，可通过 `skill_view` 读取任意技能，并逐技能决定是保留、修补（通过 `skill_manage`）、合并重叠项，还是通过终端工具归档。
 
 已固定（pinned）的技能对 curator 的自动状态转换和 agent 自身的 `skill_manage` 工具均不可操作。详见下方[固定技能](#pinning-a-skill)。
@@ -87,7 +87,7 @@ hermes curator status         # last run, counts, pinned list, LRU top 5
 hermes curator run            # trigger a review now (blocks until the LLM pass finishes)
 hermes curator run --background  # fire-and-forget: start the LLM pass in a background thread
 hermes curator run --dry-run  # preview only — report without any mutations
-hermes curator backup         # take a manual snapshot of ~/.hermes/skills/
+hermes curator backup         # take a manual snapshot of ~/.openagents/skills/
 hermes curator rollback       # restore from the newest snapshot
 hermes curator rollback --list     # list available snapshots
 hermes curator rollback --id <ts>  # restore a specific snapshot
@@ -101,7 +101,7 @@ hermes curator restore <skill>  # move an archived skill back to active
 
 ## 备份与回滚
 
-在每次真正的 curator pass 之前，Hermes 会在 `~/.hermes/skills/.curator_backups/<utc-iso>/skills.tar.gz` 处对 `~/.hermes/skills/` 进行 tar.gz 快照。如果某次 pass 归档或合并了你不希望被触碰的内容，可以用一条命令撤销整次运行：
+在每次真正的 curator pass 之前，Hermes 会在 `~/.openagents/skills/.curator_backups/<utc-iso>/skills.tar.gz` 处对 `~/.openagents/skills/` 进行 tar.gz 快照。如果某次 pass 归档或合并了你不希望被触碰的内容，可以用一条命令撤销整次运行：
 
 ```bash
 hermes curator rollback        # restore newest snapshot (with confirmation)
@@ -132,14 +132,14 @@ curator:
 
 若技能名称**不在**以下列表中，则视为 agent 创建：
 
-- `~/.hermes/skills/.bundled_manifest`（安装时从仓库复制的技能），以及
-- `~/.hermes/skills/.hub/lock.json`（通过 `hermes skills install` 安装的技能）。
+- `~/.openagents/skills/.bundled_manifest`（安装时从仓库复制的技能），以及
+- `~/.openagents/skills/.hub/lock.json`（通过 `hermes skills install` 安装的技能）。
 
-`~/.hermes/skills/` 中的其他所有内容均在 curator 的处理范围内，包括：
+`~/.openagents/skills/` 中的其他所有内容均在 curator 的处理范围内，包括：
 
 - agent 在对话中通过 `skill_manage(action="create")` 保存的技能。
 - 你手动编写 `SKILL.md` 创建的技能。
-- 通过你指向 Hermes 的外部技能目录添加的技能。
+- 通过你指向 OpenAgents 的外部技能目录添加的技能。
 
 :::warning 你手写的技能与 agent 保存的技能看起来完全相同
 此处的来源判断是**二元的**（捆绑/hub 与其他所有内容）。Curator 无法区分你依赖于私有工作流的手写技能与自我改进循环在会话中途保存的技能。两者都落入"agent 创建"的桶中。
@@ -169,15 +169,15 @@ hermes curator pin <skill>
 hermes curator unpin <skill>
 ```
 
-该标志以 `"pinned": true` 的形式存储在 `~/.hermes/skills/.usage.json` 中技能对应的条目上，因此跨会话持久有效。
+该标志以 `"pinned": true` 的形式存储在 `~/.openagents/skills/.usage.json` 中技能对应的条目上，因此跨会话持久有效。
 
 只有 **agent 创建**的技能才能被固定——捆绑和 hub 安装的技能本就不受 curator 变更，若你尝试固定它们，`hermes curator pin` 会拒绝并给出说明。
 
-如果你想要比"禁止删除"更强的保证——例如在 agent 仍可读取技能的同时完全冻结其内容——请直接用编辑器编辑 `~/.hermes/skills/<name>/SKILL.md`。pin 保护的是工具驱动的删除，而非你自己的文件系统访问。
+如果你想要比"禁止删除"更强的保证——例如在 agent 仍可读取技能的同时完全冻结其内容——请直接用编辑器编辑 `~/.openagents/skills/<name>/SKILL.md`。pin 保护的是工具驱动的删除，而非你自己的文件系统访问。
 
 ## 使用遥测
 
-Curator 在 `~/.hermes/skills/.usage.json` 维护一个附属文件，每个技能对应一条记录：
+Curator 在 `~/.openagents/skills/.usage.json` 维护一个附属文件，每个技能对应一条记录：
 
 ```json
 {
@@ -206,10 +206,10 @@ Curator 在 `~/.hermes/skills/.usage.json` 维护一个附属文件，每个技�
 
 ## 每次运行的报告
 
-每次 curator 运行都会在 `~/.hermes/logs/curator/` 下写入一个带时间戳的目录：
+每次 curator 运行都会在 `~/.openagents/logs/curator/` 下写入一个带时间戳的目录：
 
 ```
-~/.hermes/logs/curator/
+~/.openagents/logs/curator/
 └── 20260429-111512/
     ├── run.json      # machine-readable: full fidelity, stats, LLM output
     └── REPORT.md     # human-readable summary
@@ -229,13 +229,13 @@ Curator 在 `~/.hermes/skills/.usage.json` 维护一个附属文件，每个技�
 hermes curator restore <skill-name>
 ```
 
-这会将技能从 `~/.hermes/skills/.archive/` 移回活跃树，并将其状态重置为 `active`。如果此后有同名的捆绑或 hub 安装技能（会遮蔽上游），则恢复操作会被拒绝。
+这会将技能从 `~/.openagents/skills/.archive/` 移回活跃树，并将其状态重置为 `active`。如果此后有同名的捆绑或 hub 安装技能（会遮蔽上游），则恢复操作会被拒绝。
 
 ## 按环境禁用
 
 Curator 默认开启。若要关闭：
 
-- **仅针对某个 profile：** 编辑 `~/.hermes/config.yaml`（或当前活跃 profile 的配置），设置 `curator.enabled: false`。
+- **仅针对某个 profile：** 编辑 `~/.openagents/config.yaml`（或当前活跃 profile 的配置），设置 `curator.enabled: false`。
 - **仅针对单次运行：** `hermes curator pause`——暂停跨会话持久有效；使用 `resume` 重新启用。
 
 Curator 在 `min_idle_hours` 未经过时也会拒绝运行，因此在活跃的开发机器上，它自然只会在安静时段运行。
@@ -245,4 +245,4 @@ Curator 在 `min_idle_hours` 未经过时也会拒绝运行，因此在活跃的
 - [技能系统](/user-guide/features/skills)——技能的总体工作原理及创建技能的自我改进循环
 - [内存](/user-guide/features/memory)——维护长期记忆的并行后台审查
 - [捆绑技能目录](/reference/skills-catalog)
-- [Issue #7816](https://github.com/NousResearch/hermes-agent/issues/7816)——原始提案与设计讨论
+- [Issue #7816](https://github.com/NousResearch/openagents/issues/7816)——原始提案与设计讨论

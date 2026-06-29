@@ -3,7 +3,7 @@
 The s6 dynamic scandir at /run/service/ lives on tmpfs and is wiped
 on every container restart. Phase 4 Task 4.0's container_boot module
 + cont-init.d/02-reconcile-profiles regenerate the service slots from
-$HERMES_HOME/profiles/<name>/gateway_state.json on every boot and
+$OPENAGENTS_HOME/profiles/<name>/gateway_state.json on every boot and
 auto-start only those whose last state was `running`.
 
 These tests stand up a container with a named volume, create profiles
@@ -50,7 +50,7 @@ def _wait_for_reconcile_log_mention(
 @pytest.fixture
 def restart_container(request, built_image: str):
     """A long-running container with a named volume so docker restart
-    preserves $HERMES_HOME/profiles/."""
+    preserves $OPENAGENTS_HOME/profiles/."""
     safe = request.node.name.replace("[", "_").replace("]", "_")
     name = f"hermes-restart-{safe}"
     volume = f"hermes-restart-vol-{safe}"
@@ -81,10 +81,10 @@ def test_running_gateway_survives_container_restart(restart_container: str) -> N
     # Create the profile + start its gateway. The Phase 4 hooks
     # register the s6 service slot during create and the dispatch
     # path brings it up via s6-svc -u.
-    r = docker_exec(container, "hermes", "profile", "create", "coder")
+    r = docker_exec(container, "openagents", "profile", "create", "coder")
     assert r.returncode == 0, f"profile create failed: {r.stderr}"
 
-    r = docker_exec(container, "hermes", "-p", "coder", "gateway", "start", timeout=60)
+    r = docker_exec(container, "openagents", "-p", "coder", "gateway", "start", timeout=60)
     assert r.returncode == 0, f"gateway start failed: {r.stderr}"
 
     # Give the service time to actually come up under supervision.
@@ -124,7 +124,7 @@ def test_running_gateway_survives_container_restart(restart_container: str) -> N
 def test_stopped_gateway_stays_stopped_after_restart(restart_container: str) -> None:
     container = restart_container
 
-    docker_exec(container, "hermes", "profile", "create", "writer").check_returncode()
+    docker_exec(container, "openagents", "profile", "create", "writer").check_returncode()
 
     # Write 'stopped' directly so we don't have to race against the
     # gateway's own state writes.
@@ -155,7 +155,7 @@ def test_stale_gateway_pid_cleaned_up_on_restart(restart_container: str) -> None
     process-mismatch checks."""
     container = restart_container
 
-    docker_exec(container, "hermes", "profile", "create", "ghost").check_returncode()
+    docker_exec(container, "openagents", "profile", "create", "ghost").check_returncode()
 
     # Stamp stale runtime files alongside a 'running' state so the
     # reconciler walks this profile.
@@ -197,8 +197,8 @@ def test_live_gateway_autostarts_after_real_restart_without_manual_state_stamp(
     """
     container = restart_container
 
-    docker_exec(container, "hermes", "profile", "create", "live").check_returncode()
-    r = docker_exec(container, "hermes", "-p", "live", "gateway", "start", timeout=60)
+    docker_exec(container, "openagents", "profile", "create", "live").check_returncode()
+    r = docker_exec(container, "openagents", "-p", "live", "gateway", "start", timeout=60)
     assert r.returncode == 0, f"gateway start failed: {r.stderr}"
 
     # Wait for the gateway to actually come up under supervision AND write

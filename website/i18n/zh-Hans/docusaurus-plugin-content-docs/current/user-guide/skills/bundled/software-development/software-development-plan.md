@@ -17,7 +17,7 @@ Plan 模式：将 Markdown 计划写入 .hermes/plans/，不执行任何操作�
 | 来源 | 内置（默认安装） |
 | 路径 | `skills/software-development/plan` |
 | 版本 | `1.0.0` |
-| 作者 | Hermes Agent |
+| 作者 | OpenAgents |
 | 许可证 | MIT |
 | 平台 | linux, macos, windows |
 | 标签 | `planning`, `plan-mode`, `implementation`, `workflow` |
@@ -26,7 +26,7 @@ Plan 模式：将 Markdown 计划写入 .hermes/plans/，不执行任何操作�
 ## 参考：完整 SKILL.md
 
 :::info
-以下是 Hermes 在触发此 skill 时加载的完整 skill 定义。这是 skill 激活时 agent 所看到的指令内容。
+以下是 OpenAgents 在触发此 skill 时加载的完整 skill 定义。这是 skill 激活时 agent 所看到的指令内容。
 :::
 
 # Plan 模式

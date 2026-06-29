@@ -37,7 +37,7 @@ with minor refactors:
 - Sobel edge-aware downsampling (requires scipy; not worth the dep)
 - Bayer / Atkinson dither (would need numpy reimplementation; kept scope tight)
 - Pollinations text-to-image generation (`pixelart_image.py`,
-  `generate_base()` in `pixelart_video.py`) — Hermes has `image_generate`
+  `generate_base()` in `pixelart_video.py`) — OpenAgents has `image_generate`
 
 ### License compatibility
 
@@ -49,6 +49,6 @@ and in the SKILL.md credits block. No code was relicensed.
 
 ## pixel-art skill itself
 
-- License: MIT (inherits from hermes-agent repo)
+- License: MIT (inherits from openagents repo)
 - Original author of the skill shell: dodo-reach
-- Expansion with palettes + video: Hermes Agent contributors
+- Expansion with palettes + video: OpenAgents contributors

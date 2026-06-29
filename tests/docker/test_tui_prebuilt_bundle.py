@@ -32,7 +32,7 @@ def _exec_py(image: str, py: str) -> str:
     # dashboard PTY child runs as — not root.
     cmd = [
         "docker", "run", "--rm", "--entrypoint", "su", image,
-        "hermes", "-s", "/bin/bash", "-c", inner,
+        "openagents", "-s", "/bin/bash", "-c", inner,
     ]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, f"in-container python failed:\n{r.stderr[-2000:]}"
@@ -58,7 +58,7 @@ def test_prebuilt_bundle_present_and_no_runtime_install(built_image: str) -> Non
     py = (
         "import json\n"
         "from pathlib import Path\n"
-        "from hermes_cli.main import _tui_need_npm_install, _find_bundled_tui, _make_tui_argv\n"
+        "from openagents_cli.main import _tui_need_npm_install, _find_bundled_tui, _make_tui_argv\n"
         "ui = Path('/opt/hermes/ui-tui')\n"
         "argv, cwd = _make_tui_argv(ui, tui_dev=False)\n"
         "out = {\n"

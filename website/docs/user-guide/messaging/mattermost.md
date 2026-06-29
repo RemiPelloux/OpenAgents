@@ -1,28 +1,28 @@
 ---
 sidebar_position: 8
 title: "Mattermost"
-description: "Set up Hermes Agent as a Mattermost bot"
+description: "Set up OpenAgents as a Mattermost bot"
 ---
 
 # Mattermost Setup
 
-Hermes Agent integrates with Mattermost as a bot, letting you chat with your AI assistant through direct messages or team channels. Mattermost is a self-hosted, open-source Slack alternative — you run it on your own infrastructure, keeping full control of your data. The bot connects via Mattermost's REST API (v4) and WebSocket for real-time events, processes messages through the Hermes Agent pipeline (including tool use, memory, and reasoning), and responds in real time. It supports text, file attachments, images, and slash commands.
+OpenAgents integrates with Mattermost as a bot, letting you chat with your AI assistant through direct messages or team channels. Mattermost is a self-hosted, open-source Slack alternative — you run it on your own infrastructure, keeping full control of your data. The bot connects via Mattermost's REST API (v4) and WebSocket for real-time events, processes messages through the OpenAgents pipeline (including tool use, memory, and reasoning), and responds in real time. It supports text, file attachments, images, and slash commands.
 
-No external Mattermost library is required — the adapter uses `aiohttp`, which is already a Hermes dependency.
+No external Mattermost library is required — the adapter uses `aiohttp`, which is already a OpenAgents dependency.
 
-Before setup, here's the part most people want to know: how Hermes behaves once it's in your Mattermost instance.
+Before setup, here's the part most people want to know: how OpenAgents behaves once it's in your Mattermost instance.
 
-## How Hermes Behaves
+## How OpenAgents Behaves
 
 | Context | Behavior |
 |---------|----------|
-| **DMs** | Hermes responds to every message. No `@mention` needed. Each DM has its own session. |
-| **Public/private channels** | Hermes responds when you `@mention` it. Without a mention, Hermes ignores the message. |
-| **Threads** | If `MATTERMOST_REPLY_MODE=thread`, Hermes replies in a thread under your message. Thread context stays isolated from the parent channel. |
-| **Shared channels with multiple users** | By default, Hermes isolates session history per user inside the channel. Two people talking in the same channel do not share one transcript unless you explicitly disable that. |
+| **DMs** | OpenAgents responds to every message. No `@mention` needed. Each DM has its own session. |
+| **Public/private channels** | OpenAgents responds when you `@mention` it. Without a mention, OpenAgents ignores the message. |
+| **Threads** | If `MATTERMOST_REPLY_MODE=thread`, OpenAgents replies in a thread under your message. Thread context stays isolated from the parent channel. |
+| **Shared channels with multiple users** | By default, OpenAgents isolates session history per user inside the channel. Two people talking in the same channel do not share one transcript unless you explicitly disable that. |
 
 :::tip
-If you want Hermes to reply as threaded conversations (nested under your original message), set `MATTERMOST_REPLY_MODE=thread`. The default is `off`, which sends flat messages in the channel.
+If you want OpenAgents to reply as threaded conversations (nested under your original message), set `MATTERMOST_REPLY_MODE=thread`. The default is `off`, which sends flat messages in the channel.
 :::
 
 ### Session Model in Mattermost
@@ -72,7 +72,7 @@ If you don't have System Admin access, ask your Mattermost administrator to enab
 2. Click **Add Bot Account**.
 3. Fill in the details:
    - **Username**: e.g., `hermes`
-   - **Display Name**: e.g., `Hermes Agent`
+   - **Display Name**: e.g., `OpenAgents`
    - **Description**: optional
    - **Role**: `Member` is sufficient
 4. Click **Create Bot Account**.
@@ -85,7 +85,7 @@ The bot token is only displayed once when you create the bot account. If you los
 Store the token somewhere safe (a password manager, for example). You'll need it in Step 5.
 
 :::tip
-You can also use a **personal access token** instead of a bot account. Go to **Profile** → **Security** → **Personal Access Tokens** → **Create Token**. This is useful if you want Hermes to post as your own user rather than a separate bot user.
+You can also use a **personal access token** instead of a bot account. Go to **Profile** → **Security** → **Personal Access Tokens** → **Create Token**. This is useful if you want OpenAgents to post as your own user rather than a separate bot user.
 :::
 
 ## Step 3: Add the Bot to Channels
@@ -100,7 +100,7 @@ For DMs, simply open a direct message with the bot — it will be able to respon
 
 ## Step 4: Find Your Mattermost User ID
 
-Hermes Agent uses your Mattermost User ID to control who can interact with the bot. To find it:
+OpenAgents uses your Mattermost User ID to control who can interact with the bot. To find it:
 
 1. Click your **avatar** (top-left corner) → **Profile**.
 2. Your User ID is displayed in the profile dialog — click it to copy.
@@ -122,7 +122,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 To get a **Channel ID**: click the channel name → **View Info**. The Channel ID is shown in the info panel. You'll need this if you want to set a home channel manually.
 :::
 
-## Step 5: Configure Hermes Agent
+## Step 5: Configure OpenAgents
 
 ### Option A: Interactive Setup (Recommended)
 
@@ -136,7 +136,7 @@ Select **Mattermost** when prompted, then paste your server URL, bot token, and 
 
 ### Option B: Manual Configuration
 
-Add the following to your `~/.hermes/.env` file:
+Add the following to your `~/.openagents/.env` file:
 
 ```bash
 # Required
@@ -157,7 +157,7 @@ MATTERMOST_ALLOWED_USERS=3uo8dkh1p7g1mfk49ear5fzs5c
 # MATTERMOST_FREE_RESPONSE_CHANNELS=channel_id_1,channel_id_2
 ```
 
-Optional behavior settings in `~/.hermes/config.yaml`:
+Optional behavior settings in `~/.openagents/config.yaml`:
 
 ```yaml
 group_sessions_per_user: true
@@ -189,7 +189,7 @@ Type `/sethome` in any Mattermost channel where the bot is present. That channel
 
 ### Manual Configuration
 
-Add this to your `~/.hermes/.env`:
+Add this to your `~/.openagents/.env`:
 
 ```bash
 MATTERMOST_HOME_CHANNEL=abc123def456ghi789jkl012mn
@@ -199,14 +199,14 @@ Replace the ID with the actual channel ID (click the channel name → View Info 
 
 ## Reply Mode
 
-The `MATTERMOST_REPLY_MODE` setting controls how Hermes posts responses:
+The `MATTERMOST_REPLY_MODE` setting controls how OpenAgents posts responses:
 
 | Mode | Behavior |
 |------|----------|
-| `off` (default) | Hermes posts flat messages in the channel, like a normal user. |
-| `thread` | Hermes replies in a thread under your original message. Keeps channels clean when there's lots of back-and-forth. |
+| `off` (default) | OpenAgents posts flat messages in the channel, like a normal user. |
+| `thread` | OpenAgents replies in a thread under your original message. Keeps channels clean when there's lots of back-and-forth. |
 
-Set it in your `~/.hermes/.env`:
+Set it in your `~/.openagents/.env`:
 
 ```bash
 MATTERMOST_REPLY_MODE=thread
@@ -298,7 +298,7 @@ If this returns your bot's user info, the token is valid. If it returns an error
 
 ### Bot is offline
 
-**Cause**: The Hermes gateway isn't running, or it failed to connect.
+**Cause**: The OpenAgents gateway isn't running, or it failed to connect.
 
 **Fix**: Check that `hermes gateway` is running. Look at the terminal output for error messages. Common issues: wrong URL, expired token, Mattermost server unreachable.
 
@@ -306,7 +306,7 @@ If this returns your bot's user info, the token is valid. If it returns an error
 
 **Cause**: Your User ID isn't in `MATTERMOST_ALLOWED_USERS`.
 
-**Fix**: Add your User ID to `MATTERMOST_ALLOWED_USERS` in `~/.hermes/.env` and restart the gateway. Remember: the User ID is a 26-character alphanumeric string, not your `@username`.
+**Fix**: Add your User ID to `MATTERMOST_ALLOWED_USERS` in `~/.openagents/.env` and restart the gateway. Remember: the User ID is a 26-character alphanumeric string, not your `@username`.
 
 ## Per-Channel Prompts
 
@@ -331,10 +331,10 @@ Keys are Mattermost channel IDs (find them in the channel URL or via the API). A
 Always set `MATTERMOST_ALLOWED_USERS` to restrict who can interact with the bot. Without it, the gateway denies all users by default as a safety measure. Only add User IDs of people you trust — authorized users have full access to the agent's capabilities, including tool use and system access.
 :::
 
-For more information on securing your Hermes Agent deployment, see the [Security Guide](../security.md).
+For more information on securing your OpenAgents deployment, see the [Security Guide](../security.md).
 
 ## Notes
 
 - **Self-hosted friendly**: Works with any self-hosted Mattermost instance. No Mattermost Cloud account or subscription required.
-- **No extra dependencies**: The adapter uses `aiohttp` for HTTP and WebSocket, which is already included with Hermes Agent.
+- **No extra dependencies**: The adapter uses `aiohttp` for HTTP and WebSocket, which is already included with OpenAgents.
 - **Team Edition compatible**: Works with both Mattermost Team Edition (free) and Enterprise Edition.

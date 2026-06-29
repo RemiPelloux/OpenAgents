@@ -1,25 +1,25 @@
 ---
 sidebar_position: 10
 title: "语音模式"
-description: "与 Hermes Agent 进行实时语音对话 — CLI、Telegram、Discord（私信、文字频道和语音频道）"
+description: "与 OpenAgents 进行实时语音对话 — CLI、Telegram、Discord（私信、文字频道和语音频道）"
 ---
 
 # 语音模式
 
-Hermes Agent 支持在 CLI 和消息平台上进行完整的语音交互。通过麦克风与 Agent 对话，听取语音回复，并在 Discord 语音频道中进行实时语音对话。
+OpenAgents 支持在 CLI 和消息平台上进行完整的语音交互。通过麦克风与 Agent 对话，听取语音回复，并在 Discord 语音频道中进行实时语音对话。
 
-如需包含推荐配置和实际使用模式的实践指南，请参阅 [使用 Hermes 的语音模式](/guides/use-voice-mode-with-hermes)。
+如需包含推荐配置和实际使用模式的实践指南，请参阅 [使用 OpenAgents 的语音模式](/guides/use-voice-mode-with-hermes)。
 
 ## 前提条件
 
 使用语音功能前，请确保已完成以下准备：
 
-1. **已安装 Hermes Agent** — 通过安装脚本（参见 [安装](/getting-started/installation)）
-2. **已配置 LLM 提供商** — 运行 `hermes model` 或在 `~/.hermes/.env` 中设置首选提供商的凭据
+1. **已安装 OpenAgents** — 通过安装脚本（参见 [安装](/getting-started/installation)）
+2. **已配置 LLM 提供商** — 运行 `hermes model` 或在 `~/.openagents/.env` 中设置首选提供商的凭据
 3. **基础设置正常** — 运行 `hermes` 验证 Agent 能够响应文字消息，再启用语音功能
 
 :::tip
-`~/.hermes/` 目录和默认的 `config.yaml` 会在首次运行 `hermes` 时自动创建。只需手动创建 `~/.hermes/.env` 来存放 API 密钥。
+`~/.openagents/` 目录和默认的 `config.yaml` 会在首次运行 `hermes` 时自动创建。只需手动创建 `~/.openagents/.env` 来存放 API 密钥。
 :::
 
 :::tip Nous Portal 同时覆盖两项
@@ -40,19 +40,19 @@ Hermes Agent 支持在 CLI 和消息平台上进行完整的语音交互。通�
 
 ```bash
 # CLI 语音模式（麦克风 + 音频播放）
-cd ~/.hermes/hermes-agent && uv pip install -e ".[voice]"
+cd ~/.openagents/openagents && uv pip install -e ".[voice]"
 
 # Discord + Telegram 消息（包含 discord.py[voice] 以支持语音频道）
-cd ~/.hermes/hermes-agent && uv pip install -e ".[messaging]"
+cd ~/.openagents/openagents && uv pip install -e ".[messaging]"
 
 # 高级 TTS（ElevenLabs）
-cd ~/.hermes/hermes-agent && uv pip install -e ".[tts-premium]"
+cd ~/.openagents/openagents && uv pip install -e ".[tts-premium]"
 
 # 本地 TTS（NeuTTS，可选）
 python -m pip install -U neutts[all]
 
 # 一次性安装所有内容
-cd ~/.hermes/hermes-agent && uv pip install -e ".[all]"
+cd ~/.openagents/openagents && uv pip install -e ".[all]"
 ```
 
 | 扩展包 | 包含的包 | 用途 |
@@ -88,7 +88,7 @@ sudo apt install espeak-ng   # for NeuTTS
 
 ### API 密钥
 
-添加到 `~/.hermes/.env`：
+添加到 `~/.openagents/.env`：
 
 ```bash
 # 语音转文字（STT）— 本地提供商完全不需要密钥
@@ -109,7 +109,7 @@ ELEVENLABS_API_KEY=***           # ElevenLabs — 高级音质
 
 ## CLI 语音模式
 
-语音模式在**经典 CLI**（`hermes chat`）和 **TUI**（`hermes --tui`）中均可使用。两者行为完全一致 — 相同的斜杠命令、相同的 VAD（语音活动检测）静音检测、相同的流式 TTS、相同的幻觉过滤器。TUI 额外将崩溃诊断日志转发至 `~/.hermes/logs/`，以便在异常音频后端出现按键录音失败时提供完整堆栈跟踪，而非静默消失。
+语音模式在**经典 CLI**（`hermes chat`）和 **TUI**（`hermes --tui`）中均可使用。两者行为完全一致 — 相同的斜杠命令、相同的 VAD（语音活动检测）静音检测、相同的流式 TTS、相同的幻觉过滤器。TUI 额外将崩溃诊断日志转发至 `~/.openagents/logs/`，以便在异常音频后端出现按键录音失败时提供完整堆栈跟踪，而非静默消失。
 
 ### 快速开始
 
@@ -143,7 +143,7 @@ hermes                # 启动交互式 CLI
 此循环持续进行，直到在录音过程中按下 **Ctrl+B**（退出连续模式），或连续 3 次录音均未检测到语音为止。
 
 :::tip
-录音键可通过 `~/.hermes/config.yaml` 中的 `voice.record_key` 配置（默认：`ctrl+b`）。
+录音键可通过 `~/.openagents/config.yaml` 中的 `voice.record_key` 配置（默认：`ctrl+b`）。
 :::
 
 ### 静音检测
@@ -198,7 +198,7 @@ Bot 在 Discord 上支持两种交互模式：
 **服务器频道：** Bot 仅在被 @提及时响应（例如 `@hermesbyt4 你好`）。请确保从提及弹窗中选择 **Bot 用户**，而非同名角色。
 
 :::tip
-如需在服务器频道中禁用提及要求，在 `~/.hermes/.env` 中添加：
+如需在服务器频道中禁用提及要求，在 `~/.openagents/.env` 中添加：
 ```bash
 DISCORD_REQUIRE_MENTION=false
 ```
@@ -309,7 +309,7 @@ Bot 会从以下路径自动加载编解码器：
 #### 4. 环境变量
 
 ```bash
-# ~/.hermes/.env
+# ~/.openagents/.env
 
 # Discord bot（已为文字功能配置）
 DISCORD_BOT_TOKEN=your-bot-token
@@ -373,7 +373,7 @@ Bot 在播放 TTS 回复时会自动暂停音频监听，防止听到并重复�
 只有 `DISCORD_ALLOWED_USERS` 中列出的用户才能通过语音进行交互。其他用户的音频会被静默忽略。
 
 ```bash
-# ~/.hermes/.env
+# ~/.openagents/.env
 DISCORD_ALLOWED_USERS=284102345871466496
 ```
 
@@ -491,7 +491,7 @@ Bot 在服务器频道中默认需要 @提及。请确认：
 
 1. 输入 `@` 后选择 **Bot 用户**（带有 #discriminator），而非同名**角色**
 2. 或改用私信 — 无需提及
-3. 或在 `~/.hermes/.env` 中设置 `DISCORD_REQUIRE_MENTION=false`
+3. 或在 `~/.openagents/.env` 中设置 `DISCORD_REQUIRE_MENTION=false`
 
 ### Bot 加入语音频道但听不到我说话
 
@@ -503,7 +503,7 @@ Bot 在服务器频道中默认需要 @提及。请确认：
 
 - 验证 STT 是否可用：安装 `faster-whisper`（无需密钥）或设置 `GROQ_API_KEY` / `VOICE_TOOLS_OPENAI_KEY`
 - 检查 LLM 模型是否已配置且可访问
-- 查看 gateway 日志：`tail -f ~/.hermes/logs/gateway.log`
+- 查看 gateway 日志：`tail -f ~/.openagents/logs/gateway.log`
 
 ### Bot 有文字回复但语音频道中没有声音
 

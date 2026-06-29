@@ -52,17 +52,17 @@ hermes teams-pipeline maintain-subscriptions --dry-run
 
 你**必须**按计划运行 `maintain-subscriptions`。从以下三种方式中选择一种：
 
-#### 方式一：Hermes cron（若已运行 Hermes gateway，推荐此方式）
+#### 方式一：OpenAgents cron（若已运行 OpenAgents gateway，推荐此方式）
 
-Hermes 内置 cron 调度器。`--no-agent` 模式以脚本作为任务执行（而非使用 LLM），`--script` 必须指向 `~/.hermes/scripts/` 下的文件。首先创建脚本：
+OpenAgents 内置 cron 调度器。`--no-agent` 模式以脚本作为任务执行（而非使用 LLM），`--script` 必须指向 `~/.openagents/scripts/` 下的文件。首先创建脚本：
 
 ```bash
-mkdir -p ~/.hermes/scripts
-cat > ~/.hermes/scripts/maintain-teams-subscriptions.sh <<'EOF'
+mkdir -p ~/.openagents/scripts
+cat > ~/.openagents/scripts/maintain-teams-subscriptions.sh <<'EOF'
 #!/usr/bin/env bash
 exec hermes teams-pipeline maintain-subscriptions
 EOF
-chmod +x ~/.hermes/scripts/maintain-teams-subscriptions.sh
+chmod +x ~/.openagents/scripts/maintain-teams-subscriptions.sh
 ```
 
 然后注册一个每 12 小时运行一次的纯脚本 cron 任务（相对于 72 小时过期窗口有 6 倍余量）：
@@ -102,7 +102,7 @@ ExecStart=/usr/local/bin/hermes teams-pipeline maintain-subscriptions
 
 ```ini
 [Unit]
-Description=Run Hermes Teams pipeline subscription maintenance every 12 hours
+Description=Run OpenAgents Teams pipeline subscription maintenance every 12 hours
 
 [Timer]
 OnBootSec=5min
@@ -127,7 +127,7 @@ systemctl list-timers hermes-teams-pipeline-maintain.timer
 0 */12 * * * /usr/local/bin/hermes teams-pipeline maintain-subscriptions >> /var/log/hermes/teams-pipeline-maintain.log 2>&1
 ```
 
-确保 cron 环境中包含 `MSGRAPH_*` 凭据。最简单的方法：在 crontab 调用的包装脚本顶部 source `~/.hermes/.env`。
+确保 cron 环境中包含 `MSGRAPH_*` 凭据。最简单的方法：在 crontab 调用的包装脚本顶部 source `~/.openagents/.env`。
 
 #### 验证续期是否正常工作
 
@@ -239,7 +239,7 @@ hermes teams-pipeline show <job-id>
 - [ ] Notion 和 Linear 接收端仅在实际需要时配置
 - [ ] `hermes teams-pipeline validate` 返回 OK 快照
 - [ ] `hermes teams-pipeline token-health --force-refresh` 执行成功
-- [ ] **`maintain-subscriptions` 已配置计划任务**（Hermes cron、systemd timer 或 crontab——参见[自动化订阅续期](#automating-subscription-renewal-required-for-production)）。若未配置，Graph 订阅将在 72 小时内静默过期。
+- [ ] **`maintain-subscriptions` 已配置计划任务**（OpenAgents cron、systemd timer 或 crontab——参见[自动化订阅续期](#automating-subscription-renewal-required-for-production)）。若未配置，Graph 订阅将在 72 小时内静默过期。
 - [ ] 一个真实的端到端会议事件已生成存储任务
 - [ ] 至少一条摘要已到达预期的投递接收端
 

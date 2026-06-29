@@ -16,7 +16,7 @@ Three coexisting TTS extension surfaces — in resolution order:
    elevenlabs, …). **Always win** — plugins cannot shadow them.
 2. **Command-type providers** declared under ``tts.providers.<name>:
    type: command`` (PR #17843, commit ``2facea7f7``). Wire any local
-   CLI into Hermes with shell-template placeholders. **Wins over a
+   CLI into OpenAgents with shell-template placeholders. **Wins over a
    same-name plugin** — config is more local than plugin install.
 3. **Plugin-registered providers** (this ABC). For backends that need a
    Python SDK, streaming bytes, OAuth refresh, or voice-listing APIs
@@ -30,7 +30,7 @@ defensively). The dispatcher also rejects plugin dispatch when a same-
 name command provider is configured.
 
 Providers live in ``<repo>/plugins/tts/<name>/`` (built-in plugins, no
-shipped today) or ``~/.hermes/plugins/tts/<name>/`` (user-installed).
+shipped today) or ``~/.openagents/plugins/tts/<name>/`` (user-installed).
 None ship in-tree as of issue #30398 — the hook is additive
 infrastructure waiting for a real consumer (Cartesia, Fish Audio, …).
 

@@ -23,7 +23,7 @@ function hindsightSchema(overrides: Partial<MemoryProviderConfig['fields'][numbe
       label: 'Mode',
       kind: 'select',
       value: 'cloud',
-      description: 'How Hermes connects to Hindsight.',
+      description: 'How OpenAgents connects to Hindsight.',
       placeholder: '',
       is_set: true,
       options: [
@@ -55,7 +55,7 @@ function hindsightSchema(overrides: Partial<MemoryProviderConfig['fields'][numbe
       key: 'bank_id',
       label: 'Bank ID',
       kind: 'text',
-      value: 'hermes',
+      value: 'openagents',
       description: '',
       placeholder: '',
       is_set: true,
@@ -105,7 +105,7 @@ describe('ProviderConfigPanel', () => {
     await renderPanel()
 
     expect(await screen.findByDisplayValue('https://api.hindsight.vectorize.io')).toBeTruthy()
-    expect(screen.getByDisplayValue('hermes')).toBeTruthy()
+    expect(screen.getByDisplayValue('openagents')).toBeTruthy()
     expect(screen.getByText('Cloud')).toBeTruthy()
     expect(screen.getAllByText('Hindsight Cloud API (lightweight, just needs an API key)').length).toBeGreaterThan(0)
     expect(screen.getByText('mid')).toBeTruthy()

@@ -1,4 +1,4 @@
-# Hermes Agent Has Had "Routines" Since March
+# OpenAgents Has Had "Routines" Since March
 
 Anthropic just announced [Claude Code Routines](https://claude.com/blog/introducing-routines-in-claude-code) — scheduled tasks, GitHub event triggers, and API-triggered agent runs. Bundled prompt + repo + connectors, running on their infrastructure.
 
@@ -13,7 +13,7 @@ Claude Code Routines offers three ways to trigger an automation:
 **1. Scheduled (cron)**
 > "Every night at 2am: pull the top bug from Linear, attempt a fix, and open a draft PR."
 
-Hermes equivalent — works today:
+OpenAgents equivalent — works today:
 ```bash
 hermes cron create "0 2 * * *" \
   "Pull the top bug from the issue tracker, attempt a fix, and open a draft PR." \
@@ -24,7 +24,7 @@ hermes cron create "0 2 * * *" \
 **2. GitHub Events (webhook)**
 > "Flag PRs that touch the /auth-provider module and post to #auth-changes."
 
-Hermes equivalent — works today:
+OpenAgents equivalent — works today:
 ```bash
 hermes webhook subscribe auth-watch \
   --events "pull_request" \
@@ -35,20 +35,20 @@ hermes webhook subscribe auth-watch \
 **3. API Triggers**
 > "Read the alert payload, find the owning service, post a triage summary to #oncall."
 
-Hermes equivalent — works today:
+OpenAgents equivalent — works today:
 ```bash
 hermes webhook subscribe alert-triage \
   --prompt "Alert: {alert.name} — Severity: {alert.severity}. Find the owning service, investigate, and post a triage summary with proposed first steps." \
   --deliver slack
 ```
 
-Every use case in their blog post — backlog triage, docs drift, deploy verification, alert correlation, library porting, bespoke PR review — has a working Hermes implementation. No new features needed. It's been shipping since March 2026.
+Every use case in their blog post — backlog triage, docs drift, deploy verification, alert correlation, library porting, bespoke PR review — has a working OpenAgents implementation. No new features needed. It's been shipping since March 2026.
 
 ---
 
 ## What's Different
 
-| | Claude Code Routines | Hermes Agent |
+| | Claude Code Routines | OpenAgents |
 |---|---|---|
 | **Scheduled tasks** | ✅ Schedule-based | ✅ Any cron expression + human-readable intervals |
 | **GitHub triggers** | ✅ PR, issue, push events | ✅ Any GitHub event via webhook subscriptions |
@@ -66,7 +66,7 @@ Every use case in their blog post — backlog triage, docs drift, deploy verific
 
 ---
 
-## Things Hermes Does That Routines Can't
+## Things OpenAgents Does That Routines Can't
 
 ### Script Injection
 
@@ -75,7 +75,7 @@ Run a Python script *before* the agent. The script's stdout becomes context. The
 ```bash
 hermes cron create "every 1h" \
   "If CHANGE DETECTED, summarize what changed. If NO_CHANGE, respond with [SILENT]." \
-  --script ~/.hermes/scripts/watch-site.py \
+  --script ~/.openagents/scripts/watch-site.py \
   --name "Pricing monitor" \
   --deliver telegram
 ```
@@ -116,7 +116,7 @@ Your nightly triage can run on Claude. Your deploy verification can run on GPT. 
 
 Claude Code Routines: **5 routines per day** on Pro. **25 on Enterprise.** That's their ceiling.
 
-Hermes has no daily limit. Run 500 automations a day if you want. The only constraint is your API budget, and you choose which models to use for which tasks.
+OpenAgents has no daily limit. Run 500 automations a day if you want. The only constraint is your API budget, and you choose which models to use for which tasks.
 
 A nightly backlog triage on Sonnet costs roughly $0.02-0.05. A monitoring check on DeepSeek costs fractions of a cent. You control the economics.
 
@@ -124,10 +124,10 @@ A nightly backlog triage on Sonnet costs roughly $0.02-0.05. A monitoring check 
 
 ## Get Started
 
-Hermes Agent is open source and free. The automation infrastructure — cron scheduler, webhook platform, skill system, multi-platform delivery — is built in.
+OpenAgents is open source and free. The automation infrastructure — cron scheduler, webhook platform, skill system, multi-platform delivery — is built in.
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://openagents.nousresearch.com/install.sh | bash
 hermes setup
 ```
 
@@ -149,12 +149,12 @@ hermes webhook subscribe pr-review \
   --deliver github_comment
 ```
 
-Full automation blueprints gallery: [hermes-agent.nousresearch.com/docs/reference/automation-blueprints-catalog](https://hermes-agent.nousresearch.com/docs/reference/automation-blueprints-catalog)
+Full automation blueprints gallery: [openagents.nousresearch.com/docs/reference/automation-blueprints-catalog](https://openagents.nousresearch.com/docs/reference/automation-blueprints-catalog)
 
-Documentation: [hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com)
+Documentation: [openagents.nousresearch.com](https://openagents.nousresearch.com)
 
-GitHub: [github.com/NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)
+GitHub: [github.com/NousResearch/openagents](https://github.com/NousResearch/openagents)
 
 ---
 
-*Hermes Agent is built by [Nous Research](https://nousresearch.com). Open source, model-agnostic, runs on your infrastructure.*
+*OpenAgents is built by [Nous Research](https://nousresearch.com). Open source, model-agnostic, runs on your infrastructure.*

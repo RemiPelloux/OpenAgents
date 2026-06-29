@@ -1,33 +1,33 @@
 ---
 sidebar_position: 4
 title: "MCP（模型上下文协议）"
-description: "通过 MCP 将 Hermes Agent 连接到外部工具服务器，并精确控制 Hermes 加载哪些 MCP 工具"
+description: "通过 MCP 将 OpenAgents 连接到外部工具服务器，并精确控制 OpenAgents 加载哪些 MCP 工具"
 ---
 
 # MCP（模型上下文协议）
 
-MCP 让 Hermes Agent 连接到外部工具服务器，使 agent 能够使用 Hermes 本身之外的工具——GitHub、数据库、文件系统、浏览器栈、内部 API 等等。
+MCP 让 OpenAgents 连接到外部工具服务器，使 agent 能够使用 OpenAgents 本身之外的工具——GitHub、数据库、文件系统、浏览器栈、内部 API 等等。
 
-如果你曾经希望 Hermes 使用某个已经存在于其他地方的工具，MCP 通常是最简洁的方式。
+如果你曾经希望 OpenAgents 使用某个已经存在于其他地方的工具，MCP 通常是最简洁的方式。
 
 ## MCP 能给你带来什么
 
-- 无需先编写原生 Hermes 工具，即可访问外部工具生态系统
+- 无需先编写原生 OpenAgents 工具，即可访问外部工具生态系统
 - 在同一配置中同时支持本地 stdio 服务器和远程 HTTP MCP 服务器
 - 启动时自动发现并注册工具
 - 在服务器支持的情况下，提供针对 MCP 资源和 prompt（提示词）的实用工具封装
-- 按服务器过滤，只向 Hermes 暴露你真正需要的 MCP 工具
+- 按服务器过滤，只向 OpenAgents 暴露你真正需要的 MCP 工具
 
 ## 快速开始
 
 1. 安装 MCP 支持（如果你使用了标准安装脚本，已包含在内）：
 
 ```bash
-cd ~/.hermes/hermes-agent
+cd ~/.openagents/openagents
 uv pip install -e ".[mcp]"
 ```
 
-2. 在 `~/.hermes/config.yaml` 中添加一个 MCP 服务器：
+2. 在 `~/.openagents/config.yaml` 中添加一个 MCP 服务器：
 
 ```yaml
 mcp_servers:
@@ -42,7 +42,7 @@ mcp_servers:
 hermes chat
 ```
 
-4. 让 Hermes 使用 MCP 支持的能力。
+4. 让 OpenAgents 使用 MCP 支持的能力。
 
 例如：
 
@@ -50,7 +50,7 @@ hermes chat
 List the files in /home/user/projects and summarize the repo structure.
 ```
 
-Hermes 会发现 MCP 服务器的工具，并像使用其他工具一样使用它们。
+OpenAgents 会发现 MCP 服务器的工具，并像使用其他工具一样使用它们。
 
 ## 两种 MCP 服务器
 
@@ -74,7 +74,7 @@ mcp_servers:
 
 ### HTTP 服务器
 
-HTTP MCP 服务器是 Hermes 直接连接的远程端点。
+HTTP MCP 服务器是 OpenAgents 直接连接的远程端点。
 
 ```yaml
 mcp_servers:
@@ -87,11 +87,11 @@ mcp_servers:
 适合使用 HTTP 服务器的场景：
 - MCP 服务器托管在其他地方
 - 你的组织暴露了内部 MCP 端点
-- 你不希望 Hermes 为该集成在本地启动子进程
+- 你不希望 OpenAgents 为该集成在本地启动子进程
 
 ## 基本配置参考
 
-Hermes 从 `~/.hermes/config.yaml` 的 `mcp_servers` 下读取 MCP 配置。
+OpenAgents 从 `~/.openagents/config.yaml` 的 `mcp_servers` 下读取 MCP 配置。
 
 ### 常用字段
 
@@ -151,9 +151,9 @@ mcp_servers:
 
 你可以使用任意本地名称（`hermes mcp add my-codex --preset codex` 完全可以）；预设只提供 `command`/`args` 默认值。
 
-## Hermes 注册 MCP 工具的方式
+## OpenAgents 注册 MCP 工具的方式
 
-Hermes 为 MCP 工具添加前缀，避免与内置名称冲突：
+OpenAgents 为 MCP 工具添加前缀，避免与内置名称冲突：
 
 ```text
 mcp_<server_name>_<tool_name>
@@ -193,7 +193,7 @@ mcp_<server_name>_<tool_name>
 
 ## 按服务器过滤
 
-你可以控制每个 MCP 服务器向 Hermes 贡献哪些工具，从而精细管理工具命名空间。
+你可以控制每个 MCP 服务器向 OpenAgents 贡献哪些工具，从而精细管理工具命名空间。
 
 ### 完全禁用某个服务器
 
@@ -247,7 +247,7 @@ tools:
 
 ### 同样可过滤实用工具
 
-你也可以单独禁用 Hermes 添加的实用工具封装：
+你也可以单独禁用 OpenAgents 添加的实用工具封装：
 
 ```yaml
 mcp_servers:
@@ -298,11 +298,11 @@ mcp_servers:
 
 ### 发现时机
 
-Hermes 在启动时发现 MCP 服务器，并将其工具注册到普通工具注册表中。
+OpenAgents 在启动时发现 MCP 服务器，并将其工具注册到普通工具注册表中。
 
 ### 动态工具发现
 
-MCP 服务器可以在运行时通过发送 `notifications/tools/list_changed` 通知，告知 Hermes 其可用工具发生了变化。Hermes 收到该通知后，会自动重新获取服务器的工具列表并更新注册表——无需手动执行 `/reload-mcp`。
+MCP 服务器可以在运行时通过发送 `notifications/tools/list_changed` 通知，告知 OpenAgents 其可用工具发生了变化。Hermes 收到该通知后，会自动重新获取服务器的工具列表并更新注册表——无需手动执行 `/reload-mcp`。
 
 这对于能力动态变化的 MCP 服务器非常有用（例如，加载新数据库 schema 时添加工具，或服务下线时移除工具）。
 
@@ -407,7 +407,7 @@ Inspect the project root and explain the directory layout.
 
 ```bash
 # 验证 MCP 依赖已安装（标准安装已包含）
-cd ~/.hermes/hermes-agent && uv pip install -e ".[mcp]"
+cd ~/.openagents/openagents && uv pip install -e ".[mcp]"
 
 node --version
 npx --version
@@ -428,7 +428,7 @@ npx --version
 
 ### 为什么资源或 prompt 实用工具没有出现？
 
-因为 Hermes 现在只在以下两个条件同时满足时才注册这些封装：
+因为 OpenAgents 现在只在以下两个条件同时满足时才注册这些封装：
 1. 你的配置允许它们
 2. 服务器会话实际支持该能力
 
@@ -453,7 +453,7 @@ mcp_servers:
 
 ## MCP Sampling 支持
 
-MCP 服务器可以通过 `sampling/createMessage` 协议向 Hermes 请求 LLM 推理。这允许 MCP 服务器代表自己请求 Hermes 生成文本——适用于需要 LLM 能力但没有自己模型访问权限的服务器。
+MCP 服务器可以通过 `sampling/createMessage` 协议向 OpenAgents 请求 LLM 推理。这允许 MCP 服务器代表自己请求 OpenAgents 生成文本——适用于需要 LLM 能力但没有自己模型访问权限的服务器。
 
 Sampling 对所有 MCP 服务器**默认启用**（当 MCP SDK 支持时）。可在 `sampling` 键下按服务器配置：
 
@@ -484,15 +484,15 @@ mcp_servers:
       enabled: false
 ```
 
-## 将 Hermes 作为 MCP 服务器运行
+## 将 OpenAgents 作为 MCP 服务器运行
 
-除了连接**到** MCP 服务器，Hermes 也可以**作为** MCP 服务器运行。这让其他支持 MCP 的 agent（Claude Code、Cursor、Codex 或任何 MCP 客户端）能够使用 Hermes 的消息能力——列出会话、读取消息历史，以及跨所有已连接平台发送消息。
+除了连接**到** MCP 服务器，Hermes 也可以**作为** MCP 服务器运行。这让其他支持 MCP 的 agent（Claude Code、Cursor、Codex 或任何 MCP 客户端）能够使用 OpenAgents 的消息能力——列出会话、读取消息历史，以及跨所有已连接平台发送消息。
 
 ### 适用场景
 
-- 你希望 Claude Code、Cursor 或其他编程 agent 通过 Hermes 发送和读取 Telegram/Discord/Slack 消息
-- 你需要一个单一的 MCP 服务器，同时桥接 Hermes 所有已连接的消息平台
-- 你已经有一个运行中的 Hermes gateway，并已连接各平台
+- 你希望 Claude Code、Cursor 或其他编程 agent 通过 OpenAgents 发送和读取 Telegram/Discord/Slack 消息
+- 你需要一个单一的 MCP 服务器，同时桥接 OpenAgents 所有已连接的消息平台
+- 你已经有一个运行中的 OpenAgents gateway，并已连接各平台
 
 ### 快速开始
 
@@ -504,26 +504,26 @@ hermes mcp serve
 
 ### MCP 客户端配置
 
-将 Hermes 添加到你的 MCP 客户端配置中。例如，在 Claude Code 的 `~/.claude/claude_desktop_config.json` 中：
+将 OpenAgents 添加到你的 MCP 客户端配置中。例如，在 Claude Code 的 `~/.claude/claude_desktop_config.json` 中：
 
 ```json
 {
   "mcpServers": {
-    "hermes": {
-      "command": "hermes",
+    "openagents": {
+      "command": "openagents",
       "args": ["mcp", "serve"]
     }
   }
 }
 ```
 
-或者，如果你将 Hermes 安装在特定位置：
+或者，如果你将 OpenAgents 安装在特定位置：
 
 ```json
 {
   "mcpServers": {
-    "hermes": {
-      "command": "/home/user/.hermes/hermes-agent/venv/bin/hermes",
+    "openagents": {
+      "command": "/home/user/.hermes/openagents/venv/bin/hermes",
       "args": ["mcp", "serve"]
     }
   }
@@ -532,7 +532,7 @@ hermes mcp serve
 
 ### 可用工具
 
-MCP 服务器暴露 10 个工具，与 OpenClaw 的 channel bridge 接口一致，并额外提供一个 Hermes 专属的 channel 浏览器：
+MCP 服务器暴露 10 个工具，与 OpenClaw 的 channel bridge 接口一致，并额外提供一个 OpenAgents 专属的 channel 浏览器：
 
 | 工具 | 描述 |
 |------|-------------|
@@ -549,7 +549,7 @@ MCP 服务器暴露 10 个工具，与 OpenClaw 的 channel bridge 接口一致�
 
 ### 事件系统
 
-MCP 服务器包含一个实时事件桥，轮询 Hermes 的会话数据库以获取新消息。这让 MCP 客户端能够近实时感知新来的会话：
+MCP 服务器包含一个实时事件桥，轮询 OpenAgents 的会话数据库以获取新消息。这让 MCP 客户端能够近实时感知新来的会话：
 
 ```
 # 轮询新事件（非阻塞）
@@ -572,20 +572,20 @@ hermes mcp serve --verbose    # 在 stderr 输出调试日志
 
 ### 工作原理
 
-MCP 服务器直接从 Hermes 的会话存储（`~/.hermes/sessions/sessions.json` 和 SQLite 数据库）读取会话数据。后台线程轮询数据库以获取新消息，并维护一个内存事件队列。发送消息时，使用与 Hermes agent 本身相同的 `send_message` 基础设施。
+MCP 服务器直接从 OpenAgents 的会话存储（`~/.openagents/sessions/sessions.json` 和 SQLite 数据库）读取会话数据。后台线程轮询数据库以获取新消息，并维护一个内存事件队列。发送消息时，使用与 OpenAgents 本身相同的 `send_message` 基础设施。
 
 读取操作（列出会话、读取历史、轮询事件）**不需要** gateway 运行。发送操作**需要** gateway 运行，因为平台适配器需要活跃连接。
 
 ### 当前限制
 
-- 内嵌的 `hermes mcp serve` 目前只暴露 **stdio-only** MCP 服务器。如果你需要 HTTP MCP 服务器，请运行单独的适配器——或者，更常见的做法是使用 Hermes 的 MCP **客户端**侧，它已经同时支持 stdio 和 HTTP（`mcp_servers.yaml` / `config.yaml` 中的 `url` + `headers`；参见上方的 [HTTP 服务器](#http-servers)）。
+- 内嵌的 `hermes mcp serve` 目前只暴露 **stdio-only** MCP 服务器。如果你需要 HTTP MCP 服务器，请运行单独的适配器——或者，更常见的做法是使用 OpenAgents 的 MCP **客户端**侧，它已经同时支持 stdio 和 HTTP（`mcp_servers.yaml` / `config.yaml` 中的 `url` + `headers`；参见上方的 [HTTP 服务器](#http-servers)）。
 - 事件轮询间隔约 200ms，通过基于 mtime 优化的数据库轮询实现（文件未变化时跳过处理）
 - 暂不支持 `claude/channel` 推送通知协议
 - 仅支持纯文本发送（`messages_send` 不支持媒体/附件发送）
 
 ## 相关文档
 
-- [在 Hermes 中使用 MCP](/guides/use-mcp-with-hermes)
+- [在 OpenAgents 中使用 MCP](/guides/use-mcp-with-hermes)
 - [CLI 命令](/reference/cli-commands)
 - [斜杠命令](/reference/slash-commands)
 - [常见问题](/reference/faq)

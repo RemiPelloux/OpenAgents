@@ -1,24 +1,24 @@
 ---
 sidebar_position: 9
 title: "Matrix"
-description: "将 Hermes Agent 设置为 Matrix 机器人"
+description: "将 OpenAgents 设置为 Matrix 机器人"
 ---
 
 # Matrix 设置
 
-Hermes Agent 与 Matrix 集成，Matrix 是一种开放的联邦消息协议。Matrix 允许你运行自己的 homeserver，也可以使用 matrix.org 等公共 homeserver——无论哪种方式，你都保持对通信的控制权。机器人通过 `mautrix` Python SDK 连接，通过 Hermes Agent 管道（包括工具调用、记忆和推理）处理消息，并实时响应。它支持文本、文件附件、图片、音频、视频，以及可选的端对端加密（E2EE）。
+OpenAgents 与 Matrix 集成，Matrix 是一种开放的联邦消息协议。Matrix 允许你运行自己的 homeserver，也可以使用 matrix.org 等公共 homeserver——无论哪种方式，你都保持对通信的控制权。机器人通过 `mautrix` Python SDK 连接，通过 OpenAgents 管道（包括工具调用、记忆和推理）处理消息，并实时响应。它支持文本、文件附件、图片、音频、视频，以及可选的端对端加密（E2EE）。
 
-Hermes 兼容任何 Matrix homeserver——Synapse、Conduit、Dendrite 或 matrix.org。
+OpenAgents 兼容任何 Matrix homeserver——Synapse、Conduit、Dendrite 或 matrix.org。
 
 在开始设置之前，先了解大多数人最想知道的：Hermes 连接后的行为方式。
 
-## Hermes 的行为方式
+## OpenAgents 的行为方式
 
 | 场景 | 行为 |
 |---------|----------|
-| **私聊（DM）** | Hermes 响应每条消息，无需 `@提及`。每个 DM 有独立的会话。设置 `MATRIX_DM_MENTION_THREADS=true` 可在 DM 中被 `@提及` 时创建线程。 |
+| **私聊（DM）** | OpenAgents 响应每条消息，无需 `@提及`。每个 DM 有独立的会话。设置 `MATRIX_DM_MENTION_THREADS=true` 可在 DM 中被 `@提及` 时创建线程。 |
 | **房间** | 默认情况下，Hermes 需要 `@提及` 才会响应。设置 `MATRIX_REQUIRE_MENTION=false` 或将房间 ID 添加到 `MATRIX_FREE_RESPONSE_ROOMS` 可开启自由响应模式。房间邀请会被自动接受。 |
-| **线程** | Hermes 支持 Matrix 线程（MSC3440）。在线程中回复时，Hermes 会将线程上下文与主房间时间线隔离。机器人已参与的线程无需提及即可响应。 |
+| **线程** | OpenAgents 支持 Matrix 线程（MSC3440）。在线程中回复时，Hermes 会将线程上下文与主房间时间线隔离。机器人已参与的线程无需提及即可响应。 |
 | **自动线程** | 默认情况下，Hermes 会为其在房间中响应的每条消息自动创建线程，以保持对话隔离。设置 `MATRIX_AUTO_THREAD=false` 可禁用此功能。设置 `MATRIX_DM_AUTO_THREAD=true`（默认 false）可同时为私聊消息自动创建线程——这与 `MATRIX_DM_MENTION_THREADS` 不同，后者仅在私聊中 @提及 Bot 时才创建线程。 |
 | **多用户共享房间** | 默认情况下，Hermes 在房间内按用户隔离会话历史。同一房间中的两个人不会共享同一对话记录，除非你明确禁用该功能。 |
 
@@ -113,7 +113,7 @@ register_new_matrix_user -c /etc/synapse/homeserver.yaml http://localhost:8008
 
 ## 第二步：获取访问令牌
 
-Hermes 需要访问令牌（access token）来向 homeserver 进行身份验证。有两种方式：
+OpenAgents 需要访问令牌（access token）来向 homeserver 进行身份验证。有两种方式：
 
 ### 方式 A：访问令牌（推荐）
 
@@ -154,7 +154,7 @@ MATRIX_PASSWORD=your-password
 
 ## 第三步：找到你的 Matrix 用户 ID
 
-Hermes Agent 使用你的 Matrix 用户 ID 来控制谁可以与机器人交互。Matrix 用户 ID 的格式为 `@username:server`。
+OpenAgents 使用你的 Matrix 用户 ID 来控制谁可以与机器人交互。Matrix 用户 ID 的格式为 `@username:server`。
 
 查找方式：
 
@@ -166,7 +166,7 @@ Hermes Agent 使用你的 Matrix 用户 ID 来控制谁可以与机器人交互�
 Matrix 用户 ID 始终以 `@` 开头，并包含 `:` 后跟服务器名称。例如：`@alice:matrix.org`、`@bob:your-server.com`。
 :::
 
-## 第四步：配置 Hermes Agent
+## 第四步：配置 OpenAgents
 
 ### 方式 A：交互式设置（推荐）
 
@@ -180,7 +180,7 @@ hermes gateway setup
 
 ### 方式 B：手动配置
 
-将以下内容添加到你的 `~/.hermes/.env` 文件：
+将以下内容添加到你的 `~/.openagents/.env` 文件：
 
 **使用访问令牌：**
 
@@ -211,7 +211,7 @@ MATRIX_PASSWORD=***
 MATRIX_ALLOWED_USERS=@alice:matrix.example.org
 ```
 
-`~/.hermes/config.yaml` 中的可选行为设置：
+`~/.openagents/config.yaml` 中的可选行为设置：
 
 ```yaml
 group_sessions_per_user: true
@@ -235,7 +235,7 @@ hermes gateway
 
 ## 端对端加密（E2EE）
 
-Hermes 支持 Matrix 端对端加密，你可以在加密房间中与机器人聊天。
+OpenAgents 支持 Matrix 端对端加密，你可以在加密房间中与机器人聊天。
 
 ### 前提条件
 
@@ -246,7 +246,7 @@ E2EE 需要带有加密扩展的 `mautrix` 库以及 `libolm` C 库：
 pip install 'mautrix[encryption]'
 
 # 或通过 hermes extras 安装
-cd ~/.hermes/hermes-agent && uv pip install -e ".[matrix]"
+cd ~/.openagents/openagents && uv pip install -e ".[matrix]"
 ```
 
 你还需要在系统上安装 `libolm`：
@@ -264,7 +264,7 @@ sudo dnf install libolm-devel
 
 ### 启用 E2EE
 
-在 `~/.hermes/.env` 中添加：
+在 `~/.openagents/.env` 中添加：
 
 ```bash
 MATRIX_ENCRYPTION=true
@@ -272,7 +272,7 @@ MATRIX_ENCRYPTION=true
 
 启用 E2EE 后，Hermes 会：
 
-- 将加密密钥存储在 `~/.hermes/platforms/matrix/store/`（旧版安装：`~/.hermes/matrix/store/`）
+- 将加密密钥存储在 `~/.openagents/platforms/matrix/store/`（旧版安装：`~/.openagents/matrix/store/`）
 - 在首次连接时上传设备密钥
 - 自动解密传入消息并加密传出消息
 - 被邀请时自动加入加密房间
@@ -290,9 +290,9 @@ MATRIX_RECOVERY_KEY=EsT... 你的恢复密钥
 每次启动时，如果设置了 `MATRIX_RECOVERY_KEY`，Hermes 会从 homeserver 的安全密钥存储中导入交叉签名密钥并对当前设备进行签名。此操作是幂等的，可以永久启用。
 
 :::warning[删除加密存储]
-如果你删除了 `~/.hermes/platforms/matrix/store/crypto.db`，机器人将失去其加密身份。仅使用相同的设备 ID 重启**不能**完全恢复——homeserver 仍持有使用旧身份密钥签名的一次性密钥，对等方无法建立新的 Olm 会话。
+如果你删除了 `~/.openagents/platforms/matrix/store/crypto.db`，机器人将失去其加密身份。仅使用相同的设备 ID 重启**不能**完全恢复——homeserver 仍持有使用旧身份密钥签名的一次性密钥，对等方无法建立新的 Olm 会话。
 
-Hermes 在启动时会检测到此情况并拒绝启用 E2EE，日志显示：`device XXXX has stale one-time keys on the server signed with a previous identity key`。
+OpenAgents 在启动时会检测到此情况并拒绝启用 E2EE，日志显示：`device XXXX has stale one-time keys on the server signed with a previous identity key`。
 
 **最简恢复方式：生成新的访问令牌**（获得一个没有过期密钥历史的全新设备 ID）。请参阅下方"从带有 E2EE 的旧版本升级"章节。这是最可靠的路径，无需操作 homeserver 数据库。
 
@@ -318,7 +318,7 @@ Hermes 在启动时会检测到此情况并拒绝启用 E2EE，日志显示：`d
 
 2. 删除本地加密存储并重启 Hermes：
    ```bash
-   rm -f ~/.hermes/platforms/matrix/store/crypto.db*
+   rm -f ~/.openagents/platforms/matrix/store/crypto.db*
    # 重启 hermes
    ```
 
@@ -339,7 +339,7 @@ Hermes 在启动时会检测到此情况并拒绝启用 E2EE，日志显示：`d
 
 ### 手动配置
 
-在 `~/.hermes/.env` 中添加：
+在 `~/.openagents/.env` 中添加：
 
 ```bash
 MATRIX_HOME_ROOM=!abc123def456:matrix.example.org
@@ -386,7 +386,7 @@ MATRIX_ALLOWED_ROOMS="!abc123def456:matrix.example.org,!opsroom789:matrix.exampl
 
 ### 机器人加入房间但静默丢弃所有消息（时钟偏差）
 
-**原因**：主机系统时钟超前于实际时间。Matrix 适配器应用了 5 秒启动宽限过滤器（`event_ts < startup_ts - 5`）以忽略初始同步中重放的事件。当系统时钟超前时，每个传入事件看起来都"早于启动时间"，在到达消息处理器之前就被丢弃——机器人看起来已连接但从不回复。参见 [#12614](https://github.com/NousResearch/hermes-agent/issues/12614)。
+**原因**：主机系统时钟超前于实际时间。Matrix 适配器应用了 5 秒启动宽限过滤器（`event_ts < startup_ts - 5`）以忽略初始同步中重放的事件。当系统时钟超前时，每个传入事件看起来都"早于启动时间"，在到达消息处理器之前就被丢弃——机器人看起来已连接但从不回复。参见 [#12614](https://github.com/NousResearch/openagents/issues/12614)。
 
 **症状**：Gateway 日志显示 `Matrix: dropped N live events as 'too old' more than 30s after startup`。
 
@@ -424,10 +424,10 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 pip install 'mautrix[encryption]'
 ```
 
-或通过 Hermes extras：
+或通过 OpenAgents extras：
 
 ```bash
-cd ~/.hermes/hermes-agent && uv pip install -e ".[matrix]"
+cd ~/.openagents/openagents && uv pip install -e ".[matrix]"
 ```
 
 ### 加密错误/"无法解密事件"
@@ -463,20 +463,20 @@ cd ~/.hermes/hermes-agent && uv pip install -e ".[matrix]"
        "type": "m.login.password",
        "identifier": {"type": "m.id.user", "user": "@hermes:your-server.org"},
        "password": "***",
-       "initial_device_display_name": "Hermes Agent"
+       "initial_device_display_name": "OpenAgents"
      }'
    ```
 
-   复制新的 `access_token` 并更新 `~/.hermes/.env` 中的 `MATRIX_ACCESS_TOKEN`。
+   复制新的 `access_token` 并更新 `~/.openagents/.env` 中的 `MATRIX_ACCESS_TOKEN`。
 
 2. **删除旧的加密状态**：
 
    ```bash
-   rm -f ~/.hermes/platforms/matrix/store/crypto.db
-   rm -f ~/.hermes/platforms/matrix/store/crypto_store.*
+   rm -f ~/.openagents/platforms/matrix/store/crypto.db
+   rm -f ~/.openagents/platforms/matrix/store/crypto_store.*
    ```
 
-3. **设置恢复密钥**（如果你使用交叉签名——大多数 Element 用户都使用）。在 `~/.hermes/.env` 中添加：
+3. **设置恢复密钥**（如果你使用交叉签名——大多数 Element 用户都使用）。在 `~/.openagents/.env` 中添加：
 
    ```bash
    MATRIX_RECOVERY_KEY=EsT... 你的恢复密钥
@@ -501,14 +501,14 @@ cd ~/.hermes/hermes-agent && uv pip install -e ".[matrix]"
 :::
 
 :::tip
-**新安装不受影响。** 此迁移仅在你之前使用旧版 Hermes 配置了可用的 E2EE 并正在升级时才需要。
+**新安装不受影响。** 此迁移仅在你之前使用旧版 OpenAgents 配置了可用的 E2EE 并正在升级时才需要。
 
 **为什么需要新的访问令牌？** 每个 Matrix 访问令牌绑定到特定的设备 ID。使用相同设备 ID 但新的加密密钥会导致其他 Matrix 客户端不信任该设备（它们将身份密钥的变更视为潜在的安全漏洞）。新的访问令牌获得一个没有过期密钥历史的新设备 ID，其他客户端会立即信任它。
 :::
 
 ## 代理模式（macOS 上的 E2EE）
 
-Matrix E2EE 需要 `libolm`，而该库无法在 macOS ARM64（Apple Silicon）上编译。`hermes-agent[matrix]` extra 仅限 Linux。如果你在 macOS 上，代理模式允许你在 Linux 虚拟机的 Docker 容器中运行 E2EE，而实际的 agent 在 macOS 上原生运行，可完整访问你的本地文件、记忆和技能。
+Matrix E2EE 需要 `libolm`，而该库无法在 macOS ARM64（Apple Silicon）上编译。`openagents[matrix]` extra 仅限 Linux。如果你在 macOS 上，代理模式允许你在 Linux 虚拟机的 Docker 容器中运行 E2EE，而实际的 agent 在 macOS 上原生运行，可完整访问你的本地文件、记忆和技能。
 
 ### 工作原理
 
@@ -533,7 +533,7 @@ Docker 容器仅处理 Matrix 协议和 E2EE。消息到达时，容器解密消
 
 启用 API 服务器，使主机接受来自 Docker 容器的请求。
 
-在 `~/.hermes/.env` 中添加：
+在 `~/.openagents/.env` 中添加：
 
 ```bash
 API_SERVER_ENABLED=true
@@ -589,9 +589,9 @@ services:
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y libolm-dev && rm -rf /var/lib/apt/lists/*
-RUN cd ~/.hermes/hermes-agent && uv pip install -e ".[matrix]"
+RUN cd ~/.openagents/openagents && uv pip install -e ".[matrix]"
 
-CMD ["hermes", "gateway"]
+CMD ["openagents", "gateway"]
 ```
 
 这就是整个容器。无需 OpenRouter、Anthropic 或任何推理提供商的 API 密钥。
@@ -616,7 +616,7 @@ CMD ["hermes", "gateway"]
 
 | 设置 | 说明 |
 |---------|-------------|
-| `GATEWAY_PROXY_URL` | 远程 Hermes API 服务器的 URL（例如 `http://192.168.1.100:8642`） |
+| `GATEWAY_PROXY_URL` | 远程 OpenAgents API 服务器的 URL（例如 `http://192.168.1.100:8642`） |
 | `GATEWAY_PROXY_KEY` | 用于身份验证的 Bearer token（必须与主机上的 `API_SERVER_KEY` 匹配） |
 | `gateway.proxy_url` | 与 `GATEWAY_PROXY_URL` 相同，但在 `config.yaml` 中配置 |
 
@@ -645,11 +645,11 @@ CMD ["hermes", "gateway"]
 
 **原因**：长时间运行的工具执行可能延迟同步循环，或 homeserver 响应较慢。
 
-**解决方法**：同步循环在出错时每 5 秒自动重试。检查 Hermes 日志中与同步相关的警告。如果机器人持续落后，请确保你的 homeserver 有足够的资源。
+**解决方法**：同步循环在出错时每 5 秒自动重试。检查 OpenAgents 日志中与同步相关的警告。如果机器人持续落后，请确保你的 homeserver 有足够的资源。
 
 ### 机器人离线
 
-**原因**：Hermes gateway 未运行，或连接失败。
+**原因**：OpenAgents gateway 未运行，或连接失败。
 
 **解决方法**：检查 `hermes gateway` 是否正在运行。查看终端输出中的错误消息。常见问题：homeserver URL 错误、访问令牌过期、homeserver 不可达。
 
@@ -657,7 +657,7 @@ CMD ["hermes", "gateway"]
 
 **原因**：你的用户 ID 不在 `MATRIX_ALLOWED_USERS` 中。
 
-**解决方法**：将你的用户 ID 添加到 `~/.hermes/.env` 中的 `MATRIX_ALLOWED_USERS` 并重启 gateway。使用完整的 `@user:server` 格式。
+**解决方法**：将你的用户 ID 添加到 `~/.openagents/.env` 中的 `MATRIX_ALLOWED_USERS` 并重启 gateway。使用完整的 `@user:server` 格式。
 
 ## 安全
 
@@ -665,7 +665,7 @@ CMD ["hermes", "gateway"]
 始终设置 `MATRIX_ALLOWED_USERS` 以限制可与机器人交互的用户。若不设置，gateway 默认拒绝所有用户作为安全措施。只添加你信任的人的用户 ID——授权用户可完整访问 agent 的所有功能，包括工具调用和系统访问。
 :::
 
-有关保护 Hermes Agent 部署的更多信息，请参阅[安全指南](../security.md)。
+有关保护 OpenAgents 部署的更多信息，请参阅[安全指南](../security.md)。
 
 ## 注意事项
 

@@ -106,7 +106,7 @@ def parse_blueprint(skill_md_text: str) -> Optional[BlueprintSpec]:
     name = str(fm.get("name", "")).strip()
 
     meta = fm.get("metadata")
-    hermes = meta.get("hermes") if isinstance(meta, dict) else None
+    openagents = meta.get("openagents") if isinstance(meta, dict) else None
     blueprint = hermes.get("blueprint") if isinstance(hermes, dict) else None
     if blueprint is None:
         return None
@@ -288,7 +288,7 @@ def export_blueprint(job: Dict[str, Any], body: str, *, blueprint_name: Optional
         "version": "1.0.0",
         "license": "MIT",
         "metadata": {
-            "hermes": {
+            "openagents": {
                 "tags": ["blueprint", "automation"],
                 "blueprint": blueprint_block,
             }

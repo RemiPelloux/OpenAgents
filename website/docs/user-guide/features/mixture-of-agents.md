@@ -21,7 +21,7 @@ You can select a preset through the normal model picker surfaces:
 /model review --provider moa
 ```
 
-MoA presets are selectable on **every Hermes surface**, because MoA is a normal provider in the model system:
+MoA presets are selectable on **every OpenAgents surface**, because MoA is a normal provider in the model system:
 
 - **CLI / gateway / TUI `/model`** — `/model <preset> --provider moa`, or `/model --provider moa` for the default preset. A bare `/model <preset>` also works when the name exactly matches a configured preset.
 - **`hermes model`** and the **Dashboard model picker** — a `Mixture of Agents` provider row appears with your preset names as its models.
@@ -37,7 +37,7 @@ Configured presets therefore show up wherever you would pick any other model.
 /moa design and implement a migration plan for this flaky test cluster
 ```
 
-Hermes temporarily switches to the default MoA preset for that one turn, sends the prompt, then restores your previous model afterward. The whole argument is the prompt — `/moa` no longer interprets it as a preset name.
+OpenAgents temporarily switches to the default MoA preset for that one turn, sends the prompt, then restores your previous model afterward. The whole argument is the prompt — `/moa` no longer interprets it as a preset name.
 
 ```bash
 /moa
@@ -52,11 +52,11 @@ To **switch** to a MoA preset for the rest of the session, select it from the mo
 For each main model call when provider `moa` is selected, Hermes:
 
 1. resolves the selected preset by name;
-2. runs the configured reference models without tool schemas (they receive only the conversation's user/assistant text — not the Hermes system prompt or tool-call transcript — so reference calls stay cheap and avoid strict-provider rejections);
+2. runs the configured reference models without tool schemas (they receive only the conversation's user/assistant text — not the OpenAgents system prompt or tool-call transcript — so reference calls stay cheap and avoid strict-provider rejections);
 3. appends the reference outputs as private context for the aggregator;
-4. calls the configured aggregator with the normal Hermes tool schema;
+4. calls the configured aggregator with the normal OpenAgents tool schema;
 5. treats the aggregator response as the real model response;
-6. if the aggregator calls tools, Hermes executes those tools normally;
+6. if the aggregator calls tools, OpenAgents executes those tools normally;
 7. on the next model iteration, the same MoA process runs again over the updated conversation, including tool results.
 
 Because MoA is selected through the normal model system, it composes automatically with `/goal`, gateway sessions, TUI sessions, and Desktop chat.
@@ -127,12 +127,12 @@ Both internal call types cache normally:
 - **Reference models** receive a trimmed, deterministic view of the conversation (system prompt and tool transcript stripped — see the loop above). Because that view is a stable function of the stable history, a reference model's prompt prefix repeats across iterations and caches normally. References are short advisory calls with no tools.
 - **The aggregator** is the acting model. The reference outputs are appended to the *end* of the latest user turn as private guidance. Because that text sits at the tail — below the entire stable prefix (system prompt + prior history) — it does not invalidate any cached prefix: the aggregator gets a cache hit on everything above the injection, and only the freshly appended tail is new. That is exactly how every normal turn behaves, where each new user message is also uncached tail tokens.
 
-So MoA does not sacrifice prompt caching on either call type. Its only real cost is the extra reference calls per iteration — you pay for multiple model perspectives, not for broken caches. The long-lived conversation prefix shared with the rest of Hermes is fully intact.
+So MoA does not sacrifice prompt caching on either call type. Its only real cost is the extra reference calls per iteration — you pay for multiple model perspectives, not for broken caches. The long-lived conversation prefix shared with the rest of OpenAgents is fully intact.
 
 ## Notes
 
 - MoA is no longer listed under `hermes tools`; there is no `moa` toolset to enable.
 - Setting `enabled: false` on a preset disables the reference fan-out for that preset: the aggregator acts alone, exactly as if you selected it as a plain model. This is the per-preset off switch surfaced in the dashboard and desktop settings.
 - A preset's aggregator cannot be another MoA preset. Recursive MoA trees are intentionally blocked.
-- Credential failures on one reference model do not abort the turn. Hermes includes the failure in the reference context and continues with whatever models returned.
+- Credential failures on one reference model do not abort the turn. OpenAgents includes the failure in the reference context and continues with whatever models returned.
 - MoA increases model-call count. A single model iteration can involve multiple reference calls plus the aggregator call.

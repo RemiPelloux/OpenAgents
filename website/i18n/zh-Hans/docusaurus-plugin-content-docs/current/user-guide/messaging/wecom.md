@@ -1,12 +1,12 @@
 ---
 sidebar_position: 14
 title: "WeCom（企业微信）"
-description: "通过 AI Bot WebSocket 网关将 Hermes Agent 连接到 WeCom"
+description: "通过 AI Bot WebSocket 网关将 OpenAgents 连接到 WeCom"
 ---
 
 # WeCom（企业微信）
 
-将 Hermes 连接到 [WeCom](https://work.weixin.qq.com/)（企业微信），腾讯的企业即时通讯平台。该适配器使用 WeCom 的 AI Bot WebSocket 网关实现实时双向通信——无需公开端点或 webhook。
+将 OpenAgents 连接到 [WeCom](https://work.weixin.qq.com/)（企业微信），腾讯的企业即时通讯平台。该适配器使用 WeCom 的 AI Bot WebSocket 网关实现实时双向通信——无需公开端点或 webhook。
 
 ## 前提条件
 
@@ -62,7 +62,7 @@ hermes gateway setup
 
 #### 方式 B：手动配置
 
-将以下内容添加到 `~/.hermes/.env`：
+将以下内容添加到 `~/.openagents/.env`：
 
 ```bash
 WECOM_BOT_ID=your-bot-id

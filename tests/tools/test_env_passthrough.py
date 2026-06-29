@@ -62,7 +62,7 @@ class TestConfigPassthrough:
         config = {"terminal": {"env_passthrough": ["MY_CUSTOM_KEY", "ANOTHER_TOKEN"]}}
         config_path = tmp_path / "config.yaml"
         config_path.write_text(yaml.dump(config))
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         _ep_mod._config_passthrough = None
 
         assert is_env_passthrough("MY_CUSTOM_KEY")
@@ -73,7 +73,7 @@ class TestConfigPassthrough:
         config = {"terminal": {"env_passthrough": []}}
         config_path = tmp_path / "config.yaml"
         config_path.write_text(yaml.dump(config))
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         _ep_mod._config_passthrough = None
 
         assert not is_env_passthrough("ANYTHING")
@@ -82,13 +82,13 @@ class TestConfigPassthrough:
         config = {"terminal": {"backend": "local"}}
         config_path = tmp_path / "config.yaml"
         config_path.write_text(yaml.dump(config))
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         _ep_mod._config_passthrough = None
 
         assert not is_env_passthrough("ANYTHING")
 
     def test_no_config_file(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         _ep_mod._config_passthrough = None
 
         assert not is_env_passthrough("ANYTHING")
@@ -97,7 +97,7 @@ class TestConfigPassthrough:
         config = {"terminal": {"env_passthrough": ["CONFIG_KEY"]}}
         config_path = tmp_path / "config.yaml"
         config_path.write_text(yaml.dump(config))
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         _ep_mod._config_passthrough = None
 
         register_env_passthrough(["SKILL_KEY"])
@@ -174,7 +174,7 @@ class TestTerminalIntegration:
 
     def test_passthrough_cannot_override_provider_blocklist(self):
         """GHSA-rhgp-j443-p4rf: register_env_passthrough must NOT accept
-        Hermes provider credentials — that was the bypass where a skill
+        OpenAgents provider credentials — that was the bypass where a skill
         could declare ANTHROPIC_TOKEN / OPENAI_API_KEY as passthrough and
         defeat the execute_code sandbox scrubbing."""
         from tools.environments.local import (
@@ -219,7 +219,7 @@ class TestTerminalIntegration:
 
     def test_non_hermes_api_key_still_registerable(self):
         """Third-party API keys (TENOR_API_KEY, NOTION_TOKEN, etc.) are NOT
-        Hermes provider credentials and must still pass through — skills
+        OpenAgents provider credentials and must still pass through — skills
         that legitimately wrap third-party APIs must keep working."""
         # TENOR_API_KEY is a real example — used by the gif-search skill
         register_env_passthrough(["TENOR_API_KEY"])
@@ -232,7 +232,7 @@ class TestTerminalIntegration:
     def test_provider_blocklist_import_failure_fails_closed(self, monkeypatch):
         """If the dynamic provider blocklist can't be imported, provider
         credentials must be treated as protected and refused passthrough —
-        otherwise a skill could tunnel a Hermes credential into the
+        otherwise a skill could tunnel a OpenAgents credential into the
         execute_code child (regression for #37950 / GHSA-rhgp-j443-p4rf).
 
         Verifies the full path: _is_hermes_provider_credential returns True,

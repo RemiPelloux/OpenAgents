@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!--
-    Hermes Setup application manifest.
+    OpenAgents Setup application manifest.
 
     The TL;DR: tell Windows we are NOT an installer in the classic "needs
     UAC elevation" sense, despite the product name. We provision into

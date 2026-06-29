@@ -175,7 +175,7 @@ def check_compression_model_feasibility(agent: Any) -> None:
             raise ValueError(
                 f"Auxiliary compression model {aux_model} has a context "
                 f"window of {aux_context:,} tokens, which is below the "
-                f"minimum {MINIMUM_CONTEXT_LENGTH:,} required by Hermes "
+                f"minimum {MINIMUM_CONTEXT_LENGTH:,} required by OpenAgents "
                 f"Agent.  Choose a compression model with at least "
                 f"{MINIMUM_CONTEXT_LENGTH // 1000}K context (set "
                 f"auxiliary.compression.model in config.yaml), or set "
@@ -407,7 +407,7 @@ def compress_context(
     # Probe whether the lock subsystem is actually available on this
     # SessionDB instance.  A process running mismatched module versions
     # (e.g. ``conversation_compression.py`` reloaded after a pull but the
-    # long-lived ``hermes_state.SessionDB`` class still bound to the
+    # long-lived ``openagents_state.SessionDB`` class still bound to the
     # pre-#34351 version in memory) has the call site but not the method.
     # In that case ``try_acquire_compression_lock`` raises AttributeError —
     # NOT a ``sqlite3.Error`` — so the method's own fail-open guard never
@@ -612,14 +612,14 @@ def compress_context(
                 # The gateway/tools session context (ContextVar + env) and the
                 # logging session context are SEPARATE mechanisms. The call above
                 # moves the former; the ``[session_id]`` tag on log lines comes
-                # from ``hermes_logging._session_context`` (set once per turn in
+                # from ``openagents_logging._session_context`` (set once per turn in
                 # conversation_loop.py). Without this, post-rotation log lines in
                 # the same turn keep the STALE old id while the message/DB/gateway
                 # state carry the new one — breaking log correlation exactly at the
                 # compaction boundary (see #34089). Guarded separately so a logging
                 # failure can never regress the routing update above.
                 try:
-                    from hermes_logging import set_session_context
+                    from openagents_logging import set_session_context
 
                     set_session_context(agent.session_id)
                 except Exception:
@@ -655,7 +655,7 @@ def compress_context(
                     except Exception:
                         os.environ["HERMES_SESSION_ID"] = agent.session_id
                     try:
-                        from hermes_logging import set_session_context
+                        from openagents_logging import set_session_context
                         set_session_context(agent.session_id)
                     except Exception:
                         pass
@@ -677,7 +677,7 @@ def compress_context(
                 # per-session lookup with no parent walk, so without this an
                 # active goal silently dies at the boundary (#33618).
                 try:
-                    from hermes_cli.goals import migrate_goal_to_session
+                    from openagents_cli.goals import migrate_goal_to_session
                     migrate_goal_to_session(old_session_id, agent.session_id, reason="compression")
                 except Exception as _goal_err:
                     logger.debug("Could not migrate goal on compression: %s", _goal_err)

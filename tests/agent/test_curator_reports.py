@@ -1,6 +1,6 @@
 """Tests for the curator per-run report writer (run.json + REPORT.md).
 
-Reports live under ``~/.hermes/logs/curator/{YYYYMMDD-HHMMSS}/`` alongside
+Reports live under ``~/.openagents/logs/curator/{YYYYMMDD-HHMMSS}/`` alongside
 the standard log dir, not inside the user's ``skills/`` data directory.
 """
 
@@ -15,17 +15,17 @@ import pytest
 
 @pytest.fixture
 def curator_env(tmp_path, monkeypatch):
-    """Isolated HERMES_HOME with a skills/ dir + reset curator module state."""
+    """Isolated OPENAGENTS_HOME with a skills/ dir + reset curator module state."""
     home = tmp_path / ".hermes"
     home.mkdir()
     (home / "skills").mkdir()
     (home / "logs").mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     import importlib
-    import hermes_constants
-    importlib.reload(hermes_constants)
+    import openagents_constants
+    importlib.reload(openagents_constants)
     from agent import curator
     importlib.reload(curator)
     from tools import skill_usage

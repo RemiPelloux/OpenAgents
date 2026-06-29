@@ -24,7 +24,7 @@ The contract:
 
 If a future PR re-adds Camofox (or any other binary-postinstall package)
 to root ``dependencies``, this test fails — read the lazy-install
-guidance in the ``hermes-agent-dev`` skill before changing the
+guidance in the ``openagents-dev`` skill before changing the
 expectations.
 """
 
@@ -48,7 +48,7 @@ def test_camofox_is_not_in_root_dependencies() -> None:
     assert "@askjo/camofox-browser" not in deps, (
         "Camofox is a ~300MB binary-postinstall backend that must stay "
         "out of root package.json dependencies. It belongs in the "
-        "Camofox post_setup handler in hermes_cli/tools_config.py so it "
+        "Camofox post_setup handler in openagents_cli/tools_config.py so it "
         "only installs when the user explicitly selects Camofox via "
         "`hermes tools` → Browser Automation → Camofox."
     )

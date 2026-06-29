@@ -130,7 +130,7 @@ def test_prefetch_includes_profile_on_first_turn(provider):
     provider._client.profile_response = {
         "static": ["Jordan prefers short answers"],
         "dynamic": ["Current project is Supermemory provider"],
-        "search_results": [{"memory": "Working on Hermes memory provider", "similarity": 0.88}],
+        "search_results": [{"memory": "Working on OpenAgents memory provider", "similarity": 0.88}],
     }
     provider.on_turn_start(1, "start")
     result = provider.prefetch("what am I working on?")
@@ -143,7 +143,7 @@ def test_prefetch_skips_profile_between_frequency(provider):
     provider._client.profile_response = {
         "static": ["Jordan prefers short answers"],
         "dynamic": ["Current project is Supermemory provider"],
-        "search_results": [{"memory": "Working on Hermes memory provider", "similarity": 0.88}],
+        "search_results": [{"memory": "Working on OpenAgents memory provider", "similarity": 0.88}],
     }
     provider.on_turn_start(2, "next")
     result = provider.prefetch("what am I working on?")
@@ -197,18 +197,18 @@ def test_on_session_end_ingests_clean_messages(provider):
 
 
 def test_merge_metadata_stamps_sm_source():
-    # sm_source routes Hermes writes into the "Hermes" Space in the Supermemory
+    # sm_source routes OpenAgents writes into the "Hermes" Space in the Supermemory
     # app (functional routing, not telemetry) — must always be present.
     from plugins.memory.supermemory import _SupermemoryClient
 
     client = _SupermemoryClient.__new__(_SupermemoryClient)
     merged = client._merge_metadata({"type": "explicit_memory"})
-    assert merged["sm_source"] == "hermes"
+    assert merged["sm_source"] == "openagents"
     assert merged["type"] == "explicit_memory"
 
     # Legacy "source" is migrated into "type" when type is absent.
     merged2 = client._merge_metadata({"source": "conversation_turn"})
-    assert merged2["sm_source"] == "hermes"
+    assert merged2["sm_source"] == "openagents"
     assert merged2["type"] == "conversation_turn"
     assert "source" not in merged2
 
@@ -395,7 +395,7 @@ def test_multi_container_enabled_adds_schema_param(monkeypatch, tmp_path):
     p = SupermemoryMemoryProvider()
     p.initialize("s1", hermes_home=str(tmp_path), platform="cli")
     assert p._enable_custom_containers is True
-    assert p._allowed_containers == ["hermes", "project_alpha", "shared"]
+    assert p._allowed_containers == ["openagents", "project_alpha", "shared"]
     schemas = p.get_tool_schemas()
     for s in schemas:
         assert "container_tag" in s["parameters"]["properties"]
@@ -482,7 +482,7 @@ def test_format_connection_summary_ok():
 def test_format_connection_summary_single_fact_and_error():
     one = _format_connection_summary({
         "ok": True,
-        "container_tag": "hermes",
+        "container_tag": "openagents",
         "profile_facts": 1,
         "auto_recall": True,
         "auto_capture": True,
@@ -493,7 +493,7 @@ def test_format_connection_summary_single_fact_and_error():
     err = _format_connection_summary({
         "ok": False,
         "error": "invalid API key",
-        "container_tag": "hermes",
+        "container_tag": "openagents",
         "auto_recall": True,
         "auto_capture": True,
     })
@@ -505,7 +505,7 @@ def test_probe_supermemory_connection_missing_key(tmp_path):
     status = _probe_supermemory_connection("", str(tmp_path))
     assert status["ok"] is False
     assert status["error"] == "SUPERMEMORY_API_KEY not set"
-    assert status["container_tag"] == "hermes"
+    assert status["container_tag"] == "openagents"
 
 
 def _stub_supermemory_importable(monkeypatch):
@@ -568,7 +568,7 @@ def test_get_status_config_returns_summary(monkeypatch, tmp_path):
     monkeypatch.setenv("SUPERMEMORY_API_KEY", "test-key")
     monkeypatch.setattr("plugins.memory.supermemory._SupermemoryClient", FakeClient)
     monkeypatch.setattr(
-        "hermes_constants.get_hermes_home",
+        "openagents_constants.get_openagents_home",
         lambda: tmp_path,
     )
     result = SupermemoryMemoryProvider().get_status_config({})
@@ -581,14 +581,14 @@ def test_post_setup_writes_config_and_prints_summary(monkeypatch, tmp_path, caps
     config: dict = {"memory": {}}
     monkeypatch.setenv("SUPERMEMORY_API_KEY", "")
     monkeypatch.setattr(
-        "hermes_cli.memory_setup._prompt",
+        "openagents_cli.memory_setup._prompt",
         lambda label, secret=True, default=None: "new-api-key",
     )
     monkeypatch.setattr(
         "plugins.memory.supermemory._probe_supermemory_connection",
         lambda api_key, hermes_home, **kwargs: {
             "ok": True,
-            "container_tag": "hermes",
+            "container_tag": "openagents",
             "profile_facts": 3,
             "auto_recall": True,
             "auto_capture": True,
@@ -600,7 +600,7 @@ def test_post_setup_writes_config_and_prints_summary(monkeypatch, tmp_path, caps
     def fake_save_config(cfg):
         saved.update(cfg)
 
-    monkeypatch.setattr("hermes_cli.config.save_config", fake_save_config)
+    monkeypatch.setattr("openagents_cli.config.save_config", fake_save_config)
 
     SupermemoryMemoryProvider().post_setup(str(tmp_path), config)
 

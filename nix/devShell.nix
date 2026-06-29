@@ -18,7 +18,7 @@
         map (p: p.passthru.packageJsonPath or null) packages
       );
 
-      # Non-npm packages may have their own devShellHook (e.g. hermes-agent
+      # Non-npm packages may have their own devShellHook (e.g. openagents
       # stamps pyproject.toml + uv.lock for Python venv setup).
       nonNpmHooks = map (p: p.passthru.devShellHook or "") packages;
       combinedNonNpm = pkgs.lib.concatStringsSep "\n" (builtins.filter (h: h != "") nonNpmHooks);
@@ -32,10 +32,10 @@
           ]
           ++ self'.packages.default.passthru.devDeps;
         shellHook = ''
-          echo "Hermes Agent dev shell"
+          echo "OpenAgents dev shell"
           ${combinedNonNpm}
           ${hermesNpmLib.mkNpmDevShellHook npmPackageJsonPaths}
-          echo "Ready. Run 'hermes' to start."
+          echo "Ready. Run 'openagents' to start."
         '';
       };
     };

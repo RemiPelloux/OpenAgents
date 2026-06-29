@@ -1,14 +1,14 @@
 # Adding a New Messaging Platform
 
-There are two ways to add a platform to the Hermes gateway:
+There are two ways to add a platform to the OpenAgents gateway:
 
 ## Plugin Path (Recommended for Community/Third-Party)
 
-Create a plugin directory in `~/.hermes/plugins/` (or under `plugins/platforms/`
+Create a plugin directory in `~/.openagents/plugins/` (or under `plugins/platforms/`
 for bundled plugins) with a `plugin.yaml` and `adapter.py`.  The adapter
 inherits from `BasePlatformAdapter` and registers via
 `ctx.register_platform()` in the `register(ctx)` entry point.  This requires
-**zero changes to core Hermes code**.
+**zero changes to core OpenAgents code**.
 
 The plugin system automatically handles: adapter creation, config parsing,
 user authorization, cron delivery, send_message routing, system prompt hints,
@@ -38,7 +38,7 @@ status display, gateway setup, and more.
   `No live adapter for platform '<name>'`.  Pair with `cron_deliver_env_var`
   for end-to-end cron support.  See the docsite for the signature.
 - `plugin.yaml` `requires_env` / `optional_env` rich-dict entries —
-  auto-populate `OPTIONAL_ENV_VARS` in `hermes_cli/config.py` so the setup
+  auto-populate `OPTIONAL_ENV_VARS` in `openagents_cli/config.py` so the setup
   wizard surfaces proper descriptions, prompts, password flags, and URLs.
 
 **Subclassing for platform-specific UX.** When a platform has a hard
@@ -77,7 +77,7 @@ plugin guide with code examples and hook documentation.
 
 ## Built-in Path (Core Contributors Only)
 
-Checklist for integrating a platform directly into the Hermes core.
+Checklist for integrating a platform directly into the OpenAgents core.
 Use this as a reference when building a built-in adapter — every item here
 is a real integration point. Missing any of them will cause broken
 functionality, missing features, or inconsistent behavior.
@@ -242,10 +242,10 @@ Add a named toolset for your platform:
 },
 ```
 
-And add it to the `hermes-gateway` composite:
+And add it to the `openagents-gateway` composite:
 
 ```python
-"hermes-gateway": {
+"openagents-gateway": {
     "includes": [..., "hermes-your-platform"]
 }
 ```
@@ -311,7 +311,7 @@ for plat_name in ("telegram", "whatsapp", "signal", "your_platform"):
 
 ---
 
-## 12. Status Display (`hermes_cli/status.py`)
+## 12. Status Display (`openagents_cli/status.py`)
 
 Add to the `platforms` dict in the Messaging Platforms section:
 
@@ -324,7 +324,7 @@ platforms = {
 
 ---
 
-## 13. Gateway Setup Wizard (`hermes_cli/gateway.py`)
+## 13. Gateway Setup Wizard (`openagents_cli/gateway.py`)
 
 Add to the `_PLATFORMS` list:
 
@@ -397,7 +397,7 @@ After implementing everything, verify with:
 python -m pytest tests/ -q
 
 # Grep for your platform name to find any missed integration points
-grep -r "telegram\|discord\|whatsapp\|slack" gateway/ tools/ agent/ cron/ hermes_cli/ toolsets.py \
+grep -r "telegram\|discord\|whatsapp\|slack" gateway/ tools/ agent/ cron/ openagents_cli/ toolsets.py \
   --include="*.py" -l | sort -u
 # Check each file in the output — if it mentions other platforms but not yours, you missed it
 ```

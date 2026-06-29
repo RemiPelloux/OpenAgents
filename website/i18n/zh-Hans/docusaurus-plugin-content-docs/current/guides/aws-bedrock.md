@@ -1,12 +1,12 @@
 ---
 sidebar_position: 14
 title: "AWS Bedrock"
-description: "将 Hermes Agent 与 Amazon Bedrock 配合使用——原生 Converse API、IAM 身份验证、Guardrails 及跨区域推理"
+description: "将 OpenAgents 与 Amazon Bedrock 配合使用——原生 Converse API、IAM 身份验证、Guardrails 及跨区域推理"
 ---
 
 # AWS Bedrock
 
-Hermes Agent 通过 **Converse API** 原生支持 Amazon Bedrock——而非 OpenAI 兼容端点。这让你可以完整访问 Bedrock 生态系统：IAM 身份验证、Guardrails、跨区域推理配置文件以及所有基础模型。
+OpenAgents 通过 **Converse API** 原生支持 Amazon Bedrock——而非 OpenAI 兼容端点。这让你可以完整访问 Bedrock 生态系统：IAM 身份验证、Guardrails、跨区域推理配置文件以及所有基础模型。
 
 ## 前提条件
 
@@ -15,7 +15,7 @@ Hermes Agent 通过 **Converse API** 原生支持 Amazon Bedrock——而非 Ope
   - `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` 环境变量
   - `AWS_PROFILE`（用于 SSO 或命名配置文件）
   - `aws configure`（用于本地开发）
-- **boto3** — 通过 `cd ~/.hermes/hermes-agent && uv pip install -e ".[bedrock]"` 安装
+- **boto3** — 通过 `cd ~/.openagents/openagents && uv pip install -e ".[bedrock]"` 安装
 - **IAM 权限** — 至少需要：
   - `bedrock:InvokeModel` 和 `bedrock:InvokeModelWithResponseStream`（用于推理）
   - `bedrock:ListFoundationModels` 和 `bedrock:ListInferenceProfiles`（用于模型发现）
@@ -28,7 +28,7 @@ Hermes Agent 通过 **Converse API** 原生支持 Amazon Bedrock——而非 Ope
 
 ```bash
 # 安装并启用 Bedrock 支持
-cd ~/.hermes/hermes-agent && uv pip install -e ".[bedrock]"
+cd ~/.openagents/openagents && uv pip install -e ".[bedrock]"
 
 # 选择 Bedrock 作为提供商
 hermes model
@@ -41,7 +41,7 @@ hermes chat
 
 ## 配置
 
-运行 `hermes model` 后，你的 `~/.hermes/config.yaml` 将包含以下内容：
+运行 `hermes model` 后，你的 `~/.openagents/config.yaml` 将包含以下内容：
 
 ```yaml
 model:
@@ -78,7 +78,7 @@ bedrock:
 
 ### 模型发现
 
-Hermes 通过 Bedrock 控制平面自动发现可用模型。你可以自定义发现行为：
+OpenAgents 通过 Bedrock 控制平面自动发现可用模型。你可以自定义发现行为：
 
 ```yaml
 bedrock:
@@ -130,7 +130,7 @@ hermes doctor
 
 ## Gateway（消息平台）
 
-Bedrock 可与所有 Hermes gateway 平台配合使用（Telegram、Discord、Slack、飞书等）。将 Bedrock 配置为提供商后，正常启动 gateway 即可：
+Bedrock 可与所有 OpenAgents gateway 平台配合使用（Telegram、Discord、Slack、飞书等）。将 Bedrock 配置为提供商后，正常启动 gateway 即可：
 
 ```bash
 hermes gateway setup
@@ -143,7 +143,7 @@ Gateway 读取 `config.yaml` 并使用相同的 Bedrock 提供商配置。
 
 ### "No API key found" / "No AWS credentials"
 
-Hermes 按以下顺序检查凭证：
+OpenAgents 按以下顺序检查凭证：
 1. `AWS_BEARER_TOKEN_BEDROCK`
 2. `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY`
 3. `AWS_PROFILE`
@@ -167,4 +167,4 @@ Hermes 按以下顺序检查凭证：
 
 如需在 EC2 上通过 CloudFormation 进行全自动部署：
 
-**[sample-hermes-agent-on-aws-with-bedrock](https://github.com/JiaDe-Wu/sample-hermes-agent-on-aws-with-bedrock)** — 自动创建 VPC、IAM 角色、EC2 实例并配置 Bedrock。一键即可在任意区域完成部署。
+**[sample-openagents-on-aws-with-bedrock](https://github.com/JiaDe-Wu/sample-openagents-on-aws-with-bedrock)** — 自动创建 VPC、IAM 角色、EC2 实例并配置 Bedrock。一键即可在任意区域完成部署。

@@ -7,7 +7,7 @@ description: "使用影子 git 仓库和自动快照为破坏性操作提供文�
 
 # 检查点与 `/rollback`
 
-Hermes Agent 可以在**破坏性操作**之前自动为你的项目创建快照，并通过单条命令恢复。检查点在 v2 中为**按需启用**——大多数用户从不使用 `/rollback`，且影子存储（shadow-store）随时间增长不可忽视，因此默认关闭。
+OpenAgents 可以在**破坏性操作**之前自动为你的项目创建快照，并通过单条命令恢复。检查点在 v2 中为**按需启用**——大多数用户从不使用 `/rollback`，且影子存储（shadow-store）随时间增长不可忽视，因此默认关闭。
 
 在会话中通过 `--checkpoints` 启用检查点：
 
@@ -15,14 +15,14 @@ Hermes Agent 可以在**破坏性操作**之前自动为你的项目创建快照
 hermes chat --checkpoints
 ```
 
-或在 `~/.hermes/config.yaml` 中全局启用：
+或在 `~/.openagents/config.yaml` 中全局启用：
 
 ```yaml
 checkpoints:
   enabled: true
 ```
 
-此安全机制由内部**检查点管理器（Checkpoint Manager）**驱动，它在 `~/.hermes/checkpoints/store/` 下维护一个共享的影子 git 仓库——你真实项目的 `.git` 永远不会被触碰。Agent 操作的所有项目共享同一个存储，因此 git 的内容寻址对象数据库可以跨项目、跨轮次去重。
+此安全机制由内部**检查点管理器（Checkpoint Manager）**驱动，它在 `~/.openagents/checkpoints/store/` 下维护一个共享的影子 git 仓库——你真实项目的 `.git` 永远不会被触碰。Agent 操作的所有项目共享同一个存储，因此 git 的内容寻址对象数据库可以跨项目、跨轮次去重。
 
 ## 触发检查点的条件
 
@@ -59,10 +59,10 @@ Agent 每个目录每轮**最多创建一个检查点**，因此长时间运行�
 
 概要流程：
 
-- Hermes 检测到工具即将**修改**工作树中的文件。
+- OpenAgents 检测到工具即将**修改**工作树中的文件。
 - 每轮对话（每个目录）执行一次：
   - 为该文件解析合理的项目根目录。
-  - 初始化或复用位于 `~/.hermes/checkpoints/store/` 的**单一共享影子存储**。
+  - 初始化或复用位于 `~/.openagents/checkpoints/store/` 的**单一共享影子存储**。
   - 写入每个项目的索引，构建树对象，并提交到每个项目的引用（`refs/hermes/<project-hash>`）。
 - 这些每项目引用构成可通过 `/rollback` 检查和恢复的检查点历史。
 
@@ -72,7 +72,7 @@ flowchart LR
   agent["AIAgent\n(run_agent.py)"]
   tools["File & terminal tools"]
   cpMgr["CheckpointManager"]
-  store["Shared shadow store\n~/.hermes/checkpoints/store/"]
+  store["Shared shadow store\n~/.openagents/checkpoints/store/"]
 
   user --> agent
   agent -->|"tool call"| tools
@@ -84,7 +84,7 @@ flowchart LR
 
 ## 配置
 
-在 `~/.hermes/config.yaml` 中配置：
+在 `~/.openagents/config.yaml` 中配置：
 
 ```yaml
 checkpoints:
@@ -93,7 +93,7 @@ checkpoints:
   max_total_size_mb: 500      # 存储总大小硬上限；超出时丢弃最旧的提交
   max_file_size_mb: 10        # 跳过大于此值的单个文件
 
-  # 自动维护（默认开启）：启动时扫描 ~/.hermes/checkpoints/，
+  # 自动维护（默认开启）：启动时扫描 ~/.openagents/checkpoints/，
   # 删除工作目录已不存在的项目条目（孤立项）或 last_touch 超过
   # retention_days 的条目。通过 .last_prune 标记控制，
   # 最多每 min_interval_hours 运行一次。
@@ -121,7 +121,7 @@ checkpoints:
 /rollback
 ```
 
-Hermes 返回带有变更统计的格式化列表：
+OpenAgents 返回带有变更统计的格式化列表：
 
 ```text
 📸 Checkpoints for /path/to/project:
@@ -151,7 +151,7 @@ Total size:      142.3 MB
 Projects:        12
 
   WORKDIR                                                       COMMITS    LAST TOUCH  STATE
-  /home/you/code/hermes-agent                                        20       2h ago  live
+  /home/you/code/openagents                                        20       2h ago  live
   /home/you/code/experiments/rl-runner                                8       1d ago  live
   /home/you/code/old-prototype                                        3       9d ago  orphan
   ...
@@ -184,7 +184,7 @@ hermes checkpoints prune --retention-days 3 --max-size-mb 200
 /rollback 1
 ```
 
-Hermes 在后台执行：
+OpenAgents 在后台执行：
 
 1. 验证目标提交存在于影子存储中。
 2. 对当前状态创建**回滚前快照**，以便之后可以"撤销撤销"。
@@ -202,7 +202,7 @@ Hermes 在后台执行：
 ## 安全与性能保障
 
 - **Git 可用性** — 若 `PATH` 中找不到 `git`，检查点功能将透明地禁用。
-- **目录范围** — Hermes 跳过过于宽泛的目录（根目录 `/`、家目录 `$HOME`）。
+- **目录范围** — OpenAgents 跳过过于宽泛的目录（根目录 `/`、家目录 `$HOME`）。
 - **仓库大小** — 超过 50,000 个文件的目录将被跳过。
 - **单文件大小上限** — 大于 `max_file_size_mb`（默认 10 MB）的文件不纳入快照，防止意外将数据集、模型权重或生成的媒体文件纳入存储。
 - **存储总大小上限** — 当存储超过 `max_total_size_mb`（默认 500 MB）时，按轮询方式丢弃每个项目最旧的提交，直到低于上限。
@@ -213,7 +213,7 @@ Hermes 在后台执行：
 ## 检查点的存储位置
 
 ```text
-~/.hermes/checkpoints/
+~/.openagents/checkpoints/
   ├── store/                 # 单一共享裸 git 仓库
   │   ├── HEAD, objects/     # git 内部结构（跨项目共享）
   │   ├── refs/hermes/<hash> # 每项目分支尖端
@@ -228,9 +228,9 @@ Hermes 在后台执行：
 
 ### 从 v1 迁移
 
-在 v2 重写之前，每个工作目录在 `~/.hermes/checkpoints/<hash>/` 下拥有独立的完整影子 git 仓库。该布局无法跨项目去重对象，且剪枝器有已知的空操作问题——存储会无限增长。
+在 v2 重写之前，每个工作目录在 `~/.openagents/checkpoints/<hash>/` 下拥有独立的完整影子 git 仓库。该布局无法跨项目去重对象，且剪枝器有已知的空操作问题——存储会无限增长。
 
-首次运行 v2 时，所有 v2 之前的影子仓库将被移入 `~/.hermes/checkpoints/legacy-<timestamp>/`，使新的单存储布局从干净状态开始。旧的 `/rollback` 历史仍可通过 `git` 手动检查 legacy 归档访问；确认不再需要后，运行：
+首次运行 v2 时，所有 v2 之前的影子仓库将被移入 `~/.openagents/checkpoints/legacy-<timestamp>/`，使新的单存储布局从干净状态开始。旧的 `/rollback` 历史仍可通过 `git` 手动检查 legacy 归档访问；确认不再需要后，运行：
 
 ```bash
 hermes checkpoints clear-legacy
@@ -244,6 +244,6 @@ hermes checkpoints clear-legacy
 - **恢复前使用 `/rollback diff` 预览** — 查看将发生的变更，选择正确的检查点。
 - **使用 `/rollback` 而非 `git reset`** 来撤销 Agent 驱动的变更。
 - **定期检查 `hermes checkpoints status`**（如果你经常使用检查点）——显示哪些项目处于活跃状态以及存储占用情况。
-- **结合 Git worktree 使用以获得最高安全性** — 将每个 Hermes 会话保持在独立的 worktree/分支中，以检查点作为额外保障层。
+- **结合 Git worktree 使用以获得最高安全性** — 将每个 OpenAgents 会话保持在独立的 worktree/分支中，以检查点作为额外保障层。
 
 关于在同一仓库中并行运行多个 Agent，请参阅 [Git worktrees](./git-worktrees.md) 指南。

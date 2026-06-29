@@ -16,12 +16,12 @@ hermes memory setup    # select "mem0"
 Or manually:
 ```bash
 hermes config set memory.provider mem0
-echo "MEM0_API_KEY=your-key" >> ~/.hermes/.env
+echo "MEM0_API_KEY=your-key" >> ~/.openagents/.env
 ```
 
 ## Config
 
-Behavioral settings live in `$HERMES_HOME/mem0.json` (set them via `hermes memory setup`). Only the secret `MEM0_API_KEY` belongs in `~/.hermes/.env`.
+Behavioral settings live in `$OPENAGENTS_HOME/mem0.json` (set them via `hermes memory setup`). Only the secret `MEM0_API_KEY` belongs in `~/.openagents/.env`.
 
 | Key | Default | Description |
 |-----|---------|-------------|
@@ -78,14 +78,14 @@ hermes memory setup mem0 --mode oss \
 hermes memory setup mem0 --mode oss --oss-llm-key sk-...
 ```
 
-Or edit `$HERMES_HOME/mem0.json` directly:
+Or edit `$OPENAGENTS_HOME/mem0.json` directly:
 ```json
 {
   "mode": "oss",
   "oss": {
     "llm": {"provider": "openai", "config": {"model": "gpt-5-mini"}},
     "embedder": {"provider": "openai", "config": {"model": "text-embedding-3-small"}},
-    "vector_store": {"provider": "qdrant", "config": {"path": "~/.hermes/mem0_qdrant"}}
+    "vector_store": {"provider": "qdrant", "config": {"path": "~/.openagents/mem0_qdrant"}}
   }
 }
 ```
@@ -125,7 +125,7 @@ Circuit breaker tripped after 5 consecutive failures. Resets after 2 minutes.
 
 ```bash
 # If using local Qdrant, check the storage path is writable:
-ls -la ~/.hermes/mem0_qdrant
+ls -la ~/.openagents/mem0_qdrant
 
 # If using Qdrant server, check it's reachable:
 curl http://localhost:6333/healthz
@@ -149,4 +149,4 @@ curl http://localhost:11434/api/tags
 
 - `mem0_add` stores verbatim (no extraction). Use `sync_turn` for LLM extraction.
 - Search uses semantic matching — try broader queries.
-- Check `user_id` matches between sessions (`$HERMES_HOME/mem0.json`).
+- Check `user_id` matches between sessions (`$OPENAGENTS_HOME/mem0.json`).

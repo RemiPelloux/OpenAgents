@@ -238,7 +238,7 @@ async def test_discord_forum_threads_are_handled_as_threads(adapter, monkeypatch
     monkeypatch.delenv("DISCORD_FREE_RESPONSE_CHANNELS", raising=False)
 
     forum = FakeForumChannel(channel_id=222, name="support-forum")
-    thread = FakeThread(channel_id=456, name="Can Hermes reply here?", parent=forum)
+    thread = FakeThread(channel_id=456, name="Can OpenAgents reply here?", parent=forum)
     message = make_message(channel=thread, content="hello from forum post")
 
     await adapter._handle_message(message)
@@ -249,7 +249,7 @@ async def test_discord_forum_threads_are_handled_as_threads(adapter, monkeypatch
     assert event.source.chat_id == "456"
     assert event.source.thread_id == "456"
     assert event.source.chat_type == "thread"
-    assert event.source.chat_name == "Hermes Server / support-forum / Can Hermes reply here?"
+    assert event.source.chat_name == "Hermes Server / support-forum / Can OpenAgents reply here?"
 
 
 @pytest.mark.asyncio
@@ -702,7 +702,7 @@ async def test_fetch_channel_context_skips_self_improvement_boundary_message(ada
             make_history_message(author=human, content="question after reply", msg_id=5),
             make_history_message(
                 author=adapter._client.user,
-                content="💾 Self-improvement review: Skill 'hermes-gateway-display-config' patched",
+                content="💾 Self-improvement review: Skill 'openagents-gateway-display-config' patched",
                 msg_id=4,
             ),
             make_history_message(author=codex, content="Codex final answer", msg_id=3),

@@ -7,7 +7,7 @@ sidebar_position: 8
 
 # 备用提供商
 
-Hermes Agent 具备三层弹性机制，在提供商出现问题时保持会话正常运行：
+OpenAgents 具备三层弹性机制，在提供商出现问题时保持会话正常运行：
 
 1. **[凭据池](./credential-pools.md)** — 在*同一*提供商的多个 API 密钥之间轮换（优先尝试）
 2. **主模型备用** — 当主模型失败时，自动切换到*不同*的提供商:模型
@@ -29,7 +29,7 @@ hermes fallback
 
 `hermes fallback` 复用 `hermes model` 的提供商选择器——相同的提供商列表、相同的凭据提示、相同的验证流程。使用子命令 `add`、`list`（别名 `ls`）、`remove`（别名 `rm`）和 `clear` 来管理备用链。更改会持久化到 `config.yaml` 顶层的 `fallback_providers:` 列表中。
 
-如果你更倾向于直接编辑 YAML，可在 `~/.hermes/config.yaml` 中添加 `fallback_model` 部分：
+如果你更倾向于直接编辑 YAML，可在 `~/.openagents/config.yaml` 中添加 `fallback_model` 部分：
 
 ```yaml
 fallback_model:
@@ -177,7 +177,7 @@ fallback_model:
 
 ## 辅助任务备用
 
-Hermes 为附属任务使用独立的轻量级模型。每个任务都有自己的提供商解析链，充当内置的备用系统。
+OpenAgents 为附属任务使用独立的轻量级模型。每个任务都有自己的提供商解析链，充当内置的备用系统。
 
 ### 具有独立提供商解析的任务
 
@@ -330,13 +330,13 @@ auxiliary:
 
 ### 触发备用的提供商配额错误
 
-Hermes 将以下情况识别为等同于 402 额度耗尽的容量错误（而非瞬时速率限制）：
+OpenAgents 将以下情况识别为等同于 402 额度耗尽的容量错误（而非瞬时速率限制）：
 
 - Bedrock / LiteLLM：`Too many tokens per day`、`daily limit`、`tokens per day`
 - Vertex AI / GCP：`quota exceeded`、`resource exhausted`、`RESOURCE_EXHAUSTED`
 - 通用：`daily quota`、`quota_exceeded`
 
-若你的提供商对每日配额耗尽返回不同的错误信息，而 Hermes 未触发备用，这是一个 bug——请附上确切的错误字符串提交 issue。
+若你的提供商对每日配额耗尽返回不同的错误信息，而 OpenAgents 未触发备用，这是一个 bug——请附上确切的错误字符串提交 issue。
 
 ---
 

@@ -7,7 +7,7 @@ import Success from './routes/success'
 import Failure from './routes/failure'
 
 /*
- * App shell — Hermes Setup.
+ * App shell — OpenAgents Setup.
  *
  * No header chrome (the OS title bar already says "Hermes Setup"; an
  * in-window repeat of the H mark + words was redundant slop).

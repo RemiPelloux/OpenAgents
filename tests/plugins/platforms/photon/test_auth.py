@@ -49,9 +49,9 @@ _PHOTON_ENV = (
 
 @pytest.fixture
 def tmp_hermes_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    home = tmp_path / "hermes"
+    home = tmp_path / "openagents"
     home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(home))
     for key in _PHOTON_ENV:
         monkeypatch.delenv(key, raising=False)
     yield home
@@ -80,7 +80,7 @@ def test_store_project_credentials_round_trip(
         spectrum_project_id="sp-123",
         project_secret="secret-key",
         dashboard_project_id="dash-456",
-        name="Hermes Agent",
+        name="OpenAgents",
     )
     for key in _PHOTON_ENV:
         monkeypatch.delenv(key, raising=False)
@@ -130,7 +130,7 @@ def test_store_user_numbers_round_trip(tmp_hermes_home: Path) -> None:
 def test_load_user_numbers_falls_back_to_home_channel(
     tmp_hermes_home: Path,
 ) -> None:
-    from hermes_cli.config import save_env_value
+    from openagents_cli.config import save_env_value
 
     save_env_value("PHOTON_HOME_CHANNEL", "+15551234567")
 
@@ -268,7 +268,7 @@ def test_poll_for_token_access_denied(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_list_projects_unwraps_list(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_get(url: str, **kwargs: Any) -> _FakeResponse:
-        return _FakeResponse(json_body=[{"id": "p1", "name": "Hermes Agent"}])
+        return _FakeResponse(json_body=[{"id": "p1", "name": "OpenAgents"}])
 
     monkeypatch.setattr(photon_auth.httpx, "get", fake_get)
     projects = photon_auth.list_projects("tok")
@@ -283,7 +283,7 @@ def test_find_project_by_name_case_insensitive(monkeypatch: pytest.MonkeyPatch) 
         ]})
 
     monkeypatch.setattr(photon_auth.httpx, "get", fake_get)
-    proj = photon_auth.find_project_by_name("tok", "Hermes Agent")
+    proj = photon_auth.find_project_by_name("tok", "OpenAgents")
     assert proj is not None and proj["id"] == "p2"
 
 
@@ -297,12 +297,12 @@ def test_create_project_omits_spectrum_flag(monkeypatch: pytest.MonkeyPatch) -> 
         return _FakeResponse(json_body={"success": True, "id": "new-proj"})
 
     monkeypatch.setattr(photon_auth.httpx, "post", fake_post)
-    data = photon_auth.create_project("tok", name="Hermes Agent")
+    data = photon_auth.create_project("tok", name="OpenAgents")
     assert data["id"] == "new-proj"
     # Spectrum is always provisioned at create-time; the field was dropped
     # from the API schema, so we must not send it.
     assert "spectrum" not in captured["body"]
-    assert captured["body"]["name"] == "Hermes Agent"
+    assert captured["body"]["name"] == "OpenAgents"
     assert captured["headers"]["Authorization"] == "Bearer tok"
     assert captured["url"].endswith("/api/projects")
 

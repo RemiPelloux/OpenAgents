@@ -7,13 +7,13 @@ description: "通过 OAuth2 认证的 Google API，发送邮件、管理日历�
 
 # Google Workspace Skill
 
-Gmail、Calendar、Drive、Contacts、Sheets 和 Docs 与 Hermes 的集成。使用 OAuth2 并支持自动刷新 token（令牌）。优先使用 [Google Workspace CLI（`gws`）](https://github.com/nicholasgasior/gws)（如已安装）以获得更广泛的覆盖，否则回退到 Google 的 Python 客户端库。
+Gmail、Calendar、Drive、Contacts、Sheets 和 Docs 与 OpenAgents 的集成。使用 OAuth2 并支持自动刷新 token（令牌）。优先使用 [Google Workspace CLI（`gws`）](https://github.com/nicholasgasior/gws)（如已安装）以获得更广泛的覆盖，否则回退到 Google 的 Python 客户端库。
 
 **Skill 路径：** `skills/productivity/google-workspace/`
 
 ## 配置
 
-配置流程完全由 Agent 驱动——让 Hermes 设置 Google Workspace，它会引导你完成每个步骤。流程如下：
+配置流程完全由 Agent 驱动——让 OpenAgents 设置 Google Workspace，它会引导你完成每个步骤。流程如下：
 
 1. **创建 Google Cloud 项目**并启用所需 API（Gmail、Calendar、Drive、Sheets、Docs、People）
 2. **创建 OAuth 2.0 凭据**（Desktop app 类型）并下载客户端密钥 JSON
@@ -184,7 +184,7 @@ $GAPI contacts list --max 20
 
 | 问题 | 解决方法 |
 |---------|-----|
-| `NOT_AUTHENTICATED` | 运行配置（让 Hermes 设置 Google Workspace） |
+| `NOT_AUTHENTICATED` | 运行配置（让 OpenAgents 设置 Google Workspace） |
 | `REFRESH_FAILED` | Token 已被撤销——重新执行授权步骤 |
 | `HttpError 403: Insufficient Permission` | 缺少 scope（权限范围）——撤销并以正确的服务重新授权 |
 | `HttpError 403: Access Not Configured` | API 未在 Google Cloud Console 中启用 |

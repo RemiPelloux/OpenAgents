@@ -17,14 +17,14 @@ description: "54 real design systems (Stripe, Linear, Vercel) as HTML/CSS"
 | Source | Bundled (installed by default) |
 | Path | `skills/creative/popular-web-designs` |
 | Version | `1.0.0` |
-| Author | Hermes Agent + Teknium (design systems sourced from VoltAgent/awesome-design-md) |
+| Author | OpenAgents + Teknium (design systems sourced from VoltAgent/awesome-design-md) |
 | License | MIT |
 | Platforms | linux, macos, windows |
 
 ## Reference: full SKILL.md
 
 :::info
-The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+The following is the complete skill definition that OpenAgents loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
 :::
 
 # Popular Web Designs
@@ -64,7 +64,7 @@ Each template includes a **Hermes Implementation Notes** block at the top with:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Page Title</title>
-  <!-- Paste the Google Fonts <link> from the template's Hermes notes -->
+  <!-- Paste the Google Fonts <link> from the template's OpenAgents notes -->
   <link href="https://fonts.googleapis.com/css2?family=..." rel="stylesheet">
   <style>
     /* Apply the template's color palette as CSS custom properties */

@@ -17,14 +17,14 @@ description: "54 个真实设计系统（Stripe、Linear、Vercel）的 HTML/CSS
 | 来源 | 内置（默认安装） |
 | 路径 | `skills/creative/popular-web-designs` |
 | 版本 | `1.0.0` |
-| 作者 | Hermes Agent + Teknium（设计系统来源：VoltAgent/awesome-design-md） |
+| 作者 | OpenAgents + Teknium（设计系统来源：VoltAgent/awesome-design-md） |
 | 许可证 | MIT |
 | 平台 | linux, macos, windows |
 
 ## 参考：完整 SKILL.md
 
 :::info
-以下是 Hermes 在触发此 skill 时加载的完整 skill 定义。这是 agent 在 skill 激活时所看到的指令内容。
+以下是 OpenAgents 在触发此 skill 时加载的完整 skill 定义。这是 agent 在 skill 激活时所看到的指令内容。
 :::
 
 # 流行网页设计
@@ -57,7 +57,7 @@ description: "54 个真实设计系统（Stripe、Linear、Vercel）的 HTML/CSS
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Page Title</title>
-  <!-- Paste the Google Fonts <link> from the template's Hermes notes -->
+  <!-- Paste the Google Fonts <link> from the template's OpenAgents notes -->
   <link href="https://fonts.googleapis.com/css2?family=..." rel="stylesheet">
   <style>
     /* Apply the template's color palette as CSS custom properties */

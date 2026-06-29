@@ -1,22 +1,22 @@
-# Hermes Achievements
+# OpenAgents Achievements
 
-> **Bundled with Hermes Agent.** Originally authored by [@PCinkusz](https://github.com/PCinkusz) at https://github.com/PCinkusz/hermes-achievements — vendored into `plugins/hermes-achievements/` so it ships with the dashboard out-of-the-box and stays in lockstep with Hermes feature changes. Upstream repo remains the staging ground for new badges and UI iteration.
+> **Bundled with OpenAgents.** Originally authored by [@PCinkusz](https://github.com/PCinkusz) at https://github.com/PCinkusz/hermes-achievements — vendored into `plugins/hermes-achievements/` so it ships with the dashboard out-of-the-box and stays in lockstep with OpenAgents feature changes. Upstream repo remains the staging ground for new badges and UI iteration.
 >
-> When Hermes is installed via the install script or cloned from source, this plugin auto-registers as a dashboard tab on first `hermes dashboard` launch. No separate install step. See [Built-in Plugins → hermes-achievements](../../website/docs/user-guide/features/built-in-plugins.md) in the main docs.
+> When OpenAgents is installed via the install script or cloned from source, this plugin auto-registers as a dashboard tab on first `hermes dashboard` launch. No separate install step. See [Built-in Plugins → hermes-achievements](../../website/docs/user-guide/features/built-in-plugins.md) in the main docs.
 
-Achievement system for the Hermes Dashboard: collectible, tiered badges generated from real local Hermes session history.
+Achievement system for the OpenAgents Dashboard: collectible, tiered badges generated from real local OpenAgents session history.
 
 ![Hermes Achievements dashboard](docs/assets/achievements-dashboard-hd.png)
 
-The screenshots use temporary demo tier data to show the full visual range. The plugin itself reads real local Hermes session history by default.
+The screenshots use temporary demo tier data to show the full visual range. The plugin itself reads real local OpenAgents session history by default.
 
 > **Update notice (2026-04-29):** If you installed this plugin before today, update to the latest version. The achievements scan path was refactored for much faster warm loads (snapshot cache + incremental checkpoint scan).
 >
-> **Share cards (2026-05-04, vendored in hermes-agent v0.4.0):** Unlocked achievement cards now have a "Share" button that renders a 1200×630 PNG share card (client-side canvas, no backend, no network) with Download + Copy-to-clipboard actions. Fits X/Twitter, Discord, LinkedIn, Bluesky link-preview dimensions.
+> **Share cards (2026-05-04, vendored in openagents v0.4.0):** Unlocked achievement cards now have a "Share" button that renders a 1200×630 PNG share card (client-side canvas, no backend, no network) with Download + Copy-to-clipboard actions. Fits X/Twitter, Discord, LinkedIn, Bluesky link-preview dimensions.
 
 ## What it does
 
-Hermes Achievements scans local Hermes sessions and unlocks badges based on real agent behavior:
+OpenAgents Achievements scans local OpenAgents sessions and unlocks badges based on real agent behavior:
 
 - autonomous tool chains
 - debugging and recovery patterns
@@ -30,7 +30,7 @@ Achievements have three visible states:
 
 - **Unlocked** — earned at least one tier
 - **Discovered** — known achievement, progress visible, not earned yet
-- **Secret** — hidden until Hermes detects the first related signal
+- **Secret** — hidden until OpenAgents detects the first related signal
 
 Most achievements level through:
 
@@ -58,17 +58,17 @@ Version `0.2.x` expands the catalog to 60+ achievements, including model/provide
 
 ## Install
 
-Clone into your Hermes plugins directory:
+Clone into your OpenAgents plugins directory:
 
 ```bash
-git clone https://github.com/PCinkusz/hermes-achievements ~/.hermes/plugins/hermes-achievements
+git clone https://github.com/PCinkusz/hermes-achievements ~/.openagents/plugins/hermes-achievements
 ```
 
 For local development, keep the repo elsewhere and symlink it:
 
 ```bash
 git clone https://github.com/PCinkusz/hermes-achievements ~/hermes-achievements
-ln -s ~/hermes-achievements ~/.hermes/plugins/hermes-achievements
+ln -s ~/hermes-achievements ~/.openagents/plugins/hermes-achievements
 ```
 
 Then rescan dashboard plugins:
@@ -84,7 +84,7 @@ If backend API routes 404, restart `hermes dashboard`; plugin APIs are mounted a
 If you installed with git:
 
 ```bash
-cd ~/.hermes/plugins/hermes-achievements
+cd ~/.openagents/plugins/hermes-achievements
 git pull --ff-only
 curl http://127.0.0.1:9119/api/dashboard/plugins/rescan
 ```
@@ -96,7 +96,7 @@ As of 2026-04-29, updating is strongly recommended because scan performance chan
 - added cached `/achievements` snapshot
 - added incremental checkpoint reuse for unchanged sessions
 
-Achievement unlock state is stored locally in `state.json` and is not overwritten by git updates. New achievements are evaluated from your existing Hermes session history. Achievement IDs are stable and should not be renamed casually because they are the unlock-state keys.
+Achievement unlock state is stored locally in `state.json` and is not overwritten by git updates. New achievements are evaluated from your existing OpenAgents session history. Achievement IDs are stable and should not be renamed casually because they are the unlock-state keys.
 
 Releases are tagged in git, for example:
 

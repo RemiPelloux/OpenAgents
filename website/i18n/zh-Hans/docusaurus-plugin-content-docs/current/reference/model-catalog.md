@@ -6,14 +6,14 @@ description: 远程托管的清单文件，驱动 OpenRouter 和 Nous Portal 的
 
 # 模型目录
 
-Hermes 从托管于文档站点旁的 JSON 清单中获取 **OpenRouter** 和 **Nous Portal** 的精选模型列表。这样维护者无需发布新的 `hermes-agent` 版本即可更新选择器列表。
+OpenAgents 从托管于文档站点旁的 JSON 清单中获取 **OpenRouter** 和 **Nous Portal** 的精选模型列表。这样维护者无需发布新的 `openagents` 版本即可更新选择器列表。
 
 当清单不可达时（离线、网络受阻、托管故障），Hermes 会静默回退到随 CLI 一同发布的仓库内置快照。清单永远不会导致选择器崩溃——最坏情况下，你看到的是与已安装版本捆绑的列表。
 
 ## 线上清单 URL
 
 ```
-https://hermes-agent.nousresearch.com/docs/api/model-catalog.json
+https://openagents.nousresearch.com/docs/api/model-catalog.json
 ```
 
 每次合并到 `main` 时，通过现有的 `deploy-site.yml` GitHub Pages 流水线发布。真实来源位于仓库的 `website/static/api/model-catalog.json`。
@@ -61,14 +61,14 @@ https://hermes-agent.nousresearch.com/docs/api/model-catalog.json
 | 网络故障且无缓存 | 静默回退到仓库内置快照 |
 | 清单未通过 schema 校验 | 视为不可达 |
 
-缓存位置：`~/.hermes/cache/model_catalog.json`。
+缓存位置：`~/.openagents/cache/model_catalog.json`。
 
 ## 配置
 
 ```yaml
 model_catalog:
   enabled: true
-  url: https://hermes-agent.nousresearch.com/docs/api/model-catalog.json
+  url: https://openagents.nousresearch.com/docs/api/model-catalog.json
   ttl_hours: 1
   providers: {}
 ```
@@ -93,7 +93,7 @@ model_catalog:
 维护者操作：
 
 ```bash
-# 从仓库内硬编码列表重新生成（在编辑 hermes_cli/models.py 中的
+# 从仓库内硬编码列表重新生成（在编辑 openagents_cli/models.py 中的
 # OPENROUTER_MODELS 或 _PROVIDER_MODELS["nous"] 后保持清单同步）。
 python scripts/build_model_catalog.py
 ```

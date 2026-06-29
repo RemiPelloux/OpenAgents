@@ -1,12 +1,12 @@
 ---
 sidebar_position: 15
 title: "Microsoft Foundry"
-description: "Use Hermes Agent with Microsoft Foundry — OpenAI-style and Anthropic-style endpoints, auto-detection of transport and deployed models"
+description: "Use OpenAgents with Microsoft Foundry — OpenAI-style and Anthropic-style endpoints, auto-detection of transport and deployed models"
 ---
 
 # Microsoft Foundry
 
-Hermes Agent's `azure-foundry` provider supports Microsoft Foundry (formerly Azure AI Foundry) and Azure OpenAI. A single Foundry resource can host models with two different wire formats:
+OpenAgents's `azure-foundry` provider supports Microsoft Foundry (formerly Azure AI Foundry) and Azure OpenAI. A single Foundry resource can host models with two different wire formats:
 
 - **OpenAI-style** — `POST /v1/chat/completions` on endpoints like `https://<resource>.openai.azure.com/openai/v1`. Used for GPT-4.x, GPT-5.x, Llama, Mistral, and most open-weight models.
 - **Anthropic-style** — `POST /v1/messages` on endpoints like `https://<resource>.services.ai.azure.com/anthropic`. Used when Microsoft Foundry serves Claude models via the Anthropic Messages API format.
@@ -28,16 +28,16 @@ hermes model
 # → Choose Authentication:
 #     1. API key
 #     2. Microsoft Entra ID  (managed identity / workload identity / az login)
-# → (Entra) Hermes probes DefaultAzureCredential; on success it never asks for a key
+# → (Entra) OpenAgents probes DefaultAzureCredential; on success it never asks for a key
 # → (API key) Enter your API key
-# Hermes probes the endpoint and auto-detects transport + models
+# OpenAgents probes the endpoint and auto-detects transport + models
 # → Pick a model from the list (or type a deployment name manually)
 ```
 
 The wizard will:
 
 1. **Sniff the URL path** — URLs ending in `/anthropic` are recognised as Microsoft Foundry Claude routes.
-2. **Probe `GET <base>/models`** — if the endpoint returns an OpenAI-shaped model list, Hermes switches to `chat_completions` and prefills a picker with the returned deployment IDs.
+2. **Probe `GET <base>/models`** — if the endpoint returns an OpenAI-shaped model list, OpenAgents switches to `chat_completions` and prefills a picker with the returned deployment IDs.
 3. **Probe Anthropic Messages shape** — fallback for endpoints that do not expose `/models` but do accept the Anthropic Messages format.
 4. **Fall back to manual entry** — private/gated endpoints that reject every probe still work; you pick the API mode and type a deployment name by hand.
 
@@ -45,7 +45,7 @@ Context length for the chosen model is resolved via Hermes' standard metadata ch
 
 ## Microsoft Entra ID (keyless, RBAC) — recommended
 
-Microsoft recommends [keyless authentication with Microsoft Entra ID](https://learn.microsoft.com/azure/ai-foundry/foundry-models/how-to/configure-entra-id) for production Foundry workloads. Hermes supports Entra ID for **both** API surfaces:
+Microsoft recommends [keyless authentication with Microsoft Entra ID](https://learn.microsoft.com/azure/ai-foundry/foundry-models/how-to/configure-entra-id) for production Foundry workloads. OpenAgents supports Entra ID for **both** API surfaces:
 
 - **OpenAI-style** (`api_mode: chat_completions` / `codex_responses`) — GPT-4/5, Llama, Mistral, DeepSeek, etc.
 - **Anthropic-style** (`api_mode: anthropic_messages`) — Claude models on Microsoft Foundry.
@@ -70,7 +70,7 @@ Foundry's RBAC is per-resource (`Azure AI User` grants both surfaces; some tenan
 3. Assign it to:
    - **Your user account** for local development with `az login`.
    - **A managed identity or workload identity** for Azure-hosted compute (recommended for production).
-   - **A Foundry Agent Service hosted agent's agent identity** when Hermes runs inside a hosted agent.
+   - **A Foundry Agent Service hosted agent's agent identity** when OpenAgents runs inside a hosted agent.
    - **A service principal** for CI/CD pipelines when workload identity is not available.
 4. Wait ~5 minutes for the role to propagate.
 
@@ -92,7 +92,7 @@ hermes model
 # → Authentication: 2 (Microsoft Entra ID)
 # → (optional) user-assigned managed identity client ID
 # → (optional) Azure tenant ID
-# → Hermes probes DefaultAzureCredential() and reports which inner
+# → OpenAgents probes DefaultAzureCredential() and reports which inner
 #    credential succeeded (e.g. AzureCliCredential, ManagedIdentityCredential)
 ```
 
@@ -118,13 +118,13 @@ model:
     scope: https://ai.azure.com/.default        # only when overriding the default
 ```
 
-Hermes only manages one Entra-specific knob in `config.yaml`:
+OpenAgents only manages one Entra-specific knob in `config.yaml`:
 
 - **`scope`** — the OAuth resource scope. Defaults to Microsoft's documented inference scope (`https://ai.azure.com/.default`). Override only if your resource was provisioned against a non-standard audience.
 
-Everything else (tenant, service principal secret, federated token file, sovereign cloud authority, broker preferences) is read by `azure-identity` directly from the standard `AZURE_*` environment variables — see the [credential resolution order](#credential-resolution-order) below. Set those in `~/.hermes/.env` or your deployment environment, exactly as Microsoft's SDK reference describes.
+Everything else (tenant, service principal secret, federated token file, sovereign cloud authority, broker preferences) is read by `azure-identity` directly from the standard `AZURE_*` environment variables — see the [credential resolution order](#credential-resolution-order) below. Set those in `~/.openagents/.env` or your deployment environment, exactly as Microsoft's SDK reference describes.
 
-No secrets land in `~/.hermes/.env` for Entra mode — `azure-identity` caches tokens in-process (and where available, in your OS keychain / `~/.IdentityService`).
+No secrets land in `~/.openagents/.env` for Entra mode — `azure-identity` caches tokens in-process (and where available, in your OS keychain / `~/.IdentityService`).
 
 ### Credential resolution order
 
@@ -139,7 +139,7 @@ No secrets land in `~/.hermes/.env` for Entra mode — `azure-identity` caches t
 7. **Azure PowerShell** — `Connect-AzAccount`.
 8. **Broker** (Windows / WSL only) — Web Account Manager.
 
-Interactive browser credential is excluded by default for unattended Hermes runs; use Azure CLI, Azure Developer CLI, managed identity, workload identity, or service principal credentials instead.
+Interactive browser credential is excluded by default for unattended OpenAgents runs; use Azure CLI, Azure Developer CLI, managed identity, workload identity, or service principal credentials instead.
 
 ### Deployment patterns
 
@@ -159,7 +159,7 @@ hermes         # uses your az login token
 - Set `AZURE_CLIENT_ID` to the user-assigned identity's client ID so `DefaultAzureCredential` picks the right one.
 
 **Foundry Agent Service hosted agent:**
-- Create the hosted agent and grant that agent's identity `Azure AI User` (or `Foundry User`) on the Foundry resource. Hermes uses `ManagedIdentityCredential` from inside the hosted agent; role assignment belongs on the agent identity, not just the parent project or your user.
+- Create the hosted agent and grant that agent's identity `Azure AI User` (or `Foundry User`) on the Foundry resource. OpenAgents uses `ManagedIdentityCredential` from inside the hosted agent; role assignment belongs on the agent identity, not just the parent project or your user.
 
 **AKS Workload Identity (replaces AAD Pod Identity):**
 - Annotate the pod's service account with the workload identity client ID.
@@ -188,9 +188,9 @@ azure-foundry (Microsoft Entra ID):
 
 ### Limitations
 
-- **Anthropic-style endpoints use an httpx event hook.** The Anthropic Python SDK does not accept a callable `auth_token` natively (≤ 0.86.0). Hermes installs a request event hook on a custom `httpx.Client` that mints a fresh JWT per outbound request and rewrites `Authorization: Bearer <jwt>`. This is functionally equivalent to the OpenAI SDK's native `Callable[[], str]` contract but adds one indirection layer. If the Anthropic SDK adds first-class callable-auth support in a future release, Hermes will switch to it transparently.
+- **Anthropic-style endpoints use an httpx event hook.** The Anthropic Python SDK does not accept a callable `auth_token` natively (≤ 0.86.0). OpenAgents installs a request event hook on a custom `httpx.Client` that mints a fresh JWT per outbound request and rewrites `Authorization: Bearer <jwt>`. This is functionally equivalent to the OpenAI SDK's native `Callable[[], str]` contract but adds one indirection layer. If the Anthropic SDK adds first-class callable-auth support in a future release, OpenAgents will switch to it transparently.
 - **Batch jobs and `multiprocessing.Pool`.** The Entra token provider is a closure that cannot be pickled across process boundaries. `batch_runner.py` automatically drops the callable from the worker config and lets each worker process rebuild its own provider from `config.yaml` — no user action required, but each worker pays one chain walk at startup.
-- **No bearer JWT persistence in `auth.json`.** Hermes does not duplicate `azure-identity`'s internal token cache; cold starts walk the credential chain on first inference.
+- **No bearer JWT persistence in `auth.json`.** OpenAgents does not duplicate `azure-identity`'s internal token cache; cold starts walk the credential chain on first inference.
 
 ## Configuration (written to `config.yaml`)
 
@@ -205,7 +205,7 @@ model:
   context_length: 400000             # auto-detected
 ```
 
-And in `~/.hermes/.env`:
+And in `~/.openagents/.env`:
 
 ```
 AZURE_FOUNDRY_API_KEY=<your-azure-key>
@@ -225,9 +225,9 @@ model:
 
 Important behaviour:
 
-- **GPT-5.x, codex, and o-series auto-route to the Responses API.** Microsoft Foundry deploys GPT-5 / codex / o1 / o3 / o4 models as Responses-API-only — calling `/chat/completions` against them returns `400 "The requested operation is unsupported."`. Hermes detects these model families by name and upgrades `api_mode` to `codex_responses` transparently, even when `config.yaml` still reads `api_mode: chat_completions`. GPT-4, GPT-4o, Llama, Mistral, and other deployments stay on `/chat/completions`.
-- **`max_completion_tokens` is used automatically.** Azure OpenAI (like direct OpenAI) requires `max_completion_tokens` for gpt-4o, o-series, and gpt-5.x models. Hermes sends the right parameter based on the endpoint.
-- **Pre-v1 endpoints that require `api-version`.** If you have a legacy base URL like `https://<resource>.openai.azure.com/openai?api-version=2025-04-01-preview`, Hermes extracts the query string and forwards it via `default_query` on every request (the OpenAI SDK otherwise drops it when joining paths).
+- **GPT-5.x, codex, and o-series auto-route to the Responses API.** Microsoft Foundry deploys GPT-5 / codex / o1 / o3 / o4 models as Responses-API-only — calling `/chat/completions` against them returns `400 "The requested operation is unsupported."`. OpenAgents detects these model families by name and upgrades `api_mode` to `codex_responses` transparently, even when `config.yaml` still reads `api_mode: chat_completions`. GPT-4, GPT-4o, Llama, Mistral, and other deployments stay on `/chat/completions`.
+- **`max_completion_tokens` is used automatically.** Azure OpenAI (like direct OpenAI) requires `max_completion_tokens` for gpt-4o, o-series, and gpt-5.x models. OpenAgents sends the right parameter based on the endpoint.
+- **Pre-v1 endpoints that require `api-version`.** If you have a legacy base URL like `https://<resource>.openai.azure.com/openai?api-version=2025-04-01-preview`, OpenAgents extracts the query string and forwards it via `default_query` on every request (the OpenAI SDK otherwise drops it when joining paths).
 
 ## Anthropic-style endpoints (Claude via Microsoft Foundry)
 
@@ -243,10 +243,10 @@ model:
 
 Important behaviour:
 
-- **`/v1` is stripped from the base URL.** The Anthropic SDK appends `/v1/messages` to every request URL — Hermes removes any trailing `/v1` before handing the URL to the SDK to avoid double-`/v1` paths.
-- **`api-version` is sent via `default_query`, not appended to the URL.** Azure Anthropic requires an `api-version` query string. Baking it into the base URL produces malformed paths like `/anthropic?api-version=.../v1/messages` and returns 404. Hermes passes `api-version=2025-04-15` via the Anthropic SDK's `default_query` instead.
-- **Bearer auth is used instead of `x-api-key`.** Azure's Anthropic-compatible route requires `Authorization: Bearer <key>` rather than Anthropic's native `x-api-key` header. Hermes detects `azure.com` in the base URL and routes the API key through the SDK's `auth_token` field so the right header reaches the upstream.
-- **1M context window beta header is kept.** Azure still gates the 1M-token Claude context (Opus 4.6/4.7, Sonnet 4.6) behind the `anthropic-beta: context-1m-2025-08-07` header. Hermes keeps that beta header on Azure paths (it's stripped from native Anthropic OAuth requests because some subscriptions reject it, but Azure requires it).
+- **`/v1` is stripped from the base URL.** The Anthropic SDK appends `/v1/messages` to every request URL — OpenAgents removes any trailing `/v1` before handing the URL to the SDK to avoid double-`/v1` paths.
+- **`api-version` is sent via `default_query`, not appended to the URL.** Azure Anthropic requires an `api-version` query string. Baking it into the base URL produces malformed paths like `/anthropic?api-version=.../v1/messages` and returns 404. OpenAgents passes `api-version=2025-04-15` via the Anthropic SDK's `default_query` instead.
+- **Bearer auth is used instead of `x-api-key`.** Azure's Anthropic-compatible route requires `Authorization: Bearer <key>` rather than Anthropic's native `x-api-key` header. OpenAgents detects `azure.com` in the base URL and routes the API key through the SDK's `auth_token` field so the right header reaches the upstream.
+- **1M context window beta header is kept.** Azure still gates the 1M-token Claude context (Opus 4.6/4.7, Sonnet 4.6) behind the `anthropic-beta: context-1m-2025-08-07` header. OpenAgents keeps that beta header on Azure paths (it's stripped from native Anthropic OAuth requests because some subscriptions reject it, but Azure requires it).
 - **OAuth token refresh is disabled.** Azure deployments use static API keys. The `~/.claude/.credentials.json` OAuth token refresh loop that applies to Anthropic Console is explicitly skipped for Azure endpoints to prevent the Claude Code OAuth token from overwriting your Azure key mid-session.
 
 ## Alternative: `provider: anthropic` + Azure base URL
@@ -261,7 +261,7 @@ model:
   default: claude-sonnet-4-6
 ```
 
-With `AZURE_ANTHROPIC_KEY` set in `~/.hermes/.env`. Hermes detects `azure.com` in the base URL and short-circuits around the Claude Code OAuth token chain so the Azure key is used directly with `x-api-key` auth.
+With `AZURE_ANTHROPIC_KEY` set in `~/.openagents/.env`. OpenAgents detects `azure.com` in the base URL and short-circuits around the Claude Code OAuth token chain so the Azure key is used directly with `x-api-key` auth.
 
 `key_env` is the canonical snake_case field name; `api_key_env` (and the camelCase `keyEnv` / `apiKeyEnv`) are accepted as aliases. If both `key_env` and `AZURE_ANTHROPIC_KEY`/`ANTHROPIC_API_KEY` are set, the `key_env`-named env var wins.
 
@@ -269,13 +269,13 @@ With `AZURE_ANTHROPIC_KEY` set in `~/.hermes/.env`. Hermes detects `azure.com` i
 
 Azure does **not** expose a pure-API-key endpoint to list your *deployed* model deployments. Deployment enumeration requires Azure Resource Manager authentication (`az cognitiveservices account deployment list`) with an Azure AD principal, not the inference API key.
 
-What Hermes can do:
+What OpenAgents can do:
 
-- Azure OpenAI v1 endpoints (`<resource>.openai.azure.com/openai/v1`) expose `GET /models` with the resource's **available** model catalog. Hermes uses this list to prefill the model picker.
+- Azure OpenAI v1 endpoints (`<resource>.openai.azure.com/openai/v1`) expose `GET /models` with the resource's **available** model catalog. OpenAgents uses this list to prefill the model picker.
 - Microsoft Foundry `/anthropic` routes: detected via URL path, model name entered manually.
 - Private / firewalled endpoints: manual entry with a friendly "couldn't probe" message.
 
-You can always type a deployment name directly — Hermes does not validate against the returned list.
+You can always type a deployment name directly — OpenAgents does not validate against the returned list.
 
 ## Environment variables
 
@@ -292,18 +292,18 @@ You can always type a deployment name directly — Hermes does not validate agai
 | `AZURE_AUTHORITY_HOST` | Sovereign cloud authority host override |
 | `IDENTITY_ENDPOINT` / `MSI_ENDPOINT` | Managed Identity endpoint for App Service, Functions, and Container Apps; VMs usually use IMDS instead |
 
-The Azure SDK reads the `AZURE_*` env vars directly. Hermes never inspects them other than to report which sources are present in `hermes doctor` output.
+The Azure SDK reads the `AZURE_*` env vars directly. OpenAgents never inspects them other than to report which sources are present in `hermes doctor` output.
 
 ## Troubleshooting
 
 **401 Unauthorized on gpt-5.x deployments.**
-Azure serves gpt-5.x on `/chat/completions`, not `/responses`. Hermes handles this automatically when the URL contains `openai.azure.com`, but if you see a 401 with an `Invalid API key` body, check that `api_mode` in your `config.yaml` is `chat_completions`.
+Azure serves gpt-5.x on `/chat/completions`, not `/responses`. OpenAgents handles this automatically when the URL contains `openai.azure.com`, but if you see a 401 with an `Invalid API key` body, check that `api_mode` in your `config.yaml` is `chat_completions`.
 
 **404 on `/v1/messages?api-version=.../v1/messages`.**
-This is the malformed-URL bug from pre-fix Azure Anthropic setups. Upgrade Hermes — the `api-version` parameter is now passed via `default_query` rather than baked into the base URL, so the SDK can't corrupt it during URL joining.
+This is the malformed-URL bug from pre-fix Azure Anthropic setups. Upgrade OpenAgents — the `api-version` parameter is now passed via `default_query` rather than baked into the base URL, so the SDK can't corrupt it during URL joining.
 
 **Wizard says "Auto-detection incomplete."**
-The endpoint rejected both the `/models` probe and the Anthropic Messages probe. This is normal for private endpoints behind a firewall or with an IP allow-list. Fall back to manual API mode selection and type your deployment name — everything still works, Hermes just can't prefill the picker.
+The endpoint rejected both the `/models` probe and the Anthropic Messages probe. This is normal for private endpoints behind a firewall or with an IP allow-list. Fall back to manual API mode selection and type your deployment name — everything still works, OpenAgents just can't prefill the picker.
 
 **Wrong transport picked.**
 Run `hermes model` again and the wizard will re-probe. If the probe still picks the wrong mode, you can edit `config.yaml` directly:

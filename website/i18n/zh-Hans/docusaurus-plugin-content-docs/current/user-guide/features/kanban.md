@@ -1,18 +1,18 @@
 ---
 sidebar_position: 12
 title: "Kanban（多 Agent 看板）"
-description: "基于 SQLite 的持久化任务看板，用于协调多个 Hermes 配置文件"
+description: "基于 SQLite 的持久化任务看板，用于协调多个 OpenAgents 配置文件"
 ---
 
 # Kanban — 多 Agent 配置文件协作
 
 > **想要详细教程？** 请阅读 [Kanban 教程](./kanban-tutorial) —— 包含四个用户故事（独立开发者、批量任务、带重试的角色流水线、熔断器），并附有各场景的仪表盘截图。本页是参考文档，教程是叙述性说明。
 
-Hermes Kanban 是一个持久化任务看板，在所有 Hermes 配置文件之间共享，允许多个具名 agent 协作完成工作，而无需脆弱的进程内子 agent 集群。每个任务都是 `~/.hermes/kanban.db` 中的一行记录；每次交接都是任何人都可以读写的一行记录；每个 worker 都是拥有独立身份的完整 OS 进程。
+OpenAgents Kanban 是一个持久化任务看板，在所有 OpenAgents 配置文件之间共享，允许多个具名 agent 协作完成工作，而无需脆弱的进程内子 agent 集群。每个任务都是 `~/.openagents/kanban.db` 中的一行记录；每次交接都是任何人都可以读写的一行记录；每个 worker 都是拥有独立身份的完整 OS 进程。
 
 ### 两个操作界面：模型通过工具交互，你通过 CLI 交互
 
-看板有两个入口，均由同一个 `~/.hermes/kanban.db` 支撑：
+看板有两个入口，均由同一个 `~/.openagents/kanban.db` 支撑：
 
 - **Agent 通过专用 `kanban_*` 工具集驱动看板** —— `kanban_show`、`kanban_list`、`kanban_complete`、`kanban_block`、`kanban_heartbeat`、`kanban_comment`、`kanban_create`、`kanban_link`、`kanban_unblock`。调度器在 schema 中已内置这些工具来启动每个 worker；编排器（orchestrator）配置文件也可以通过 `kanban` 工具集显式启用。模型通过直接调用工具来读取和路由任务，*而不是*通过 shell 执行 `hermes kanban`。详见下方[Worker 如何与看板交互](#how-workers-interact-with-the-board)。
 - **你（以及脚本和 cron）通过 CLI 上的 `hermes kanban …`、斜杠命令 `/kanban …` 或仪表盘驱动看板。** 这些界面面向人类和自动化场景——即没有工具调用模型的场合。
@@ -59,7 +59,7 @@ Hermes Kanban 是一个持久化任务看板，在所有 Hermes 配置文件之�
 - **Link（链接）** —— `task_links` 行，记录父 → 子依赖关系。当所有父任务变为 `done` 时，调度器将 `todo → ready`。
 - **Comment（评论）** —— agent 间协议。Agent 和人类追加评论；当 worker 被（重新）启动时，它将完整的评论线程作为上下文的一部分读取。
 - **Workspace（工作区）** —— worker 操作的目录。三种类型：
-  - `scratch`（默认）—— 在 `~/.hermes/kanban/workspaces/<id>/` 下（非默认看板为 `~/.hermes/kanban/boards/<slug>/workspaces/<id>/`）创建的临时目录。**任务完成时删除** —— scratch 是临时性的，worker（或 `hermes kanban complete <id>`）将任务标记为完成的那一刻，目录即被清除。如果想保留 worker 的输出，请使用 `worktree:` 或 `dir:<path>`。在某次安装中首次创建 scratch 工作区时，调度器会记录警告并在任务上发出 `tip_scratch_workspace` 事件（可通过 `hermes kanban show <id>` 查看）。
+  - `scratch`（默认）—— 在 `~/.openagents/kanban/workspaces/<id>/` 下（非默认看板为 `~/.openagents/kanban/boards/<slug>/workspaces/<id>/`）创建的临时目录。**任务完成时删除** —— scratch 是临时性的，worker（或 `hermes kanban complete <id>`）将任务标记为完成的那一刻，目录即被清除。如果想保留 worker 的输出，请使用 `worktree:` 或 `dir:<path>`。在某次安装中首次创建 scratch 工作区时，调度器会记录警告并在任务上发出 `tip_scratch_workspace` 事件（可通过 `hermes kanban show <id>` 查看）。
   - `dir:<path>` —— 现有的共享目录（Obsidian vault、邮件运维目录、每账号文件夹）。**必须是绝对路径。** 像 `dir:../tenants/foo/` 这样的相对路径在调度时会被拒绝，因为它们会相对于调度器碰巧所在的 CWD 解析，这是模糊的，也是混淆代理（confused-deputy）逃逸向量。路径本身是受信任的 —— 这是你的机器、你的文件系统，worker 以你的 uid 运行。这是受信任本地用户的威胁模型；kanban 设计为单主机。**完成时保留。**
   - `worktree` —— 用于编码任务的 git worktree，位于 `.worktrees/<id>/` 下。使用 `worktree:<path>` 固定确切的目标路径。Worker 端的 `git worktree add` 创建它，提供 `--branch` 时使用该分支。**完成时保留。**
 - **Dispatcher（调度器）** —— 一个长期运行的循环，每 N 秒（默认 60 秒）执行一次：回收过期的认领、回收崩溃的 worker（PID 消失但 TTL 尚未过期）、推进就绪任务、原子性认领、启动已分配的配置文件。默认**在 gateway 内部运行**（`kanban.dispatch_in_gateway: true`）。每次 tick 一个调度器扫描所有看板；worker 启动时固定了 `HERMES_KANBAN_BOARD`，因此无法看到其他看板。在同一任务上连续启动失败 `kanban.failure_limit` 次（默认：2）后，调度器会以最后一个错误为原因自动阻塞该任务 —— 防止因配置文件不存在、工作区无法挂载等原因导致的反复抖动。
@@ -67,11 +67,11 @@ Hermes Kanban 是一个持久化任务看板，在所有 Hermes 配置文件之�
 
 ## 看板（多项目） {#boards-multi-project}
 
-看板让你将不相关的工作流分离到独立的队列中 —— 每个项目、仓库或领域一个。新安装只有一个名为 `default` 的看板（DB 位于 `~/.hermes/kanban.db`，保持向后兼容）。只需要一个工作流的用户无需了解看板；该功能是可选启用的。
+看板让你将不相关的工作流分离到独立的队列中 —— 每个项目、仓库或领域一个。新安装只有一个名为 `default` 的看板（DB 位于 `~/.openagents/kanban.db`，保持向后兼容）。只需要一个工作流的用户无需了解看板；该功能是可选启用的。
 
 每个看板的隔离是绝对的：
 
-- 每个看板有独立的 SQLite DB（`~/.hermes/kanban/boards/<slug>/kanban.db`）。
+- 每个看板有独立的 SQLite DB（`~/.openagents/kanban/boards/<slug>/kanban.db`）。
 - 独立的 `workspaces/` 和 `logs/` 目录。
 - 为任务启动的 Worker 只能看到**其所在看板**的任务 —— 调度器在子进程环境中设置 `HERMES_KANBAN_BOARD`，worker 可访问的每个 `kanban_*` 工具都会读取它。
 - 不允许跨看板链接任务（保持 schema 简单；如果确实需要跨项目引用，请使用自由文本提及并通过 id 手动查找）。
@@ -112,7 +112,7 @@ hermes kanban boards rm atm10-server --delete
 
 1. CLI 调用中的显式 `--board <slug>`。
 2. `HERMES_KANBAN_BOARD` 环境变量（调度器在启动 worker 时设置，因此 worker 无法看到其他看板）。
-3. `~/.hermes/kanban/current` —— 由 `hermes kanban boards switch` 持久化的 slug。
+3. `~/.openagents/kanban/current` —— 由 `hermes kanban boards switch` 持久化的 slug。
 4. `default`。
 
 Slug 经过验证：小写字母数字 + 连字符 + 下划线，1-64 个字符，必须以字母数字开头。大写输入会自动转为小写。其他任何内容（斜杠、空格、点、`..`）在 CLI 层被拒绝，以防止路径遍历技巧命名看板。
@@ -246,7 +246,7 @@ kanban_complete(summary="decomposed into 2 research tasks + 1 writer; linked dep
 
 三个原因：
 
-1. **后端可移植性。** 终端工具指向远程后端（Docker / Modal / Singularity / SSH）的 worker 会在容器*内部*运行 `hermes kanban complete`，而容器中没有安装 `hermes`，也没有挂载 `~/.hermes/kanban.db`。kanban 工具在 agent 自己的 Python 进程中运行，无论终端后端如何，始终能访问 `~/.hermes/kanban.db`。
+1. **后端可移植性。** 终端工具指向远程后端（Docker / Modal / Singularity / SSH）的 worker 会在容器*内部*运行 `hermes kanban complete`，而容器中没有安装 `hermes`，也没有挂载 `~/.openagents/kanban.db`。kanban 工具在 agent 自己的 Python 进程中运行，无论终端后端如何，始终能访问 `~/.openagents/kanban.db`。
 2. **无 shell 引用脆弱性。** 通过 shlex + argparse 传递 `--metadata '{"files": [...]}'` 是潜在的隐患。结构化工具参数完全绕过了这个问题。
 3. **更好的错误处理。** 工具结果是模型可以推理的结构化 JSON，而不是需要解析的 stderr 字符串。
 
@@ -263,7 +263,7 @@ kanban_complete(summary="decomposed into 2 research tasks + 1 writer; linked dep
 ```json
 {
   "changed_files": ["path/to/file.py"],
-  "verification": ["pytest tests/hermes_cli/test_kanban_db.py -q"],
+  "verification": ["pytest tests/openagents_cli/test_kanban_db.py -q"],
   "dependencies": ["parent task id or external issue, if any"],
   "blocked_reason": null,
   "retry_notes": "what failed before, if this was a retry",
@@ -399,7 +399,7 @@ hermes dashboard        # 导航栏中出现 "Kanban" 标签页，位于 "Skills
 
 分解器的路由决策依赖于配置文件描述，这是一个每配置文件的标签原语，通过 `hermes profile create --description "..."`、`hermes profile describe <name> --text "..."`、`hermes profile describe <name> --auto`（LLM 从配置文件安装的 skill + 模型自动生成），或仪表盘展开的 **Orchestration settings** 面板中的每配置文件编辑器来设置。没有描述的配置文件仍然出现在名册中 —— 它们可以按名称路由，只是精度较低。分解器**绝不**会将子任务落地为 `assignee=None`：当 LLM 选择未知配置文件时，子任务路由到 `kanban.default_assignee`（如果未设置，则路由到活动默认配置文件）。
 
-配置项（均在 `~/.hermes/config.yaml` 的 `kanban:` 下）：
+配置项（均在 `~/.openagents/config.yaml` 的 `kanban:` 下）：
 
 | 键 | 默认值 | 用途 |
 |---|---|---|
@@ -436,7 +436,7 @@ GUI 严格是一个**通过 DB 读取 + 通过 kanban_db 写入**的层，没有
            │                                                  │
            ▼                                                  │
 ┌────────────────────────┐                                    │
-│  ~/.hermes/kanban.db   │ ───── append task_events ──────────┘
+│  ~/.openagents/kanban.db   │ ───── append task_events ──────────┘
 │  (WAL, shared)         │
 └────────────────────────┘
 ```
@@ -471,7 +471,7 @@ GUI 严格是一个**通过 DB 读取 + 通过 kanban_db 写入**的层，没有
 
 ### 仪表盘配置
 
-`~/.hermes/config.yaml` 中 `dashboard.kanban` 下的任何这些键都会更改标签页的默认值 —— 插件在加载时通过 `GET /config` 读取它们：
+`~/.openagents/config.yaml` 中 `dashboard.kanban` 下的任何这些键都会更改标签页的默认值 —— 插件在加载时通过 `GET /config` 读取它们：
 
 ```yaml
 dashboard:
@@ -492,7 +492,7 @@ WebSocket 额外增加了一步：它要求仪表盘的临时会话 token 作为
 
 如果你运行 `hermes dashboard --host 0.0.0.0`，每个插件路由 —— 包括 kanban —— 都可以从网络访问。**不要在共享主机上这样做。** 看板包含任务正文、评论和工作区路径；攻击者访问这些路由可以读取你整个协作界面，还可以创建 / 重新分配 / 归档任务。
 
-`~/.hermes/kanban.db` 中的任务是有意与配置文件无关的（这是协调原语）。如果你用 `hermes -p <profile> dashboard` 打开仪表盘，看板仍然显示主机上任何其他配置文件创建的任务。同一用户拥有所有配置文件，但如果多个角色共存，这一点值得了解。
+`~/.openagents/kanban.db` 中的任务是有意与配置文件无关的（这是协调原语）。如果你用 `hermes -p <profile> dashboard` 打开仪表盘，看板仍然显示主机上任何其他配置文件创建的任务。同一用户拥有所有配置文件，但如果多个角色共存，这一点值得了解。
 
 ### 实时更新
 
@@ -500,7 +500,7 @@ WebSocket 额外增加了一步：它要求仪表盘的临时会话 token 作为
 
 ### 扩展
 
-插件使用标准的 Hermes 仪表盘插件契约 —— 完整的 manifest 参考、shell 槽、页面范围槽和 Plugin SDK，请参阅[扩展仪表盘](./extending-the-dashboard)。额外的列、自定义卡片样式、租户过滤布局或完整的 `tab.override` 替换都可以表达，无需 fork 此插件。
+插件使用标准的 OpenAgents 仪表盘插件契约 —— 完整的 manifest 参考、shell 槽、页面范围槽和 Plugin SDK，请参阅[扩展仪表盘](./extending-the-dashboard)。额外的列、自定义卡片样式、租户过滤布局或完整的 `tab.override` 替换都可以表达，无需 fork 此插件。
 
 要禁用而不删除：在 `config.yaml` 中添加 `dashboard.plugins.kanban.enabled: false`（或删除 `plugins/kanban/dashboard/manifest.json`）。
 
@@ -548,7 +548,7 @@ hermes kanban dispatch [--dry-run] [--max N]           # 单次扫描
 hermes kanban daemon --force                           # 已弃用 —— 独立调度器（改用 `hermes gateway start`）
         [--failure-limit N] [--pidfile PATH] [-v]
 hermes kanban stats [--json]                           # 每状态 + 每受让人计数
-hermes kanban log <id> [--tail BYTES]                  # 来自 ~/.hermes/kanban/logs/ 的 worker 日志
+hermes kanban log <id> [--tail BYTES]                  # 来自 ~/.openagents/kanban/logs/ 的 worker 日志
 hermes kanban notify-subscribe <id>                    # gateway 桥接钩子（由 gateway 中的 /kanban 使用）
         --platform <name> --chat-id <id> [--thread-id <id>] [--user-id <id>]
 hermes kanban notify-list [<id>] [--json]
@@ -567,7 +567,7 @@ hermes kanban gc [--event-retention-days N]            # 工作区 + 旧事件 +
 
 ## `/kanban` 斜杠命令 {#kanban-slash-command}
 
-每个 `hermes kanban <action>` 动词也可以作为 `/kanban <action>` 访问 —— 从交互式 `hermes chat` 会话内部**以及**从任何 gateway 平台（Telegram、Discord、Slack、WhatsApp、Signal、Matrix、Mattermost、电子邮件、SMS）。两个界面都调用完全相同的 `hermes_cli.kanban.run_slash()` 入口点，该入口点复用 `hermes kanban` argparse 树，因此参数界面、标志和输出格式在 CLI、`/kanban` 和 `hermes kanban` 之间完全相同。你不必离开聊天来驱动看板。
+每个 `hermes kanban <action>` 动词也可以作为 `/kanban <action>` 访问 —— 从交互式 `hermes chat` 会话内部**以及**从任何 gateway 平台（Telegram、Discord、Slack、WhatsApp、Signal、Matrix、Mattermost、电子邮件、SMS）。两个界面都调用完全相同的 `openagents_cli.kanban.run_slash()` 入口点，该入口点复用 `hermes kanban` argparse 树，因此参数界面、标志和输出格式在 CLI、`/kanban` 和 `hermes kanban` 之间完全相同。你不必离开聊天来驱动看板。
 
 ```
 /kanban list
@@ -584,7 +584,7 @@ hermes kanban gc [--event-retention-days N]            # 工作区 + 旧事件 +
 
 ### 运行中使用：`/kanban` 绕过运行中 agent 保护
 
-Gateway 通常在 agent 仍在思考时将斜杠命令和用户消息排队 —— 这就是防止你在第一轮还在进行时意外启动第二轮的机制。**`/kanban` 被明确豁免于此保护。** 看板存在于 `~/.hermes/kanban.db` 中，而不是运行中 agent 的状态中，因此读取（`list`、`show`、`context`、`tail`、`watch`、`stats`、`runs`）和写入（`comment`、`unblock`、`block`、`assign`、`archive`、`create`、`link` 等）都会立即执行，即使在轮次进行中。
+Gateway 通常在 agent 仍在思考时将斜杠命令和用户消息排队 —— 这就是防止你在第一轮还在进行时意外启动第二轮的机制。**`/kanban` 被明确豁免于此保护。** 看板存在于 `~/.openagents/kanban.db` 中，而不是运行中 agent 的状态中，因此读取（`list`、`show`、`context`、`tail`、`watch`、`stats`、`runs`）和写入（`comment`、`unblock`、`block`、`assign`、`archive`、`create`、`link` 等）都会立即执行，即使在轮次进行中。
 
 这就是分离的全部意义：
 
@@ -762,7 +762,7 @@ hermes kanban runs t_abcd
 
 ## 范围之外
 
-Kanban 是刻意单主机的。`~/.hermes/kanban.db` 是本地 SQLite 文件，调度器在同一台机器上启动 worker。不支持跨两台主机运行共享看板 —— 没有"主机 A 上的 worker X，主机 B 上的 worker Y"的协调原语，崩溃检测路径假设 PID 是主机本地的。如果你需要多主机，每台主机运行独立的看板，并使用 `delegate_task` / 消息队列来桥接它们。
+Kanban 是刻意单主机的。`~/.openagents/kanban.db` 是本地 SQLite 文件，调度器在同一台机器上启动 worker。不支持跨两台主机运行共享看板 —— 没有"主机 A 上的 worker X，主机 B 上的 worker Y"的协调原语，崩溃检测路径假设 PID 是主机本地的。如果你需要多主机，每台主机运行独立的看板，并使用 `delegate_task` / 消息队列来桥接它们。
 
 ## 设计规范
 

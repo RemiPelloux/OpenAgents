@@ -1,17 +1,17 @@
 ---
 sidebar_position: 6
 title: "Signal"
-description: "通过 signal-cli 守护进程将 Hermes Agent 设置为 Signal 机器人"
+description: "通过 signal-cli 守护进程将 OpenAgents 设置为 Signal 机器人"
 ---
 
 # Signal 配置
 
-Hermes 通过以 HTTP 模式运行的 [signal-cli](https://github.com/AsamK/signal-cli) 守护进程连接到 Signal。适配器通过 SSE（Server-Sent Events，服务器推送事件）实时接收消息，并通过 JSON-RPC 发送响应。
+OpenAgents 通过以 HTTP 模式运行的 [signal-cli](https://github.com/AsamK/signal-cli) 守护进程连接到 Signal。适配器通过 SSE（Server-Sent Events，服务器推送事件）实时接收消息，并通过 JSON-RPC 发送响应。
 
 Signal 是隐私保护最完善的主流即时通讯工具——默认端对端加密、开源协议、极少的元数据收集。这使其非常适合对安全性要求较高的 Agent 工作流。
 
 :::info 无需新增 Python 依赖
-Signal 适配器使用 `httpx`（已是 Hermes 的核心依赖）进行所有通信，无需安装额外的 Python 包。你只需在外部安装 signal-cli。
+Signal 适配器使用 `httpx`（已是 OpenAgents 的核心依赖）进行所有通信，无需安装额外的 Python 包。你只需在外部安装 signal-cli。
 :::
 
 ---
@@ -96,7 +96,7 @@ hermes gateway setup
 
 ### 手动配置
 
-在 `~/.hermes/.env` 中添加：
+在 `~/.openagents/.env` 中添加：
 
 ```bash
 # 必填
@@ -125,7 +125,7 @@ sudo hermes gateway install --system   # 仅 Linux：开机自启系统服务
 
 ### 私信访问
 
-私信访问遵循与其他 Hermes 平台相同的模式：
+私信访问遵循与其他 OpenAgents 平台相同的模式：
 
 1. **已设置 `SIGNAL_ALLOWED_USERS`** → 仅允许这些用户发送消息
 2. **未设置白名单** → 未知用户会收到私信配对码（通过 `hermes pairing approve signal CODE` 审批）
@@ -176,7 +176,7 @@ Agent 可通过响应中的 `MEDIA:` 标签发送媒体文件，支持以下投�
 
 Signal 消息以**原生格式**渲染，而非显示原始 markdown 字符。适配器将 markdown（`**粗体**`、`*斜体*`、`` `代码` ``、`~~删除线~~`、`||剧透||`、标题）转换为 Signal `bodyRanges`，使文本在接收方客户端以真实样式显示，而非可见的 `**` 或 `` ` `` 字符。
 
-**引用回复。** 当 Hermes 回复某条特定消息时，会发送原生引用回复——与 Signal 用户使用"回复"功能时看到的 UI 效果相同。对于响应入站消息而生成的回复，此功能自动生效。
+**引用回复。** 当 OpenAgents 回复某条特定消息时，会发送原生引用回复——与 Signal 用户使用"回复"功能时看到的 UI 效果相同。对于响应入站消息而生成的回复，此功能自动生效。
 
 **表情回应。** Agent 可通过标准 reaction API 对消息添加表情回应；回应会以 emoji 形式显示在被引用消息上，而非额外的文字。
 
@@ -190,11 +190,11 @@ Signal 消息以**原生格式**渲染，而非显示原始 markdown 字符。�
 
 所有手机号在日志中自动脱敏：
 - `+15551234567` → `+155****4567`
-- 适用于 Hermes gateway 日志和全局脱敏系统
+- 适用于 OpenAgents gateway 日志和全局脱敏系统
 
 ### 给自己发消息（单号码配置）
 
-如果你将 signal-cli 作为自己手机号的**关联辅助设备**运行（而非单独的机器人号码），可以通过 Signal 的"给自己发消息"功能与 Hermes 交互。
+如果你将 signal-cli 作为自己手机号的**关联辅助设备**运行（而非单独的机器人号码），可以通过 Signal 的"给自己发消息"功能与 OpenAgents 交互。
 
 只需从手机向自己发送消息——signal-cli 会接收到该消息，Hermes 在同一会话中响应。
 

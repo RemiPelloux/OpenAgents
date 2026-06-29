@@ -31,12 +31,12 @@ class TestWriteDenyExactPaths:
 
 
     def test_hermes_env(self):
-        # ``.env`` under the active HERMES_HOME (profile-aware, not just
-        # ``~/.hermes``) must be write-denied. The hermetic test conftest
-        # points HERMES_HOME at a tempdir — resolve via get_hermes_home()
+        # ``.env`` under the active OPENAGENTS_HOME (profile-aware, not just
+        # ``~/.openagents``) must be write-denied. The hermetic test conftest
+        # points OPENAGENTS_HOME at a tempdir — resolve via get_openagents_home()
         # to match the denylist.
-        from hermes_constants import get_hermes_home
-        path = str(get_hermes_home() / ".env")
+        from openagents_constants import get_openagents_home
+        path = str(get_openagents_home() / ".env")
         assert _is_write_denied(path) is True
 
     def test_hermes_root_env_when_running_under_profile(self, tmp_path, monkeypatch):
@@ -45,7 +45,7 @@ class TestWriteDenyExactPaths:
 
         Before the fix, ``build_write_denied_paths`` only added
         ``<active_profile>/.env`` to the deny list, so the global
-        ``~/.hermes/.env`` (whose credentials are inherited by every profile)
+        ``~/.openagents/.env`` (whose credentials are inherited by every profile)
         could be silently overwritten by ``write_file`` while a profile was
         active.
         """
@@ -55,12 +55,12 @@ class TestWriteDenyExactPaths:
         global_env = root / ".env"
         global_env.write_text("OPENAI_API_KEY=sk-real\n")
 
-        monkeypatch.setenv("HERMES_HOME", str(profile_home))
+        monkeypatch.setenv("OPENAGENTS_HOME", str(profile_home))
 
-        # Sanity check: HERMES_HOME does point to the profile dir, not the root.
-        from hermes_constants import get_hermes_home, get_default_hermes_root
-        assert get_hermes_home() == profile_home
-        assert get_default_hermes_root() == root
+        # Sanity check: OPENAGENTS_HOME does point to the profile dir, not the root.
+        from openagents_constants import get_openagents_home, get_default_openagents_root
+        assert get_openagents_home() == profile_home
+        assert get_default_openagents_root() == root
 
         assert _is_write_denied(str(global_env)) is True
 
@@ -121,8 +121,8 @@ class TestWriteAllowed:
         assert _is_write_denied("/home/user/project/main.py") is False
 
     def test_hermes_control_files_requested_writable(self):
-        from hermes_constants import get_hermes_home
+        from openagents_constants import get_openagents_home
 
-        home = get_hermes_home()
+        home = get_openagents_home()
         for name in ["auth.json", "config.yaml", "webhook_subscriptions.json"]:
             assert _is_write_denied(str(home / name)) is False, f"{name} should be writable"

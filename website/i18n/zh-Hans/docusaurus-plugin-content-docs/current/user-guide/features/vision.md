@@ -1,13 +1,13 @@
 ---
 title: 视觉与图像粘贴
-description: 将剪贴板中的图像粘贴到 Hermes CLI，进行多模态视觉分析。
+description: 将剪贴板中的图像粘贴到 OpenAgents CLI，进行多模态视觉分析。
 sidebar_label: 视觉与图像粘贴
 sidebar_position: 7
 ---
 
 # 视觉与图像粘贴
 
-Hermes Agent 支持**多模态视觉**——你可以直接将剪贴板中的图像粘贴到 CLI，让 Agent 对其进行分析、描述或处理。图像以 base64 编码的内容块形式发送给模型，因此任何支持视觉的模型均可处理。
+OpenAgents 支持**多模态视觉**——你可以直接将剪贴板中的图像粘贴到 CLI，让 Agent 对其进行分析、描述或处理。图像以 base64 编码的内容块形式发送给模型，因此任何支持视觉的模型均可处理。
 
 ## 工作原理
 
@@ -19,7 +19,7 @@ Hermes Agent 支持**多模态视觉**——你可以直接将剪贴板中的图
 
 发送前可附加多张图像，每张图像都有独立徽章。按 `Ctrl+C` 可清除所有已附加图像。
 
-图像以带时间戳的 PNG 文件名保存至 `~/.hermes/images/`。
+图像以带时间戳的 PNG 文件名保存至 `~/.openagents/images/`。
 
 ## 粘贴方式
 
@@ -37,7 +37,7 @@ Hermes Agent 支持**多模态视觉**——你可以直接将剪贴板中的图
 
 ### Ctrl+V / Cmd+V
 
-Hermes 现在将粘贴处理为分层流程：
+OpenAgents 现在将粘贴处理为分层流程：
 - 优先进行普通文本粘贴
 - 若终端未能正常传递文本，则回退到原生剪贴板 / OSC52 文本
 - 当剪贴板或粘贴内容解析为图像或图像路径时，附加图像
@@ -78,7 +78,7 @@ Hermes 现在将粘贴处理为分层流程：
 
 ### macOS
 
-**无需任何配置。** Hermes 使用 `osascript`（macOS 内置）读取剪贴板。如需更快的性能，可选择安装 `pngpaste`：
+**无需任何配置。** OpenAgents 使用 `osascript`（macOS 内置）读取剪贴板。如需更快的性能，可选择安装 `pngpaste`：
 
 ```bash
 brew install pngpaste
@@ -123,7 +123,7 @@ echo $XDG_SESSION_TYPE
 
 ### WSL2
 
-**无需额外配置。** Hermes 通过 `/proc/version` 自动检测 WSL2，并使用 `powershell.exe` 通过 .NET 的 `System.Windows.Forms.Clipboard` 访问 Windows 剪贴板。这是 WSL2 Windows 互操作的内置功能——`powershell.exe` 默认可用。
+**无需额外配置。** OpenAgents 通过 `/proc/version` 自动检测 WSL2，并使用 `powershell.exe` 通过 .NET 的 `System.Windows.Forms.Clipboard` 访问 Windows 剪贴板。这是 WSL2 Windows 互操作的内置功能——`powershell.exe` 默认可用。
 
 剪贴板数据通过 stdout 以 base64 编码的 PNG 格式传输，无需路径转换或临时文件。
 
@@ -147,9 +147,9 @@ powershell.exe -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms;
 
 ## SSH 与远程会话
 
-**通过 SSH 进行剪贴板图像粘贴无法完全正常工作。** 当你 SSH 到远程机器时，Hermes CLI 运行在远程主机上。剪贴板工具（`xclip`、`wl-paste`、`powershell.exe`、`osascript`）读取的是其所在机器的剪贴板——即远程服务器，而非你的本地机器。因此，本地剪贴板中的图像在远程端无法访问。
+**通过 SSH 进行剪贴板图像粘贴无法完全正常工作。** 当你 SSH 到远程机器时，OpenAgents CLI 运行在远程主机上。剪贴板工具（`xclip`、`wl-paste`、`powershell.exe`、`osascript`）读取的是其所在机器的剪贴板——即远程服务器，而非你的本地机器。因此，本地剪贴板中的图像在远程端无法访问。
 
-文本有时仍可通过终端粘贴或 OSC52 传输，但图像剪贴板访问和本地截图临时路径始终绑定于运行 Hermes 的机器。
+文本有时仍可通过终端粘贴或 OSC52 传输，但图像剪贴板访问和本地截图临时路径始终绑定于运行 OpenAgents 的机器。
 
 ### SSH 的变通方案
 
@@ -159,7 +159,7 @@ powershell.exe -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms;
 
 3. **X11 转发**——使用 `ssh -X` 连接以转发 X11。这允许远程机器上的 `xclip` 访问你本地的 X11 剪贴板。需要本地运行 X 服务器（macOS 上为 XQuartz，Linux X11 桌面内置）。大图像传输较慢。
 
-4. **使用消息平台**——通过 Telegram、Discord、Slack 或 WhatsApp 向 Hermes 发送图像。这些平台原生支持图像上传，不受剪贴板/终端限制的影响。
+4. **使用消息平台**——通过 Telegram、Discord、Slack 或 WhatsApp 向 OpenAgents 发送图像。这些平台原生支持图像上传，不受剪贴板/终端限制的影响。
 
 ## 为什么终端无法粘贴图像
 
@@ -173,7 +173,7 @@ powershell.exe -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms;
 
 如果剪贴板中只有图像（无文本），终端没有任何内容可发送。目前没有标准的终端转义序列用于传输二进制图像数据，终端会直接忽略。
 
-这就是为什么 Hermes 使用独立的剪贴板检查——它不通过终端粘贴事件接收图像数据，而是直接通过子进程调用操作系统级工具（`osascript`、`powershell.exe`、`xclip`、`wl-paste`）独立读取剪贴板。
+这就是为什么 OpenAgents 使用独立的剪贴板检查——它不通过终端粘贴事件接收图像数据，而是直接通过子进程调用操作系统级工具（`osascript`、`powershell.exe`、`xclip`、`wl-paste`）独立读取剪贴板。
 
 ## 支持的模型
 

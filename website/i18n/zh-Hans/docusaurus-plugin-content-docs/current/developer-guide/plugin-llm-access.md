@@ -161,7 +161,7 @@ def _paste_to_tasks(ctx, raw_args: str) -> str:
 
 第三个完整示例（包含图像输入）位于
 [`hermes-example-plugins`](https://github.com/NousResearch/hermes-example-plugins/tree/main/plugin-llm-example)
-仓库（参考 plugin 的配套仓库——不随 hermes-agent 本体打包）。关于异步接口（`acomplete()` / `acomplete_structured()` 与 `asyncio.gather()` 配合使用），请参见同一仓库中的
+仓库（参考 plugin 的配套仓库——不随 openagents 本体打包）。关于异步接口（`acomplete()` / `acomplete_structured()` 与 `asyncio.gather()` 配合使用），请参见同一仓库中的
 [`plugin-llm-async-example`](https://github.com/NousResearch/hermes-example-plugins/tree/main/plugin-llm-async-example)。
 
 ## 何时使用哪种方式
@@ -279,8 +279,8 @@ plugins:
   entries:
     my-plugin:
       llm:
-        # 允许此 plugin 选择不同的 Hermes provider
-        # （必须是 Hermes 已知的 provider——与
+        # 允许此 plugin 选择不同的 OpenAgents provider
+        # （必须是 OpenAgents 已知的 provider——与
         # `hermes model` 和 config.yaml model.provider 中的名称相同）
         allow_provider_override: true
 
@@ -294,7 +294,7 @@ plugins:
 
         # 可选：限制允许的模型。使用 ["*"] 表示任意。
         # 模型与 plugin 发送的字符串进行字面匹配——
-        # Hermes 不做任何查找。
+        # OpenAgents 不做任何查找。
         allowed_models:
           - openai/gpt-4o-mini
           - anthropic/claude-3-5-haiku
@@ -332,9 +332,9 @@ Plugin id 对于扁平 plugin 是 manifest 中的 `name:` 字段，对于嵌套 
 以下是 `ctx.llm` 为 plugin 代劳的完整列表，你无需自行处理：
 
 * **Provider 解析。** 从用户配置中读取 `model.provider` + `model.model`（或在受信任时读取显式覆盖值）。
-* **认证。** 从 `~/.hermes/auth.json` / 环境变量中提取 API 密钥、OAuth token 或刷新 token，包括配置了凭据池时的处理。Plugin 永远看不到这些内容。
+* **认证。** 从 `~/.openagents/auth.json` / 环境变量中提取 API 密钥、OAuth token 或刷新 token，包括配置了凭据池时的处理。Plugin 永远看不到这些内容。
 * **视觉路由。** 当提供图像输入而用户当前激活的文本模型仅支持文本时，宿主自动回退到已配置的视觉模型。
-* **回退链。** 若用户主 provider 返回 5xx 或 429，请求在向 plugin 返回错误前会经过 Hermes 常规的聚合器感知回退流程。
+* **回退链。** 若用户主 provider 返回 5xx 或 429，请求在向 plugin 返回错误前会经过 OpenAgents 常规的聚合器感知回退流程。
 * **超时。** 遵循你的 `timeout=` 参数，回退到 `auxiliary.<task>.timeout` 配置或全局辅助默认值。
 * **JSON 塑形。** 在你请求 JSON 时向 provider 发送 `response_format`，若 provider 返回了代码围栏格式的响应则在本地重新解析。
 * **Schema 验证。** 安装了 `jsonschema` 时对你的 `json_schema` 进行验证；否则记录一行 debug 日志并跳过严格验证。
@@ -349,7 +349,7 @@ Plugin id 对于扁平 plugin 是 manifest 中的 `name:` 字段，对于嵌套 
 
 ## 在 plugin 接口中的定位
 
-现有 `ctx.*` 方法各自扩展一个已有的 Hermes 子系统：
+现有 `ctx.*` 方法各自扩展一个已有的 OpenAgents 子系统：
 
 | `ctx.register_tool` | 添加 agent 可调用的工具 |
 | `ctx.register_platform` | 接入新的 gateway 适配器 |
@@ -362,8 +362,8 @@ Plugin id 对于扁平 plugin 是 manifest 中的 `name:` 字段，对于嵌套 
 
 ## 参考资料
 
-* 实现：[`agent/plugin_llm.py`](https://github.com/NousResearch/hermes-agent/blob/main/agent/plugin_llm.py)
-* 测试：[`tests/agent/test_plugin_llm.py`](https://github.com/NousResearch/hermes-agent/blob/main/tests/agent/test_plugin_llm.py)
+* 实现：[`agent/plugin_llm.py`](https://github.com/NousResearch/openagents/blob/main/agent/plugin_llm.py)
+* 测试：[`tests/agent/test_plugin_llm.py`](https://github.com/NousResearch/openagents/blob/main/tests/agent/test_plugin_llm.py)
 * 参考 plugin（配套仓库）：
   * [`plugin-llm-example`](https://github.com/NousResearch/hermes-example-plugins/tree/main/plugin-llm-example) — 带图像输入的同步结构化提取
   * [`plugin-llm-async-example`](https://github.com/NousResearch/hermes-example-plugins/tree/main/plugin-llm-async-example) — 使用 `asyncio.gather()` 的异步示例

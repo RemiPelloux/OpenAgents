@@ -169,14 +169,14 @@ hermes auth add Together.ai --api-key sk-together-second-key
 
 ## 自动发现
 
-Hermes 在启动时自动从多个来源发现凭证并初始化池：
+OpenAgents 在启动时自动从多个来源发现凭证并初始化池：
 
 | 来源 | 示例 | 自动初始化？ |
 |--------|---------|-------------|
 | 环境变量 | `OPENROUTER_API_KEY`、`ANTHROPIC_API_KEY` | 是 |
 | OAuth 令牌（auth.json） | Codex device code、Nous device code | 是 |
 | Claude Code 凭证 | `~/.claude/.credentials.json` | 是（Anthropic） |
-| Hermes PKCE OAuth | `~/.hermes/auth.json` | 是（Anthropic） |
+| OpenAgents PKCE OAuth | `~/.openagents/auth.json` | 是（Anthropic） |
 | 自定义端点配置 | `config.yaml` 中的 `model.api_key` | 是（自定义端点） |
 | 手动条目 | 通过 `hermes auth add` 添加 | 持久化至 auth.json |
 
@@ -203,13 +203,13 @@ Hermes 在启动时自动从多个来源发现凭证并初始化池：
 凭证池集成于提供商解析层：
 
 1. **`agent/credential_pool.py`** — 池管理器：存储、选择、轮换、冷却时间
-2. **`hermes_cli/auth_commands.py`** — CLI 命令和交互式向导
-3. **`hermes_cli/runtime_provider.py`** — 感知池的凭证解析
+2. **`openagents_cli/auth_commands.py`** — CLI 命令和交互式向导
+3. **`openagents_cli/runtime_provider.py`** — 感知池的凭证解析
 4. **`run_agent.py`** — 错误恢复：429/402/401 → 池轮换 → 备用
 
 ## 存储
 
-池状态存储在 `~/.hermes/auth.json` 的 `credential_pool` 键下：
+池状态存储在 `~/.openagents/auth.json` 的 `credential_pool` 键下：
 
 ```json
 {

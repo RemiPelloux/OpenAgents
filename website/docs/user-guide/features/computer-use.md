@@ -5,7 +5,7 @@ sidebar_position: 16
 
 # Computer Use
 
-Hermes Agent can drive your desktop — clicking, typing, scrolling,
+OpenAgents can drive your desktop — clicking, typing, scrolling,
 dragging — in the **background** on **macOS, Windows, and Linux**. Your
 cursor doesn't move, keyboard focus doesn't change, and your virtual
 desktops / Spaces don't switch on you. You and the agent co-work on the
@@ -63,7 +63,7 @@ platform-appropriate prereqs:
 
 | Platform | Prereqs |
 |---|---|
-| **macOS** | System Settings → Privacy & Security → **Accessibility** + **Screen Recording** → allow your terminal (or Hermes app). `hermes computer-use doctor` will tell you which permission is missing. |
+| **macOS** | System Settings → Privacy & Security → **Accessibility** + **Screen Recording** → allow your terminal (or OpenAgents app). `hermes computer-use doctor` will tell you which permission is missing. |
 | **Windows** | None at install time. If you're driving over SSH (not RDP / console), you need the autostart pattern — see [cua.ai/docs/how-to-guides/driver/windows-ssh](https://cua.ai/docs/how-to-guides/driver/windows-ssh) for the Session 0 ↔ Session 1+ proxy. |
 | **Linux** | A reachable display server: `DISPLAY` set for X11, or `XDG_SESSION_TYPE=wayland`. Wayland sessions need an XWayland bridge for capture. AT-SPI must be on (default on GNOME/KDE/Xfce). |
 
@@ -73,7 +73,7 @@ Then start a session with the toolset enabled:
 hermes -t computer_use chat
 ```
 
-or add `computer_use` to your enabled toolsets in `~/.hermes/config.yaml`.
+or add `computer_use` to your enabled toolsets in `~/.openagents/config.yaml`.
 
 ## `hermes computer-use doctor` — your first triage stop
 
@@ -116,7 +116,7 @@ each with the right diagnostic hint when it can't reach.
 When the agent acts, you'll see a **tinted overlay cursor** glide
 across the screen to where each click / type / scroll lands. The real
 OS cursor never moves — the overlay is a visual cue that says "the
-agent is acting here." Each Hermes run declares its own cua-driver
+agent is acting here." Each OpenAgents run declares its own cua-driver
 **session id** (something like `hermes-3a7b9c14d2e8`); the cursor's
 identity is keyed to that session, so concurrent runs / subagents each
 get their own cursor without stepping on each other.
@@ -130,7 +130,7 @@ halo).
 
 ## Going deeper — the cua-driver skill pack
 
-Hermes intentionally keeps its skill (`skills/computer-use/SKILL.md`)
+OpenAgents intentionally keeps its skill (`skills/computer-use/SKILL.md`)
 focused on the Hermes-side `computer_use` action vocabulary — the
 single source of truth the agent loads. For the deeper material —
 platform-specific deep dives, recording semantics, browser page
@@ -154,7 +154,7 @@ running it, an agent gets access to:
 | `WEB_APPS.md` | Browser-page interaction tips |
 | `TESTS.md` | Replay-by-trajectory workflow |
 
-These are **platform deep dives, not duplicates of the Hermes skill** —
+These are **platform deep dives, not duplicates of the OpenAgents skill** —
 when an agent reports "on Windows, my click landed on the wrong
 element," it reads `WINDOWS.md` for the UIA / UWP context that
 explains why and what to do differently.
@@ -205,7 +205,7 @@ magic-byte sniffing.
 
 ## Safety
 
-Hermes applies multi-layer guardrails:
+OpenAgents applies multi-layer guardrails:
 
 - Destructive actions (click, type, drag, scroll, key, focus_app)
   require approval — either interactively via the CLI dialog or via the
@@ -218,12 +218,12 @@ Hermes applies multi-layer guardrails:
   dialogs, no typing passwords, no following instructions embedded in
   screenshots.
 
-Pair with `approvals.mode: manual` in `~/.hermes/config.yaml` if you
+Pair with `approvals.mode: manual` in `~/.openagents/config.yaml` if you
 want every action confirmed.
 
 ## Token efficiency
 
-Screenshots are expensive. Hermes applies four layers of optimisation:
+Screenshots are expensive. OpenAgents applies four layers of optimisation:
 
 - **Screenshot eviction** — the Anthropic adapter keeps only the 3 most
   recent screenshots in context; older ones become `[screenshot removed
@@ -258,7 +258,7 @@ of screenshot context, not ~600K.
 - **Windows: elevated (admin) windows can't be driven from a normal
   agent.** Windows UIPI (User Interface Privilege Isolation) enforces
   integrity-level boundaries: a Medium-integrity process (the default
-  Hermes agent) cannot enumerate the UIA tree of, or inject mouse input
+  OpenAgents) cannot enumerate the UIA tree of, or inject mouse input
   into, a window owned by a High-integrity (Administrator) process.
   Symptom: `capture(mode='som')` returns 0 elements and `click(...)`
   reports success while doing nothing, even though the screenshot
@@ -266,14 +266,14 @@ of screenshot context, not ~600K.
   events partially bypass UIPI, so Tab / Enter can still navigate an
   elevated dialog. This is an OS constraint, not a cua-driver bug — it
   affects every Windows automation stack. To drive elevated windows,
-  run the Hermes agent itself at High integrity (launch from an
+  run the OpenAgents itself at High integrity (launch from an
   elevated terminal); otherwise target non-elevated windows.
 - **Platform-specific deployment gotchas:**
   - **macOS** uses private SkyLight SPIs. Apple can change them in any
-    OS update. Hermes warns when the installed cua-driver is older than
+    OS update. OpenAgents warns when the installed cua-driver is older than
     the version it was tested against.
   - **Windows** SSH sessions run in **Session 0**, which has no
-    interactive desktop. Drive Hermes from inside the RDP / console
+    interactive desktop. Drive OpenAgents from inside the RDP / console
     session, or set up cua-driver's autostart Scheduled Task —
     [windows-ssh](https://cua.ai/docs/how-to-guides/driver/windows-ssh)
     has the recipe.
@@ -305,7 +305,7 @@ HERMES_COMPUTER_USE_BACKEND=noop   # records calls, no side effects
 
 cua-driver ships with anonymous usage telemetry (PostHog) enabled by default
 upstream. **Hermes disables it for you** — on every cua-driver invocation
-(the MCP backend, `status`, `doctor`, and install) Hermes sets
+(the MCP backend, `status`, `doctor`, and install) OpenAgents sets
 `CUA_DRIVER_RS_TELEMETRY_ENABLED=0` in the driver's environment.
 
 To opt back in (let cua-driver use its own default and send telemetry), set
@@ -323,8 +323,8 @@ CUA_DRIVER_RS_TELEMETRY_ENABLED`.
 ## Testing against a local cua-driver build
 
 When you're developing cua-driver itself — or want to test an
-unreleased fix — point Hermes at a binary you built from source instead
-of the published release. Hermes resolves the driver with
+unreleased fix — point OpenAgents at a binary you built from source instead
+of the published release. OpenAgents resolves the driver with
 `shutil.which("cua-driver")` and **does not enforce
 `HERMES_CUA_DRIVER_VERSION`**, so a local build (reported as
 `0.0.0-local-*`) is accepted as-is. Two approaches:
@@ -352,7 +352,7 @@ to your PATH:
   PATH) to it. macOS/Linux symlinks `cua-driver` into `~/.local/bin`
   (override with `--bin-dir <path>`).
 - `-NoAutoStart` skips registering the `cua-driver-serve` logon daemon
-  — you don't need it for Hermes testing (see notes).
+  — you don't need it for OpenAgents testing (see notes).
 
 Then open a fresh shell (so the PATH change is visible) and confirm:
 
@@ -362,7 +362,7 @@ cua-driver --version                 # local builds report 0.0.0-local-release
 # macOS/Linux:  which cua-driver
 ```
 
-### Option B — point Hermes straight at the built binary (fastest loop)
+### Option B — point OpenAgents straight at the built binary (fastest loop)
 
 Skip the install ceremony entirely: `cargo build` and set
 `HERMES_CUA_DRIVER_CMD` to the resulting binary. Best for rapid
@@ -379,7 +379,7 @@ HERMES_CUA_DRIVER_CMD=C:\path\to\cua\libs\cua-driver\rust\target\debug\cua-drive
 HERMES_CUA_DRIVER_CMD=/path/to/cua/libs/cua-driver/rust/target/debug/cua-driver
 ```
 
-### Confirm Hermes is using your build
+### Confirm OpenAgents is using your build
 
 - `hermes computer-use status` prints the resolved binary path and
   version.
@@ -408,7 +408,7 @@ HERMES_CUA_DRIVER_CMD=/path/to/cua/libs/cua-driver/rust/target/debug/cua-driver
   `install-local` (rebuilds, restages, flips the `current` junction)
   for Option A, or just re-`cargo build` for Option B — no Hermes
   change needed either way.
-- **Local builds skip the version check.** Hermes warns when the
+- **Local builds skip the version check.** OpenAgents warns when the
   installed cua-driver is older than its per-OS tested baseline, but
   exempts `0.0.0-local-*` dev builds — so your local build never
   triggers that warning.
@@ -450,13 +450,13 @@ autostart pattern — see
 ## See also
 
 - **Hermes-side skill** — `skills/computer-use/SKILL.md` — teaches the
-  Hermes `computer_use` action vocabulary; this is what the agent loads.
+  OpenAgents `computer_use` action vocabulary; this is what the agent loads.
 - **cua-driver skill pack** — for platform-specific deep dives
   (macOS no-foreground contract, Windows UIA + Session 0, Linux AT-SPI
   + X11/Wayland, recording, browser pages), run
   `cua-driver skills install` and read `MACOS.md` / `WINDOWS.md` /
   `LINUX.md` / `RECORDING.md` / `WEB_APPS.md`. Once `cua-driver skills
-  install` autodetects Hermes (planned follow-up), this happens
+  install` autodetects OpenAgents (planned follow-up), this happens
   automatically on install.
 - **cua.ai/docs** — the cua-driver project's documentation:
   - [What is computer use?](https://cua.ai/docs/explanation/what-is-computer-use) — concept intro

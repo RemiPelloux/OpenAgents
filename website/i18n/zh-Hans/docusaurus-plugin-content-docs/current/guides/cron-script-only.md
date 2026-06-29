@@ -8,7 +8,7 @@ description: "完全跳过 LLM 的经典看门狗 cron 任务——脚本按计�
 
 有时你已经清楚地知道要发送什么消息。你不需要 agent 来推理——你只需要一个脚本按计时器运行，并将其输出（如有）发送到 Telegram / Discord / Slack / Signal。
 
-Hermes 将此称为**无 agent 模式**。这是去掉 LLM 的 cron 系统。
+OpenAgents 将此称为**无 agent 模式**。这是去掉 LLM 的 cron 系统。
 
 <!-- ascii-guard-ignore -->
 ```
@@ -28,7 +28,7 @@ Hermes 将此称为**无 agent 模式**。这是去掉 LLM 的 cron 系统。
 
 - **无 LLM 调用。** 零 token，零 agent 循环，零模型费用。
 - **脚本即任务。** 由脚本决定是否告警。有输出 → 发送消息；无输出 → 静默执行。
-- **Bash 或 Python。** `.sh` / `.bash` 文件在 `/bin/bash` 下运行；其他扩展名在当前 Python 解释器下运行。`~/.hermes/scripts/` 中的任何文件均可接受。
+- **Bash 或 Python。** `.sh` / `.bash` 文件在 `/bin/bash` 下运行；其他扩展名在当前 Python 解释器下运行。`~/.openagents/scripts/` 中的任何文件均可接受。
 - **同一调度器。** 与 LLM 任务共存于 `cronjob` 中——暂停、恢复、列出、日志和投递目标的操作方式完全相同。
 
 ## 适用场景
@@ -51,7 +51,7 @@ Hermes 将此称为**无 agent 模式**。这是去掉 LLM 的 cron 系统。
 
 > **你：** 每 5 分钟检查一次，如果内存超过 85% 就在 telegram 通知我
 >
-> **Hermes：** *（写入 `~/.hermes/scripts/memory-watchdog.sh`，然后以 `no_agent=true` 调用 `cronjob(...)`）*
+> **Hermes：** *（写入 `~/.openagents/scripts/memory-watchdog.sh`，然后以 `no_agent=true` 调用 `cronjob(...)`）*
 >
 > 已设置。每 5 分钟运行一次，仅在内存超过 85% 时告警 Telegram。脚本：`memory-watchdog.sh`。任务 ID：`abc123`。
 
@@ -60,7 +60,7 @@ Hermes 将此称为**无 agent 模式**。这是去掉 LLM 的 cron 系统。
 ```python
 # 1. 写入检查脚本
 write_file(
-    path="~/.hermes/scripts/memory-watchdog.sh",
+    path="~/.openagents/scripts/memory-watchdog.sh",
     content='''#!/usr/bin/env bash
 ram_pct=$(free | awk '/^Mem:/ {printf "%d", $3 * 100 / $2}')
 if [ "$ram_pct" -ge 85 ]; then
@@ -111,7 +111,7 @@ agent 可以用与创建任务相同的方式暂停、恢复、编辑和删除�
 
 ```bash
 # 1. 编写脚本
-cat > ~/.hermes/scripts/memory-watchdog.sh <<'EOF'
+cat > ~/.openagents/scripts/memory-watchdog.sh <<'EOF'
 #!/usr/bin/env bash
 # Alert when RAM usage is over 85%. Silent otherwise.
 RAM_PCT=$(free | awk '/^Mem:/ {printf "%d", $3 * 100 / $2}')
@@ -120,7 +120,7 @@ if [ "$RAM_PCT" -ge 85 ]; then
 fi
 # Empty stdout = silent run; no message sent.
 EOF
-chmod +x ~/.hermes/scripts/memory-watchdog.sh
+chmod +x ~/.openagents/scripts/memory-watchdog.sh
 
 # 2. 调度任务
 hermes cron create "every 5m" \
@@ -151,7 +151,7 @@ hermes cron run <job_id>    # 触发一次以测试
 
 ## 脚本规则
 
-脚本必须位于 `~/.hermes/scripts/`。这在任务创建时和运行时均会强制检查——绝对路径、`~/` 展开以及路径穿越模式（`../`）均会被拒绝。该目录与 LLM 任务使用的预检脚本门控共享。
+脚本必须位于 `~/.openagents/scripts/`。这在任务创建时和运行时均会强制检查——绝对路径、`~/` 展开以及路径穿越模式（`../`）均会被拒绝。该目录与 LLM 任务使用的预检脚本门控共享。
 
 解释器由文件扩展名决定：
 
@@ -186,10 +186,10 @@ hermes cron create "30m"             # 单次：30 分钟后运行一次
 --deliver discord:#ops
 --deliver slack:#engineering
 --deliver signal:+15551234567
---deliver local                          # 仅保存到 ~/.hermes/cron/output/
+--deliver local                          # 仅保存到 ~/.openagents/cron/output/
 ```
 
-对于使用 bot token 的平台（Telegram、Discord、Slack、Signal、SMS、WhatsApp），脚本运行时无需运行中的 gateway——工具直接使用 `~/.hermes/.env` / `~/.hermes/config.yaml` 中已有的凭据调用各平台的 REST 端点。
+对于使用 bot token 的平台（Telegram、Discord、Slack、Signal、SMS、WhatsApp），脚本运行时无需运行中的 gateway——工具直接使用 `~/.openagents/.env` / `~/.openagents/config.yaml` 中已有的凭据调用各平台的 REST 端点。
 
 ## 编辑与生命周期
 
@@ -208,7 +208,7 @@ hermes cron remove <job_id>                         # 删除任务
 ## 实战示例：磁盘空间告警
 
 ```bash
-cat > ~/.hermes/scripts/disk-alert.sh <<'EOF'
+cat > ~/.openagents/scripts/disk-alert.sh <<'EOF'
 #!/usr/bin/env bash
 # Alert when / or /home is over 90% full.
 THRESHOLD=90
@@ -218,7 +218,7 @@ df -h / /home 2>/dev/null | awk -v t="$THRESHOLD" '
   }
 '
 EOF
-chmod +x ~/.hermes/scripts/disk-alert.sh
+chmod +x ~/.openagents/scripts/disk-alert.sh
 
 hermes cron create "*/15 * * * *" \
   --no-agent \
@@ -233,11 +233,11 @@ hermes cron create "*/15 * * * *" \
 
 | 方式 | 运行内容 | 适用场景 |
 |----------|-----------|-------------|
-| `cronjob --no-agent`（本页） | 你的脚本，由 Hermes 调度 | 不需要推理的周期性看门狗 / 告警 / 指标 |
+| `cronjob --no-agent`（本页） | 你的脚本，由 OpenAgents 调度 | 不需要推理的周期性看门狗 / 告警 / 指标 |
 | `cronjob`（默认，LLM） | 带可选预检脚本的 agent | 消息内容需要对数据进行推理时 |
-| OS cron + `curl` 到 [webhook 订阅](/user-guide/messaging/webhooks) | 你的脚本，由 OS 调度 | 当 Hermes 本身可能不健康时（即被监控对象） |
+| OS cron + `curl` 到 [webhook 订阅](/user-guide/messaging/webhooks) | 你的脚本，由 OS 调度 | 当 OpenAgents 本身可能不健康时（即被监控对象） |
 
-对于必须在 **gateway 宕机时也能触发**的关键系统健康看门狗，请使用 OS 级 cron 配合 `curl` 调用 Hermes webhook 订阅（或任何外部告警端点）——这些作为独立 OS 进程运行，不依赖 Hermes 是否在线。当被监控对象是外部系统时，in-gateway 调度器才是正确选择。
+对于必须在 **gateway 宕机时也能触发**的关键系统健康看门狗，请使用 OS 级 cron 配合 `curl` 调用 OpenAgents webhook 订阅（或任何外部告警端点）——这些作为独立 OS 进程运行，不依赖 OpenAgents 是否在线。当被监控对象是外部系统时，in-gateway 调度器才是正确选择。
 
 ## 相关文档
 

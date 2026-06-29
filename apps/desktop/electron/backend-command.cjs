@@ -1,6 +1,6 @@
 'use strict'
 
-// Backend subcommand routing for the desktop-managed Hermes process.
+// Backend subcommand routing for the desktop-managed OpenAgents process.
 //
 // The desktop app launches its own headless backend via `hermes serve` — it
 // must NEVER depend on or launch the browser `dashboard`. But `serve` is a
@@ -15,7 +15,7 @@
 
 /**
  * Build the canonical headless backend argv (always `serve`).
- * @param {string} [profile] optional Hermes profile to pin via `--profile`.
+ * @param {string} [profile] optional OpenAgents profile to pin via `--profile`.
  */
 function serveBackendArgs(profile) {
   const head = profile ? ['--profile', profile] : []
@@ -25,7 +25,7 @@ function serveBackendArgs(profile) {
 /**
  * Rewrite a resolved backend argv from `serve` to the legacy
  * `dashboard --no-open` form, preserving every other argument (incl. a leading
- * `-m hermes_cli.main` and any `--profile <name>`). Returns a copy; if there is
+ * `-m openagents_cli.main` and any `--profile <name>`). Returns a copy; if there is
  * no `serve` token the argv is returned unchanged.
  */
 function dashboardFallbackArgs(args) {
@@ -35,7 +35,7 @@ function dashboardFallbackArgs(args) {
 }
 
 /**
- * True when a runtime's `hermes_cli/subcommands/dashboard.py` source registers
+ * True when a runtime's `openagents_cli/subcommands/dashboard.py` source registers
  * the `serve` subcommand. Matches `add_parser("serve"` / `add_parser('serve'`
  * specifically so the substring "server" (e.g. "start_server", "web server")
  * never produces a false positive.

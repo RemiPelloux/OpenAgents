@@ -107,7 +107,7 @@ class TestIsBotMentioned:
         assert not self.adapter._is_bot_mentioned("")
 
     def test_partial_localpart_no_match(self):
-        # "hermesbot" should not match word-boundary check for "hermes"
+        # "hermesbot" should not match word-boundary check for "openagents"
         assert not self.adapter._is_bot_mentioned("hermesbot is here")
 
     # m.mentions.user_ids — MSC3952 / Matrix v1.7 authoritative mentions
@@ -172,9 +172,9 @@ class TestStripMention:
         assert result == "help me"
 
     def test_does_not_strip_bare_localpart_word(self):
-        # Regression: plain words like "Hermes Agent" should not be mutated.
-        result = self.adapter._strip_mention("Hermes Agent")
-        assert result == "Hermes Agent"
+        # Regression: plain words like "OpenAgents" should not be mutated.
+        result = self.adapter._strip_mention("OpenAgents")
+        assert result == "OpenAgents"
 
     def test_strip_returns_empty_for_mention_only(self):
         result = self.adapter._strip_mention("@hermes:example.org")

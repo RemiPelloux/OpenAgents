@@ -6,7 +6,7 @@ description: "Adopt an animated mascot that reacts to agent activity across the 
 
 # Pets
 
-Hermes can show an animated **pet** — a small mascot sprite that reacts to what
+OpenAgents can show an animated **pet** — a small mascot sprite that reacts to what
 the agent is doing (idle, running a tool, thinking, finishing, failing) across
 the **CLI**, **TUI**, and **desktop app**. Pets come from the public
 [petdex](https://github.com/crafter-station/petdex) gallery.
@@ -18,7 +18,7 @@ the agent's behavior** — the sprite is a display concern only. The feature is
 ## How it works
 
 - Pets are installed into your profile's `pets/` directory
-  (`<HERMES_HOME>/pets/<slug>/`), so each [profile](../profiles.md) keeps its
+  (`<OPENAGENTS_HOME>/pets/<slug>/`), so each [profile](../profiles.md) keeps its
   own set.
 - Selecting a pet writes `display.pet.slug` and `display.pet.enabled` to
   `config.yaml` — nothing is stored as a secret or env var.
@@ -39,7 +39,7 @@ the agent's behavior** — the sprite is a display concern only. The feature is
 
 ## Rendering
 
-In the terminal (CLI/TUI), Hermes renders the sprite at full fidelity when your
+In the terminal (CLI/TUI), OpenAgents renders the sprite at full fidelity when your
 terminal supports a graphics protocol (**kitty**, **Ghostty**, **WezTerm**,
 **iTerm2**, or **sixel**). Otherwise it falls back automatically to a truecolor
 Unicode **half-block** rendering. Inside a pipe or redirect (no TTY), terminal
@@ -105,7 +105,7 @@ it opens the Cmd+K pet palette.
 
 ## Generating a pet (`/hatch`)
 
-Beyond installing pre-made pets from the gallery, Hermes can **generate a brand-new pet** from a text description — its own AI sprite-generation pipeline.
+Beyond installing pre-made pets from the gallery, OpenAgents can **generate a brand-new pet** from a text description — its own AI sprite-generation pipeline.
 
 - CLI/TUI: `/hatch <description>` (alias `/generate-pet`), or `hermes pets` → the generate flow.
 - Desktop app: the Pokédex-style **generate** UI — an animated egg, hatch FX, and a draft picker.
@@ -113,7 +113,7 @@ Beyond installing pre-made pets from the gallery, Hermes can **generate a brand-
 How generation works (a two-step, cost-bounded flow):
 
 1. **Base drafts** — a handful of cheap, prompt-only "what should this pet look like" variants are generated. You pick one, or remix/retry for a fresh round.
-2. **Hatch** — the chosen base is used as a reference image to generate one grounded animation row per Hermes state (idle, thinking, tool use, etc.), which are deterministically sliced into frames and packed into a standard petdex/Codex atlas (8×9 grid of 192×208 cells). The result is a valid spritesheet you keep — and could `petdex submit`.
+2. **Hatch** — the chosen base is used as a reference image to generate one grounded animation row per OpenAgents state (idle, thinking, tool use, etc.), which are deterministically sliced into frames and packed into a standard petdex/Codex atlas (8×9 grid of 192×208 cells). The result is a valid spritesheet you keep — and could `petdex submit`.
 
 ### Image backend
 
@@ -138,7 +138,7 @@ instantly; adopting a new pet lights it up within a moment.
 ### Pop-out overlay
 
 **Shift-click** the floating pet to pop it out into its own transparent,
-always-on-top desktop window. Out there it stays visible while Hermes is
+always-on-top desktop window. Out there it stays visible while OpenAgents is
 minimized (Codex-style), so a glance tells you what the agent is doing.
 
 Gestures once it's popped out:
@@ -201,8 +201,8 @@ Common gotchas:
 
 - A pet only shows once one is **installed AND selected** (`enabled: true`).
 - Inside a pipe/redirect (no TTY), terminal rendering is disabled by design.
-- The petdex npm CLI installs to `~/.codex/pets`; Hermes uses its own
-  profile-scoped `<HERMES_HOME>/pets/` instead — install through `hermes pets`.
+- The petdex npm CLI installs to `~/.codex/pets`; OpenAgents uses its own
+  profile-scoped `<OPENAGENTS_HOME>/pets/` instead — install through `hermes pets`.
 
 ## See also
 

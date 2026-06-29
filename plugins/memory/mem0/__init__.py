@@ -7,10 +7,10 @@ Original PR #2933 by kartik-mem0, adapted to MemoryProvider ABC.
 
 Configuration
 -------------
-Secret (lives in $HERMES_HOME/.env or the environment):
+Secret (lives in $OPENAGENTS_HOME/.env or the environment):
   MEM0_API_KEY       — Mem0 Platform API key (required for platform mode)
 
-Behavioral settings (live in $HERMES_HOME/mem0.json, set via `hermes memory
+Behavioral settings (live in $OPENAGENTS_HOME/mem0.json, set via `hermes memory
 setup`):
   mode               — Backend mode: "platform" (default) or "oss"
   user_id            — Canonical user identifier. When set, it is applied
@@ -69,18 +69,18 @@ def _is_client_error(exc: Exception) -> bool:
 # ---------------------------------------------------------------------------
 
 def _load_config() -> dict:
-    """Load config from env vars, with $HERMES_HOME/mem0.json overrides.
+    """Load config from env vars, with $OPENAGENTS_HOME/mem0.json overrides.
 
     Environment variables provide defaults; mem0.json (if present) overrides
     individual keys.  This avoids a silent failure when the JSON file exists
     but is missing fields like ``api_key`` that the user set in ``.env``.
     """
-    from hermes_constants import get_hermes_home
+    from openagents_constants import get_openagents_home
 
     config = {
         "mode": os.environ.get("MEM0_MODE", "platform"),
         "api_key": os.environ.get("MEM0_API_KEY", ""),
-        "agent_id": os.environ.get("MEM0_AGENT_ID", "hermes"),
+        "agent_id": os.environ.get("MEM0_AGENT_ID", "openagents"),
         "oss": {},
     }
     # Only carry user_id when the operator explicitly configured one (env or
@@ -90,7 +90,7 @@ def _load_config() -> dict:
     if env_user_id:
         config["user_id"] = env_user_id
 
-    config_path = get_hermes_home() / "mem0.json"
+    config_path = get_openagents_home() / "mem0.json"
     if config_path.exists():
         try:
             file_cfg = json.loads(config_path.read_text(encoding="utf-8"))
@@ -195,7 +195,7 @@ class Mem0MemoryProvider(MemoryProvider):
         self._mode = "platform"
         self._api_key = ""
         self._user_id = _DEFAULT_USER_ID
-        self._agent_id = "hermes"
+        self._agent_id = "openagents"
         self._channel = "cli"  # gateway channel name (cli/telegram/discord/...)
         self._prefetch_result = ""
         self._prefetch_lock = threading.Lock()
@@ -220,7 +220,7 @@ class Mem0MemoryProvider(MemoryProvider):
         return bool(cfg.get("api_key"))
 
     def save_config(self, values, hermes_home):
-        """Write config to $HERMES_HOME/mem0.json."""
+        """Write config to $OPENAGENTS_HOME/mem0.json."""
         import json
         from pathlib import Path
         config_path = Path(hermes_home) / "mem0.json"
@@ -241,7 +241,7 @@ class Mem0MemoryProvider(MemoryProvider):
         return [
             {"key": "api_key", "description": "Mem0 Platform API key", "secret": True, "required": api_key_required, "env_var": "MEM0_API_KEY", "url": "https://app.mem0.ai"},
             {"key": "user_id", "description": "User identifier", "default": "hermes-user"},
-            {"key": "agent_id", "description": "Agent identifier", "default": "hermes"},
+            {"key": "agent_id", "description": "Agent identifier", "default": "openagents"},
             {"key": "rerank", "description": "Enable reranking for recall", "default": "true", "choices": ["true", "false"]},
         ]
 
@@ -321,7 +321,7 @@ class Mem0MemoryProvider(MemoryProvider):
         self._mode = self._config.get("mode", "platform")
         self._api_key = self._config.get("api_key", "")
         # Resolution order for user_id:
-        #   1. Operator-configured MEM0_USER_ID (env or $HERMES_HOME/mem0.json) —
+        #   1. Operator-configured MEM0_USER_ID (env or $OPENAGENTS_HOME/mem0.json) —
         #      the canonical principal, applied across every gateway so the same
         #      human gets one merged memory store.
         #   2. Gateway-native id from kwargs (Telegram numeric id, Discord
@@ -335,7 +335,7 @@ class Mem0MemoryProvider(MemoryProvider):
         if configured == _DEFAULT_USER_ID:
             configured = None
         self._user_id = configured or kwargs.get("user_id") or _DEFAULT_USER_ID
-        self._agent_id = self._config.get("agent_id", "hermes")
+        self._agent_id = self._config.get("agent_id", "openagents")
         self._channel = kwargs.get("platform") or "cli"
         self._backend = self._create_backend()
         if self._backend and not self._atexit_registered:

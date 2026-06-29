@@ -1,6 +1,6 @@
-# Hermes Observer Hooks
+# OpenAgents Observer Hooks
 
-Hermes observer hooks are the read-only telemetry contract for plugins that
+OpenAgents observer hooks are the read-only telemetry contract for plugins that
 need to reconstruct agent execution without changing runtime behavior. This
 contract supports trace, metrics, audit, replay, and export integrations such
 as Langfuse, OpenTelemetry-style collectors, and NeMo Relay.
@@ -42,7 +42,7 @@ The plugin manager injects this field into every hook payload:
 telemetry_schema_version = "hermes.observer.v1"
 ```
 
-Hook callbacks are fail-open. Hermes catches callback exceptions, logs a
+Hook callbacks are fail-open. OpenAgents catches callback exceptions, logs a
 warning, and keeps the agent loop running.
 
 Most observer hook return values are ignored. The exceptions are older
@@ -243,7 +243,7 @@ observability consumers should prefer the sanitized payloads.
 ## Performance
 
 The default uninstrumented path should stay cheap. Expensive request/response
-payload construction is gated behind `has_hook(...)`, so Hermes only builds
+payload construction is gated behind `has_hook(...)`, so OpenAgents only builds
 sanitized API telemetry payloads when at least one plugin registered the
 relevant hook.
 

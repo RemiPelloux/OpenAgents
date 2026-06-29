@@ -31,7 +31,7 @@ def _codex_note_to_tool_progress(note: dict) -> tuple[str, str, dict] | None:
 
     The Codex app-server runtime processes ``item/started`` notifications for
     command execution, file changes, and MCP/dynamic tool calls, but never
-    surfaced them as Hermes tool-progress events — so gateways (Telegram, etc.)
+    surfaced them as OpenAgents tool-progress events — so gateways (Telegram, etc.)
     showed no verbose "running X" breadcrumbs on this route while every other
     provider did (#38835). Returns None for items that aren't tool-shaped.
     """
@@ -96,7 +96,7 @@ def _coerce_usage_int(value: Any) -> int:
 
 
 def _record_codex_app_server_usage(agent, turn) -> dict[str, Any]:
-    """Translate Codex app-server token usage into Hermes accounting.
+    """Translate Codex app-server token usage into OpenAgents accounting.
 
     Codex app-server reports usage via thread/tokenUsage/updated as:
     inputTokens, cachedInputTokens, outputTokens, reasoningOutputTokens,
@@ -106,7 +106,7 @@ def _record_codex_app_server_usage(agent, turn) -> dict[str, Any]:
     The Codex app-server protocol does not currently expose cache-write tokens,
     so that bucket remains zero on this runtime.
 
-    Even when Codex omits usage for a turn, Hermes should still count that turn
+    Even when Codex omits usage for a turn, OpenAgents should still count that turn
     as one API call for session/status accounting.
     """
     agent.session_api_calls += 1

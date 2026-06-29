@@ -4,11 +4,11 @@ sidebar_position: 2
 
 # Profiles：运行多个 Agent
 
-在同一台机器上运行多个独立的 Hermes agent——每个 agent 拥有各自的配置、API 密钥、记忆、会话、技能和 gateway 状态。
+在同一台机器上运行多个独立的 OpenAgents——每个 agent 拥有各自的配置、API 密钥、记忆、会话、技能和 gateway 状态。
 
 ## 什么是 profile？
 
-profile 是一个独立的 Hermes 主目录。每个 profile 拥有自己的目录，其中包含各自的 `config.yaml`、`.env`、`SOUL.md`、记忆、会话、技能、cron 任务和状态数据库。profile 让你可以为不同用途运行独立的 agent——编程助手、个人机器人、研究 agent——而不会混淆 Hermes 状态。
+profile 是一个独立的 OpenAgents 主目录。每个 profile 拥有自己的目录，其中包含各自的 `config.yaml`、`.env`、`SOUL.md`、记忆、会话、技能、cron 任务和状态数据库。profile 让你可以为不同用途运行独立的 agent——编程助手、个人机器人、研究 agent——而不会混淆 OpenAgents 状态。
 
 创建 profile 后，它会自动成为独立的命令。创建名为 `coder` 的 profile，你立即就拥有了 `coder chat`、`coder setup`、`coder gateway start` 等命令。
 
@@ -20,7 +20,7 @@ coder setup                       # 配置 API 密钥和模型
 coder chat                        # 开始对话
 ```
 
-就这些。`coder` 现在是拥有独立配置、记忆和状态的 Hermes profile。
+就这些。`coder` 现在是拥有独立配置、记忆和状态的 OpenAgents profile。
 
 ## 创建 profile
 
@@ -46,7 +46,7 @@ hermes profile create researcher --description "Reads source code and external d
 hermes profile create work --clone
 ```
 
-将当前 profile 的 `config.yaml`、`.env`、`SOUL.md` 和 skills 复制到新 profile。API 密钥、模型和能力相同，但会话和记忆是全新的。编辑 `~/.hermes/profiles/work/.env` 可使用不同的 API 密钥，编辑 `~/.hermes/profiles/work/SOUL.md` 可设置不同的人格。
+将当前 profile 的 `config.yaml`、`.env`、`SOUL.md` 和 skills 复制到新 profile。API 密钥、模型和能力相同，但会话和记忆是全新的。编辑 `~/.openagents/profiles/work/.env` 可使用不同的 API 密钥，编辑 `~/.openagents/profiles/work/SOUL.md` 可设置不同的人格。
 
 ### 克隆全部内容（`--clone-all`）
 
@@ -122,7 +122,7 @@ CLI 始终显示当前活跃的 profile：
 
 profile 常与工作区或沙箱混淆，但它们是不同的概念：
 
-- **profile** 为 Hermes 提供独立的状态目录：`config.yaml`、`.env`、`SOUL.md`、会话、记忆、日志、cron 任务和 gateway 状态。
+- **profile** 为 OpenAgents 提供独立的状态目录：`config.yaml`、`.env`、`SOUL.md`、会话、记忆、日志、cron 任务和 gateway 状态。
 - **工作区**或**工作目录**是终端命令的起始位置，由 `terminal.cwd` 单独控制。
 - **沙箱**用于限制文件系统访问。profile **不**对 agent 进行沙箱隔离。
 
@@ -159,10 +159,10 @@ assistant gateway start       # 启动 assistant 的 gateway（独立进程）
 
 ```bash
 # 编辑 coder 的 token
-nano ~/.hermes/profiles/coder/.env
+nano ~/.openagents/profiles/coder/.env
 
 # 编辑 assistant 的 token
-nano ~/.hermes/profiles/assistant/.env
+nano ~/.openagents/profiles/assistant/.env
 ```
 
 ### 安全性：token 锁
@@ -172,8 +172,8 @@ nano ~/.hermes/profiles/assistant/.env
 ### 持久化服务
 
 ```bash
-coder gateway install         # 创建 hermes-gateway-coder systemd/launchd 服务
-assistant gateway install     # 创建 hermes-gateway-assistant 服务
+coder gateway install         # 创建 openagents-gateway-coder systemd/launchd 服务
+assistant gateway install     # 创建 openagents-gateway-assistant 服务
 ```
 
 每个 profile 拥有独立的服务名称，各自独立运行。
@@ -192,7 +192,7 @@ assistant gateway install     # 创建 hermes-gateway-assistant 服务
 
 ```bash
 coder config set model.default anthropic/claude-sonnet-4
-echo "You are a focused coding assistant." > ~/.hermes/profiles/coder/SOUL.md
+echo "You are a focused coding assistant." > ~/.openagents/profiles/coder/SOUL.md
 ```
 
 如果你希望此 profile 默认在特定项目中工作，还需设置其 `terminal.cwd`：
@@ -234,7 +234,7 @@ hermes profile delete coder
 使用 `--yes` 跳过确认：`hermes profile delete coder --yes`
 
 :::note
-你无法删除默认 profile（`~/.hermes`）。如需删除所有内容，请使用 `hermes uninstall`。
+你无法删除默认 profile（`~/.openagents`）。如需删除所有内容，请使用 `hermes uninstall`。
 :::
 
 ## Tab 补全
@@ -251,11 +251,11 @@ eval "$(hermes completion zsh)"
 
 ## 工作原理
 
-profile 使用 `HERMES_HOME` 环境变量。运行 `coder chat` 时，包装脚本在启动 hermes 前将 `HERMES_HOME` 设置为 `~/.hermes/profiles/coder`。由于代码库中 119+ 个文件通过 `get_hermes_home()` 解析路径，Hermes 状态会自动限定在 profile 目录范围内——包括配置、会话、记忆、技能、状态数据库、gateway PID、日志和 cron 任务。
+profile 使用 `OPENAGENTS_HOME` 环境变量。运行 `coder chat` 时，包装脚本在启动 hermes 前将 `OPENAGENTS_HOME` 设置为 `~/.openagents/profiles/coder`。由于代码库中 119+ 个文件通过 `get_openagents_home()` 解析路径，Hermes 状态会自动限定在 profile 目录范围内——包括配置、会话、记忆、技能、状态数据库、gateway PID、日志和 cron 任务。
 
-这与终端工作目录是分开的。工具执行从 `terminal.cwd` 开始（或在 local 后端使用 `cwd: "."` 时从启动目录开始），而非自动从 `HERMES_HOME` 开始。
+这与终端工作目录是分开的。工具执行从 `terminal.cwd` 开始（或在 local 后端使用 `cwd: "."` 时从启动目录开始），而非自动从 `OPENAGENTS_HOME` 开始。
 
-默认 profile 就是 `~/.hermes` 本身。无需迁移——现有安装的工作方式完全不变。
+默认 profile 就是 `~/.openagents` 本身。无需迁移——现有安装的工作方式完全不变。
 
 ## 将 profile 作为发行版共享
 

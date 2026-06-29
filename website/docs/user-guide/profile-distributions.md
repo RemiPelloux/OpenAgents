@@ -4,13 +4,13 @@ sidebar_position: 3
 
 # Profile Distributions: Share a Whole Agent
 
-A **profile distribution** packages a complete Hermes agent — personality, skills, cron jobs, MCP connections, config — as a git repository. Anyone with access to the repo can install the whole agent with one command, update it in place, and keep their own memories, sessions, and API keys untouched.
+A **profile distribution** packages a complete OpenAgents — personality, skills, cron jobs, MCP connections, config — as a git repository. Anyone with access to the repo can install the whole agent with one command, update it in place, and keep their own memories, sessions, and API keys untouched.
 
 If a [profile](./profiles.md) is a local agent, a distribution is that agent made shareable.
 
 ## What this means
 
-Before distributions, sharing a Hermes agent meant sending someone:
+Before distributions, sharing a OpenAgents meant sending someone:
 
 1. Your SOUL.md
 2. A list of skills to install
@@ -52,7 +52,7 @@ We considered tarballs, HTTP archives, a custom format. None of them beat git:
 - **Private repos work for free.** SSH keys, `git credential` helpers, GitHub CLI stored credentials — whatever auth your terminal is already set up for applies transparently.
 - **Reproducibility is a commit SHA.** The same thing pip and npm record.
 
-The tradeoff: recipients need git installed. On any machine running Hermes in 2026, that's already true.
+The tradeoff: recipients need git installed. On any machine running OpenAgents in 2026, that's already true.
 
 ## When should you use a distribution?
 
@@ -88,14 +88,14 @@ Build and refine the agent like any other profile:
 ```bash
 hermes profile create research-bot
 research-bot setup                    # configure model, API keys
-# Edit ~/.hermes/profiles/research-bot/SOUL.md
+# Edit ~/.openagents/profiles/research-bot/SOUL.md
 # Install skills, wire up MCP servers, schedule cron jobs, etc.
 research-bot chat                     # dogfood until it feels right
 ```
 
 ### Step 2 — Add a `distribution.yaml`
 
-Create `~/.hermes/profiles/research-bot/distribution.yaml`:
+Create `~/.openagents/profiles/research-bot/distribution.yaml`:
 
 ```yaml
 name: research-bot
@@ -126,7 +126,7 @@ That's the whole manifest. Every field except `name` has a sensible default.
 Do this **before** running `git init` or `git add`. If you have already chatted with the profile, run setup, or otherwise used it, the directory now contains files you must not ship: `.env`, `auth.json`, `memories/`, `sessions/`, `state.db*`, `logs/`, and more. 
 :::
 
-Create `~/.hermes/profiles/research-bot/.gitignore` with at minimum:
+Create `~/.openagents/profiles/research-bot/.gitignore` with at minimum:
 
 ```gitignore
 # Credentials & secrets — NEVER commit
@@ -138,7 +138,7 @@ auth.json
 state.db
 state.db-shm
 state.db-wal
-hermes_state.db
+openagents_state.db
 response_store.db
 response_store.db-shm
 response_store.db-wal
@@ -165,7 +165,7 @@ browser_screenshots/
 cache/
 
 # Infrastructure (should not be in profile dir, but safe to exclude)
-hermes-agent/
+openagents/
 .worktrees/
 profiles/
 bin/
@@ -189,7 +189,7 @@ This mirrors the [hard-excluded paths](#whats-not-in-a-distribution-ever) that t
 ### Step 4 — Push to a git repo
 
 ```bash
-cd ~/.hermes/profiles/research-bot
+cd ~/.openagents/profiles/research-bot
 git init
 git add .
 git commit -m "v1.0.0"
@@ -275,7 +275,7 @@ What happens:
 2. Reads `distribution.yaml`, shows you the manifest (name, version, description, author, required env vars).
 3. Checks each required env var against your shell environment and the target profile's existing `.env`. Marks each as `✓ set` or `needs setting` so you know exactly what to configure.
 4. Asks for confirmation. Pass `-y` / `--yes` to skip.
-5. Copies distribution-owned files into `~/.hermes/profiles/research-bot/` (or wherever the manifest's `name` resolves). The [hard-excluded paths](#whats-not-in-a-distribution-ever) are stripped during this copy, even if the author accidentally left them in the repo.
+5. Copies distribution-owned files into `~/.openagents/profiles/research-bot/` (or wherever the manifest's `name` resolves). The [hard-excluded paths](#whats-not-in-a-distribution-ever) are stripped during this copy, even if the author accidentally left them in the repo.
 6. Writes `.env.EXAMPLE` with the required keys commented out — copy to `.env` and fill in.
 7. With `--alias`, creates a wrapper so you can run `research-bot chat` directly.
 
@@ -319,7 +319,7 @@ hermes profile install github.com/acme/support-bot --name support-eu --alias
 After install, the agent's profile contains a `.env.EXAMPLE`:
 
 ```
-# Environment variables required by this Hermes distribution.
+# Environment variables required by this OpenAgents distribution.
 # Copy to `.env` and fill in your own values before running.
 
 # OpenAI API key (for model access)
@@ -334,7 +334,7 @@ OPENAI_API_KEY=
 Copy it:
 
 ```bash
-cp ~/.hermes/profiles/research-bot/.env.EXAMPLE ~/.hermes/profiles/research-bot/.env
+cp ~/.openagents/profiles/research-bot/.env.EXAMPLE ~/.openagents/profiles/research-bot/.env
 # Edit .env, paste your real keys
 ```
 
@@ -353,7 +353,7 @@ Distribution: research-bot
 Version:      1.0.0
 Description:  Autonomous research assistant with arXiv and web tools
 Author:       Your Name
-Requires:     Hermes >=0.12.0
+Requires:     OpenAgents >=0.12.0
 Source:       https://github.com/you/research-bot
 Installed:    2026-05-08T17:04:32+00:00
 
@@ -398,7 +398,7 @@ The delete prompt surfaces distribution info before asking you to confirm:
 
 ```
 Profile: research-bot
-Path:    ~/.hermes/profiles/research-bot
+Path:    ~/.openagents/profiles/research-bot
 Model:   claude-opus-4 (anthropic)
 Skills:  12
 Distribution: research-bot@1.0.0
@@ -423,7 +423,7 @@ You built a research assistant on your laptop. You want the same agent on your w
 
 ```bash
 # Laptop — create .gitignore first (see "For authors" Step 3), then:
-cd ~/.hermes/profiles/research-bot
+cd ~/.openagents/profiles/research-bot
 git init && git add . && git status   # confirm no secrets staged
 git commit -m "initial"
 git remote add origin git@github.com:you/research-bot.git
@@ -442,7 +442,7 @@ Your engineering team wants a shared PR-review bot with a specific SOUL, specifi
 
 ```bash
 # Engineering lead — create .gitignore first (see "For authors" Step 3), then:
-cd ~/.hermes/profiles/pr-reviewer
+cd ~/.openagents/profiles/pr-reviewer
 # ... build and tune ...
 git init && git add . && git status   # confirm no secrets staged
 git commit -m "v1.0 PR reviewer"
@@ -463,7 +463,7 @@ You built something novel — maybe a "Polymarket trader" or an "academic paper 
 
 ```bash
 # You — create .gitignore first (see "For authors" Step 3), then:
-cd ~/.hermes/profiles/polymarket-trader
+cd ~/.openagents/profiles/polymarket-trader
 # Write a solid README.md at the repo root — GitHub shows it on the repo page
 git init && git add . && git status   # confirm no secrets staged
 git commit -m "v1.0"
@@ -549,7 +549,7 @@ git ls-remote --tags https://github.com/you/research-bot | tail -5
 The default update behavior already does this: `config.yaml` is preserved. To be safe, write your local tweaks to a file the distribution doesn't own:
 
 ```yaml
-# ~/.hermes/profiles/research-bot/local/my-overrides.yaml
+# ~/.openagents/profiles/research-bot/local/my-overrides.yaml
 # (distribution never touches local/)
 ```
 
@@ -574,7 +574,7 @@ The standard git workflow — distributions are just repos:
 # Fork the repo on GitHub, then install your fork
 hermes profile install github.com/yourname/forked-research-bot --alias
 
-# Iterate locally in ~/.hermes/profiles/forked-research-bot/
+# Iterate locally in ~/.openagents/profiles/forked-research-bot/
 # Edit SOUL.md, commit, push to your fork
 # Upstream changes: pull them into your fork the usual way
 ```
@@ -585,11 +585,11 @@ From the author's machine:
 
 ```bash
 # Install from a local directory (no git push needed)
-hermes profile install ~/.hermes/profiles/research-bot --name research-bot-test --alias
+hermes profile install ~/.openagents/profiles/research-bot --name research-bot-test --alias
 
 # Tweak, delete, re-install until it's right
 hermes profile delete research-bot-test --yes
-hermes profile install ~/.hermes/profiles/research-bot --name research-bot-test
+hermes profile install ~/.openagents/profiles/research-bot --name research-bot-test
 ```
 
 ---

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 3
 title: "创建 Skill"
-description: "如何为 Hermes Agent 创建 skill——SKILL.md 格式、规范与发布"
+description: "如何为 OpenAgents 创建 skill——SKILL.md 格式、规范与发布"
 ---
 
 # 创建 Skill
 
-Skill 是为 Hermes Agent 添加新能力的首选方式。与 tool 相比，skill 更易于创建，无需修改 agent 代码，且可与社区共享。
+Skill 是为 OpenAgents 添加新能力的首选方式。与 tool 相比，skill 更易于创建，无需修改 agent 代码，且可与社区共享。
 
 ## 应该创建 Skill 还是 Tool？
 
@@ -216,7 +216,7 @@ metadata:
 
 3. **运行时注入：** Skill 加载时，其 config 值会被解析并追加到 skill 消息中：
    ```
-   [Skill config (from ~/.hermes/config.yaml):
+   [Skill config (from ~/.openagents/config.yaml):
      myplugin.path = /home/user/my-data
    ]
    ```
@@ -228,7 +228,7 @@ metadata:
    ```
 
 :::tip 如何选择
-对 API key、token 及其他**密钥**使用 `required_environment_variables`（存储在 `~/.hermes/.env`，不向模型展示）。对**路径、偏好设置及非敏感配置**使用 `config`（存储在 `config.yaml`，在 config show 中可见）。
+对 API key、token 及其他**密钥**使用 `required_environment_variables`（存储在 `~/.openagents/.env`，不向模型展示）。对**路径、偏好设置及非敏感配置**使用 `config`（存储在 `config.yaml`，在 config show 中可见）。
 :::
 
 ### 凭证文件要求（OAuth token 等）
@@ -244,7 +244,7 @@ required_credential_files:
 ```
 
 每个条目支持：
-- `path`（必需）——相对于 `~/.hermes/` 的文件路径
+- `path`（必需）——相对于 `~/.openagents/` 的文件路径
 - `description`（可选）——说明该文件的用途及创建方式
 
 加载时，Hermes 会检查这些文件是否存在。缺少文件会触发 `setup_needed`。已存在的文件会自动：
@@ -253,7 +253,7 @@ required_credential_files:
 - 在**本地**后端无需任何特殊处理即可使用
 
 :::tip 如何选择
-对简单的 API key 和 token（存储在 `~/.hermes/.env` 中的字符串）使用 `required_environment_variables`。对 OAuth token 文件、客户端密钥、服务账号 JSON、证书或任何以磁盘文件形式存在的凭证使用 `required_credential_files`。
+对简单的 API key 和 token（存储在 `~/.openagents/.env` 中的字符串）使用 `required_environment_variables`。对 OAuth token 文件、客户端密钥、服务账号 JSON、证书或任何以磁盘文件形式存在的凭证使用 `required_credential_files`。
 :::
 
 完整示例请参见 `skills/productivity/google-workspace/SKILL.md`，其中同时使用了两者。
@@ -262,7 +262,7 @@ required_credential_files:
 
 ### 无外部依赖
 
-优先使用标准库 Python、curl 以及现有 Hermes tool（`web_extract`、`terminal`、`read_file`）。若确实需要依赖项，请在 skill 中记录安装步骤。
+优先使用标准库 Python、curl 以及现有 OpenAgents tool（`web_extract`、`terminal`、`read_file`）。若确实需要依赖项，请在 skill 中记录安装步骤。
 
 ### 渐进式披露
 
@@ -325,7 +325,7 @@ hermes chat --toolsets skills -q "Use the X skill to do Y"
 
 ## Skill 应放在哪里？
 
-内置 skill（位于 `skills/`）随每次 Hermes 安装一起发布，应对**大多数用户广泛有用**：
+内置 skill（位于 `skills/`）随每次 OpenAgents 安装一起发布，应对**大多数用户广泛有用**：
 
 - 文档处理、网页研究、常见开发工作流、系统管理
 - 被广泛人群定期使用
@@ -362,12 +362,12 @@ hermes skills tap add owner/repo
 - Shell 注入
 
 信任级别：
-- `builtin`——随 Hermes 一起发布（始终受信任）
+- `builtin`——随 OpenAgents 一起发布（始终受信任）
 - `official`——来自仓库中的 `optional-skills/`（内置信任，无第三方警告）
 - `trusted`——来自 openai/skills、anthropics/skills、huggingface/skills
 - `community`——非危险发现可通过 `--force` 覆盖；`dangerous` 判定仍会被阻止
 
-Hermes 现在可以通过多种外部发现模型使用第三方 skill：
+OpenAgents 现在可以通过多种外部发现模型使用第三方 skill：
 - 直接 GitHub 标识符（例如 `openai/skills/k8s`）
 - `skills.sh` 标识符（例如 `skills-sh/vercel-labs/json-render/json-render-react`）
 - 从 `/.well-known/skills/index.json` 提供的知名端点

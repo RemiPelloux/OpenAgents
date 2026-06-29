@@ -6,7 +6,7 @@ description: "安全模型、危险命令审批、用户授权、容器隔离及
 
 # 安全
 
-Hermes Agent 采用纵深防御安全模型。本页涵盖所有安全边界——从命令审批到容器隔离，再到消息平台上的用户授权。
+OpenAgents 采用纵深防御安全模型。本页涵盖所有安全边界——从命令审批到容器隔离，再到消息平台上的用户授权。
 
 ## 概述
 
@@ -26,7 +26,7 @@ Hermes Agent 采用纵深防御安全模型。本页涵盖所有安全边界—�
 
 ### 审批模式
 
-审批系统支持三种模式，通过 `~/.hermes/config.yaml` 中的 `approvals.mode` 配置：
+审批系统支持三种模式，通过 `~/.openagents/config.yaml` 中的 `approvals.mode` 配置：
 
 ```yaml
 approvals:
@@ -101,7 +101,7 @@ YOLO 模式会禁用会话中**所有**危险命令安全检查——**但硬性
 
 当危险命令提示出现时，用户有一段可配置的时间来响应。若在超时内未响应，命令将**默认被拒绝**（故障关闭）。
 
-在 `~/.hermes/config.yaml` 中配置超时：
+在 `~/.openagents/config.yaml` 中配置超时：
 
 ```yaml
 approvals:
@@ -134,8 +134,8 @@ approvals:
 | `python -e` / `perl -e` / `ruby -e` / `node -c` | 通过 `-e`/`-c` 标志执行脚本 |
 | `curl ... \| sh` / `wget ... \| sh` | 将远程内容通过管道传给 shell |
 | `bash <(curl ...)` / `sh <(wget ...)` | 通过进程替换执行远程脚本 |
-| `tee` 写入 `/etc/`、`~/.ssh/`、`~/.hermes/.env` | 通过 tee 覆盖敏感文件 |
-| `>` / `>>` 写入 `/etc/`、`~/.ssh/`、`~/.hermes/.env` | 通过重定向覆盖敏感文件 |
+| `tee` 写入 `/etc/`、`~/.ssh/`、`~/.openagents/.env` | 通过 tee 覆盖敏感文件 |
+| `>` / `>>` 写入 `/etc/`、`~/.ssh/`、`~/.openagents/.env` | 通过重定向覆盖敏感文件 |
 | `xargs rm` | xargs 配合 rm |
 | `find -exec rm` / `find -delete` | find 配合破坏性操作 |
 | `cp`/`mv`/`install` 写入 `/etc/` | 复制/移动文件到系统配置目录 |
@@ -178,7 +178,7 @@ approvals:
 
 ### 永久允许列表
 
-通过"always"批准的命令会保存到 `~/.hermes/config.yaml`：
+通过"always"批准的命令会保存到 `~/.openagents/config.yaml`：
 
 ```yaml
 # 永久允许的危险命令模式
@@ -210,7 +210,7 @@ command_allowlist:
 
 ### 平台允许列表
 
-在 `~/.hermes/.env` 中以逗号分隔的值设置允许的用户 ID：
+在 `~/.openagents/.env` 中以逗号分隔的值设置允许的用户 ID：
 
 ```bash
 # 平台专属允许列表
@@ -234,7 +234,7 @@ GATEWAY_ALLOW_ALL_USERS=true
 
 ```
 No user allowlists configured. All unauthorized users will be denied.
-Set GATEWAY_ALLOW_ALL_USERS=true in ~/.hermes/.env to allow open access,
+Set GATEWAY_ALLOW_ALL_USERS=true in ~/.openagents/.env to allow open access,
 or configure platform allowlists (e.g., TELEGRAM_ALLOWED_USERS=your_id).
 ```
 :::
@@ -250,7 +250,7 @@ or configure platform allowlists (e.g., TELEGRAM_ALLOWED_USERS=your_id).
 3. 机器人所有者在 CLI 上运行 `hermes pairing approve <platform> <code>`
 4. 该用户在该平台上获得永久批准
 
-在 `~/.hermes/config.yaml` 中控制未授权私信的处理方式：
+在 `~/.openagents/config.yaml` 中控制未授权私信的处理方式：
 
 ```yaml
 unauthorized_dm_behavior: pair
@@ -292,7 +292,7 @@ hermes pairing revoke telegram 123456789
 hermes pairing clear-pending
 ```
 
-**存储：** 配对数据存储于 `~/.hermes/pairing/`，按平台分为独立的 JSON 文件：
+**存储：** 配对数据存储于 `~/.openagents/pairing/`，按平台分为独立的 JSON 文件：
 - `{platform}-pending.json` — 待处理的配对请求
 - `{platform}-approved.json` — 已批准的用户
 - `_rate_limits.json` — 速率限制和锁定追踪
@@ -321,7 +321,7 @@ _SECURITY_ARGS = [
 
 ### 资源限制
 
-容器资源可在 `~/.hermes/config.yaml` 中配置：
+容器资源可在 `~/.openagents/config.yaml` 中配置：
 
 ```yaml
 terminal:
@@ -336,7 +336,7 @@ terminal:
 
 ### 文件系统持久化
 
-- **持久模式**（`container_persistent: true`）：从 `~/.hermes/sandboxes/docker/<task_id>/` 绑定挂载 `/workspace` 和 `/root`
+- **持久模式**（`container_persistent: true`）：从 `~/.openagents/sandboxes/docker/<task_id>/` 绑定挂载 `/workspace` 和 `/root`
 - **临时模式**（`container_persistent: false`）：工作区使用 tmpfs——清理后所有内容丢失
 
 :::tip
@@ -397,7 +397,7 @@ terminal:
 
 ### 凭据文件透传（OAuth token 等） {#credential-file-passthrough}
 
-某些技能需要在沙箱中访问**文件**（而非仅环境变量）——例如，Google Workspace 将 OAuth token 存储为活跃 profile 的 `HERMES_HOME` 下的 `google_token.json`。技能在 frontmatter 中声明这些文件：
+某些技能需要在沙箱中访问**文件**（而非仅环境变量）——例如，Google Workspace 将 OAuth token 存储为活跃 profile 的 `OPENAGENTS_HOME` 下的 `google_token.json`。技能在 frontmatter 中声明这些文件：
 
 ```yaml
 required_credential_files:
@@ -407,7 +407,7 @@ required_credential_files:
     description: Google OAuth2 client credentials
 ```
 
-加载后，Hermes 会检查这些文件是否存在于活跃 profile 的 `HERMES_HOME` 中，并将其注册为挂载：
+加载后，Hermes 会检查这些文件是否存在于活跃 profile 的 `OPENAGENTS_HOME` 中，并将其注册为挂载：
 
 - **Docker**：只读绑定挂载（`-v host:container:ro`）
 - **Modal**：在沙箱创建时挂载，并在每次命令前同步（处理会话中途的 OAuth 配置）
@@ -422,14 +422,14 @@ terminal:
     - my_custom_oauth_token.json
 ```
 
-路径相对于 `~/.hermes/`。文件在容器内挂载到 `/root/.hermes/`。
+路径相对于 `~/.openagents/`。文件在容器内挂载到 `/root/.hermes/`。
 
 ### 各沙箱的过滤规则
 
 | 沙箱 | 默认过滤 | 透传覆盖 |
 |---------|---------------|---------------------|
 | **execute_code** | 阻止名称中包含 `KEY`、`TOKEN`、`SECRET`、`PASSWORD`、`CREDENTIAL`、`PASSWD`、`AUTH` 的变量；仅允许安全前缀变量通过 | ✅ 透传变量绕过两项检查 |
-| **terminal**（本地） | 阻止明确的 Hermes 基础设施变量（提供商密钥、gateway token、工具 API 密钥） | ✅ 透传变量绕过黑名单 |
+| **terminal**（本地） | 阻止明确的 OpenAgents 基础设施变量（提供商密钥、gateway token、工具 API 密钥） | ✅ 透传变量绕过黑名单 |
 | **terminal**（Docker） | 默认不传入宿主机环境变量 | ✅ 透传变量 + `docker_forward_env` 通过 `-e` 转发 |
 | **terminal**（Modal） | 默认不传入宿主机环境/文件 | ✅ 凭据文件挂载；环境变量通过同步透传 |
 | **MCP** | 阻止所有变量，仅允许安全系统变量 + 显式配置的 `env` | ❌ 不受透传影响（改用 MCP `env` 配置） |
@@ -440,7 +440,7 @@ terminal:
 - 凭据文件以**只读**方式挂载到 Docker 容器中
 - Skills Guard 在安装前会扫描技能内容中的可疑环境变量访问模式
 - 缺失/未设置的变量永远不会被注册（不存在的内容无法泄露）
-- Hermes 基础设施密钥（提供商 API 密钥、gateway token）不应添加到 `env_passthrough`——它们有专用机制
+- OpenAgents 基础设施密钥（提供商 API 密钥、gateway token）不应添加到 `env_passthrough`——它们有专用机制
 
 ## MCP 凭据处理
 
@@ -481,7 +481,7 @@ MCP 工具的错误消息在返回给 LLM 之前会经过清理。以下模式�
 你可以限制 Agent 通过其 Web 和浏览器工具可访问的网站。这对于防止 Agent 访问内部服务、管理面板或其他敏感 URL 非常有用。
 
 ```yaml
-# 在 ~/.hermes/config.yaml 中
+# 在 ~/.openagents/config.yaml 中
 security:
   website_blocklist:
     enabled: true
@@ -524,7 +524,7 @@ security:
 
 ### Tirith 预执行安全扫描
 
-Hermes 集成了 [tirith](https://github.com/sheeki03/tirith) 用于在执行前进行内容级命令扫描。Tirith 能检测单纯模式匹配所遗漏的威胁：
+OpenAgents 集成了 [tirith](https://github.com/sheeki03/tirith) 用于在执行前进行内容级命令扫描。Tirith 能检测单纯模式匹配所遗漏的威胁：
 
 - 同形字 URL 欺骗（国际化域名攻击）
 - 管道传解释器模式（`curl | bash`、`wget | sh`）
@@ -533,7 +533,7 @@ Hermes 集成了 [tirith](https://github.com/sheeki03/tirith) 用于在执行前
 Tirith 在首次使用时从 GitHub Releases 自动安装，并进行 SHA-256 校验和验证（若 cosign 可用，还会进行 cosign 来源验证）。
 
 ```yaml
-# 在 ~/.hermes/config.yaml 中
+# 在 ~/.openagents/config.yaml 中
 security:
   tirith_enabled: true       # 启用/禁用 tirith 扫描（默认：true）
   tirith_path: "tirith"      # tirith 二进制路径（默认：PATH 查找）
@@ -570,19 +570,19 @@ Tirith 的判定与审批流程集成：安全命令直接通过，可疑和被�
 1. **设置明确的允许列表** — 生产环境中切勿使用 `GATEWAY_ALLOW_ALL_USERS=true`
 2. **使用容器后端** — 在 config.yaml 中设置 `terminal.backend: docker`
 3. **限制资源上限** — 设置合适的 CPU、内存和磁盘限制
-4. **安全存储密钥** — 将 API 密钥保存在具有适当文件权限的 `~/.hermes/.env` 中
+4. **安全存储密钥** — 将 API 密钥保存在具有适当文件权限的 `~/.openagents/.env` 中
 5. **启用 DM 配对** — 尽可能使用配对码，而非硬编码用户 ID
 6. **审查命令允许列表** — 定期审计 config.yaml 中的 `command_allowlist`
 7. **设置 `MESSAGING_CWD`** — 不要让 Agent 在敏感目录中操作
 8. **以非 root 用户运行** — 切勿以 root 身份运行 gateway
-9. **监控日志** — 检查 `~/.hermes/logs/` 中的未授权访问尝试
+9. **监控日志** — 检查 `~/.openagents/logs/` 中的未授权访问尝试
 10. **保持更新** — 定期运行 `hermes update` 以获取安全补丁
 
 ### 保护 API 密钥
 
 ```bash
 # 为 .env 文件设置适当权限
-chmod 600 ~/.hermes/.env
+chmod 600 ~/.openagents/.env
 
 # 为不同服务使用独立密钥
 # 切勿将 .env 文件提交到版本控制
@@ -590,16 +590,16 @@ chmod 600 ~/.hermes/.env
 
 ### 网络隔离
 
-为获得最高安全性，请在独立的机器或虚拟机上运行 gateway。在 `config.yaml` 中设置 `terminal.backend: ssh`，然后通过 `~/.hermes/.env` 中的环境变量提供主机详情：
+为获得最高安全性，请在独立的机器或虚拟机上运行 gateway。在 `config.yaml` 中设置 `terminal.backend: ssh`，然后通过 `~/.openagents/.env` 中的环境变量提供主机详情：
 
 ```yaml
-# ~/.hermes/config.yaml
+# ~/.openagents/config.yaml
 terminal:
   backend: ssh
 ```
 
 ```bash
-# ~/.hermes/.env
+# ~/.openagents/.env
 TERMINAL_SSH_HOST=agent-worker.local
 TERMINAL_SSH_USER=hermes
 TERMINAL_SSH_KEY=~/.ssh/hermes_agent_key
@@ -609,7 +609,7 @@ SSH 连接详情保存在 `.env`（而非 `config.yaml`）中，以避免随 pro
 
 ## 供应链安全公告检查
 
-Hermes 内置了一个公告扫描器，用于标记活跃 venv 中与已知受损版本目录匹配的 Python 包（例如 2026 年 5 月的 `mistralai 2.4.6` 供应链投毒事件）。实现位于 `hermes_cli/security_advisories.py`。
+OpenAgents 内置了一个公告扫描器，用于标记活跃 venv 中与已知受损版本目录匹配的 Python 包（例如 2026 年 5 月的 `mistralai 2.4.6` 供应链投毒事件）。实现位于 `openagents_cli/security_advisories.py`。
 
 运行方式：
 
@@ -629,7 +629,7 @@ hermes doctor --ack <advisory-id>
 
 ### 可选依赖的懒加载安装
 
-许多功能（Mistral TTS、ElevenLabs、Honcho 记忆、Bedrock、Slack、Matrix 等）依赖并非每个用户都需要的 Python 包。Hermes 在首次使用时**懒加载**安装这些包，而非在 `hermes-agent[all]` 下急切安装。实现位于 `tools/lazy_deps.py`。
+许多功能（Mistral TTS、ElevenLabs、Honcho 记忆、Bedrock、Slack、Matrix 等）依赖并非每个用户都需要的 Python 包。Hermes 在首次使用时**懒加载**安装这些包，而非在 `openagents[all]` 下急切安装。实现位于 `tools/lazy_deps.py`。
 
 此方案解决的权衡问题：
 
@@ -655,7 +655,7 @@ hermes doctor --ack <advisory-id>
 禁用运行时安装：
 
 ```yaml
-# ~/.hermes/config.yaml
+# ~/.openagents/config.yaml
 security:
   allow_lazy_installs: false
 ```

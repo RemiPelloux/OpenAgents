@@ -1,4 +1,4 @@
-# Hermes 静的メッセージカタログ -- 日本語
+# OpenAgents 静的メッセージカタログ -- 日本語
 # See locales/en.yaml for the source of truth; keep keys in sync.
 
 approval:
@@ -99,7 +99,7 @@ gateway:
     header:                "**デバッグレポートをアップロードしました:**"
     auto_delete:           "⏱ ペーストは 6 時間後に自動削除されます。"
     full_logs_hint:        "完全なログのアップロードには、CLI から `hermes debug share` を使用してください。"
-    share_hint:            "サポートを受けるには、このリンクを Hermes チームに共有してください。"
+    share_hint:            "サポートを受けるには、このリンクを OpenAgents チームに共有してください。"
 
   deny:
     stale:                 "❌ コマンドを拒否しました (承認は期限切れでした)。"
@@ -223,7 +223,7 @@ gateway:
 Use quotes around titles with spaces, for example: `/resume \"Project A Plan\"`."
     matrix_no_named_sessions: "No named sessions found for this Matrix room.
 Use `/title My Session` to name the current room session, `/resume --all` to list all Matrix sessions, or `/resume --cross-room <session name>` to explicitly cross room boundaries."
-    matrix_blocked_no_origin: "⚠️ Matrix /resume blocked: this named session has no recorded room origin, so Hermes will not resume it inside the current room by default. Use `/resume --cross-room {name}` if you intentionally want to cross room boundaries."
+    matrix_blocked_no_origin: "⚠️ Matrix /resume blocked: this named session has no recorded room origin, so OpenAgents will not resume it inside the current room by default. Use `/resume --cross-room {name}` if you intentionally want to cross room boundaries."
     matrix_blocked_other_room: "⚠️ Matrix /resume blocked: that session belongs to a different Matrix room ({room}). Use `/resume --cross-room {name}` if you intentionally want to resume it here."
     matrix_cross_room_success: "⚠️ Cross-room resume: resumed **{title}** inside Matrix room **{room}**.
 Future messages in this room will use that transcript until `/reset` or another `/resume`.{msg_part}"
@@ -303,7 +303,7 @@ Future messages in this room will use that transcript until `/reset` or another 
     topics_user_disallowed:  "Telegram topics は有効ですが、ユーザーは topic を作成できません。\n\n@BotFather → 自分の bot → Bot Settings → Threads Settings を開き、'Disallow users to create new threads' をオフにしてください。\n\nそして /topic をもう一度送信してください。"
     enable_failed:           "Telegram topic モードの有効化に失敗しました: {error}"
     bound_status:            "この topic は次にリンクされています:\nセッション: {label}\nID: {session_id}\n\nこの topic を新しいセッションに置き換えるには /new を使用してください。\n並行作業には、All Messages を開いてメッセージを送信し、別の topic を作成してください。"
-    thread_ready:            "Telegram のマルチセッション topics が有効です。\n\nこの topic は独立した Hermes セッションとして使用されます。この topic の現在のセッションを置き換えるには /new を使用してください。並行作業には、All Messages を開いてメッセージを送信し、別の topic を作成してください。"
+    thread_ready:            "Telegram のマルチセッション topics が有効です。\n\nこの topic は独立した OpenAgents セッションとして使用されます。この topic の現在のセッションを置き換えるには /new を使用してください。並行作業には、All Messages を開いてメッセージを送信し、別の topic を作成してください。"
     untitled_session:        "無題のセッション"
 
   undo:
@@ -316,7 +316,7 @@ Future messages in this room will use that transcript until `/reset` or another 
     not_git_repo:            "✗ Git リポジトリではありません — 更新できません。"
     hermes_cmd_not_found:    "✗ `hermes` コマンドが見つかりません。Hermes は実行中ですが、更新コマンドは PATH 上にも現在の Python インタープリタ経由でも実行可能ファイルを見つけられませんでした。ターミナルで `hermes update` を手動で実行してみてください。"
     start_failed:            "✗ 更新の開始に失敗しました: {error}"
-    starting:                "⚕ Hermes の更新を開始しています… 進捗をここにストリーミングします。"
+    starting:                "⚕ OpenAgents の更新を開始しています… 進捗をここにストリーミングします。"
 
   usage:
     rate_limits:              "⏱️ **レート制限:** {state}"

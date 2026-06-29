@@ -1,7 +1,7 @@
 /**
  * after-pack.cjs — electron-builder afterPack hook.
  *
- * Stamps the Hermes icon + identity onto the packed Windows Hermes.exe via
+ * Stamps the OpenAgents icon + identity onto the packed Windows Hermes.exe via
  * rcedit (delegated to set-exe-identity.cjs). This runs for EVERY packed build
  * — first install, `hermes desktop`, the installer's --update rebuild, and a
  * dev's manual `npm run pack` — so the branded exe can never silently revert

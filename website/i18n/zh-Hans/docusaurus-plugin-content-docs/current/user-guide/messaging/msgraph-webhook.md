@@ -1,12 +1,12 @@
 ---
 sidebar_position: 23
 title: "Microsoft Graph Webhook 监听器"
-description: "在 Hermes 中接收 Microsoft Graph 变更通知（会议、日历、聊天等）"
+description: "在 OpenAgents 中接收 Microsoft Graph 变更通知（会议、日历、聊天等）"
 ---
 
 # Microsoft Graph Webhook 监听器
 
-`msgraph_webhook` gateway 平台是一个入站事件监听器。它是 Hermes 接收来自 Microsoft Graph 的**变更通知**的方式——"一个 Teams 会议已结束"、"此聊天中收到了一条新消息"、"此日历事件已更新"。与 `teams` 平台（用户向其发送消息的聊天机器人）不同——此平台是 M365 告知 Hermes 某事已发生，而非来自用户的消息。
+`msgraph_webhook` gateway 平台是一个入站事件监听器。它是 OpenAgents 接收来自 Microsoft Graph 的**变更通知**的方式——"一个 Teams 会议已结束"、"此聊天中收到了一条新消息"、"此日历事件已更新"。与 `teams` 平台（用户向其发送消息的聊天机器人）不同——此平台是 M365 告知 OpenAgents 某事已发生，而非来自用户的消息。
 
 目前主要的消费者是 Teams 会议摘要流水线：Graph 在会议产生转录文本时发出通知，流水线获取该内容，Hermes 将摘要发回 Teams。其他 Graph 资源（`/chats/.../messages`、`/users/.../events`）使用同一监听器——流水线消费者通过各自的 PR 接入。
 
@@ -14,11 +14,11 @@ description: "在 Hermes 中接收 Microsoft Graph 变更通知（会议、日�
 
 - Microsoft Graph 应用凭据——[注册 Microsoft Graph 应用程序](/guides/microsoft-graph-app-registration)
 - 一个 Microsoft Graph 可访问的**公开 HTTPS URL**（Graph 不会调用私有端点）。测试时可使用 dev tunnel；生产环境需要具有有效证书的真实域名。
-- 一个强共享密钥，用作 `clientState` 的值。使用 `openssl rand -hex 32` 生成，并以 `MSGRAPH_WEBHOOK_CLIENT_STATE` 写入 `~/.hermes/.env`。
+- 一个强共享密钥，用作 `clientState` 的值。使用 `openssl rand -hex 32` 生成，并以 `MSGRAPH_WEBHOOK_CLIENT_STATE` 写入 `~/.openagents/.env`。
 
 ## 快速开始
 
-最小化 `~/.hermes/config.yaml`：
+最小化 `~/.openagents/config.yaml`：
 
 ```yaml
 platforms:
@@ -31,7 +31,7 @@ platforms:
         - "communications/onlineMeetings"
 ```
 
-或通过 `~/.hermes/.env` 中的环境变量（启动时自动合并）：
+或通过 `~/.openagents/.env` 中的环境变量（启动时自动合并）：
 
 ```bash
 MSGRAPH_WEBHOOK_ENABLED=true
@@ -134,4 +134,4 @@ MSGRAPH_WEBHOOK_ALLOWED_SOURCE_CIDRS="52.96.0.0/14,52.104.0.0/14"
 
 - [注册 Microsoft Graph 应用程序](/guides/microsoft-graph-app-registration) — Azure 应用注册前提条件
 - [环境变量 → Microsoft Graph](/reference/environment-variables#microsoft-graph-teams-meetings) — 完整环境变量列表
-- [Microsoft Teams 机器人设置](/user-guide/messaging/teams) — 允许用户在 Teams 中与 Hermes 聊天的另一平台
+- [Microsoft Teams 机器人设置](/user-guide/messaging/teams) — 允许用户在 Teams 中与 OpenAgents 聊天的另一平台

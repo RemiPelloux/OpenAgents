@@ -4,7 +4,7 @@ Routes ``web_search`` tool calls through xAI's agentic Web Search tool
 (server-side ``web_search`` on the Responses API). Grok runs the actual
 searching and page-browsing server-side; we ask it to return the top
 results as structured JSON so we can hand back the same
-``{title, url, description, position}`` rows every other Hermes web
+``{title, url, description, position}`` rows every other OpenAgents web
 provider produces.
 
 Reference: https://docs.x.ai/developers/tools/web-search
@@ -26,7 +26,7 @@ Optional knobs (under ``web.xai`` in ``config.yaml``)::
 
 Auth: reuses :func:`tools.xai_http.resolve_xai_http_credentials`, which
 prefers Hermes-managed xAI Grok OAuth (via ``hermes auth``) and falls back
-to ``XAI_API_KEY`` (resolved through ``~/.hermes/.env``, then
+to ``XAI_API_KEY`` (resolved through ``~/.openagents/.env``, then
 ``os.environ``).
 """
 
@@ -64,7 +64,7 @@ _JSON_BLOCK_RE = re.compile(r"\{[\s\S]*\}", re.MULTILINE)
 def _load_xai_web_config() -> Dict[str, Any]:
     """Read ``web.xai`` from config.yaml (returns {} on miss)."""
     try:
-        from hermes_cli.config import load_config
+        from openagents_cli.config import load_config
 
         cfg = load_config()
         web_section = cfg.get("web") if isinstance(cfg, dict) else None

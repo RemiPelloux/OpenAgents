@@ -6,7 +6,7 @@ description: "逐步指南：为整个团队搭建一个 Telegram 机器人，�
 
 # 搭建团队 Telegram 助手
 
-本教程将引导你搭建一个由 Hermes Agent 驱动的 Telegram 机器人，供多名团队成员使用。完成后，你的团队将拥有一个共享 AI 助手，可以向它发消息寻求代码、研究、系统管理等方面的帮助——并通过按用户授权保障安全。
+本教程将引导你搭建一个由 OpenAgents 驱动的 Telegram 机器人，供多名团队成员使用。完成后，你的团队将拥有一个共享 AI 助手，可以向它发消息寻求代码、研究、系统管理等方面的帮助——并通过按用户授权保障安全。
 
 ## 我们要构建什么
 
@@ -24,9 +24,9 @@ description: "逐步指南：为整个团队搭建一个 Telegram 机器人，�
 
 开始前，请确保你已具备：
 
-- **已在服务器或 VPS 上安装 Hermes Agent**（不是你的笔记本——机器人需要持续运行）。如尚未安装，请参阅[安装指南](/getting-started/installation)。
+- **已在服务器或 VPS 上安装 OpenAgents**（不是你的笔记本——机器人需要持续运行）。如尚未安装，请参阅[安装指南](/getting-started/installation)。
 - **一个 Telegram 账号**（机器人所有者）
-- **已配置 LLM 提供商**——至少在 `~/.hermes/.env` 中配置了 OpenAI、Anthropic 或其他受支持提供商的 API 密钥
+- **已配置 LLM 提供商**——至少在 `~/.openagents/.env` 中配置了 OpenAI、Anthropic 或其他受支持提供商的 API 密钥
 
 :::tip
 一台 $5/月的 VPS 足以运行 gateway（网关）。Hermes 本身很轻量——花钱的是 LLM API 调用，而那些调用发生在远端。
@@ -41,7 +41,7 @@ description: "逐步指南：为整个团队搭建一个 Telegram 机器人，�
 1. **打开 Telegram**，搜索 `@BotFather`，或访问 [t.me/BotFather](https://t.me/BotFather)
 
 2. **发送 `/newbot`**——BotFather 会询问两件事：
-   - **显示名称**——用户看到的名字（例如 `Team Hermes Assistant`）
+   - **显示名称**——用户看到的名字（例如 `Team OpenAgents Assistant`）
    - **用户名**——必须以 `bot` 结尾（例如 `myteam_hermes_bot`）
 
 3. **复制机器人 token**——BotFather 会回复类似内容：
@@ -57,7 +57,7 @@ description: "逐步指南：为整个团队搭建一个 Telegram 机器人，�
    ```
    选择你的机器人，然后输入类似内容：
    ```
-   Team AI assistant powered by Hermes Agent. DM me for help with code, research, debugging, and more.
+   Team AI assistant powered by OpenAgents. DM me for help with code, research, debugging, and more.
    ```
 
 5. **设置机器人命令**（可选——为用户提供命令菜单）：
@@ -93,7 +93,7 @@ hermes gateway setup
 
 ### 方式 B：手动配置
 
-在 `~/.hermes/.env` 中添加以下内容：
+在 `~/.openagents/.env` 中添加以下内容：
 
 ```bash
 # Telegram bot token from BotFather
@@ -130,7 +130,7 @@ hermes gateway
 你应该看到类似输出：
 
 ```
-[Gateway] Starting Hermes Gateway...
+[Gateway] Starting OpenAgents Gateway...
 [Gateway] Telegram adapter connected
 [Gateway] Cron scheduler started (tick every 60s)
 ```
@@ -155,7 +155,7 @@ hermes gateway stop
 hermes gateway status
 
 # 查看实时日志
-journalctl --user -u hermes-gateway -f
+journalctl --user -u openagents-gateway -f
 
 # SSH 退出后保持运行
 sudo loginctl enable-linger $USER
@@ -163,14 +163,14 @@ sudo loginctl enable-linger $USER
 # Linux 服务器——显式系统服务命令
 sudo hermes gateway start --system
 sudo hermes gateway status --system
-journalctl -u hermes-gateway -f
+journalctl -u openagents-gateway -f
 ```
 
 ```bash
 # macOS——管理服务
 hermes gateway start
 hermes gateway stop
-tail -f ~/.hermes/logs/gateway.log
+tail -f ~/.openagents/logs/gateway.log
 ```
 
 :::tip macOS PATH
@@ -196,7 +196,7 @@ hermes gateway status
 收集每位团队成员的 Telegram 用户 ID（让他们给 [@userinfobot](https://t.me/userinfobot) 发消息），然后以逗号分隔的列表形式添加：
 
 ```bash
-# 在 ~/.hermes/.env 中
+# 在 ~/.openagents/.env 中
 TELEGRAM_ALLOWED_USERS=123456789,987654321,555555555
 ```
 
@@ -260,7 +260,7 @@ hermes pairing clear-pending
 
 **方式 1：** 在机器人所在的任意 Telegram 群组或聊天中使用 `/sethome` 命令。
 
-**方式 2：** 在 `~/.hermes/.env` 中手动设置：
+**方式 2：** 在 `~/.openagents/.env` 中手动设置：
 
 ```bash
 TELEGRAM_HOME_CHANNEL=-1001234567890
@@ -271,7 +271,7 @@ TELEGRAM_HOME_CHANNEL_NAME="Team Updates"
 
 ### 配置工具进度显示
 
-控制机器人在使用工具时显示的详细程度。在 `~/.hermes/config.yaml` 中：
+控制机器人在使用工具时显示的详细程度。在 `~/.openagents/config.yaml` 中：
 
 ```yaml
 display:
@@ -289,9 +289,9 @@ display:
 
 ### 使用 SOUL.md 设置个性
 
-通过编辑 `~/.hermes/SOUL.md` 自定义机器人的沟通方式：
+通过编辑 `~/.openagents/SOUL.md` 自定义机器人的沟通方式：
 
-完整指南请参阅[在 Hermes 中使用 SOUL.md](/guides/use-soul-with-hermes)。
+完整指南请参阅[在 OpenAgents 中使用 SOUL.md](/guides/use-soul-with-hermes)。
 
 ```markdown
 # Soul
@@ -306,7 +306,7 @@ before guessing at solutions.
 如果你的团队在特定项目上工作，可以创建上下文文件，让机器人了解你们的技术栈：
 
 ```markdown
-<!-- ~/.hermes/AGENTS.md -->
+<!-- ~/.openagents/AGENTS.md -->
 # Team Context
 - We use Python 3.12 with FastAPI and SQLAlchemy
 - Frontend is React with TypeScript
@@ -373,12 +373,12 @@ Cron 任务的 prompt 在完全全新的会话中运行，不保留任何先前�
 在共享团队机器人上，使用 Docker 作为终端后端，让 agent 命令在容器中运行，而非直接在宿主机上运行：
 
 ```bash
-# 在 ~/.hermes/.env 中
+# 在 ~/.openagents/.env 中
 TERMINAL_BACKEND=docker
 TERMINAL_DOCKER_IMAGE=nikolaik/python-nodejs:python3.11-nodejs20
 ```
 
-或在 `~/.hermes/config.yaml` 中：
+或在 `~/.openagents/config.yaml` 中：
 
 ```yaml
 terminal:
@@ -397,13 +397,13 @@ terminal:
 hermes gateway status
 
 # 查看实时日志（Linux）
-journalctl --user -u hermes-gateway -f
+journalctl --user -u openagents-gateway -f
 
 # 查看实时日志（macOS）
-tail -f ~/.hermes/logs/gateway.log
+tail -f ~/.openagents/logs/gateway.log
 ```
 
-### 保持 Hermes 更新
+### 保持 OpenAgents 更新
 
 在 Telegram 中向机器人发送 `/update`——它会拉取最新版本并重启。或在服务器上执行：
 
@@ -416,11 +416,11 @@ hermes gateway stop && hermes gateway start
 
 | 内容 | 位置 |
 |------|----------|
-| Gateway 日志 | `journalctl --user -u hermes-gateway`（Linux）或 `~/.hermes/logs/gateway.log`（macOS） |
-| Cron 任务输出 | `~/.hermes/cron/output/{job_id}/{timestamp}.md` |
-| Cron 任务定义 | `~/.hermes/cron/jobs.json` |
-| 配对数据 | `~/.hermes/pairing/` |
-| 会话历史 | `~/.hermes/sessions/` |
+| Gateway 日志 | `journalctl --user -u openagents-gateway`（Linux）或 `~/.openagents/logs/gateway.log`（macOS） |
+| Cron 任务输出 | `~/.openagents/cron/output/{job_id}/{timestamp}.md` |
+| Cron 任务定义 | `~/.openagents/cron/jobs.json` |
+| 配对数据 | `~/.openagents/pairing/` |
+| 会话历史 | `~/.openagents/sessions/` |
 
 ---
 

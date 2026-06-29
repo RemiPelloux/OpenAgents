@@ -4,11 +4,11 @@ sidebar_position: 9
 
 # 添加平台适配器
 
-本指南介绍如何向 Hermes gateway 添加新的消息平台。平台适配器将 Hermes 连接到外部消息服务（Telegram、Discord、WeCom 等），使用户可以通过该服务与 agent 交互。
+本指南介绍如何向 OpenAgents gateway 添加新的消息平台。平台适配器将 OpenAgents 连接到外部消息服务（Telegram、Discord、WeCom 等），使用户可以通过该服务与 agent 交互。
 
 :::tip
 添加平台有两种方式：
-- **Plugin**（推荐用于社区/第三方）：将 plugin 目录放入 `~/.hermes/plugins/` — 无需修改任何核心代码。参见下方 [Plugin 路径](#plugin-path-recommended)。
+- **Plugin**（推荐用于社区/第三方）：将 plugin 目录放入 `~/.openagents/plugins/` — 无需修改任何核心代码。参见下方 [Plugin 路径](#plugin-path-recommended)。
 - **内置**：需修改代码、配置和文档共 20+ 个文件。参见下方 [内置清单](#step-by-step-checklist)。
 :::
 
@@ -30,10 +30,10 @@ sidebar_position: 9
 
 ## Plugin 路径（推荐）{#plugin-path-recommended}
 
-Plugin 系统允许你在不修改任何 Hermes 核心代码的情况下添加平台适配器。你的 plugin 是一个包含两个文件的目录：
+Plugin 系统允许你在不修改任何 OpenAgents 核心代码的情况下添加平台适配器。你的 plugin 是一个包含两个文件的目录：
 
 ```
-~/.hermes/plugins/my-platform/
+~/.openagents/plugins/my-platform/
   plugin.yaml      # Plugin 元数据
   adapter.py       # 适配器类 + register() 入口点
 ```
@@ -115,7 +115,7 @@ def _env_enablement() -> dict | None:
 
 
 def register(ctx):
-    """Plugin 入口点 — 由 Hermes plugin 系统调用。"""
+    """Plugin 入口点 — 由 OpenAgents plugin 系统调用。"""
     ctx.register_platform(
         name="my_platform",
         label="My Platform",
@@ -198,7 +198,7 @@ gateway:
 
 ## 环境变量驱动的自动配置
 
-大多数用户通过将环境变量写入 `~/.hermes/.env` 来配置平台，而不是编辑 `config.yaml`。`env_enablement_fn` hook 允许你的 plugin 在适配器构建**之前**读取这些环境变量，使 `hermes gateway status`、`get_connected_platforms()` 和 cron 投递无需实例化平台 SDK 即可看到正确状态。
+大多数用户通过将环境变量写入 `~/.openagents/.env` 来配置平台，而不是编辑 `config.yaml`。`env_enablement_fn` hook 允许你的 plugin 在适配器构建**之前**读取这些环境变量，使 `hermes gateway status`、`get_connected_platforms()` 和 cron 投递无需实例化平台 SDK 即可看到正确状态。
 
 ```python
 def _env_enablement() -> dict | None:
@@ -324,7 +324,7 @@ ctx.register_platform(
 
 ## 在 `hermes config` 中暴露环境变量 {#surfacing-env-vars-in-hermes-config}
 
-`hermes_cli/config.py` 在导入时扫描 `plugins/platforms/*/plugin.yaml`，并从 `requires_env` 和（可选的）`optional_env` 块自动填充 `OPTIONAL_ENV_VARS`。使用富字典形式可提供完整的描述、prompt、password 标志和 URL — CLI 设置 UI 会自动识别。
+`openagents_cli/config.py` 在导入时扫描 `plugins/platforms/*/plugin.yaml`，并从 `requires_env` 和（可选的）`optional_env` 块自动填充 `OPTIONAL_ENV_VARS`。使用富字典形式可提供完整的描述、prompt、password 标志和 URL — CLI 设置 UI 会自动识别。
 
 ```yaml
 # plugins/platforms/my_platform/plugin.yaml
@@ -333,7 +333,7 @@ label: My Platform
 kind: platform
 version: 1.0.0
 description: >
-  My Platform gateway adapter for Hermes Agent.
+  My Platform gateway adapter for OpenAgents.
 author: Your Name
 requires_env:
   - name: MY_PLATFORM_TOKEN
@@ -457,7 +457,7 @@ LINE 两者都支持：阈值默认为 45 秒用于免费 postback 获取，`LIN
 ## 分步清单（内置路径）{#step-by-step-checklist}
 
 :::note
-此清单用于将平台直接添加到 Hermes 核心代码库 — 通常由核心贡献者为官方支持的平台执行。社区/第三方平台应使用上方的 [Plugin 路径](#plugin-path-recommended)。
+此清单用于将平台直接添加到 OpenAgents 核心代码库 — 通常由核心贡献者为官方支持的平台执行。社区/第三方平台应使用上方的 [Plugin 路径](#plugin-path-recommended)。
 :::
 
 ### 1. Platform 枚举
@@ -553,12 +553,12 @@ await self.handle_message(event)
 
 ### 6. CLI 集成
 
-1. **`hermes_cli/config.py`** — 将所有 `NEWPLAT_*` 变量添加到 `_EXTRA_ENV_KEYS`
-2. **`hermes_cli/gateway.py`** — 在 `_PLATFORMS` 列表中添加条目，包含 key、label、emoji、token_var、setup_instructions 和 vars
-3. **`hermes_cli/platforms.py`** — 添加带 label 和 default_toolset 的 `PlatformInfo` 条目（供 `skills_config` 和 `tools_config` TUI 使用）
-4. **`hermes_cli/setup.py`** — 添加 `_setup_newplat()` 函数（可委托给 `gateway.py`）并将元组添加到消息平台列表
-5. **`hermes_cli/status.py`** — 添加平台检测条目：`"NewPlat": ("NEWPLAT_TOKEN", "NEWPLAT_HOME_CHANNEL")`
-6. **`hermes_cli/dump.py`** — 将 `"newplat": "NEWPLAT_TOKEN"` 添加到平台检测字典
+1. **`openagents_cli/config.py`** — 将所有 `NEWPLAT_*` 变量添加到 `_EXTRA_ENV_KEYS`
+2. **`openagents_cli/gateway.py`** — 在 `_PLATFORMS` 列表中添加条目，包含 key、label、emoji、token_var、setup_instructions 和 vars
+3. **`openagents_cli/platforms.py`** — 添加带 label 和 default_toolset 的 `PlatformInfo` 条目（供 `skills_config` 和 `tools_config` TUI 使用）
+4. **`openagents_cli/setup.py`** — 添加 `_setup_newplat()` 函数（可委托给 `gateway.py`）并将元组添加到消息平台列表
+5. **`openagents_cli/status.py`** — 添加平台检测条目：`"NewPlat": ("NEWPLAT_TOKEN", "NEWPLAT_HOME_CHANNEL")`
+6. **`openagents_cli/dump.py`** — 将 `"newplat": "NEWPLAT_TOKEN"` 添加到平台检测字典
 
 ### 7. 工具
 
@@ -568,7 +568,7 @@ await self.handle_message(event)
 ### 8. Toolset
 
 1. **`toolsets.py`** — 添加带 `_HERMES_CORE_TOOLS` 的 `"hermes-newplat"` toolset 定义
-2. **`toolsets.py`** — 将 `"hermes-newplat"` 添加到 `"hermes-gateway"` 的 includes 列表
+2. **`toolsets.py`** — 将 `"hermes-newplat"` 添加到 `"openagents-gateway"` 的 includes 列表
 
 ### 9. 可选：平台提示
 

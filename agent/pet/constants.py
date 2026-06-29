@@ -2,7 +2,7 @@
 
 These values are the common petdex/Codex pet geometry. The real ``pet.json``
 usually only carries ``id``/``displayName``/``description``/``spritesheetPath``;
-row taxonomy is inferred from the atlas shape so Hermes can render both legacy
+row taxonomy is inferred from the atlas shape so OpenAgents can render both legacy
 8-row sheets and current 9-row Codex sheets.
 """
 
@@ -123,7 +123,7 @@ CODEX_STATE_ROWS: list[str] = [
 # format because generated pets and the public Codex pet contract use it.
 STATE_ROWS: list[str] = CODEX_STATE_ROWS
 
-# Canonical Hermes activity names -> accepted row-name aliases in descending
+# Canonical OpenAgents activity names -> accepted row-name aliases in descending
 # preference. This keeps our internal state names stable (`wave`/`jump`/`run`)
 # while matching Petdex's current `waving`/`jumping`/`running` taxonomy.
 STATE_ALIASES: dict[str, tuple[str, ...]] = {

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: "常见问题与故障排查"
-description: "Hermes Agent 常见问题解答及常见问题解决方案"
+description: "OpenAgents 常见问题解答及常见问题解决方案"
 ---
 
 # 常见问题与故障排查
@@ -12,9 +12,9 @@ description: "Hermes Agent 常见问题解答及常见问题解决方案"
 
 ## 常见问题
 
-### Hermes 支持哪些 LLM 提供商？
+### OpenAgents 支持哪些 LLM 提供商？
 
-Hermes Agent 可与任何兼容 OpenAI 的 API 配合使用。支持的提供商包括：
+OpenAgents 可与任何兼容 OpenAI 的 API 配合使用。支持的提供商包括：
 
 - **[OpenRouter](https://openrouter.ai/)** — 通过一个 API key 访问数百个模型（推荐，灵活性强）
 - **Nous Portal** — Nous Research 自有推理端点
@@ -26,14 +26,14 @@ Hermes Agent 可与任何兼容 OpenAI 的 API 配合使用。支持的提供商
 - **MiniMax** — 全球及中国区端点
 - **本地模型** — 通过 [Ollama](https://ollama.com/)、[vLLM](https://docs.vllm.ai/)、[llama.cpp](https://github.com/ggerganov/llama.cpp)、[SGLang](https://github.com/sgl-project/sglang) 或任何兼容 OpenAI 的服务器
 
-使用 `hermes model` 设置提供商，或直接编辑 `~/.hermes/.env`。所有提供商 key 请参阅[环境变量](./environment-variables.md)参考文档。
+使用 `hermes model` 设置提供商，或直接编辑 `~/.openagents/.env`。所有提供商 key 请参阅[环境变量](./environment-variables.md)参考文档。
 
 ### 支持 Windows 吗？
 
-**原生不支持。** Hermes Agent 需要类 Unix 环境。在 Windows 上，请安装 [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) 并在其中运行 Hermes。标准安装命令在 WSL2 中可完美运行：
+**原生不支持。** OpenAgents 需要类 Unix 环境。在 Windows 上，请安装 [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) 并在其中运行 Hermes。标准安装命令在 WSL2 中可完美运行：
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://openagents.nousresearch.com/install.sh | bash
 ```
 
 ### 我在 WSL2 中运行 Hermes，如何控制 Windows 上的普通 Chrome？
@@ -45,23 +45,23 @@ curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 - 在 WSL2 内运行 Hermes
 - 继续使用 Windows 上已登录的普通 Chrome
 - 通过 `cmd.exe` 或 `powershell.exe` 将 `chrome-devtools-mcp` 添加为 MCP 服务器
-- 让 Hermes 使用生成的 MCP 浏览器工具
+- 让 OpenAgents 使用生成的 MCP 浏览器工具
 
-这比强制 Hermes 核心浏览器传输直接跨越 WSL2/Windows 边界进行附加更为可靠。
+这比强制 OpenAgents 核心浏览器传输直接跨越 WSL2/Windows 边界进行附加更为可靠。
 
 参见：
 
-- [在 Hermes 中使用 MCP](../guides/use-mcp-with-hermes.md#wsl2-bridge-hermes-in-wsl-to-windows-chrome)
+- [在 OpenAgents 中使用 MCP](../guides/use-mcp-with-hermes.md#wsl2-bridge-hermes-in-wsl-to-windows-chrome)
 - [浏览器自动化](../user-guide/features/browser.md#wsl2--windows-chrome-prefer-mcp-over-browser-connect)
 
 ### 支持 Android / Termux 吗？
 
-支持 — Hermes 现已为 Android 手机提供经过测试的 Termux 安装路径。
+支持 — OpenAgents 现已为 Android 手机提供经过测试的 Termux 安装路径。
 
 快速安装：
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://openagents.nousresearch.com/install.sh | bash
 ```
 
 完整的手动步骤、支持的扩展及当前限制，请参阅 [Termux 指南](../getting-started/termux.md)。
@@ -70,7 +70,7 @@ curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 
 ### 我的数据会被发送到哪里？
 
-API 调用**仅发送至您配置的 LLM 提供商**（例如 OpenRouter、您本地的 Ollama 实例）。Hermes Agent 不收集遥测数据、使用数据或分析数据。您的对话、记忆和技能均存储在本地 `~/.hermes/` 目录中。
+API 调用**仅发送至您配置的 LLM 提供商**（例如 OpenRouter、您本地的 Ollama 实例）。OpenAgents 不收集遥测数据、使用数据或分析数据。您的对话、记忆和技能均存储在本地 `~/.openagents/` 目录中。
 
 ### 可以离线使用 / 使用本地模型吗？
 
@@ -94,25 +94,25 @@ model:
   base_url: http://localhost:11434/v1
 ```
 
-Hermes 会将端点、提供商和 base URL 持久化到 `config.yaml`，重启后仍然有效。如果您的本地服务器只加载了一个模型，`/model custom` 会自动检测到它。您也可以在 config.yaml 中设置 `provider: custom` — 这是一个一等提供商，不是其他任何东西的别名。
+OpenAgents 会将端点、提供商和 base URL 持久化到 `config.yaml`，重启后仍然有效。如果您的本地服务器只加载了一个模型，`/model custom` 会自动检测到它。您也可以在 config.yaml 中设置 `provider: custom` — 这是一个一等提供商，不是其他任何东西的别名。
 
 此方式适用于 Ollama、vLLM、llama.cpp server、SGLang、LocalAI 等。详情请参阅[配置指南](../user-guide/configuration.md)。
 
 :::tip Ollama 用户
-如果您在 Ollama 中设置了自定义 `num_ctx`（例如 `ollama run --num_ctx 16384`），请确保在 Hermes 中设置匹配的上下文长度 — Ollama 的 `/api/show` 报告的是模型的*最大*上下文，而非您配置的实际 `num_ctx`。
+如果您在 Ollama 中设置了自定义 `num_ctx`（例如 `ollama run --num_ctx 16384`），请确保在 OpenAgents 中设置匹配的上下文长度 — Ollama 的 `/api/show` 报告的是模型的*最大*上下文，而非您配置的实际 `num_ctx`。
 :::
 
 :::tip 本地模型超时问题
-Hermes 会自动检测本地端点并放宽流式传输超时（读取超时从 120s 提升至 1800s，禁用停滞流检测）。如果在非常大的上下文下仍然超时，请在 `.env` 中设置 `HERMES_STREAM_READ_TIMEOUT=1800`。详情请参阅[本地 LLM 指南](../guides/local-llm-on-mac.md#timeouts)。
+OpenAgents 会自动检测本地端点并放宽流式传输超时（读取超时从 120s 提升至 1800s，禁用停滞流检测）。如果在非常大的上下文下仍然超时，请在 `.env` 中设置 `HERMES_STREAM_READ_TIMEOUT=1800`。详情请参阅[本地 LLM 指南](../guides/local-llm-on-mac.md#timeouts)。
 :::
 
 ### 费用是多少？
 
-Hermes Agent 本身**免费且开源**（MIT 许可证）。您只需为所选提供商的 LLM API 用量付费。本地模型完全免费运行。
+OpenAgents 本身**免费且开源**（MIT 许可证）。您只需为所选提供商的 LLM API 用量付费。本地模型完全免费运行。
 
 ### 多人可以使用同一个实例吗？
 
-可以。[消息网关](../user-guide/messaging/index.md)允许多个用户通过 Telegram、Discord、Slack、WhatsApp 或 Home Assistant 与同一个 Hermes Agent 实例交互。访问权限通过白名单（特定用户 ID）和私信配对（第一个发消息的用户获得访问权）来控制。
+可以。[消息网关](../user-guide/messaging/index.md)允许多个用户通过 Telegram、Discord、Slack、WhatsApp 或 Home Assistant 与同一个 OpenAgents 实例交互。访问权限通过白名单（特定用户 ID）和私信配对（第一个发消息的用户获得访问权）来控制。
 
 ### 记忆（memory）和技能（skills）有什么区别？
 
@@ -165,7 +165,7 @@ ls ~/.local/bin/hermes
 
 #### Python 版本过旧
 
-**原因：** Hermes 需要 Python 3.11 或更新版本。
+**原因：** OpenAgents 需要 Python 3.11 或更新版本。
 
 **解决方案：**
 ```bash
@@ -180,9 +180,9 @@ brew install python@3.12      # macOS
 
 #### 终端命令提示 `node: command not found`（或 `nvm`、`pyenv`、`asdf` 等）
 
-**原因：** Hermes 在启动时通过运行一次 `bash -l` 构建每个会话的环境快照。bash 登录 shell 会读取 `/etc/profile`、`~/.bash_profile` 和 `~/.profile`，但**不会 source `~/.bashrc`** — 因此在 `~/.bashrc` 中安装自身的工具（`nvm`、`asdf`、`pyenv`、`cargo`、自定义 `PATH` 导出）对快照不可见。当 Hermes 在 systemd 下运行或在未预加载交互式 shell 配置的最小 shell 中运行时，此问题最为常见。
+**原因：** OpenAgents 在启动时通过运行一次 `bash -l` 构建每个会话的环境快照。bash 登录 shell 会读取 `/etc/profile`、`~/.bash_profile` 和 `~/.profile`，但**不会 source `~/.bashrc`** — 因此在 `~/.bashrc` 中安装自身的工具（`nvm`、`asdf`、`pyenv`、`cargo`、自定义 `PATH` 导出）对快照不可见。当 OpenAgents 在 systemd 下运行或在未预加载交互式 shell 配置的最小 shell 中运行时，此问题最为常见。
 
-**解决方案：** Hermes 默认自动 source `~/.bashrc`。如果这还不够 — 例如您是 zsh 用户，PATH 在 `~/.zshrc` 中，或者您从独立文件初始化 `nvm` — 请在 `~/.hermes/config.yaml` 中列出需要额外 source 的文件：
+**解决方案：** OpenAgents 默认自动 source `~/.bashrc`。如果这还不够 — 例如您是 zsh 用户，PATH 在 `~/.zshrc` 中，或者您从独立文件初始化 `nvm` — 请在 `~/.openagents/config.yaml` 中列出需要额外 source 的文件：
 
 ```yaml
 terminal:
@@ -225,7 +225,7 @@ source ~/.bashrc
 # 如果之前使用 sudo 安装，请先清理：
 sudo rm /usr/local/bin/hermes
 # 然后重新运行标准安装程序
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://openagents.nousresearch.com/install.sh | bash
 ```
 
 ---
@@ -239,7 +239,7 @@ curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 **解决方案：** 退出当前会话，在终端中使用 `hermes model` 添加新提供商：
 
 ```bash
-# 先退出 Hermes 聊天会话（Ctrl+C 或 /quit）
+# 先退出 OpenAgents 聊天会话（Ctrl+C 或 /quit）
 
 # 运行完整的提供商设置向导
 hermes model
@@ -275,7 +275,7 @@ hermes config set OPENROUTER_API_KEY sk-or-v1-xxxxxxxxxxxx
 ```
 
 :::warning
-请确保 key 与提供商匹配。OpenAI 的 key 无法用于 OpenRouter，反之亦然。检查 `~/.hermes/.env` 中是否有冲突条目。
+请确保 key 与提供商匹配。OpenAI 的 key 无法用于 OpenRouter，反之亦然。检查 `~/.openagents/.env` 中是否有冲突条目。
 :::
 
 #### 模型不可用 / 找不到模型
@@ -305,7 +305,7 @@ hermes chat --model openrouter/meta-llama/llama-3.1-70b-instruct
 
 #### 上下文长度超限
 
-**原因：** 对话内容超出模型的上下文窗口，或 Hermes 检测到的模型上下文长度有误。
+**原因：** 对话内容超出模型的上下文窗口，或 OpenAgents 检测到的模型上下文长度有误。
 
 **解决方案：**
 ```bash
@@ -326,7 +326,7 @@ hermes chat --model openrouter/google/gemini-3-flash-preview
 如需修正上下文检测，请显式设置：
 
 ```yaml
-# 在 ~/.hermes/config.yaml 中
+# 在 ~/.openagents/config.yaml 中
 model:
   default: your-model-name
   context_length: 131072  # 您模型的实际上下文窗口
@@ -351,14 +351,14 @@ custom_providers:
 
 #### 命令被标记为危险而阻止
 
-**原因：** Hermes 检测到潜在的破坏性命令（例如 `rm -rf`、`DROP TABLE`）。这是一项安全功能。
+**原因：** OpenAgents 检测到潜在的破坏性命令（例如 `rm -rf`、`DROP TABLE`）。这是一项安全功能。
 
 **解决方案：** 出现提示时，检查命令并输入 `y` 批准执行。您也可以：
 - 要求智能体使用更安全的替代方案
 - 在[安全文档](../user-guide/security.md)中查看完整的危险模式列表
 
 :::tip
-这是预期行为 — Hermes 绝不会静默执行破坏性命令。审批提示会向您显示将要执行的确切内容。
+这是预期行为 — OpenAgents 绝不会静默执行破坏性命令。审批提示会向您显示将要执行的确切内容。
 :::
 
 #### 通过消息网关时 `sudo` 不起作用
@@ -404,7 +404,7 @@ hermes gateway status
 hermes gateway start
 
 # 查看错误日志
-cat ~/.hermes/logs/gateway.log | tail -50
+cat ~/.openagents/logs/gateway.log | tail -50
 ```
 
 #### 消息未送达
@@ -413,7 +413,7 @@ cat ~/.hermes/logs/gateway.log | tail -50
 
 **解决方案：**
 - 使用 `hermes gateway setup` 验证您的 bot token 是否有效
-- 检查网关日志：`cat ~/.hermes/logs/gateway.log | tail -50`
+- 检查网关日志：`cat ~/.openagents/logs/gateway.log | tail -50`
 - 对于基于 webhook 的平台（Slack、WhatsApp），确保您的服务器可公开访问
 
 #### 白名单混淆 — 谁可以与 bot 交互？
@@ -428,7 +428,7 @@ cat ~/.hermes/logs/gateway.log | tail -50
 | **私信配对** | 第一个在私信中发消息的用户获得独占访问权 |
 | **开放** | 任何人都可以交互（不建议用于生产环境） |
 
-在 `~/.hermes/config.yaml` 中您的网关设置下进行配置。请参阅[消息文档](../user-guide/messaging/index.md)。
+在 `~/.openagents/config.yaml` 中您的网关设置下进行配置。请参阅[消息文档](../user-guide/messaging/index.md)。
 
 #### 网关无法启动
 
@@ -437,7 +437,7 @@ cat ~/.hermes/logs/gateway.log | tail -50
 **解决方案：**
 ```bash
 # 安装核心消息网关依赖项
-cd ~/.hermes/hermes-agent && uv pip install -e ".[messaging]"  # Telegram、Discord、Slack 及共享网关依赖
+cd ~/.openagents/openagents && uv pip install -e ".[messaging]"  # Telegram、Discord、Slack 及共享网关依赖
 
 # 检查端口冲突
 lsof -i :8080
@@ -461,7 +461,7 @@ tmux new -s hermes 'hermes gateway run'
 # 稍后重新连接：tmux attach -t hermes
 
 # 方案三：通过 nohup 后台运行
-nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &
+nohup hermes gateway run > ~/.openagents/logs/gateway.log 2>&1 &
 ```
 
 如果仍想尝试 systemd，请确保已启用：
@@ -496,7 +496,7 @@ hermes gateway start      # 检测到更新的 plist 并重新加载
 您可以验证 plist 中的 PATH 是否正确：
 ```bash
 /usr/libexec/PlistBuddy -c "Print :EnvironmentVariables:PATH" \
-  ~/Library/LaunchAgents/ai.hermes.gateway.plist
+  ~/Library/LaunchAgents/ai.openagents.gateway.plist
 ```
 
 ---
@@ -557,7 +557,7 @@ hermes chat --continue
 **解决方案：**
 ```bash
 # 确保 MCP 依赖项已安装（标准安装中已包含）
-cd ~/.hermes/hermes-agent && uv pip install -e ".[mcp]"
+cd ~/.openagents/openagents && uv pip install -e ".[mcp]"
 
 # 对于基于 npm 的服务器，确保 Node.js 可用
 node --version
@@ -567,7 +567,7 @@ npx --version
 npx -y @modelcontextprotocol/server-filesystem /tmp
 ```
 
-验证您的 `~/.hermes/config.yaml` 中的 MCP 配置：
+验证您的 `~/.openagents/config.yaml` 中的 MCP 配置：
 ```yaml
 mcp_servers:
   filesystem:
@@ -590,13 +590,13 @@ mcp_servers:
 # 验证 MCP 服务器已配置
 hermes config show | grep -A 12 mcp_servers
 
-# 更改配置后重启 Hermes 或重新加载 MCP
+# 更改配置后重启 OpenAgents 或重新加载 MCP
 hermes chat
 ```
 
 另请参阅：
 - [MCP（模型上下文协议）](/user-guide/features/mcp)
-- [在 Hermes 中使用 MCP](/guides/use-mcp-with-hermes)
+- [在 OpenAgents 中使用 MCP](/guides/use-mcp-with-hermes)
 - [MCP 配置参考](/reference/mcp-config-reference)
 
 #### MCP 超时错误
@@ -609,16 +609,16 @@ hermes chat
 - 对于远程 HTTP MCP 服务器，检查网络连接
 
 :::warning
-如果 MCP 服务器在请求中途崩溃，Hermes 会报告超时。请检查服务器自身的日志（而非仅 Hermes 日志）以诊断根本原因。
+如果 MCP 服务器在请求中途崩溃，Hermes 会报告超时。请检查服务器自身的日志（而非仅 OpenAgents 日志）以诊断根本原因。
 :::
 
 ---
 
 ## Profiles（配置文件）
 
-### Profiles 与直接设置 HERMES_HOME 有何不同？
+### Profiles 与直接设置 OPENAGENTS_HOME 有何不同？
 
-Profiles 是构建在 `HERMES_HOME` 之上的托管层。您*可以*在每次命令前手动设置 `HERMES_HOME=/some/path`，但 profiles 会为您处理所有底层工作：创建目录结构、生成 shell 别名（`hermes-work`）、在 `~/.hermes/active_profile` 中跟踪活动 profile，以及自动跨所有 profiles 同步技能更新。它们还与 tab 补全集成，让您无需记忆路径。
+Profiles 是构建在 `OPENAGENTS_HOME` 之上的托管层。您*可以*在每次命令前手动设置 `OPENAGENTS_HOME=/some/path`，但 profiles 会为您处理所有底层工作：创建目录结构、生成 shell 别名（`hermes-work`）、在 `~/.openagents/active_profile` 中跟踪活动 profile，以及自动跨所有 profiles 同步技能更新。它们还与 tab 补全集成，让您无需记忆路径。
 
 ### 两个 profiles 可以共享同一个 bot token 吗？
 
@@ -634,7 +634,7 @@ Profiles 是构建在 `HERMES_HOME` 之上的托管层。您*可以*在每次命
 
 ### 可以运行多少个 profiles？
 
-没有硬性限制。每个 profile 只是 `~/.hermes/profiles/` 下的一个目录。实际限制取决于您的磁盘空间以及系统能处理多少个并发网关（每个网关是一个轻量级 Python 进程）。运行数十个 profiles 完全没问题；每个空闲的 profile 不占用任何资源。
+没有硬性限制。每个 profile 只是 `~/.openagents/profiles/` 下的一个目录。实际限制取决于您的磁盘空间以及系统能处理多少个并发网关（每个网关是一个轻量级 Python 进程）。运行数十个 profiles 完全没问题；每个空闲的 profile 不占用任何资源。
 
 ---
 
@@ -644,7 +644,7 @@ Profiles 是构建在 `HERMES_HOME` 之上的托管层。您*可以*在每次命
 
 **场景：** 您日常使用 GPT-5.4，但 Gemini 或 Grok 写社交媒体内容更好。每次手动切换模型很繁琐。
 
-**解决方案：委托配置。** Hermes 可以自动将子智能体路由到不同的模型。在 `~/.hermes/config.yaml` 中设置：
+**解决方案：委托配置。** OpenAgents 可以自动将子智能体路由到不同的模型。在 `~/.openagents/config.yaml` 中设置：
 
 ```yaml
 delegation:
@@ -652,7 +652,7 @@ delegation:
   provider: "openrouter"                    # 子智能体的提供商
 ```
 
-现在当您告诉 Hermes "帮我写一个关于 X 的 Twitter 帖子"并生成 `delegate_task` 子智能体时，该子智能体将在 Gemini 上运行，而非您的主模型。您的主对话仍在 GPT-5.4 上进行。
+现在当您告诉 OpenAgents "帮我写一个关于 X 的 Twitter 帖子"并生成 `delegate_task` 子智能体时，该子智能体将在 Gemini 上运行，而非您的主模型。您的主对话仍在 GPT-5.4 上进行。
 
 您也可以在 prompt 中明确指定：*"委托一个任务来撰写关于我们产品发布的社交媒体帖子。让你的子智能体负责实际写作。"* 智能体将使用 `delegate_task`，它会自动读取委托配置。
 
@@ -670,7 +670,7 @@ delegation:
 
 **场景：** 在 OpenClaw 中，您可以将多个独立智能体绑定到特定的 WhatsApp 聊天 — 一个用于家庭购物清单群组，另一个用于您的私聊。Hermes 能做到吗？
 
-**当前限制：** Hermes 的每个 profile 都需要自己的 WhatsApp 号码/会话。您无法将多个 profiles 绑定到同一个 WhatsApp 号码上的不同聊天 — WhatsApp bridge（Baileys）每个号码使用一个已认证的会话。
+**当前限制：** OpenAgents 的每个 profile 都需要自己的 WhatsApp 号码/会话。您无法将多个 profiles 绑定到同一个 WhatsApp 号码上的不同聊天 — WhatsApp bridge（Baileys）每个号码使用一个已认证的会话。
 
 **变通方案：**
 
@@ -732,7 +732,7 @@ skills:
 
 **场景：** 您有一个 Telegram 或 Discord 线程，多人在其中 @ bot。您希望该线程中的所有 @ 都属于一个共享对话，而非每个用户各自独立的会话。
 
-**当前行为：** Hermes 在大多数平台上按用户 ID 创建会话，因此每个人都有自己的对话上下文。这是出于隐私和上下文隔离的设计考量。
+**当前行为：** OpenAgents 在大多数平台上按用户 ID 创建会话，因此每个人都有自己的对话上下文。这是出于隐私和上下文隔离的设计考量。
 
 **变通方案：**
 
@@ -742,22 +742,22 @@ skills:
 
 3. **使用 Discord 频道。** Discord 会话按频道键控，因此同一频道中的所有用户共享上下文。为共享对话使用专用频道。
 
-### 将 Hermes 迁移到另一台机器
+### 将 OpenAgents 迁移到另一台机器
 
 **场景：** 您在一台机器上积累了技能、cron 作业和记忆，想将所有内容迁移到新的专用 Linux 机器。
 
 **解决方案：**
 
-1. 在新机器上安装 Hermes Agent：
+1. 在新机器上安装 OpenAgents：
    ```bash
-   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+   curl -fsSL https://openagents.nousresearch.com/install.sh | bash
    ```
 
 2. 在**源机器**上创建完整备份：
    ```bash
    hermes backup
    ```
-   这会将您整个 `~/.hermes/` 目录（配置、API key、记忆、技能、会话和 profiles）打包为 zip 文件，保存到主目录 `~/hermes-backup-<timestamp>.zip`。
+   这会将您整个 `~/.openagents/` 目录（配置、API key、记忆、技能、会话和 profiles）打包为 zip 文件，保存到主目录 `~/hermes-backup-<timestamp>.zip`。
 
 3. 将 zip 文件复制到新机器并导入：
    ```bash
@@ -789,25 +789,25 @@ hermes profile import ./work-backup.tar.gz work
 | 功能 | `hermes backup` | `hermes profile export` |
 | :--- | :--- | :--- |
 | **使用场景** | **整机迁移** | **移植/共享特定 profile** |
-| **范围** | 全局（整个 `~/.hermes` 目录） | 局部（单个 profile 目录） |
+| **范围** | 全局（整个 `~/.openagents` 目录） | 局部（单个 profile 目录） |
 | **包含内容** | 所有 profiles、全局配置、API key、会话 | 单个 profile：SOUL.md、记忆、会话、技能 |
 | **凭据** | **包含**（`.env` 和 `auth.json`） | **排除**（为安全共享而剥离） |
 | **格式** | `.zip` | `.tar.gz` |
 
 **手动备选方案（rsync）：** 如果您倾向于直接复制文件，请排除代码仓库：
 ```bash
-rsync -av --exclude='hermes-agent' ~/.hermes/ newmachine:~/.hermes/
+rsync -av --exclude='openagents' ~/.openagents/ newmachine:~/.openagents/
 ```
 
 :::tip
-`hermes backup` 即使在 Hermes 正在运行时也能生成一致的快照。还原的归档文件不包含机器本地的运行时文件，如 `gateway.pid` 和 `cron.pid`。
+`hermes backup` 即使在 OpenAgents 正在运行时也能生成一致的快照。还原的归档文件不包含机器本地的运行时文件，如 `gateway.pid` 和 `cron.pid`。
 :::
 
 ### 安装后重新加载 shell 时出现权限拒绝
 
-**场景：** 运行 Hermes 安装程序后，`source ~/.zshrc` 提示权限拒绝错误。
+**场景：** 运行 OpenAgents 安装程序后，`source ~/.zshrc` 提示权限拒绝错误。
 
-**原因：** 这通常发生在 `~/.zshrc`（或 `~/.bashrc`）文件权限不正确，或安装程序无法干净写入时。这不是 Hermes 特有的问题 — 而是 shell 配置权限问题。
+**原因：** 这通常发生在 `~/.zshrc`（或 `~/.bashrc`）文件权限不正确，或安装程序无法干净写入时。这不是 OpenAgents 特有的问题 — 而是 shell 配置权限问题。
 
 **解决方案：**
 ```bash
@@ -854,6 +854,6 @@ hermes chat -q "hello" --model anthropic/claude-opus-4.7
 
 如果您的问题未在此处涵盖：
 
-1. **搜索现有 issue：** [GitHub Issues](https://github.com/NousResearch/hermes-agent/issues)
+1. **搜索现有 issue：** [GitHub Issues](https://github.com/NousResearch/openagents/issues)
 2. **向社区提问：** [Nous Research Discord](https://discord.gg/nousresearch)
 3. **提交 bug 报告：** 请包含您的操作系统、Python 版本（`python3 --version`）、Hermes 版本（`hermes --version`）以及完整的错误信息

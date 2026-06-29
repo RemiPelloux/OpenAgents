@@ -6,13 +6,13 @@ description: "会话持久化、恢复、搜索、管理及各平台会话跟踪
 
 # Sessions（会话）
 
-Hermes Agent 自动将每次对话保存为一个 session。Session 支持对话恢复、跨 session 搜索以及完整的对话历史管理。
+OpenAgents 自动将每次对话保存为一个 session。Session 支持对话恢复、跨 session 搜索以及完整的对话历史管理。
 
 ## Session 的工作原理
 
 每次对话——无论来自 CLI、Telegram、Discord、Slack、WhatsApp、Signal、Matrix、Teams 还是其他任何消息平台——都会以完整消息历史的形式存储为一个 session。Session 记录在：
 
-1. **SQLite 数据库**（`~/.hermes/state.db`）——包含 FTS5 全文搜索的结构化 session 元数据，以及完整消息历史
+1. **SQLite 数据库**（`~/.openagents/state.db`）——包含 FTS5 全文搜索的结构化 session 元数据，以及完整消息历史
 
 SQLite 数据库存储：
 - Session ID、来源平台、用户 ID
@@ -26,7 +26,7 @@ SQLite 数据库存储：
 
 ### 哪些内容计入上下文
 
-Hermes 存储 session 历史以便恢复对话，但不会在每次对话时重新发送所有历史字节。每轮对话中，模型看到的是：所选系统 prompt、当前对话窗口，以及 Hermes 为该轮显式注入的内容。
+OpenAgents 存储 session 历史以便恢复对话，但不会在每次对话时重新发送所有历史字节。每轮对话中，模型看到的是：所选系统 prompt、当前对话窗口，以及 OpenAgents 为该轮显式注入的内容。
 
 媒体附件作为轮次范围内的输入处理：
 
@@ -35,7 +35,7 @@ Hermes 存储 session 历史以便恢复对话，但不会在每次对话时重�
 - 文本文档可以将提取的文本包含在内；其他文档类型通常以本地保存路径和简短说明来表示。
 - 附件路径和提取/派生的文本可能出现在对话记录中，但原始图片、音频或二进制文件字节不会被反复复制到后续 prompt 中。
 
-例如，如果用户发送一张图片并要求 Hermes 制作表情包，Hermes 可能会用视觉能力检查该图片一次并运行图像处理脚本。后续轮次不会自动将原始 JPEG 带入上下文，只携带写入对话的内容，例如用户的请求、简短的图片描述、本地缓存路径或最终的助手回复。
+例如，如果用户发送一张图片并要求 OpenAgents 制作表情包，Hermes 可能会用视觉能力检查该图片一次并运行图像处理脚本。后续轮次不会自动将原始 JPEG 带入上下文，只携带写入对话的内容，例如用户的请求、简短的图片描述、本地缓存路径或最终的助手回复。
 
 上下文增长最常见的原因不是媒体文件本身，而是冗长的文本：粘贴的转录、完整日志、大型工具输出、长 diff、重复的状态报告以及详细的证明转储。优先使用摘要、文件路径、重点摘录和工具支持的查找，而不是将大型内容复制到聊天中。
 
@@ -123,7 +123,7 @@ Session ID 在退出 CLI session 时显示，也可通过 `hermes sessions list`
 
 恢复 session 时，Hermes 会在输入提示符前以样式化面板显示之前对话的紧凑摘要：
 
-<img className="docs-terminal-figure" src="/img/docs/session-recap.svg" alt="恢复 Hermes session 时显示的「上次对话」摘要面板的样式化预览。" />
+<img className="docs-terminal-figure" src="/img/docs/session-recap.svg" alt="恢复 OpenAgents session 时显示的「上次对话」摘要面板的样式化预览。" />
 <p className="docs-figure-caption">恢复模式会在返回实时提示符前显示一个紧凑摘要面板，包含最近的用户和助手轮次。</p>
 
 摘要内容：
@@ -134,7 +134,7 @@ Session ID 在退出 CLI session 时显示，也可通过 `hermes sessions list`
 - **最多**显示最近 10 轮，并以"... N earlier messages ..."指示器标注
 - 使用**暗色样式**与活跃对话区分
 
-要禁用摘要并保留最简单的单行行为，在 `~/.hermes/config.yaml` 中设置：
+要禁用摘要并保留最简单的单行行为，在 `~/.openagents/config.yaml` 中设置：
 
 ```yaml
 display:
@@ -189,7 +189,7 @@ Session ID 格式为 `YYYYMMDD_HHMMSS_<hex>`——CLI/TUI session 使用 6 位�
 
 ### 自动生成标题
 
-Hermes 在第一次交换后自动为每个 session 生成简短的描述性标题（3–7 个词）。这在后台线程中使用快速辅助模型运行，不增加延迟。浏览 `hermes sessions list` 或 `hermes sessions browse` 时可以看到自动生成的标题。
+OpenAgents 在第一次交换后自动为每个 session 生成简短的描述性标题（3–7 个词）。这在后台线程中使用快速辅助模型运行，不增加延迟。浏览 `hermes sessions list` 或 `hermes sessions browse` 时可以看到自动生成的标题。
 
 自动命名每个 session 只触发一次，如果你已手动设置标题则跳过。
 
@@ -235,7 +235,7 @@ hermes sessions rename 20250305_091523_a1b2c3d4 "refactoring auth module"
 
 ## Session 管理命令
 
-Hermes 通过 `hermes sessions` 提供完整的 session 管理命令集：
+OpenAgents 通过 `hermes sessions` 提供完整的 session 管理命令集：
 
 ### 列出 Session
 
@@ -430,13 +430,13 @@ Agent 被提示在以下情况自动使用 session 搜索：
 | 群组线程/话题 | `agent:main:<platform>:group:<chat_id>:<thread_id>` | 所有线程参与者共享 session（默认）。设置 `thread_sessions_per_user: true` 则每用户独立。 |
 | 频道 | `agent:main:<platform>:channel:<chat_id>:<user_id>` | 当平台暴露用户 ID 时，频道内每用户独立 session |
 
-当 Hermes 无法获取共享聊天的参与者标识符时，回退为该房间共享一个 session。
+当 OpenAgents 无法获取共享聊天的参与者标识符时，回退为该房间共享一个 session。
 
 ### 共享与隔离的群组 Session
 
 默认情况下，Hermes 在 `config.yaml` 中使用 `group_sessions_per_user: true`。这意味着：
 
-- Alice 和 Bob 可以在同一个 Discord 频道中与 Hermes 对话，而不共享对话历史
+- Alice 和 Bob 可以在同一个 Discord 频道中与 OpenAgents 对话，而不共享对话历史
 - 一个用户的长时间工具密集型任务不会污染另一个用户的上下文窗口
 - 中断处理也保持每用户独立，因为运行中的 agent 键与隔离的 session 键匹配
 
@@ -465,14 +465,14 @@ Gateway session 根据可配置的策略自动重置：
 
 | 内容 | 路径 | 描述 |
 |------|------|-------------|
-| SQLite 数据库 | `~/.hermes/state.db` | 所有 session 元数据 + 带 FTS5 的消息 |
-| Gateway 消息 | `~/.hermes/state.db` | SQLite——所有 session 消息的权威存储 |
-| Gateway 路由索引 | `~/.hermes/sessions/sessions.json` | 将 session 键映射到活跃 session ID（来源元数据、过期标志） |
+| SQLite 数据库 | `~/.openagents/state.db` | 所有 session 元数据 + 带 FTS5 的消息 |
+| Gateway 消息 | `~/.openagents/state.db` | SQLite——所有 session 消息的权威存储 |
+| Gateway 路由索引 | `~/.openagents/sessions/sessions.json` | 将 session 键映射到活跃 session ID（来源元数据、过期标志） |
 
 SQLite 数据库使用 WAL 模式支持并发读取和单写入，非常适合 gateway 的多平台架构。
 
 :::note 遗留 JSONL 对话记录
-在 state.db 成为权威存储之前创建的 session 可能在 `~/.hermes/sessions/` 中留有
+在 state.db 成为权威存储之前创建的 session 可能在 `~/.openagents/sessions/` 中留有
 `*.jsonl` 文件。Hermes 不再写入或读取这些文件。在确认对应 session 存在于
 state.db 后可安全删除。
 :::
@@ -493,9 +493,9 @@ state.db 后可安全删除。
 - 重置前，agent 保存即将过期 session 中的记忆和技能
 - 可选自动清理：当 `sessions.auto_prune` 为 `true` 时，在 CLI/gateway 启动时清理早于 `sessions.retention_days`（默认 90）天的已结束 session
 - 实际删除了行的清理操作完成后，`state.db` 会执行 `VACUUM` 以回收磁盘空间（SQLite 在普通 DELETE 后不会缩小文件）
-- 清理最多每 `sessions.min_interval_hours`（默认 24）小时运行一次；上次运行时间戳记录在 `state.db` 内部，因此在同一 `HERMES_HOME` 下的所有 Hermes 进程间共享
+- 清理最多每 `sessions.min_interval_hours`（默认 24）小时运行一次；上次运行时间戳记录在 `state.db` 内部，因此在同一 `OPENAGENTS_HOME` 下的所有 OpenAgents 进程间共享
 
-默认为**关闭**——session 历史对 `session_search` 召回很有价值，静默删除可能会让用户感到意外。在 `~/.hermes/config.yaml` 中启用：
+默认为**关闭**——session 历史对 `session_search` 召回很有价值，静默删除可能会让用户感到意外。在 `~/.openagents/config.yaml` 中启用：
 
 ```yaml
 sessions:

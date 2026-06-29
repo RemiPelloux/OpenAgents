@@ -25,7 +25,7 @@ def test_install_script_does_not_autodetect_system_browser_on_path() -> None:
 
     assert "find_system_browser()" in text
     assert "google-chrome google-chrome-stable chromium chromium-browser chrome" not in text
-    assert "Skipping Playwright browser download; Hermes will use the system browser." not in text
+    assert "Skipping Playwright browser download; OpenAgents will use the system browser." not in text
 
 
 def test_install_script_honors_explicit_browser_override_only() -> None:

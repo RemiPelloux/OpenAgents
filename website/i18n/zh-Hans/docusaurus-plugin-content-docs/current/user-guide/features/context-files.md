@@ -6,7 +6,7 @@ description: "项目上下文文件 — .hermes.md、AGENTS.md、CLAUDE.md、全
 
 # 上下文文件
 
-Hermes Agent 会自动发现并加载上下文文件，以塑造其行为方式。部分文件属于项目本地文件，从工作目录中发现。`SOUL.md` 现在对整个 Hermes 实例全局生效，仅从 `HERMES_HOME` 加载。
+OpenAgents 会自动发现并加载上下文文件，以塑造其行为方式。部分文件属于项目本地文件，从工作目录中发现。`SOUL.md` 现在对整个 OpenAgents 实例全局生效，仅从 `OPENAGENTS_HOME` 加载。
 
 ## 支持的上下文文件
 
@@ -15,7 +15,7 @@ Hermes Agent 会自动发现并加载上下文文件，以塑造其行为方式�
 | **.hermes.md** / **HERMES.md** | 项目指令（最高优先级） | 向上遍历至 git 根目录 |
 | **AGENTS.md** | 项目指令、规范、架构说明 | 启动时的 CWD 及子目录（渐进式） |
 | **CLAUDE.md** | Claude Code 上下文文件（同样支持检测） | 启动时的 CWD 及子目录（渐进式） |
-| **SOUL.md** | 当前 Hermes 实例的全局个性与语气定制 | 仅 `HERMES_HOME/SOUL.md` |
+| **SOUL.md** | 当前 OpenAgents 实例的全局个性与语气定制 | 仅 `OPENAGENTS_HOME/SOUL.md` |
 | **.cursorrules** | Cursor IDE 编码规范 | 仅 CWD |
 | **.cursor/rules/*.mdc** | Cursor IDE 规则模块 | 仅 CWD |
 
@@ -83,22 +83,22 @@ This is a Next.js 14 web application with a Python FastAPI backend.
 
 **位置：**
 
-- `~/.hermes/SOUL.md`
-- 或 `$HERMES_HOME/SOUL.md`（若使用自定义主目录运行 Hermes）
+- `~/.openagents/SOUL.md`
+- 或 `$OPENAGENTS_HOME/SOUL.md`（若使用自定义主目录运行 Hermes）
 
 重要说明：
 
 - 若 `SOUL.md` 尚不存在，Hermes 会自动生成一个默认文件
-- Hermes 仅从 `HERMES_HOME` 加载 `SOUL.md`
-- Hermes 不会在工作目录中探测 `SOUL.md`
+- OpenAgents 仅从 `OPENAGENTS_HOME` 加载 `SOUL.md`
+- OpenAgents 不会在工作目录中探测 `SOUL.md`
 - 若文件为空，`SOUL.md` 中的内容不会添加到 prompt
 - 若文件有内容，内容在扫描和截断后原样注入
 
 ## .cursorrules
 
-Hermes 兼容 Cursor IDE 的 `.cursorrules` 文件和 `.cursor/rules/*.mdc` 规则模块。若这些文件存在于项目根目录，且未找到更高优先级的上下文文件（`.hermes.md`、`AGENTS.md` 或 `CLAUDE.md`），则将其作为项目上下文加载。
+OpenAgents 兼容 Cursor IDE 的 `.cursorrules` 文件和 `.cursor/rules/*.mdc` 规则模块。若这些文件存在于项目根目录，且未找到更高优先级的上下文文件（`.hermes.md`、`AGENTS.md` 或 `CLAUDE.md`），则将其作为项目上下文加载。
 
-这意味着使用 Hermes 时，现有的 Cursor 规范会自动生效。
+这意味着使用 OpenAgents 时，现有的 Cursor 规范会自动生效。
 
 ## 上下文文件的加载方式
 

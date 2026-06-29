@@ -70,7 +70,7 @@ class CodexEventProjector:
     """Stateful projector consuming Codex notifications in arrival order.
 
     Owns the in-progress reasoning content (codex emits reasoning as separate
-    items but Hermes stashes it on the next assistant message)."""
+    items but OpenAgents stashes it on the next assistant message)."""
 
     def __init__(self) -> None:
         self._pending_reasoning: list[str] = []
@@ -83,7 +83,7 @@ class CodexEventProjector:
 
         # We only materialize messages on `item/completed`. Streaming deltas
         # (`item/<type>/outputDelta`, `item/<type>/delta`) are display-only and
-        # don't enter the messages list — same way Hermes already only writes
+        # don't enter the messages list — same way OpenAgents already only writes
         # the assistant message after the streaming completion event.
         if method != "item/completed":
             return ProjectionResult()

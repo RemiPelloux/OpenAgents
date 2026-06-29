@@ -6,7 +6,7 @@ description: "使用 Microsoft Graph webhook 配置 Microsoft Teams 会议摘要
 
 # Microsoft Teams 会议
 
-当你希望 Hermes 接收 Microsoft Graph 会议事件、优先获取转录文本、在无可用转录时回退到录音加 STT（语音转文字），并将结构化摘要输出到下游 sink 时，请使用 Teams 会议流水线。
+当你希望 OpenAgents 接收 Microsoft Graph 会议事件、优先获取转录文本、在无可用转录时回退到录音加 STT（语音转文字），并将结构化摘要输出到下游 sink 时，请使用 Teams 会议流水线。
 
 本页重点介绍配置与启用：
 - Graph 凭据
@@ -37,7 +37,7 @@ hermes teams-pipeline maintain-subscriptions
 
 启用会议流水线前，请确保已具备：
 
-- 可正常运行的 Hermes 安装
+- 可正常运行的 OpenAgents 安装
 - 若需要 Teams 出站投递，需完成现有的 [Microsoft Teams bot 配置](/user-guide/messaging/teams)
 - 具备订阅所需会议资源权限的 Microsoft Graph 应用凭据
 - Microsoft Graph 可调用的公网 HTTPS URL，用于 webhook 投递
@@ -45,7 +45,7 @@ hermes teams-pipeline maintain-subscriptions
 
 ## 第一步：添加 Microsoft Graph 凭据
 
-将 Graph 应用凭据添加到 `~/.hermes/.env`：
+将 Graph 应用凭据添加到 `~/.openagents/.env`：
 
 ```bash
 MSGRAPH_TENANT_ID=<tenant-id>
@@ -84,7 +84,7 @@ https://ops.example.com/msgraph/webhook
 
 会议流水线从现有的 `teams` 平台条目读取运行时配置。流水线专属参数位于 `teams.extra.meeting_pipeline` 下。Teams 出站投递仍使用常规 Teams 平台配置。
 
-`~/.hermes/config.yaml` 示例：
+`~/.openagents/config.yaml` 示例：
 
 ```yaml
 platforms:
@@ -141,7 +141,7 @@ platforms:
 
 ### `graph`
 
-当你希望 Hermes 通过 Microsoft Graph 将摘要发送到 Teams 聊天或频道时，使用此模式。
+当你希望 OpenAgents 通过 Microsoft Graph 将摘要发送到 Teams 聊天或频道时，使用此模式。
 
 支持的目标：
 - `chat_id`
@@ -196,7 +196,7 @@ hermes teams-pipeline subscribe \
 
 :::warning Graph 订阅在 72 小时后过期
 
-Microsoft Graph 将 webhook 订阅上限设为 72 小时，且不会自动续期。你**必须**在上线前调度 `hermes teams-pipeline maintain-subscriptions`，否则通知将在手动创建订阅三天后静默停止。请参阅运维手册中的[自动化订阅续期](/guides/operate-teams-meeting-pipeline#automating-subscription-renewal-required-for-production)——提供三种方案（Hermes cron、systemd timer、普通 crontab）。
+Microsoft Graph 将 webhook 订阅上限设为 72 小时，且不会自动续期。你**必须**在上线前调度 `hermes teams-pipeline maintain-subscriptions`，否则通知将在手动创建订阅三天后静默停止。请参阅运维手册中的[自动化订阅续期](/guides/operate-teams-meeting-pipeline#automating-subscription-renewal-required-for-production)——提供三种方案（OpenAgents cron、systemd timer、普通 crontab）。
 
 :::
 

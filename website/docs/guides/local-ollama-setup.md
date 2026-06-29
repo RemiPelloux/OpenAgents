@@ -1,10 +1,10 @@
 ---
 sidebar_position: 9
-title: "Run Hermes Locally with Ollama — Zero API Cost"
-description: "Step-by-step guide to running Hermes Agent entirely on your own machine with Ollama and open-weight models like Gemma 4, no cloud API keys or paid subscriptions needed"
+title: "Run OpenAgents Locally with Ollama — Zero API Cost"
+description: "Step-by-step guide to running OpenAgents entirely on your own machine with Ollama and open-weight models like Gemma 4, no cloud API keys or paid subscriptions needed"
 ---
 
-# Run Hermes Locally with Ollama — Zero API Cost
+# Run OpenAgents Locally with Ollama — Zero API Cost
 
 ## The Problem
 
@@ -12,12 +12,12 @@ Cloud LLM APIs charge per token. A heavy coding session can cost $5–20. For pe
 
 ## What This Guide Solves
 
-You'll set up Hermes Agent running entirely on your own hardware, using [Ollama](https://ollama.com) as the model backend. No API keys, no subscriptions, no data leaving your machine. Once configured, Hermes works exactly like it does with OpenRouter or Anthropic — terminal commands, file editing, web browsing, delegation — but the model runs locally.
+You'll set up OpenAgents running entirely on your own hardware, using [Ollama](https://ollama.com) as the model backend. No API keys, no subscriptions, no data leaving your machine. Once configured, OpenAgents works exactly like it does with OpenRouter or Anthropic — terminal commands, file editing, web browsing, delegation — but the model runs locally.
 
 By the end, you'll have:
 
 - Ollama serving one or more open-weight models
-- Hermes connected to Ollama as a custom endpoint
+- OpenAgents connected to Ollama as a custom endpoint
 - A working local agent that can edit files, run commands, and browse the web
 - Optional: a Telegram/Discord bot powered entirely by your own hardware
 
@@ -34,7 +34,7 @@ By the end, you'll have:
 Ollama runs on CPU-only servers. A 9B model on a modern 8-core CPU gives ~10 tokens/sec. A 31B model on CPU is slower (~2–5 tokens/sec) — each response takes 30–120 seconds, but it works. A GPU dramatically improves this. For CPU-only setups, widen the API timeout via the env var (it's not a `config.yaml` key):
 
 ```bash
-# ~/.hermes/.env
+# ~/.openagents/.env
 HERMES_API_TIMEOUT=1800   # 30 minutes — generous for slow local models
 ```
 :::
@@ -64,7 +64,7 @@ Choose based on your hardware:
 | `llama3.2:3b` | ~2 GB | 4+ GB | No | Lightweight quick answers only |
 
 :::warning Tool calling matters
-Hermes is an **agentic** assistant — it edits files, runs commands, and browses the web through tool calls. Models without tool-call support can only chat; they can't take actions. For the full Hermes experience, use a model that supports tools (like `gemma4:31b`).
+OpenAgents is an **agentic** assistant — it edits files, runs commands, and browses the web through tool calls. Models without tool-call support can only chat; they can't take actions. For the full OpenAgents experience, use a model that supports tools (like `gemma4:31b`).
 :::
 
 Pull your chosen model:
@@ -74,7 +74,7 @@ ollama pull gemma4:31b
 ```
 
 :::info Multiple models
-You can pull several models and switch between them inside Hermes with `/model`. Ollama loads the active model into memory on demand and unloads idle ones automatically.
+You can pull several models and switch between them inside OpenAgents with `/model`. Ollama loads the active model into memory on demand and unloads idle ones automatically.
 :::
 
 Verify the model works:
@@ -93,7 +93,7 @@ You should see a JSON response with the model's reply.
 
 ## Step 3: Configure Hermes
 
-Run the Hermes setup wizard:
+Run the OpenAgents setup wizard:
 
 ```bash
 hermes setup
@@ -105,7 +105,7 @@ When prompted for a provider, select **Custom Endpoint** and enter:
 - **API Key:** Leave empty or type `no-key` (Ollama doesn't need one)
 - **Model:** `gemma4:31b` (or whichever model you pulled)
 
-Alternatively, edit `~/.hermes/config.yaml` directly:
+Alternatively, edit `~/.openagents/config.yaml` directly:
 
 ```yaml
 model:
@@ -130,7 +130,7 @@ You: Read the README.md and summarize what this project does
 You: Create a Python script that fetches the weather for Ho Chi Minh City
 ```
 
-Hermes will use the terminal tool, file operations, and your local model — no cloud calls.
+OpenAgents will use the terminal tool, file operations, and your local model — no cloud calls.
 
 ## Step 5: Pick the Right Model for Your Task
 
@@ -156,7 +156,7 @@ Switch models on the fly inside a session:
 
 ### Increase Ollama's Context Window
 
-By default, Ollama uses a 2048-token context. Hermes requires at least 64,000 tokens for agentic work with tools:
+By default, Ollama uses a 2048-token context. OpenAgents requires at least 64,000 tokens for agentic work with tools:
 
 ```bash
 # Create a Modelfile that extends context
@@ -168,7 +168,7 @@ EOF
 ollama create gemma4-64k -f /tmp/Modelfile
 ```
 
-Then update your Hermes config to use `gemma4-64k` as the model name.
+Then update your OpenAgents config to use `gemma4-64k` as the model name.
 
 ### Keep the Model Loaded
 
@@ -200,12 +200,12 @@ For a 31B model on a 12 GB GPU, you'll get partial offload (~40 layers on GPU, r
 
 ## Step 7: Run as a Gateway Bot (Optional)
 
-Once Hermes works locally in the CLI, you can expose it as a Telegram or Discord bot — still running entirely on your hardware.
+Once OpenAgents works locally in the CLI, you can expose it as a Telegram or Discord bot — still running entirely on your hardware.
 
 ### Telegram
 
 1. Create a bot via [@BotFather](https://t.me/BotFather) and get the token
-2. Add to your `~/.hermes/config.yaml`:
+2. Add to your `~/.openagents/config.yaml`:
 
 ```yaml
 model:
@@ -282,7 +282,7 @@ Smaller models (3B, 7B) sometimes ignore tool-call instructions and produce plai
 
 - **Use a bigger model** — `gemma4:31b` or `gemma2:27b` handle tool calls much better than 3B/7B models.
 - **Hermes has auto-repair** — it detects malformed tool calls and attempts to fix them automatically.
-- **Set up a fallback** — if the local model fails 3 times, Hermes falls back to a cloud provider.
+- **Set up a fallback** — if the local model fails 3 times, OpenAgents falls back to a cloud provider.
 
 ### Context window errors
 
@@ -303,7 +303,7 @@ Your only cost is electricity — roughly $0.01–0.05 per session depending on 
 ## What Works Well Locally
 
 - **File editing and code generation** — models 9B+ handle this well
-- **Terminal commands** — Hermes wraps the command, runs it, reads output regardless of model
+- **Terminal commands** — OpenAgents wraps the command, runs it, reads output regardless of model
 - **Web browsing** — the browser tool does the fetching; the model just interprets results
 - **Cron jobs and scheduled tasks** — work identically to cloud setups
 - **Multi-platform gateway** — Telegram, Discord, Slack all work with local models

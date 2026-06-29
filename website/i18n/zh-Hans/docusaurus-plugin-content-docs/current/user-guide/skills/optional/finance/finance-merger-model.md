@@ -26,7 +26,7 @@ description: "在 Excel 中构建增厚/摊薄（并购）模型 — 备考损�
 ## 参考：完整 SKILL.md
 
 :::info
-以下是 Hermes 在触发该 skill 时加载的完整 skill 定义。这是 skill 激活时 agent 所看到的指令内容。
+以下是 OpenAgents 在触发该 skill 时加载的完整 skill 定义。这是 skill 激活时 agent 所看到的指令内容。
 :::
 
 ## 环境
@@ -147,7 +147,7 @@ description: "在 Excel 中构建增厚/摊薄（并购）模型 — 备考损�
 
 ## 数据来源 — 优先使用 MCP，其次使用网络
 
-以下部分内容提及"使用 S&P Kensho MCP / Daloopa MCP / FactSet MCP"。这些是原 Cowork 插件场景中的商业金融数据 MCP。在 Hermes 中：
+以下部分内容提及"使用 S&P Kensho MCP / Daloopa MCP / FactSet MCP"。这些是原 Cowork 插件场景中的商业金融数据 MCP。在 OpenAgents 中：
 
 - **如已配置任何结构化金融数据 MCP**（Hermes 支持 MCP — 参见 `native-mcp` skill），优先用于时点可比数据、前例交易及文件。
 - **否则**，回退至：

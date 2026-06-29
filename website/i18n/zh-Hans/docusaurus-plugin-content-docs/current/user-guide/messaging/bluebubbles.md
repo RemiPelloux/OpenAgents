@@ -1,13 +1,13 @@
 # BlueBubbles（iMessage）
 
-通过 [BlueBubbles](https://bluebubbles.app/) 将 Hermes 连接至 Apple iMessage——这是一款免费、开源的 macOS 服务端，可将 iMessage 桥接至任意设备。
+通过 [BlueBubbles](https://bluebubbles.app/) 将 OpenAgents 连接至 Apple iMessage——这是一款免费、开源的 macOS 服务端，可将 iMessage 桥接至任意设备。
 
 ## 前提条件
 
 - 一台**始终开机的 Mac**，运行 [BlueBubbles Server](https://bluebubbles.app/)
 - 该 Mac 上的 Messages.app 已登录 Apple ID
 - BlueBubbles Server v1.0.0+（webhook 需要此版本）
-- Hermes 与 BlueBubbles 服务端之间的网络连通性
+- OpenAgents 与 BlueBubbles 服务端之间的网络连通性
 
 ## 配置步骤
 
@@ -31,7 +31,7 @@ hermes gateway setup
 
 选择 **BlueBubbles (iMessage)** 并输入服务端 URL 和密码。
 
-或直接在 `~/.hermes/.env` 中设置环境变量：
+或直接在 `~/.openagents/.env` 中设置环境变量：
 
 ```bash
 BLUEBUBBLES_SERVER_URL=http://192.168.1.10:1234
@@ -49,12 +49,12 @@ hermes pairing approve bluebubbles <CODE>
 ```
 使用 `hermes pairing list` 查看待处理的配对码和已授权用户。
 
-**预授权特定用户**（在 `~/.hermes/.env` 中）：
+**预授权特定用户**（在 `~/.openagents/.env` 中）：
 ```bash
 BLUEBUBBLES_ALLOWED_USERS=user@icloud.com,+15551234567
 ```
 
-**开放访问**（在 `~/.hermes/.env` 中）：
+**开放访问**（在 `~/.openagents/.env` 中）：
 ```bash
 BLUEBUBBLES_ALLOW_ALL_USERS=true
 ```
@@ -65,17 +65,17 @@ BLUEBUBBLES_ALLOW_ALL_USERS=true
 hermes gateway run
 ```
 
-Hermes 将连接至你的 BlueBubbles 服务端，注册 webhook，并开始监听 iMessage 消息。
+OpenAgents 将连接至你的 BlueBubbles 服务端，注册 webhook，并开始监听 iMessage 消息。
 
 ## 工作原理
 
 ```
 iMessage → Messages.app → BlueBubbles Server → Webhook → Hermes
-Hermes → BlueBubbles REST API → Messages.app → iMessage
+OpenAgents → BlueBubbles REST API → Messages.app → iMessage
 ```
 
 - **入站：** 新消息到达时，BlueBubbles 向本地监听器发送 webhook 事件。无需轮询——即时送达。
-- **出站：** Hermes 通过 BlueBubbles REST API 发送消息。
+- **出站：** OpenAgents 通过 BlueBubbles REST API 发送消息。
 - **媒体：** 双向支持图片、语音消息、视频和文档。入站附件会被下载并在本地缓存，供 Agent 处理。
 
 ## 环境变量
@@ -91,7 +91,7 @@ Hermes → BlueBubbles REST API → Messages.app → iMessage
 | `BLUEBUBBLES_ALLOWED_USERS` | 否 | — | 逗号分隔的授权用户列表 |
 | `BLUEBUBBLES_ALLOW_ALL_USERS` | 否 | `false` | 允许所有用户 |
 
-自动将消息标记为已读由 `~/.hermes/config.yaml` 中 `platforms.bluebubbles.extra` 下的 `send_read_receipts` 键控制（默认值：`true`）。该选项没有对应的环境变量。
+自动将消息标记为已读由 `~/.openagents/config.yaml` 中 `platforms.bluebubbles.extra` 下的 `send_read_receipts` 键控制（默认值：`true`）。该选项没有对应的环境变量。
 
 ## 功能特性
 

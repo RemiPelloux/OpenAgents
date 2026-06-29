@@ -1,17 +1,17 @@
-"""Resolve HERMES_HOME for standalone skill scripts.
+"""Resolve OPENAGENTS_HOME for standalone skill scripts.
 
-Skill scripts may run outside the Hermes process (e.g. system Python,
-nix env, CI) where ``hermes_constants`` is not importable.  This module
-provides the same ``get_hermes_home()`` and ``display_hermes_home()``
-contracts as ``hermes_constants`` without requiring it on ``sys.path``.
+Skill scripts may run outside the OpenAgents process (e.g. system Python,
+nix env, CI) where ``openagents_constants`` is not importable.  This module
+provides the same ``get_openagents_home()`` and ``display_openagents_home()``
+contracts as ``openagents_constants`` without requiring it on ``sys.path``.
 
-When ``hermes_constants`` IS available it is used directly so that any
+When ``openagents_constants`` IS available it is used directly so that any
 future enhancements (profile resolution, Docker detection, etc.) are
 picked up automatically.  The fallback path replicates the core logic
-from ``hermes_constants.py`` using only the stdlib.
+from ``openagents_constants.py`` using only the stdlib.
 
 All scripts under ``google-workspace/scripts/`` should import from here
-instead of duplicating the ``HERMES_HOME = Path(os.getenv(...))`` pattern.
+instead of duplicating the ``OPENAGENTS_HOME = Path(os.getenv(...))`` pattern.
 """
 
 from __future__ import annotations
@@ -20,22 +20,22 @@ import os
 from pathlib import Path
 
 try:
-    from hermes_constants import display_hermes_home as display_hermes_home
-    from hermes_constants import get_hermes_home as get_hermes_home
+    from openagents_constants import display_openagents_home as display_openagents_home
+    from openagents_constants import get_openagents_home as get_openagents_home
 except (ModuleNotFoundError, ImportError):
 
-    def get_hermes_home() -> Path:
-        """Return the Hermes home directory (default: ~/.hermes).
+    def get_openagents_home() -> Path:
+        """Return the OpenAgents home directory (default: ~/.openagents).
 
-        Mirrors ``hermes_constants.get_hermes_home()``."""
-        val = os.environ.get("HERMES_HOME", "").strip()
+        Mirrors ``openagents_constants.get_openagents_home()``."""
+        val = os.environ.get("OPENAGENTS_HOME", "").strip()
         return Path(val) if val else Path.home() / ".hermes"
 
-    def display_hermes_home() -> str:
+    def display_openagents_home() -> str:
         """Return a user-friendly ``~/``-shortened display string.
 
-        Mirrors ``hermes_constants.display_hermes_home()``."""
-        home = get_hermes_home()
+        Mirrors ``openagents_constants.display_openagents_home()``."""
+        home = get_openagents_home()
         try:
             return "~/" + str(home.relative_to(Path.home()))
         except ValueError:

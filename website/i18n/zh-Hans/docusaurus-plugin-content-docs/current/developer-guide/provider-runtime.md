@@ -6,7 +6,7 @@ description: "Hermes 如何在运行时解析 provider、凭据、API 模式及�
 
 # Provider 运行时解析
 
-Hermes 拥有一个共享的 provider 运行时解析器，用于以下场景：
+OpenAgents 拥有一个共享的 provider 运行时解析器，用于以下场景：
 
 - CLI
 - gateway
@@ -16,14 +16,14 @@ Hermes 拥有一个共享的 provider 运行时解析器，用于以下场景：
 
 主要实现：
 
-- `hermes_cli/runtime_provider.py` — 凭据解析，`_resolve_custom_runtime()`
-- `hermes_cli/auth.py` — provider 注册表，`resolve_provider()`
-- `hermes_cli/model_switch.py` — 共享 `/model` 切换流水线（CLI + gateway）
+- `openagents_cli/runtime_provider.py` — 凭据解析，`_resolve_custom_runtime()`
+- `openagents_cli/auth.py` — provider 注册表，`resolve_provider()`
+- `openagents_cli/model_switch.py` — 共享 `/model` 切换流水线（CLI + gateway）
 - `agent/auxiliary_client.py` — 辅助模型路由
 - `providers/` — ABC + 注册表入口点（`ProviderProfile`、`register_provider`、`get_provider_profile`、`list_providers`）
-- `plugins/model-providers/<name>/` — 每个 provider 的插件（内置），声明 `api_mode`、`base_url`、`env_vars`、`fallback_models` 并在首次访问时将自身注册到注册表。用户插件位于 `$HERMES_HOME/plugins/model-providers/<name>/`，会覆盖同名的内置插件。
+- `plugins/model-providers/<name>/` — 每个 provider 的插件（内置），声明 `api_mode`、`base_url`、`env_vars`、`fallback_models` 并在首次访问时将自身注册到注册表。用户插件位于 `$OPENAGENTS_HOME/plugins/model-providers/<name>/`，会覆盖同名的内置插件。
 
-`providers/` 中的 `get_provider_profile()` 为给定 provider id 返回一个 `ProviderProfile`。`runtime_provider.py` 在解析时调用它，以获取规范的 `base_url`、`env_vars` 优先级列表、`api_mode` 和 `fallback_models`，无需在多个文件中重复这些数据。在 `plugins/model-providers/<your-provider>/`（或 `$HERMES_HOME/plugins/model-providers/<your-provider>/`）下添加一个调用 `register_provider()` 的新插件，即可让 `runtime_provider.py` 自动识别它——无需在解析器本身中添加分支。
+`providers/` 中的 `get_provider_profile()` 为给定 provider id 返回一个 `ProviderProfile`。`runtime_provider.py` 在解析时调用它，以获取规范的 `base_url`、`env_vars` 优先级列表、`api_mode` 和 `fallback_models`，无需在多个文件中重复这些数据。在 `plugins/model-providers/<your-provider>/`（或 `$OPENAGENTS_HOME/plugins/model-providers/<your-provider>/`）下添加一个调用 `register_provider()` 的新插件，即可让 `runtime_provider.py` 自动识别它——无需在解析器本身中添加分支。
 
 如果你想添加一个新的一等推理 provider，请结合本页阅读 [添加 Provider](./adding-providers.md) 和 [Model Provider 插件指南](./model-provider-plugin.md)。
 
@@ -36,7 +36,7 @@ Hermes 拥有一个共享的 provider 运行时解析器，用于以下场景：
 3. 环境变量
 4. provider 特定的默认值或自动解析
 
-该顺序很重要，因为 Hermes 将已保存的模型/provider 选择视为正常运行的真实来源。这可以防止过时的 shell 导出变量悄悄覆盖用户在 `hermes model` 中最后选择的端点。
+该顺序很重要，因为 OpenAgents 将已保存的模型/provider 选择视为正常运行的真实来源。这可以防止过时的 shell 导出变量悄悄覆盖用户在 `hermes model` 中最后选择的端点。
 
 ## Provider
 
@@ -84,7 +84,7 @@ Hermes 拥有一个共享的 provider 运行时解析器，用于以下场景：
 
 ## 为什么这很重要
 
-该解析器是 Hermes 能够在以下场景之间共享认证/运行时逻辑的主要原因：
+该解析器是 OpenAgents 能够在以下场景之间共享认证/运行时逻辑的主要原因：
 
 - `hermes chat`
 - gateway 消息处理
@@ -94,14 +94,14 @@ Hermes 拥有一个共享的 provider 运行时解析器，用于以下场景：
 
 ## OpenRouter 与自定义 OpenAI 兼容 base URL
 
-Hermes 包含相关逻辑，以避免在存在多个 provider 密钥时（例如同时存在 `OPENROUTER_API_KEY` 和 `OPENAI_API_KEY`）将错误的 API key 泄露给自定义端点。
+OpenAgents 包含相关逻辑，以避免在存在多个 provider 密钥时（例如同时存在 `OPENROUTER_API_KEY` 和 `OPENAI_API_KEY`）将错误的 API key 泄露给自定义端点。
 
 每个 provider 的 API key 仅作用于其自身的 base URL：
 
 - `OPENROUTER_API_KEY` 仅发送至 `openrouter.ai` 端点
 - `OPENAI_API_KEY` 用于自定义端点及作为回退
 
-Hermes 还区分以下两种情况：
+OpenAgents 还区分以下两种情况：
 
 - 用户主动选择的真实自定义端点
 - 未配置自定义端点时使用的 OpenRouter 回退路径
@@ -127,8 +127,8 @@ Anthropic 不再仅限于"通过 OpenRouter"访问。
 
 - 包含可刷新认证的 Claude Code 凭据文件被视为首选来源
 - 手动设置的 `ANTHROPIC_TOKEN` / `CLAUDE_CODE_OAUTH_TOKEN` 值仍可作为显式覆盖
-- Hermes 在调用原生 Messages API 前会预检 Anthropic 凭据刷新
-- Hermes 在重建 Anthropic 客户端后，仍会在收到 401 时重试一次，作为回退路径
+- OpenAgents 在调用原生 Messages API 前会预检 Anthropic 凭据刷新
+- OpenAgents 在重建 Anthropic 客户端后，仍会在收到 401 时重试一次，作为回退路径
 
 ## OpenAI Codex 路径
 
@@ -158,7 +158,7 @@ Codex 使用独立的 Responses API 路径：
 
 ## 回退模型
 
-Hermes 支持配置回退 provider 链——一个按顺序尝试的 `(provider, model)` 条目列表，当主模型遇到错误时依次尝试。旧版单对 `fallback_model` 字典仍被接受以保持向后兼容（并在首次写入时迁移）。
+OpenAgents 支持配置回退 provider 链——一个按顺序尝试的 `(provider, model)` 条目列表，当主模型遇到错误时依次尝试。旧版单对 `fallback_model` 字典仍被接受以保持向后兼容（并在首次写入时迁移）。
 
 ### 内部工作原理
 

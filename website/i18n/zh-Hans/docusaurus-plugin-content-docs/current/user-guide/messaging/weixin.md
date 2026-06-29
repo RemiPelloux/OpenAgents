@@ -1,12 +1,12 @@
 ---
 sidebar_position: 15
 title: "微信（Weixin）"
-description: "通过 iLink Bot API 将 Hermes Agent 连接到个人微信账号"
+description: "通过 iLink Bot API 将 OpenAgents 连接到个人微信账号"
 ---
 
 # 微信（Weixin / WeChat）
 
-将 Hermes 连接到 [微信](https://weixin.qq.com/)（WeChat），腾讯的个人即时通讯平台。该适配器使用腾讯的 **iLink Bot API** 对接个人微信账号——与企业微信（WeCom）不同。消息通过长轮询（long-polling）方式传递，无需公网端点或 webhook。
+将 OpenAgents 连接到 [微信](https://weixin.qq.com/)（WeChat），腾讯的个人即时通讯平台。该适配器使用腾讯的 **iLink Bot API** 对接个人微信账号——与企业微信（WeCom）不同。消息通过长轮询（long-polling）方式传递，无需公网端点或 webhook。
 
 :::info
 本适配器适用于**个人微信账号**（微信）。如需对接企业微信，请参阅 [WeCom 适配器](./wecom.md)。
@@ -27,14 +27,14 @@ description: "通过 iLink Bot API 将 Hermes Agent 连接到个人微信账号"
 
 - 一个个人微信账号
 - Python 包：`aiohttp` 和 `cryptography`
-- 使用 `messaging` 扩展安装 Hermes 时已内置终端二维码渲染功能
+- 使用 `messaging` 扩展安装 OpenAgents 时已内置终端二维码渲染功能
 
 安装所需依赖：
 
 ```bash
 pip install aiohttp cryptography
 # 可选：用于终端二维码显示
-cd ~/.hermes/hermes-agent && uv pip install -e ".[messaging]"
+cd ~/.openagents/openagents && uv pip install -e ".[messaging]"
 ```
 
 ## 配置步骤
@@ -53,7 +53,7 @@ hermes gateway setup
 2. 在终端中显示二维码（或提供 URL）
 3. 等待你用微信手机端扫描二维码
 4. 提示你在手机上确认登录
-5. 自动将账号凭据保存至 `~/.hermes/weixin/accounts/`
+5. 自动将账号凭据保存至 `~/.openagents/weixin/accounts/`
 
 确认后，你将看到如下消息：
 
@@ -65,7 +65,7 @@ hermes gateway setup
 
 ### 2. 配置环境变量
 
-完成首次扫码登录后，在 `~/.hermes/.env` 中至少设置账号 ID：
+完成首次扫码登录后，在 `~/.openagents/.env` 中至少设置账号 ID：
 
 ```bash
 WEIXIN_ACCOUNT_ID=your-account-id
@@ -210,7 +210,7 @@ WEIXIN_GROUP_ALLOWED_USERS=group_id_1,group_id_2
 
 iLink Bot API 要求在每条出站消息中回传 `context_token`（针对特定对话方）。适配器维护一个基于磁盘的上下文 token 存储：
 
-- Token 按账号+对话方保存至 `~/.hermes/weixin/accounts/<account_id>.context-tokens.json`
+- Token 按账号+对话方保存至 `~/.openagents/weixin/accounts/<account_id>.context-tokens.json`
 - 启动时恢复之前保存的 token
 - 每条入站消息都会更新该发送方的已存储 token
 - 出站消息自动包含最新的上下文 token
@@ -299,7 +299,7 @@ iLink Bot API 要求在每条出站消息中回传 `context_token`（针对特�
 | `Weixin startup failed: aiohttp and cryptography are required` | 安装两者：`pip install aiohttp cryptography` |
 | `Weixin startup failed: WEIXIN_TOKEN is required` | 运行 `hermes gateway setup` 完成扫码登录，或手动设置 `WEIXIN_TOKEN` |
 | `Weixin startup failed: WEIXIN_ACCOUNT_ID is required` | 在 `.env` 中设置 `WEIXIN_ACCOUNT_ID`，或运行 `hermes gateway setup` |
-| `Another local Hermes gateway is already using this Weixin token` | 先停止另一个网关实例——每个 token 只允许一个轮询器 |
+| `Another local OpenAgents gateway is already using this Weixin token` | 先停止另一个网关实例——每个 token 只允许一个轮询器 |
 | 会话过期（`errcode=-14`） | 登录会话已过期。重新运行 `hermes gateway setup` 扫描新二维码 |
 | 配置过程中二维码过期 | 二维码最多自动刷新 3 次。若持续过期，请检查网络连接 |
 | Bot 不响应私信 | 检查 `WEIXIN_DM_POLICY`——若设置为 `allowlist`，发送方必须在 `WEIXIN_ALLOWED_USERS` 中 |
@@ -309,4 +309,4 @@ iLink Bot API 要求在每条出站消息中回传 `context_token`（针对特�
 | 语音消息显示为文本 | 若微信提供了转录文本，适配器会使用文本内容，这是预期行为 |
 | 消息出现重复 | 适配器通过消息 ID 去重。若仍出现重复，检查是否有多个网关实例在运行 |
 | `iLink POST ... HTTP 4xx/5xx` | iLink 服务返回 API 错误。检查 token 有效性和网络连通性 |
-| 终端二维码无法渲染 | 使用 messaging 扩展重新安装：`cd ~/.hermes/hermes-agent && uv pip install -e ".[messaging]"`。或者，打开二维码上方打印的 URL |
+| 终端二维码无法渲染 | 使用 messaging 扩展重新安装：`cd ~/.openagents/openagents && uv pip install -e ".[messaging]"`。或者，打开二维码上方打印的 URL |

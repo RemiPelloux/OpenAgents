@@ -10,7 +10,7 @@ import time
 import pytest
 
 from acp_adapter.provenance import build_session_provenance, session_provenance_meta
-from hermes_state import SessionDB
+from openagents_state import SessionDB
 
 
 @pytest.fixture()
@@ -98,6 +98,6 @@ def test_unknown_session_returns_none(db):
 def test_meta_wrapper_shape(db):
     _mk(db, "root1")
     meta = session_provenance_meta(db, "acp-1", "root1")
-    assert set(meta.keys()) == {"hermes"}
-    assert "sessionProvenance" in meta["hermes"]
-    assert meta["hermes"]["sessionProvenance"]["currentHermesSessionId"] == "root1"
+    assert set(meta.keys()) == {"openagents"}
+    assert "sessionProvenance" in meta["openagents"]
+    assert meta["openagents"]["sessionProvenance"]["currentHermesSessionId"] == "root1"

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 3
 title: "Nix & NixOS 安装配置"
-description: "使用 Nix 安装和部署 Hermes Agent——从快速 `nix run` 到完全声明式的 NixOS 模块（含容器模式）"
+description: "使用 Nix 安装和部署 OpenAgents——从快速 `nix run` 到完全声明式的 NixOS 模块（含容器模式）"
 ---
 
 # Nix & NixOS 安装配置
 
-Hermes Agent 提供了一个 Nix flake，支持三个层级的集成：
+OpenAgents 提供了一个 Nix flake，支持三个层级的集成：
 
 | 层级 | 适用对象 | 提供内容 |
 |-------|-------------|--------------|
@@ -35,23 +35,23 @@ Hermes Agent 提供了一个 Nix flake，支持三个层级的集成：
 
 ```bash
 # 直接运行（首次使用时构建，之后使用缓存）
-nix run github:NousResearch/hermes-agent -- setup
-nix run github:NousResearch/hermes-agent -- chat
+nix run github:NousResearch/openagents -- setup
+nix run github:NousResearch/openagents -- chat
 
 # 或持久化安装
-nix profile install github:NousResearch/hermes-agent
+nix profile install github:NousResearch/openagents
 hermes setup
 hermes chat
 ```
 
-执行 `nix profile install` 后，`hermes`、`hermes-agent` 和 `hermes-acp` 将出现在你的 PATH 中。之后的工作流与[标准安装](./installation.md)完全相同——`hermes setup` 引导你完成提供商选择，`hermes gateway install` 设置 launchd（macOS）或 systemd 用户服务，配置存放在 `~/.hermes/`。
+执行 `nix profile install` 后，`hermes`、`openagents` 和 `openagents-acp` 将出现在你的 PATH 中。之后的工作流与[标准安装](./installation.md)完全相同——`hermes setup` 引导你完成提供商选择，`hermes gateway install` 设置 launchd（macOS）或 systemd 用户服务，配置存放在 `~/.openagents/`。
 
 <details>
 <summary><strong>从本地克隆构建</strong></summary>
 
 ```bash
-git clone https://github.com/NousResearch/hermes-agent.git
-cd hermes-agent
+git clone https://github.com/NousResearch/openagents.git
+cd openagents
 nix build
 ./result/bin/hermes setup
 ```
@@ -75,14 +75,14 @@ nix build
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    hermes-agent.url = "github:NousResearch/hermes-agent";
+    openagents.url = "github:NousResearch/openagents";
   };
 
-  outputs = { nixpkgs, hermes-agent, ... }: {
+  outputs = { nixpkgs, openagents, ... }: {
     nixosConfigurations.your-host = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
-        hermes-agent.nixosModules.default
+        openagents.nixosModules.default
         ./configuration.nix
       ];
     };
@@ -95,7 +95,7 @@ nix build
 ```nix
 # configuration.nix
 { config, ... }: {
-  services.hermes-agent = {
+  services.openagents = {
     enable = true;
     settings.model.default = "anthropic/claude-sonnet-4";
     environmentFiles = [ config.sops.secrets."hermes-env".path ];
@@ -114,12 +114,12 @@ echo "OPENROUTER_API_KEY=sk-or-your-key" | sudo install -m 0600 -o hermes /dev/s
 ```
 
 ```nix
-services.hermes-agent.environmentFiles = [ "/var/lib/hermes/env" ];
+services.openagents.environmentFiles = [ "/var/lib/hermes/env" ];
 ```
 :::
 
 :::tip addToSystemPackages
-设置 `addToSystemPackages = true` 有两个作用：将 `hermes` CLI 添加到系统 PATH，**并**在系统范围内设置 `HERMES_HOME`，使交互式 CLI 与 gateway 服务共享状态（会话、技能、cron）。不设置此项时，在 shell 中运行 `hermes` 会创建独立的 `~/.hermes/` 目录。
+设置 `addToSystemPackages = true` 有两个作用：将 `hermes` CLI 添加到系统 PATH，**并**在系统范围内设置 `OPENAGENTS_HOME`，使交互式 CLI 与 gateway 服务共享状态（会话、技能、cron）。不设置此项时，在 shell 中运行 `hermes` 会创建独立的 `~/.openagents/` 目录。
 :::
 
 ### 容器感知 CLI
@@ -132,10 +132,10 @@ services.hermes-agent.environmentFiles = [ "/var/lib/hermes/env" ];
 - 如果容器未运行，CLI 会短暂重试（交互式使用时显示 5 秒 spinner，脚本中静默等待 10 秒），然后以明确的错误退出——不会静默回退
 - 对于在 hermes 代码库上工作的开发者，设置 `HERMES_DEV=1` 可绕过容器路由，直接运行本地检出版本
 
-设置 `container.hostUsers` 可创建 `~/.hermes` 到服务状态目录的符号链接，使主机 CLI 和容器共享会话、配置和记忆：
+设置 `container.hostUsers` 可创建 `~/.openagents` 到服务状态目录的符号链接，使主机 CLI 和容器共享会话、配置和记忆：
 
 ```nix
-services.hermes-agent = {
+services.openagents = {
   container.enable = true;
   container.hostUsers = [ "your-username" ];
   addToSystemPackages = true;
@@ -165,10 +165,10 @@ CLI 会自动检测何时需要 sudo 并透明地使用它。没有此配置，�
 
 ```bash
 # 检查服务状态
-systemctl status hermes-agent
+systemctl status openagents
 
 # 查看日志（Ctrl+C 停止）
-journalctl -u hermes-agent -f
+journalctl -u openagents -f
 
 # 如果 addToSystemPackages 为 true，测试 CLI
 hermes version
@@ -191,7 +191,7 @@ hermes config       # 显示生成的配置
 
 ```nix
 {
-  services.hermes-agent = {
+  services.openagents = {
     enable = true;
     container.enable = true;
     # ... 其余配置相同
@@ -213,14 +213,14 @@ hermes config       # 显示生成的配置
 
 ```nix
 # base.nix
-services.hermes-agent.settings = {
+services.openagents.settings = {
   model.default = "anthropic/claude-sonnet-4";
   toolsets = [ "all" ];
   terminal = { backend = "local"; timeout = 180; };
 };
 
 # personality.nix
-services.hermes-agent.settings = {
+services.openagents.settings = {
   display = { compact = false; personality = "kawaii"; };
   memory = { memory_enabled = true; user_profile_enabled = true; };
 };
@@ -241,7 +241,7 @@ services.hermes-agent.settings = {
 
 ```nix
 { config, ... }: {
-  services.hermes-agent = {
+  services.openagents = {
     enable = true;
     container.enable = true;
 
@@ -303,10 +303,10 @@ services.hermes-agent.settings = {
 如果你希望完全在 Nix 之外管理 `config.yaml`，请使用 `configFile`：
 
 ```nix
-services.hermes-agent.configFile = /etc/hermes/config.yaml;
+services.openagents.configFile = /etc/hermes/config.yaml;
 ```
 
-这会完全绕过 `settings`——不合并，不生成。每次激活时，该文件会原样复制到 `$HERMES_HOME/config.yaml`。
+这会完全绕过 `settings`——不合并，不生成。每次激活时，该文件会原样复制到 `$OPENAGENTS_HOME/config.yaml`。
 
 ### 自定义速查表
 
@@ -317,7 +317,7 @@ Nix 用户最常见自定义需求的快速参考：
 | 更改 LLM 模型 | `settings.model.default` | `"anthropic/claude-sonnet-4"` |
 | 使用不同的提供商端点 | `settings.model.base_url` | `"https://openrouter.ai/api/v1"` |
 | 添加 API 密钥 | `environmentFiles` | `[ config.sops.secrets."hermes-env".path ]` |
-| 给 Agent 设置个性 | `${services.hermes-agent.stateDir}/.hermes/SOUL.md` | 直接管理该文件 |
+| 给 Agent 设置个性 | `${services.openagents.stateDir}/.hermes/SOUL.md` | 直接管理该文件 |
 | 添加 MCP 工具服务器 | `mcpServers.<name>` | 参见 [MCP 服务器](#mcp-servers) |
 | 将主机目录挂载到容器 | `container.extraVolumes` | `[ "/data:/data:rw" ]` |
 | 为容器传入 GPU 访问 | `container.extraOptions` | `[ "--gpus" "all" ]` |
@@ -325,7 +325,7 @@ Nix 用户最常见自定义需求的快速参考：
 | 在主机 CLI 和容器间共享状态 | `container.hostUsers` | `[ "sidbin" ]` |
 | 为 Agent 提供额外工具 | `extraPackages` | `[ pkgs.pandoc pkgs.imagemagick ]` |
 | 使用自定义基础镜像 | `container.image` | `"ubuntu:24.04"` |
-| 覆盖 hermes 包 | `package` | `inputs.hermes-agent.packages.${system}.default.override { ... }` |
+| 覆盖 hermes 包 | `package` | `inputs.openagents.packages.${system}.default.override { ... }` |
 | 更改状态目录 | `stateDir` | `"/opt/hermes"` |
 | 设置 Agent 的工作目录 | `workingDirectory` | `"/home/user/projects"` |
 
@@ -337,7 +337,7 @@ Nix 用户最常见自定义需求的快速参考：
 Nix 表达式中的值会进入 `/nix/store`，该目录是全局可读的。请始终使用带有密钥管理器的 `environmentFiles`。
 :::
 
-`environment`（非密钥变量）和 `environmentFiles`（密钥文件）在激活时（`nixos-rebuild switch`）都会合并到 `$HERMES_HOME/.env` 中。Hermes 在每次启动时读取此文件，因此更改在 `systemctl restart hermes-agent` 后生效——无需重建容器。
+`environment`（非密钥变量）和 `environmentFiles`（密钥文件）在激活时（`nixos-rebuild switch`）都会合并到 `$OPENAGENTS_HOME/.env` 中。Hermes 在每次启动时读取此文件，因此更改在 `systemctl restart openagents` 后生效——无需重建容器。
 
 ### sops-nix
 
@@ -349,7 +349,7 @@ Nix 表达式中的值会进入 `/nix/store`，该目录是全局可读的。请
     secrets."hermes-env" = { format = "yaml"; };
   };
 
-  services.hermes-agent.environmentFiles = [
+  services.openagents.environmentFiles = [
     config.sops.secrets."hermes-env".path
   ];
 }
@@ -371,7 +371,7 @@ hermes-env: |
 {
   age.secrets.hermes-env.file = ./secrets/hermes-env.age;
 
-  services.hermes-agent.environmentFiles = [
+  services.openagents.environmentFiles = [
     config.age.secrets.hermes-env.path
   ];
 }
@@ -383,7 +383,7 @@ hermes-env: |
 
 ```nix
 {
-  services.hermes-agent = {
+  services.openagents = {
     authFile = config.sops.secrets."hermes/auth.json".path;
     # authFileForceOverwrite = true;  # 每次激活时强制覆盖
   };
@@ -401,11 +401,11 @@ hermes-env: |
 - **`USER.md`** — 关于 Agent 正在交互的用户的上下文信息。
 - 你放置在此处的任何其他文件对 Agent 都可见，作为工作区文件。
 
-Agent 身份文件是独立的：Hermes 从 `$HERMES_HOME/SOUL.md` 加载其主要 `SOUL.md`，在 NixOS 模块中对应 `${services.hermes-agent.stateDir}/.hermes/SOUL.md`。将 `SOUL.md` 放入 `documents` 只会创建一个工作区文件，不会替换主角色文件。
+Agent 身份文件是独立的：Hermes 从 `$OPENAGENTS_HOME/SOUL.md` 加载其主要 `SOUL.md`，在 NixOS 模块中对应 `${services.openagents.stateDir}/.hermes/SOUL.md`。将 `SOUL.md` 放入 `documents` 只会创建一个工作区文件，不会替换主角色文件。
 
 ```nix
 {
-  services.hermes-agent.documents = {
+  services.openagents.documents = {
     "USER.md" = ./documents/USER.md;  # 路径引用，从 Nix store 复制
   };
 }
@@ -423,7 +423,7 @@ Agent 身份文件是独立的：Hermes 从 `$HERMES_HOME/SOUL.md` 加载其主�
 
 ```nix
 {
-  services.hermes-agent.mcpServers = {
+  services.openagents.mcpServers = {
     filesystem = {
       command = "npx";
       args = [ "-y" "@modelcontextprotocol/server-filesystem" "/data/workspace" ];
@@ -438,14 +438,14 @@ Agent 身份文件是独立的：Hermes 从 `$HERMES_HOME/SOUL.md` 加载其主�
 ```
 
 :::tip
-`env` 值中的环境变量在运行时从 `$HERMES_HOME/.env` 解析。使用 `environmentFiles` 注入密钥——切勿将 token 直接放入 Nix 配置。
+`env` 值中的环境变量在运行时从 `$OPENAGENTS_HOME/.env` 解析。使用 `environmentFiles` 注入密钥——切勿将 token 直接放入 Nix 配置。
 :::
 
 ### HTTP 传输（远程服务器）
 
 ```nix
 {
-  services.hermes-agent.mcpServers.remote-api = {
+  services.openagents.mcpServers.remote-api = {
     url = "https://mcp.example.com/v1/mcp";
     headers.Authorization = "Bearer \${MCP_REMOTE_API_KEY}";
     timeout = 180;
@@ -459,14 +459,14 @@ Agent 身份文件是独立的：Hermes 从 `$HERMES_HOME/SOUL.md` 加载其主�
 
 ```nix
 {
-  services.hermes-agent.mcpServers.my-oauth-server = {
+  services.openagents.mcpServers.my-oauth-server = {
     url = "https://mcp.example.com/mcp";
     auth = "oauth";
   };
 }
 ```
 
-Token 存储在 `$HERMES_HOME/mcp-tokens/<server-name>.json` 中，在重启和重建后持久保留。
+Token 存储在 `$OPENAGENTS_HOME/mcp-tokens/<server-name>.json` 中，在重启和重建后持久保留。
 
 <details>
 <summary><strong>无头服务器上的初始 OAuth 授权</strong></summary>
@@ -477,11 +477,11 @@ Token 存储在 `$HERMES_HOME/mcp-tokens/<server-name>.json` 中，在重启和�
 
 ```bash
 # 容器模式
-docker exec -it hermes-agent \
+docker exec -it openagents \
   hermes mcp add my-oauth-server --url https://mcp.example.com/mcp --auth oauth
 
 # 原生模式
-sudo -u hermes HERMES_HOME=/var/lib/hermes/.hermes \
+sudo -u hermes OPENAGENTS_HOME=/var/lib/hermes/.hermes \
   hermes mcp add my-oauth-server --url https://mcp.example.com/mcp --auth oauth
 ```
 
@@ -491,7 +491,7 @@ sudo -u hermes HERMES_HOME=/var/lib/hermes/.hermes \
 
 ```bash
 hermes mcp add my-oauth-server --url https://mcp.example.com/mcp --auth oauth
-scp ~/.hermes/mcp-tokens/my-oauth-server{,.client}.json \
+scp ~/.openagents/mcp-tokens/my-oauth-server{,.client}.json \
     server:/var/lib/hermes/.hermes/mcp-tokens/
 # 确保：chown hermes:hermes，chmod 0600
 ```
@@ -504,7 +504,7 @@ scp ~/.hermes/mcp-tokens/my-oauth-server{,.client}.json \
 
 ```nix
 {
-  services.hermes-agent.mcpServers.analysis = {
+  services.openagents.mcpServers.analysis = {
     command = "npx";
     args = [ "-y" "analysis-server" ];
     sampling = {
@@ -535,7 +535,7 @@ scp ~/.hermes/mcp-tokens/my-oauth-server{,.client}.json \
 这可以防止 Nix 声明的内容与磁盘上实际内容之间产生漂移。检测使用两个信号：
 
 1. **`HERMES_MANAGED=true`** 环境变量——由 systemd 服务设置，对 gateway 进程可见
-2. **`.managed` 标记文件**，位于 `HERMES_HOME` 中——由激活脚本设置，对交互式 shell 可见（例如 `docker exec -it hermes-agent hermes config set ...` 也会被屏蔽）
+2. **`.managed` 标记文件**，位于 `OPENAGENTS_HOME` 中——由激活脚本设置，对交互式 shell 可见（例如 `docker exec -it openagents hermes config set ...` 也会被屏蔽）
 
 要更改配置，请编辑你的 Nix 配置并运行 `sudo nixos-rebuild switch`。
 
@@ -552,13 +552,13 @@ scp ~/.hermes/mcp-tokens/my-oauth-server{,.client}.json \
 ```
 主机                                    容器
 ────                                    ─────────
-/nix/store/...-hermes-agent-0.1.0  ──►  /nix/store/... (ro)
-~/.hermes -> /var/lib/hermes/.hermes       （符号链接桥接，按 hostUsers）
+/nix/store/...-openagents-0.1.0  ──►  /nix/store/... (ro)
+~/.openagents -> /var/lib/hermes/.hermes       （符号链接桥接，按 hostUsers）
 /var/lib/hermes/                    ──►  /data/          (rw)
   ├── current-package -> /nix/store/...    （符号链接，每次重建更新）
   ├── .gc-root -> /nix/store/...           （防止 nix-collect-garbage）
   ├── .container-identity                  （sha256 哈希，触发重建）
-  ├── .hermes/                             （HERMES_HOME）
+  ├── .hermes/                             （OPENAGENTS_HOME）
   │   ├── .env                             （从 environment + environmentFiles 合并）
   │   ├── config.yaml                      （Nix 生成，激活时深度合并）
   │   ├── .managed                         （标记文件）
@@ -579,7 +579,7 @@ Nix 构建的二进制文件能在 Ubuntu 容器内运行，是因为 `/nix/stor
 
 | 事件 | 容器重建？ | `/data`（状态） | `/home/hermes` | 可写层（`apt`/`pip`/`npm`） |
 |---|---|---|---|---|
-| `systemctl restart hermes-agent` | 否 | 保留 | 保留 | 保留 |
+| `systemctl restart openagents` | 否 | 保留 | 保留 | 保留 |
 | `nixos-rebuild switch`（代码变更） | 否（更新符号链接） | 保留 | 保留 | 保留 |
 | 主机重启 | 否 | 保留 | 保留 | 保留 |
 | `nix-collect-garbage` | 否（GC root） | 保留 | 保留 | 保留 |
@@ -610,7 +610,7 @@ NixOS 模块支持声明式插件安装——无需命令式的 `hermes plugins 
 对于只包含 `plugin.yaml` + `__init__.py` 的源码树插件（例如 [hermes-lcm](https://github.com/stephenschoettler/hermes-lcm)）：
 
 ```nix
-services.hermes-agent.extraPlugins = [
+services.openagents.extraPlugins = [
   (pkgs.fetchFromGitHub {
     owner = "stephenschoettler";
     repo = "hermes-lcm";
@@ -620,14 +620,14 @@ services.hermes-agent.extraPlugins = [
 ];
 ```
 
-插件在激活时以符号链接方式安装到 `$HERMES_HOME/plugins/`。Hermes 通过其正常的目录扫描发现它们。从列表中移除插件并运行 `nixos-rebuild switch` 会删除符号链接。
+插件在激活时以符号链接方式安装到 `$OPENAGENTS_HOME/plugins/`。Hermes 通过其正常的目录扫描发现它们。从列表中移除插件并运行 `nixos-rebuild switch` 会删除符号链接。
 
 ### 入口点插件（`extraPythonPackages`）
 
 对于通过 `[project.entry-points."hermes_agent.plugins"]` 注册的 pip 打包插件（例如 [rtk-hermes](https://github.com/ogallotti/rtk-hermes)）：
 
 ```nix
-services.hermes-agent.extraPythonPackages = [
+services.openagents.extraPythonPackages = [
   (pkgs.python312Packages.buildPythonPackage {
     pname = "rtk-hermes";
     version = "1.0.0";
@@ -647,10 +647,10 @@ services.hermes-agent.extraPythonPackages = [
 
 ### 可选依赖组（`extraDependencyGroups`）
 
-对于已在 hermes-agent 的 `pyproject.toml` 中声明的可选 extras（例如 `hindsight` 或 `honcho` 等记忆提供商），使用 `extraDependencyGroups` 在构建时将其包含到封闭的 venv 中：
+对于已在 openagents 的 `pyproject.toml` 中声明的可选 extras（例如 `hindsight` 或 `honcho` 等记忆提供商），使用 `extraDependencyGroups` 在构建时将其包含到封闭的 venv 中：
 
 ```nix
-services.hermes-agent = {
+services.openagents = {
   extraDependencyGroups = [ "hindsight" ];
   settings.memory.provider = "hindsight";
 };
@@ -672,7 +672,7 @@ services.hermes-agent = {
 带有第三方 Python 依赖的目录插件需要同时使用两个选项：
 
 ```nix
-services.hermes-agent = {
+services.openagents = {
   extraPlugins = [ my-plugin-src ];          # 插件源码
   extraPythonPackages = [ pkgs.python312Packages.redis ];  # 其 Python 依赖
   extraPackages = [ pkgs.redis ];            # 其需要的系统二进制文件
@@ -685,12 +685,12 @@ services.hermes-agent = {
 
 ```nix
 {
-  inputs.hermes-agent.url = "github:NousResearch/hermes-agent";
-  outputs = { hermes-agent, nixpkgs, ... }: {
-    nixpkgs.overlays = [ hermes-agent.overlays.default ];
+  inputs.openagents.url = "github:NousResearch/openagents";
+  outputs = { openagents, nixpkgs, ... }: {
+    nixpkgs.overlays = [ openagents.overlays.default ];
     # 然后：
-    #   pkgs.hermes-agent.override { extraPythonPackages = [...]; }
-    #   pkgs.hermes-agent.override { extraDependencyGroups = [ "hindsight" ]; }
+    #   pkgs.openagents.override { extraPythonPackages = [...]; }
+    #   pkgs.openagents.override { extraDependencyGroups = [ "hindsight" ]; }
   };
 }
 ```
@@ -700,7 +700,7 @@ services.hermes-agent = {
 插件仍需在 `config.yaml` 中启用。通过声明式 settings 添加：
 
 ```nix
-services.hermes-agent.settings.plugins.enabled = [
+services.openagents.settings.plugins.enabled = [
   "hermes-lcm"
   "rtk-rewrite"
 ];
@@ -719,7 +719,7 @@ services.hermes-agent.settings.plugins.enabled = [
 该 flake 提供了一个包含 Python 3.12、uv、Node.js 和所有运行时工具的开发 shell：
 
 ```bash
-cd hermes-agent
+cd openagents
 nix develop
 
 # Shell 提供：
@@ -736,7 +736,7 @@ hermes chat
 包含的 `.envrc` 会自动激活开发 shell：
 
 ```bash
-cd hermes-agent
+cd openagents
 direnv allow    # 仅需一次
 # 后续进入几乎即时（戳记文件跳过依赖安装）
 ```
@@ -763,7 +763,7 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 
 | 检查 | 测试内容 |
 |---|---|
-| `package-contents` | `hermes` 和 `hermes-agent` 二进制文件存在且 `hermes version` 可运行 |
+| `package-contents` | `hermes` 和 `openagents` 二进制文件存在且 `hermes version` 可运行 |
 | `entry-points-sync` | `pyproject.toml` 中 `[project.scripts]` 的每个条目在 Nix 包中都有对应的封装二进制文件 |
 | `cli-commands` | `hermes --help` 暴露 `gateway` 和 `config` 子命令 |
 | `managed-guard` | `HERMES_MANAGED=true hermes config set ...` 打印 NixOS 错误 |
@@ -780,14 +780,14 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 
 | 选项 | 类型 | 默认值 | 描述 |
 |---|---|---|---|
-| `enable` | `bool` | `false` | 启用 hermes-agent 服务 |
-| `package` | `package` | `hermes-agent` | 使用的 hermes-agent 包 |
-| `user` | `str` | `"hermes"` | 系统用户 |
-| `group` | `str` | `"hermes"` | 系统组 |
+| `enable` | `bool` | `false` | 启用 openagents 服务 |
+| `package` | `package` | `openagents` | 使用的 openagents 包 |
+| `user` | `str` | `"openagents"` | 系统用户 |
+| `group` | `str` | `"openagents"` | 系统组 |
 | `createUser` | `bool` | `true` | 自动创建用户/组 |
-| `stateDir` | `str` | `"/var/lib/hermes"` | 状态目录（`HERMES_HOME` 的父目录） |
+| `stateDir` | `str` | `"/var/lib/hermes"` | 状态目录（`OPENAGENTS_HOME` 的父目录） |
 | `workingDirectory` | `str` | `"${stateDir}/workspace"` | Agent 工作目录（`MESSAGING_CWD`） |
-| `addToSystemPackages` | `bool` | `false` | 将 `hermes` CLI 添加到系统 PATH 并在系统范围内设置 `HERMES_HOME` |
+| `addToSystemPackages` | `bool` | `false` | 将 `hermes` CLI 添加到系统 PATH 并在系统范围内设置 `OPENAGENTS_HOME` |
 
 ### 配置
 
@@ -800,7 +800,7 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 
 | 选项 | 类型 | 默认值 | 描述 |
 |---|---|---|---|
-| `environmentFiles` | `listOf str` | `[]` | 包含密钥的 env 文件路径。激活时合并到 `$HERMES_HOME/.env` |
+| `environmentFiles` | `listOf str` | `[]` | 包含密钥的 env 文件路径。激活时合并到 `$OPENAGENTS_HOME/.env` |
 | `environment` | `attrsOf str` | `{}` | 非密钥环境变量。**在 Nix store 中可见**——请勿在此放置密钥 |
 | `authFile` | `null` 或 `path` | `null` | OAuth 凭据预置文件。仅在首次部署时复制 |
 | `authFileForceOverwrite` | `bool` | `false` | 每次激活时始终从 `authFile` 覆盖 `auth.json` |
@@ -834,7 +834,7 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 |---|---|---|---|
 | `extraArgs` | `listOf str` | `[]` | `hermes gateway` 的额外参数 |
 | `extraPackages` | `listOf package` | `[]` | Agent 可用的额外包。添加到 hermes 用户的每用户 profile，终端命令、skills 和 cron 任务均可见 |
-| `extraPlugins` | `listOf package` | `[]` | 以符号链接方式安装到 `$HERMES_HOME/plugins/` 的目录插件包。每个包必须包含 `plugin.yaml` |
+| `extraPlugins` | `listOf package` | `[]` | 以符号链接方式安装到 `$OPENAGENTS_HOME/plugins/` 的目录插件包。每个包必须包含 `plugin.yaml` |
 | `extraPythonPackages` | `listOf package` | `[]` | 添加到 PYTHONPATH 用于入口点插件发现的 Python 包。使用 `python312Packages` 构建 |
 | `extraDependencyGroups` | `listOf str` | `[]` | 包含到封闭 venv 中的 pyproject.toml 可选 extras（例如 `["hindsight"]`）。由 uv 解析——无冲突 |
 | `restart` | `str` | `"always"` | systemd `Restart=` 策略 |
@@ -849,7 +849,7 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 | `container.image` | `str` | `"ubuntu:24.04"` | 基础镜像（运行时拉取） |
 | `container.extraVolumes` | `listOf str` | `[]` | 额外卷挂载（`host:container:mode`） |
 | `container.extraOptions` | `listOf str` | `[]` | 传递给 `docker create` 的额外参数 |
-| `container.hostUsers` | `listOf str` | `[]` | 获得 `~/.hermes` 符号链接（指向服务 stateDir）的交互式用户，自动加入 `hermes` 组 |
+| `container.hostUsers` | `listOf str` | `[]` | 获得 `~/.openagents` 符号链接（指向服务 stateDir）的交互式用户，自动加入 `hermes` 组 |
 
 ---
 
@@ -859,7 +859,7 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 
 ```
 /var/lib/hermes/                     # stateDir（归 hermes:hermes 所有，权限 0750）
-├── .hermes/                         # HERMES_HOME
+├── .hermes/                         # OPENAGENTS_HOME
 │   ├── config.yaml                  # Nix 生成（每次重建深度合并）
 │   ├── .managed                     # 标记：CLI 配置变更被屏蔽
 │   ├── .env                         # 从 environment + environmentFiles 合并
@@ -884,7 +884,7 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 
 | 容器路径 | 主机路径 | 模式 | 说明 |
 |---|---|---|---|
-| `/nix/store` | `/nix/store` | `ro` | Hermes 二进制文件 + 所有 Nix 依赖 |
+| `/nix/store` | `/nix/store` | `ro` | OpenAgents 二进制文件 + 所有 Nix 依赖 |
 | `/data` | `/var/lib/hermes` | `rw` | 所有状态、配置、工作区 |
 | `/home/hermes` | `${stateDir}/home` | `rw` | 持久化 Agent home——`pip install --user`、工具缓存 |
 | `/usr`、`/usr/local`、`/tmp` | （可写层） | `rw` | `apt`/`pip`/`npm` 安装——重启后持久，重建后丢失 |
@@ -895,7 +895,7 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 
 ```bash
 # 更新 flake 输入（在包含 flake.nix 的目录中运行）
-cd /etc/nixos && nix flake update hermes-agent
+cd /etc/nixos && nix flake update openagents
 
 # 重建
 sudo nixos-rebuild switch
@@ -915,21 +915,21 @@ sudo nixos-rebuild switch
 
 ```bash
 # 两种模式使用相同的 systemd 单元
-journalctl -u hermes-agent -f
+journalctl -u openagents -f
 
 # 容器模式：也可直接查看
-docker logs -f hermes-agent
+docker logs -f openagents
 ```
 
 ### 容器检查
 
 ```bash
-systemctl status hermes-agent
-docker ps -a --filter name=hermes-agent
-docker inspect hermes-agent --format='{{.State.Status}}'
-docker exec -it hermes-agent bash
-docker exec hermes-agent readlink /data/current-package
-docker exec hermes-agent cat /data/.container-identity
+systemctl status openagents
+docker ps -a --filter name=openagents
+docker inspect openagents --format='{{.State.Status}}'
+docker exec -it openagents bash
+docker exec openagents readlink /data/current-package
+docker exec openagents cat /data/.container-identity
 ```
 
 ### 强制重建容器
@@ -937,10 +937,10 @@ docker exec hermes-agent cat /data/.container-identity
 如果需要重置可写层（全新 Ubuntu）：
 
 ```bash
-sudo systemctl stop hermes-agent
-docker rm -f hermes-agent
+sudo systemctl stop openagents
+docker rm -f openagents
 sudo rm /var/lib/hermes/.container-identity
-sudo systemctl start hermes-agent
+sudo systemctl start openagents
 ```
 
 ### 验证密钥已加载
@@ -952,13 +952,13 @@ sudo systemctl start hermes-agent
 sudo -u hermes cat /var/lib/hermes/.hermes/.env
 
 # 容器模式
-docker exec hermes-agent cat /data/.hermes/.env
+docker exec openagents cat /data/.hermes/.env
 ```
 
 ### GC Root 验证
 
 ```bash
-nix-store --query --roots $(docker exec hermes-agent readlink /data/current-package)
+nix-store --query --roots $(docker exec openagents readlink /data/current-package)
 ```
 
 ### 常见问题
@@ -967,9 +967,9 @@ nix-store --query --roots $(docker exec hermes-agent readlink /data/current-pack
 |---|---|---|
 | `Cannot save configuration: managed by NixOS` | CLI 守卫已激活 | 编辑 `configuration.nix` 并执行 `nixos-rebuild switch` |
 | 容器意外重建 | `extraVolumes`、`extraOptions` 或 `image` 发生变更 | 预期行为——可写层重置。重新安装包或使用自定义镜像 |
-| `hermes version` 显示旧版本 | 容器未重启 | `systemctl restart hermes-agent` |
+| `hermes version` 显示旧版本 | 容器未重启 | `systemctl restart openagents` |
 | `/var/lib/hermes` 权限拒绝 | 状态目录为 `0750 hermes:hermes` | 使用 `docker exec` 或 `sudo -u hermes` |
 | `nix-collect-garbage` 删除了 hermes | GC root 缺失 | 重启服务（preStart 会重新创建 GC root） |
-| `no container with name or ID "hermes-agent"`（Podman） | Podman rootful 容器对普通用户不可见 | 为 podman 添加免密 sudo（参见[容器模式](#container-mode)章节） |
+| `no container with name or ID "openagents"`（Podman） | Podman rootful 容器对普通用户不可见 | 为 podman 添加免密 sudo（参见[容器模式](#container-mode)章节） |
 | `unable to find user hermes` | 容器仍在启动中（入口点尚未创建用户） | 等待几秒后重试——CLI 会自动重试 |
-| 通过 `extraPackages` 添加的工具在终端中找不到 | 需要 `nixos-rebuild switch` 更新每用户 profile | 重建并重启：`nixos-rebuild switch && systemctl restart hermes-agent` |
+| 通过 `extraPackages` 添加的工具在终端中找不到 | 需要 `nixos-rebuild switch` 更新每用户 profile | 重建并重启：`nixos-rebuild switch && systemctl restart openagents` |

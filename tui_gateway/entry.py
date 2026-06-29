@@ -2,13 +2,13 @@ import os
 import sys
 
 # Stop a ``utils/`` (or ``proxy/``, ``ui/``) package in the launch directory
-# from shadowing Hermes's own top-level modules.  ``hermes_bootstrap`` lives at
+# from shadowing Hermes's own top-level modules.  ``openagents_bootstrap`` lives at
 # the repo root next to this package, so importing it is safe before the guard
 # runs (its name won't collide with a user package), and it owns the canonical
 # path-hardening logic shared with the other entry points.
-import hermes_bootstrap
+import openagents_bootstrap
 
-hermes_bootstrap.harden_import_path()
+openagents_bootstrap.harden_import_path()
 
 import json
 import logging
@@ -218,13 +218,13 @@ def wait_for_mcp_discovery(timeout: "float | None" = None) -> None:
     waited on beyond the bound.  No-op when no discovery thread was started.
 
     The bound comes from ``mcp_discovery_timeout`` in config (shared with the
-    CLI path via ``hermes_cli.mcp_startup``); ``timeout`` overrides it.
+    CLI path via ``openagents_cli.mcp_startup``); ``timeout`` overrides it.
     """
     thread = _mcp_discovery_thread
     if thread is None or not thread.is_alive():
         return
     try:
-        from hermes_cli.mcp_startup import _resolve_discovery_timeout
+        from openagents_cli.mcp_startup import _resolve_discovery_timeout
 
         bound = _resolve_discovery_timeout(timeout)
     except Exception:
@@ -283,7 +283,7 @@ def main():
     # thread when there's actually MCP work to do, so the import cost stays
     # off the path entirely for the common case.
     try:
-        from hermes_cli.config import read_raw_config
+        from openagents_cli.config import read_raw_config
         _mcp_servers = (read_raw_config() or {}).get("mcp_servers")
         _has_mcp_servers = isinstance(_mcp_servers, dict) and len(_mcp_servers) > 0
     except Exception:
@@ -293,7 +293,7 @@ def main():
     if _has_mcp_servers:
         def _discover_mcp_background() -> None:
             try:
-                from hermes_cli.mcp_startup import (
+                from openagents_cli.mcp_startup import (
                     _discover_mcp_tools_without_interactive_oauth,
                 )
 

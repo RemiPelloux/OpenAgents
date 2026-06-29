@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// set-exe-identity.cjs — stamp the Hermes icon + version metadata onto the
+// set-exe-identity.cjs — stamp the OpenAgents icon + version metadata onto the
 // built Hermes.exe using rcedit, completely decoupled from electron-builder's
 // signing path.
 //
@@ -38,7 +38,7 @@
 const path = require('node:path')
 const fs = require('node:fs')
 
-// Stamp the Hermes icon + identity onto `exe`. Resolves on success, throws on
+// Stamp the OpenAgents icon + identity onto `exe`. Resolves on success, throws on
 // failure. `desktopRoot` defaults to this script's package root so the icon and
 // the rcedit dependency resolve regardless of cwd.
 async function stampExeIdentity(exe, desktopRoot = path.resolve(__dirname, '..')) {
@@ -75,7 +75,7 @@ async function stampExeIdentity(exe, desktopRoot = path.resolve(__dirname, '..')
     }
   })
 
-  console.log('[set-exe-identity] done — Hermes icon + identity stamped')
+  console.log('[set-exe-identity] done — OpenAgents icon + identity stamped')
 }
 
 module.exports = { stampExeIdentity }

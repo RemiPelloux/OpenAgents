@@ -97,7 +97,7 @@ def tool_progress_hint_cli() -> str:
 
 
 def openclaw_residue_hint_cli() -> str:
-    """Banner shown the first time Hermes starts and finds ``~/.openclaw/``.
+    """Banner shown the first time OpenAgents starts and finds ``~/.openclaw/``.
 
     Points users at ``hermes claw migrate`` (non-destructive port of config,
     memory, and skills) first. ``hermes claw cleanup`` is mentioned as the

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 15
 title: "Microsoft Foundry"
-description: "将 Hermes Agent 与 Microsoft Foundry 配合使用——OpenAI 风格与 Anthropic 风格端点、传输协议与已部署模型的自动检测"
+description: "将 OpenAgents 与 Microsoft Foundry 配合使用——OpenAI 风格与 Anthropic 风格端点、传输协议与已部署模型的自动检测"
 ---
 
 # Microsoft Foundry
 
-Hermes Agent 的 `azure-foundry` provider 支持 Microsoft Foundry（原 Azure AI Foundry）和 Azure OpenAI。单个 Foundry 资源可以托管两种不同传输格式的模型：
+OpenAgents 的 `azure-foundry` provider 支持 Microsoft Foundry（原 Azure AI Foundry）和 Azure OpenAI。单个 Foundry 资源可以托管两种不同传输格式的模型：
 
 - **OpenAI 风格** — 在 `https://<resource>.openai.azure.com/openai/v1` 等端点上执行 `POST /v1/chat/completions`。用于 GPT-4.x、GPT-5.x、Llama、Mistral 及大多数开放权重模型。
 - **Anthropic 风格** — 在 `https://<resource>.services.ai.azure.com/anthropic` 等端点上执行 `POST /v1/messages`。当 Microsoft Foundry 通过 Anthropic Messages API 格式提供 Claude 模型时使用。
@@ -30,7 +30,7 @@ hermes model
 #     2. Microsoft Entra ID（托管标识 / 工作负载标识 / az login）
 # → （Entra）Hermes 探测 DefaultAzureCredential；成功后不再询问密钥
 # → （API key）输入你的 API 密钥
-# Hermes 探测端点并自动检测传输协议 + 模型
+# OpenAgents 探测端点并自动检测传输协议 + 模型
 # → 从列表中选择模型（或手动输入部署名称）
 ```
 
@@ -41,7 +41,7 @@ hermes model
 3. **探测 Anthropic Messages 格式** — 针对不暴露 `/models` 但接受 Anthropic Messages 格式的端点的回退方案。
 4. **回退到手动输入** — 拒绝所有探测的私有/受限端点仍然可用；你手动选择 API 模式并输入部署名称。
 
-所选模型的上下文长度通过 Hermes 的标准元数据链（`models.dev`、provider 元数据及硬编码的系列回退）解析，并存储在 `config.yaml` 中，以便模型正确确定自身的上下文窗口大小。
+所选模型的上下文长度通过 OpenAgents 的标准元数据链（`models.dev`、provider 元数据及硬编码的系列回退）解析，并存储在 `config.yaml` 中，以便模型正确确定自身的上下文窗口大小。
 
 ## Microsoft Entra ID（无密钥，RBAC）——推荐
 
@@ -70,7 +70,7 @@ Foundry 的 RBAC 是按资源级别的（`Azure AI User` 授予两种接口的�
 3. 将其分配给：
    - **你的用户账户**，用于通过 `az login` 进行本地开发。
    - **托管标识或工作负载标识**，用于 Azure 托管计算（生产环境推荐）。
-   - **Foundry Agent Service 托管 Agent 的 Agent 标识**，当 Hermes 在托管 Agent 内运行时。
+   - **Foundry Agent Service 托管 Agent 的 Agent 标识**，当 OpenAgents 在托管 Agent 内运行时。
    - **服务主体**，用于工作负载标识不可用时的 CI/CD 流水线。
 4. 等待约 5 分钟以使角色生效。
 
@@ -92,13 +92,13 @@ hermes model
 # → 认证方式：2（Microsoft Entra ID）
 # → （可选）用户分配的托管标识客户端 ID
 # → （可选）Azure 租户 ID
-# → Hermes 探测 DefaultAzureCredential() 并报告哪个内部凭据成功
+# → OpenAgents 探测 DefaultAzureCredential() 并报告哪个内部凭据成功
 #    （例如 AzureCliCredential、ManagedIdentityCredential）
 ```
 
 向导运行一个有时间限制的预检探测（10 秒超时）。失败时提供"仍然保存，稍后验证"选项——适用于在当前机器上尚无凭据但运行时会有凭据的场景（例如为托管标识部署准备配置）。
 
-`azure-identity` 在首次使用时通过 Hermes 的懒加载安装路径自动安装。如需预先安装：
+`azure-identity` 在首次使用时通过 OpenAgents 的懒加载安装路径自动安装。如需预先安装：
 
 ```bash
 pip install azure-identity
@@ -118,13 +118,13 @@ model:
     scope: https://ai.azure.com/.default        # 仅在覆盖默认值时使用
 ```
 
-Hermes 在 `config.yaml` 中只管理一个 Entra 专属配置项：
+OpenAgents 在 `config.yaml` 中只管理一个 Entra 专属配置项：
 
 - **`scope`** — OAuth 资源 scope。默认为 Microsoft 文档中的推理 scope（`https://ai.azure.com/.default`）。仅在你的资源针对非标准 audience 进行了预配时才需要覆盖。
 
-其他所有内容（租户、服务主体密钥、联合令牌文件、主权云 authority、broker 偏好）均由 `azure-identity` 直接从标准 `AZURE_*` 环境变量读取——参见下方的[凭据解析顺序](#credential-resolution-order)。在 `~/.hermes/.env` 或你的部署环境中设置这些变量，与 Microsoft SDK 参考文档的描述完全一致。
+其他所有内容（租户、服务主体密钥、联合令牌文件、主权云 authority、broker 偏好）均由 `azure-identity` 直接从标准 `AZURE_*` 环境变量读取——参见下方的[凭据解析顺序](#credential-resolution-order)。在 `~/.openagents/.env` 或你的部署环境中设置这些变量，与 Microsoft SDK 参考文档的描述完全一致。
 
-Entra 模式下不会将任何密钥写入 `~/.hermes/.env`——`azure-identity` 在进程内缓存令牌（在可用时也会使用操作系统密钥链 / `~/.IdentityService`）。
+Entra 模式下不会将任何密钥写入 `~/.openagents/.env`——`azure-identity` 在进程内缓存令牌（在可用时也会使用操作系统密钥链 / `~/.IdentityService`）。
 
 ### 凭据解析顺序
 
@@ -139,7 +139,7 @@ Entra 模式下不会将任何密钥写入 `~/.hermes/.env`——`azure-identity
 7. **Azure PowerShell** — `Connect-AzAccount`。
 8. **Broker**（仅限 Windows / WSL）— Web Account Manager。
 
-交互式浏览器凭据在无人值守的 Hermes 运行中默认被排除；请改用 Azure CLI、Azure Developer CLI、托管标识、工作负载标识或服务主体凭据。
+交互式浏览器凭据在无人值守的 OpenAgents 运行中默认被排除；请改用 Azure CLI、Azure Developer CLI、托管标识、工作负载标识或服务主体凭据。
 
 ### 部署模式
 
@@ -190,7 +190,7 @@ azure-foundry (Microsoft Entra ID):
 
 - **Anthropic 风格端点使用 httpx 事件 hook。** Anthropic Python SDK（≤ 0.86.0）原生不接受可调用的 `auth_token`。Hermes 在自定义 `httpx.Client` 上安装请求事件 hook，每次出站请求时生成新的 JWT 并重写 `Authorization: Bearer <jwt>`。这在功能上等同于 OpenAI SDK 原生的 `Callable[[], str]` 契约，但多了一层间接调用。如果 Anthropic SDK 在未来版本中添加对可调用认证的原生支持，Hermes 将透明地切换到该方式。
 - **批处理任务与 `multiprocessing.Pool`。** Entra 令牌 provider 是一个闭包，无法跨进程边界序列化。`batch_runner.py` 会自动从 worker 配置中移除该可调用对象，让每个 worker 进程从 `config.yaml` 重建自己的 provider——无需用户操作，但每个 worker 在启动时需要执行一次凭据链遍历。
-- **不在 `auth.json` 中持久化 Bearer JWT。** Hermes 不复制 `azure-identity` 的内部令牌缓存；冷启动时会在首次推理时遍历凭据链。
+- **不在 `auth.json` 中持久化 Bearer JWT。** OpenAgents 不复制 `azure-identity` 的内部令牌缓存；冷启动时会在首次推理时遍历凭据链。
 
 ## 配置（写入 `config.yaml`）
 
@@ -205,7 +205,7 @@ model:
   context_length: 400000             # 自动检测
 ```
 
-以及在 `~/.hermes/.env` 中：
+以及在 `~/.openagents/.env` 中：
 
 ```
 AZURE_FOUNDRY_API_KEY=<your-azure-key>
@@ -261,7 +261,7 @@ model:
   default: claude-sonnet-4-6
 ```
 
-在 `~/.hermes/.env` 中设置 `AZURE_ANTHROPIC_KEY`。Hermes 检测到 base URL 中包含 `azure.com` 时，会绕过 Claude Code OAuth 令牌链，直接使用 Azure 密钥进行 `x-api-key` 认证。
+在 `~/.openagents/.env` 中设置 `AZURE_ANTHROPIC_KEY`。Hermes 检测到 base URL 中包含 `azure.com` 时，会绕过 Claude Code OAuth 令牌链，直接使用 Azure 密钥进行 `x-api-key` 认证。
 
 `key_env` 是规范的 snake_case 字段名；`api_key_env`（以及驼峰式 `keyEnv` / `apiKeyEnv`）作为别名被接受。如果同时设置了 `key_env` 和 `AZURE_ANTHROPIC_KEY`/`ANTHROPIC_API_KEY`，`key_env` 指定的环境变量优先。
 
@@ -269,7 +269,7 @@ model:
 
 Azure **不**暴露纯 API 密钥端点来列出你的*已部署*模型部署。部署枚举需要 Azure Resource Manager 认证（`az cognitiveservices account deployment list`）和 Azure AD 主体，而非推理 API 密钥。
 
-Hermes 能做的：
+OpenAgents 能做的：
 
 - Azure OpenAI v1 端点（`<resource>.openai.azure.com/openai/v1`）通过 `GET /models` 暴露资源的**可用**模型目录。Hermes 使用此列表预填模型选择器。
 - Microsoft Foundry `/anthropic` 路由：通过 URL 路径检测，模型名称手动输入。

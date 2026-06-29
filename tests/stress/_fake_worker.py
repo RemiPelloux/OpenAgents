@@ -18,7 +18,7 @@ def main():
 
     # Announce via CLI (goes through real argparse + init_db + etc)
     subprocess.run(
-        ["hermes", "kanban", "heartbeat", tid, "--note", "started"],
+        ["openagents", "kanban", "heartbeat", tid, "--note", "started"],
         check=True, capture_output=True,
     )
 
@@ -26,14 +26,14 @@ def main():
     for i in range(3):
         time.sleep(0.3)
         subprocess.run(
-            ["hermes", "kanban", "heartbeat", tid, "--note", f"progress {i+1}/3"],
+            ["openagents", "kanban", "heartbeat", tid, "--note", f"progress {i+1}/3"],
             check=True, capture_output=True,
         )
 
     # Complete with structured handoff
     subprocess.run(
         [
-            "hermes", "kanban", "complete", tid,
+            "openagents", "kanban", "complete", tid,
             "--summary", f"real-subprocess worker finished {tid}",
             "--metadata", json.dumps({
                 "workspace": workspace,

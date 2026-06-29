@@ -1,6 +1,6 @@
 """Runtime smoke test for Docker config-schema migration on boot.
 
-Build the real image and verify: a config.yaml present in $HERMES_HOME
+Build the real image and verify: a config.yaml present in $OPENAGENTS_HOME
 is migrated by docker_config_migrate.py on boot, running as the hermes
 user.
 """
@@ -12,7 +12,7 @@ from tests.docker.conftest import docker_exec, docker_exec_sh, start_container
 def test_config_migration_runs_on_boot(
     built_image: str, container_name: str,
 ) -> None:
-    """A config.yaml in $HERMES_HOME must be migrated on boot by
+    """A config.yaml in $OPENAGENTS_HOME must be migrated on boot by
     docker_config_migrate.py, running as the hermes user."""
     # Start container
     start_container(built_image, container_name)
@@ -24,7 +24,7 @@ def test_config_migration_runs_on_boot(
         timeout=10,
     )
     assert "EXISTS" in r.stdout, (
-        f"config.yaml not found in $HERMES_HOME: {r.stdout}"
+        f"config.yaml not found in $OPENAGENTS_HOME: {r.stdout}"
     )
 
     # Verify the migration script exists in the image
@@ -44,7 +44,7 @@ def test_config_migration_runs_on_boot(
         'stat -c "%U" /opt/data/config.yaml',
         timeout=10,
     )
-    assert r.stdout.strip() == "hermes", (
+    assert r.stdout.strip() == "openagents", (
         f"config.yaml not owned by hermes (migration may have run as root): "
         f"{r.stdout.strip()}"
     )

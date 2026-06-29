@@ -13,7 +13,7 @@ shared API base URL, or `security.redact_secrets: true` across every user on a
 machine.
 
 When a managed scope is present, the values it specifies win over the user's
-`~/.hermes/config.yaml`, `~/.hermes/.env`, and even the shell environment — for
+`~/.openagents/config.yaml`, `~/.openagents/.env`, and even the shell environment — for
 exactly the keys it pins. Everything else stays fully user-controlled.
 
 :::note Different from a package-manager–locked install
@@ -29,8 +29,8 @@ Managed scope is read from a system-level directory, default `/etc/hermes`:
 
 ```text
 /etc/hermes/
-├── config.yaml     # managed config layer (wins over ~/.hermes/config.yaml)
-└── .env            # managed env layer (wins over ~/.hermes/.env + shell)
+├── config.yaml     # managed config layer (wins over ~/.openagents/config.yaml)
+└── .env            # managed env layer (wins over ~/.openagents/.env + shell)
 ```
 
 The directory and files are owned by `root` (directory mode `0755`, files
@@ -46,7 +46,7 @@ the feature.
 
 The location can be relocated with the `HERMES_MANAGED_DIR` environment variable
 (for containers or non-`/etc` deployments). This is a deployment/bootstrap path
-knob — like `HERMES_HOME` — set by the same administrator who owns the managed
+knob — like `OPENAGENTS_HOME` — set by the same administrator who owns the managed
 files. It is **never persisted** to any `.env` by Hermes.
 
 ```bash
@@ -69,7 +69,7 @@ For the keys a managed layer specifies, the order is (highest wins):
 | Tier | config.yaml | .env |
 |---|---|---|
 | 1 | `/etc/hermes/config.yaml` (managed) | `/etc/hermes/.env` (managed) |
-| 2 | `~/.hermes/config.yaml` (user) | `~/.hermes/.env` (user) |
+| 2 | `~/.openagents/config.yaml` (user) | `~/.openagents/.env` (user) |
 | 3 | built-in defaults | pre-existing shell environment |
 
 Merging is **leaf-level**: pinning `model.default` does not freeze the rest of
@@ -97,7 +97,7 @@ hermes config        # shows a header naming the managed source + the pinned key
 hermes doctor        # reports the resolved managed dir + pinned key counts
 ```
 
-If you try to change a managed value, Hermes refuses and names the source:
+If you try to change a managed value, OpenAgents refuses and names the source:
 
 ```bash
 $ hermes config set model.default my/model
@@ -130,14 +130,14 @@ sudo chmod 0755 /etc/hermes
 sudo chmod 0644 /etc/hermes/config.yaml /etc/hermes/.env
 ```
 
-Changes take effect on the next Hermes start (a malformed managed file is logged
+Changes take effect on the next OpenAgents start (a malformed managed file is logged
 loudly and ignored — it never blocks startup, but the admin should check
 `hermes doctor` to confirm the policy is being applied).
 
 ## Security model and limitations (v1)
 
 - **Enforcement is filesystem permissions only.** If a user has write access to
-  the managed directory (or runs Hermes as `root`), managed scope is advisory.
+  the managed directory (or runs OpenAgents as `root`), managed scope is advisory.
 - **The managed `.env` is world-readable** (`0644`), so any local user can read
   secrets pushed through it. Use it for shared, non-sensitive values (an org API
   base URL, feature defaults) rather than high-sensitivity secrets.

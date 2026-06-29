@@ -13,7 +13,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from hermes_constants import get_hermes_home
+from openagents_constants import get_openagents_home
 
 from ._oss_providers import (
     LLM_PROVIDERS,
@@ -26,7 +26,7 @@ from ._oss_providers import (
 
 def _curses_select(title: str, items: list[tuple[str, str]], default: int = 0) -> int:
     """Interactive single-select with arrow keys."""
-    from hermes_cli.curses_ui import curses_radiolist
+    from openagents_cli.curses_ui import curses_radiolist
     display_items = [
         f"{label}  {desc}" if desc else label
         for label, desc in items
@@ -229,7 +229,7 @@ def _setup_platform(hermes_home: str, config: dict, flags: dict[str, str]) -> No
     schema = [
         {"key": "api_key", "description": "Mem0 Platform API key", "secret": True, "required": True, "env_var": "MEM0_API_KEY", "url": "https://app.mem0.ai"},
         {"key": "user_id", "description": "User identifier", "default": "hermes-user"},
-        {"key": "agent_id", "description": "Agent identifier", "default": "hermes"},
+        {"key": "agent_id", "description": "Agent identifier", "default": "openagents"},
         {"key": "rerank", "description": "Enable reranking for recall", "default": "true", "choices": ["true", "false"]},
     ]
 
@@ -294,7 +294,7 @@ def _setup_platform(hermes_home: str, config: dict, flags: dict[str, str]) -> No
 
     provider_config["mode"] = "platform"
 
-    from hermes_cli.config import save_config
+    from openagents_cli.config import save_config
     config["memory"]["provider"] = "mem0"
     save_config(config)
 
@@ -349,11 +349,11 @@ def _setup_oss(hermes_home: str, config: dict, flags: dict[str, str]) -> None:
 
     if env_writes:
         _write_env(Path(hermes_home) / ".env", env_writes)
-    _save_mem0_json(hermes_home, {"mode": "oss", "user_id": user_id, "agent_id": "hermes", "oss": oss_config})
+    _save_mem0_json(hermes_home, {"mode": "oss", "user_id": user_id, "agent_id": "openagents", "oss": oss_config})
 
     _install_provider_deps(llm_id, embedder_id, vector_id)
 
-    from hermes_cli.config import save_config
+    from openagents_cli.config import save_config
     config["memory"]["provider"] = "mem0"
     save_config(config)
 
@@ -387,7 +387,7 @@ def _prompt_api_key(label: str, env_var: str, hermes_home: str) -> str:
 
 _PGVECTOR_CONTAINER = "hermes-pgvector"
 _PGVECTOR_IMAGE = "pgvector/pgvector:pg17"
-_PGVECTOR_PASSWORD = "hermes"
+_PGVECTOR_PASSWORD = "openagents"
 
 
 def _ensure_pgvector(host: str = "localhost", port: int = 5432) -> dict | None:
@@ -673,7 +673,7 @@ def _setup_oss_interactive(hermes_home: str, config: dict) -> None:
     user_id = user_id or os.getenv("USER", "hermes-user")
 
     agent_id = input("  Agent ID [hermes]: ").strip()
-    agent_id = agent_id or "hermes"
+    agent_id = agent_id or "openagents"
 
     flags = {
         "oss_llm": llm_id,
@@ -706,7 +706,7 @@ def _setup_oss_interactive(hermes_home: str, config: dict) -> None:
     if vector_id == "pgvector" and pgvector_config:
         _ensure_pgvector_extension(pgvector_config)
 
-    from hermes_cli.config import save_config
+    from openagents_cli.config import save_config
     config["memory"]["provider"] = "mem0"
     save_config(config)
 

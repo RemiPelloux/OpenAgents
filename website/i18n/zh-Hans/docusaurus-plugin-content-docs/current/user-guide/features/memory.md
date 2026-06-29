@@ -1,12 +1,12 @@
 ---
 sidebar_position: 3
 title: "持久化记忆"
-description: "Hermes Agent 如何跨会话记忆——MEMORY.md、USER.md 与会话搜索"
+description: "OpenAgents 如何跨会话记忆——MEMORY.md、USER.md 与会话搜索"
 ---
 
 # 持久化记忆
 
-Hermes Agent 拥有有界、经过整理的记忆，可跨会话持久保存。这使它能够记住你的偏好、项目、环境以及已学到的内容。
+OpenAgents 拥有有界、经过整理的记忆，可跨会话持久保存。这使它能够记住你的偏好、项目、环境以及已学到的内容。
 
 ## 工作原理
 
@@ -17,7 +17,7 @@ Hermes Agent 拥有有界、经过整理的记忆，可跨会话持久保存。�
 | **MEMORY.md** | Agent 的个人笔记——环境事实、约定、已学内容 | 2,200 字符（约 800 tokens） |
 | **USER.md** | 用户档案——你的偏好、沟通风格、期望 | 1,375 字符（约 500 tokens） |
 
-两个文件均存储于 `~/.hermes/memories/`，在会话开始时以冻结快照的形式注入系统 prompt（提示词）。Agent 通过 `memory` 工具管理自身记忆——可添加、替换或删除条目。
+两个文件均存储于 `~/.openagents/memories/`，在会话开始时以冻结快照的形式注入系统 prompt（提示词）。Agent 通过 `memory` 工具管理自身记忆——可添加、替换或删除条目。
 
 :::info
 字符上限使记忆保持聚焦。当记忆已满时，Agent 会整合或替换条目以腾出空间存放新信息。
@@ -176,7 +176,7 @@ located at ~/code/api. I discovered it uses Go version 1.22 and...
 
 除 MEMORY.md 和 USER.md 之外，Agent 还可以使用 `session_search` 工具搜索过去的对话：
 
-- 所有 CLI 和消息会话均存储在 SQLite（`~/.hermes/state.db`）中，支持 FTS5 全文搜索
+- 所有 CLI 和消息会话均存储在 SQLite（`~/.openagents/state.db`）中，支持 FTS5 全文搜索
 - 搜索查询返回数据库中的实际消息——无 LLM 摘要，无截断
 - Agent 可以找到数周前讨论过的内容，即使它们不在活跃记忆中
 - Agent 还可以在找到的任意会话中向前或向后滚动
@@ -203,7 +203,7 @@ hermes sessions list    # 浏览过去的会话
 ## 配置
 
 ```yaml
-# In ~/.hermes/config.yaml
+# In ~/.openagents/config.yaml
 memory:
   memory_enabled: true
   user_profile_enabled: true

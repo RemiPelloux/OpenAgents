@@ -10,12 +10,12 @@ covers the operational concerns: starting them all together, viewing logs
 across profiles, preventing the host from sleeping, and recovering from common
 launchd/systemd quirks.
 
-If you only run one Hermes agent, you don't need this page — see
+If you only run one OpenAgents, you don't need this page — see
 [Profiles](./profiles.md) for the basics.
 
 ## When to use this
 
-You want this setup when you have two or more Hermes agents that should all
+You want this setup when you have two or more OpenAgentss that should all
 be online at the same time. Common reasons:
 
 - A personal assistant on one Telegram bot and a coding agent on another
@@ -25,8 +25,8 @@ be online at the same time. Common reasons:
   memory and skills
 
 Every profile already gets its own per-platform LaunchAgent
-(`ai.hermes.gateway-<name>.plist`) or systemd user service
-(`hermes-gateway-<name>.service`). This guide adds the patterns for managing
+(`ai.openagents.gateway-<name>.plist`) or systemd user service
+(`openagents-gateway-<name>.service`). This guide adds the patterns for managing
 them collectively.
 
 ## Quick start
@@ -89,7 +89,7 @@ hermes config set gateway.multiplex_profiles true
 hermes gateway restart
 ```
 
-Equivalently, in the default profile's `~/.hermes/config.yaml`:
+Equivalently, in the default profile's `~/.openagents/config.yaml`:
 
 ```yaml
 gateway:
@@ -193,7 +193,7 @@ exactly as they do with separate gateways.
 
 The CLI ships with single-profile lifecycle commands. To act across every
 profile, wrap them in a shell loop. Put the snippet below in
-`~/.local/bin/hermes-gateways` and `chmod +x` it:
+`~/.local/bin/openagents-gateways` and `chmod +x` it:
 
 ```sh
 #!/bin/sh
@@ -203,7 +203,7 @@ set -eu
 profiles="default coder personal-bot research"
 
 usage() {
-  echo "Usage: hermes-gateways {start|stop|restart|status|list}"
+  echo "Usage: openagents-gateways {start|stop|restart|status|list}"
 }
 
 run_for_profile() {
@@ -237,11 +237,11 @@ esac
 Then:
 
 ```bash
-hermes-gateways start      # start every configured profile
-hermes-gateways stop       # stop every configured profile
-hermes-gateways restart    # restart all
-hermes-gateways status     # status across all
-hermes-gateways list       # delegates to `hermes gateway list`
+openagents-gateways start      # start every configured profile
+openagents-gateways stop       # stop every configured profile
+openagents-gateways restart    # restart all
+openagents-gateways status     # status across all
+openagents-gateways list       # delegates to `hermes gateway list`
 ```
 
 :::tip
@@ -274,11 +274,11 @@ never clash:
 
 | Platform | Path                                                              |
 | -------- | ----------------------------------------------------------------- |
-| macOS    | `~/Library/LaunchAgents/ai.hermes.gateway-<profile>.plist`        |
-| Linux    | `~/.config/systemd/user/hermes-gateway-<profile>.service`         |
+| macOS    | `~/Library/LaunchAgents/ai.openagents.gateway-<profile>.plist`        |
+| Linux    | `~/.config/systemd/user/openagents-gateway-<profile>.service`         |
 
-The default profile keeps the historical names: `ai.hermes.gateway.plist` /
-`hermes-gateway.service`.
+The default profile keeps the historical names: `ai.openagents.gateway.plist` /
+`openagents-gateway.service`.
 
 ## Viewing logs
 
@@ -286,18 +286,18 @@ Each profile writes to its own log files:
 
 ```bash
 # Default profile
-tail -f ~/.hermes/logs/gateway.log
-tail -f ~/.hermes/logs/gateway.error.log
+tail -f ~/.openagents/logs/gateway.log
+tail -f ~/.openagents/logs/gateway.error.log
 
 # Named profile
-tail -f ~/.hermes/profiles/<name>/logs/gateway.log
-tail -f ~/.hermes/profiles/<name>/logs/gateway.error.log
+tail -f ~/.openagents/profiles/<name>/logs/gateway.log
+tail -f ~/.openagents/profiles/<name>/logs/gateway.error.log
 ```
 
 Stream every profile's log simultaneously:
 
 ```bash
-tail -f ~/.hermes/logs/gateway.log ~/.hermes/profiles/*/logs/gateway.log
+tail -f ~/.openagents/logs/gateway.log ~/.openagents/profiles/*/logs/gateway.log
 ```
 
 The CLI also has a structured log viewer:
@@ -312,9 +312,9 @@ hermes logs --help              # filters, levels, JSON output
 
 ```bash
 hermes profile list             # profiles + model + gateway state
-hermes-gateways status          # full status across every profile
+openagents-gateways status          # full status across every profile
 launchctl list | grep hermes    # macOS — PIDs and labels
-systemctl --user list-units 'hermes-gateway-*'   # Linux — units
+systemctl --user list-units 'openagents-gateway-*'   # Linux — units
 ```
 
 ## Editing configuration
@@ -322,13 +322,13 @@ systemctl --user list-units 'hermes-gateway-*'   # Linux — units
 Every profile keeps its config inside its own directory:
 
 ```
-~/.hermes/profiles/<name>/
+~/.openagents/profiles/<name>/
 ├── .env              # API keys, bot tokens (chmod 600)
 ├── config.yaml       # model, provider, toolsets, gateway settings
 └── SOUL.md           # personality / system prompt
 ```
 
-The default profile uses `~/.hermes/` directly with the same three files.
+The default profile uses `~/.openagents/` directly with the same three files.
 
 Edit them with any editor or via the CLI:
 
@@ -342,7 +342,7 @@ After editing `.env` or `config.yaml`, restart the affected gateway:
 ```bash
 coder gateway restart
 # or, for everything:
-hermes-gateways restart
+openagents-gateways restart
 ```
 
 ## Keeping the host awake
@@ -357,7 +357,7 @@ to sleep when idle. Two patterns:
 ```bash
 caffeinate -dis                    # block display, idle, and system sleep
 caffeinate -dis -t 28800           # same, auto-exit after 8 hours
-caffeinate -i -w $(cat ~/.hermes/gateway.pid) &   # awake while default gateway runs
+caffeinate -i -w $(cat ~/.openagents/gateway.pid) &   # awake while default gateway runs
 
 # Persistent: run in background and forget
 nohup caffeinate -dis >/dev/null 2>&1 &
@@ -396,7 +396,7 @@ sudo loginctl enable-linger "$USER"
 ```
 
 After enabling lingering, your systemd user units (including
-`hermes-gateway-<profile>.service`) continue running across SSH disconnects
+`openagents-gateway-<profile>.service`) continue running across SSH disconnects
 and reboots.
 
 ## Token-conflict safety
@@ -409,7 +409,7 @@ To audit:
 
 ```bash
 grep -H 'TELEGRAM_BOT_TOKEN\|DISCORD_BOT_TOKEN' \
-     ~/.hermes/.env ~/.hermes/profiles/*/.env
+     ~/.openagents/.env ~/.openagents/profiles/*/.env
 ```
 
 ## Updating the code
@@ -419,7 +419,7 @@ every profile:
 
 ```bash
 hermes update
-hermes-gateways restart
+openagents-gateways restart
 ```
 
 User-modified skills are never overwritten.
@@ -439,8 +439,8 @@ service definition`). The service starts normally. Nothing to fix.
 If a profile's gateway shows `not running` but a process is still alive:
 
 ```bash
-ps -ef | grep "hermes_cli.*-p <profile>"
-cat ~/.hermes/profiles/<profile>/gateway.pid
+ps -ef | grep "openagents_cli.*-p <profile>"
+cat ~/.openagents/profiles/<profile>/gateway.pid
 kill -TERM <pid>          # graceful
 kill -KILL <pid>          # if that fails after a few seconds
 <profile> gateway start
@@ -450,11 +450,11 @@ kill -KILL <pid>          # if that fails after a few seconds
 
 ```bash
 # macOS
-launchctl unload ~/Library/LaunchAgents/ai.hermes.gateway-<profile>.plist
-launchctl load   ~/Library/LaunchAgents/ai.hermes.gateway-<profile>.plist
+launchctl unload ~/Library/LaunchAgents/ai.openagents.gateway-<profile>.plist
+launchctl load   ~/Library/LaunchAgents/ai.openagents.gateway-<profile>.plist
 
 # Linux
-systemctl --user restart hermes-gateway-<profile>.service
+systemctl --user restart openagents-gateway-<profile>.service
 ```
 
 ### Health check

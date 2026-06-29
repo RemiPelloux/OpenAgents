@@ -298,7 +298,7 @@ def test_link_ovcli_profile_removes_stale_inline_config(tmp_path):
 
 def test_post_setup_existing_profile_picker_validates_and_links_saved_profile(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
     env_path = hermes_home / ".env"
     env_path.write_text("OPENVIKING_ENDPOINT=http://old.local\nOTHER_KEY=keep\n", encoding="utf-8")
@@ -311,10 +311,10 @@ def test_post_setup_existing_profile_picker_validates_and_links_saved_profile(tm
         json.dumps({"url": "https://vps.example", "api_key": "user-key"}),
         encoding="utf-8",
     )
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     monkeypatch.setattr(openviking_module.Path, "home", staticmethod(lambda: tmp_path))
 
-    from hermes_cli import memory_setup
+    from openagents_cli import memory_setup
 
     validate_calls = []
 
@@ -354,13 +354,13 @@ def test_post_setup_existing_profile_picker_validates_and_links_saved_profile(tm
 
 def test_post_setup_create_remote_user_profile_can_mirror_to_openviking_store(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     monkeypatch.setattr(openviking_module.Path, "home", staticmethod(lambda: tmp_path))
     _allow_setup_validation(monkeypatch)
 
-    from hermes_cli import memory_setup
+    from openagents_cli import memory_setup
 
     choices = iter([1, 0, 1])
     monkeypatch.setattr(memory_setup, "_curses_select", lambda *args, **kwargs: next(choices))
@@ -370,7 +370,7 @@ def test_post_setup_create_remote_user_profile_can_mirror_to_openviking_store(tm
         _prompt_from_values({
             "OpenViking server URL": "https://openviking.example",
             "OpenViking user API key": "user-secret",
-            "Hermes peer ID in OpenViking": "hermes",
+            "Hermes peer ID in OpenViking": "openagents",
             "OpenViking profile name": "VPS",
         }),
     )
@@ -383,7 +383,7 @@ def test_post_setup_create_remote_user_profile_can_mirror_to_openviking_store(tm
     assert json.loads(mirrored_path.read_text(encoding="utf-8")) == {
         "url": "https://openviking.example",
         "api_key": "user-secret",
-        "actor_peer_id": "hermes",
+        "actor_peer_id": "openagents",
     }
     assert config["memory"]["provider"] == "openviking"
     assert config["memory"]["openviking"] == {
@@ -397,12 +397,12 @@ def test_post_setup_create_remote_user_profile_can_mirror_to_openviking_store(tm
 
 def test_post_setup_create_remote_user_can_keep_hermes_only(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     _allow_setup_validation(monkeypatch)
 
-    from hermes_cli import memory_setup
+    from openagents_cli import memory_setup
 
     choices = iter([1, 0, 0])
     monkeypatch.setattr(memory_setup, "_curses_select", lambda *args, **kwargs: next(choices))
@@ -430,11 +430,11 @@ def test_post_setup_create_remote_user_can_keep_hermes_only(tmp_path, monkeypatc
 
 def test_post_setup_create_openviking_service_validates_after_api_key(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
-    from hermes_cli import memory_setup
+    from openagents_cli import memory_setup
 
     validation_calls = []
 
@@ -485,13 +485,13 @@ def test_post_setup_create_openviking_service_validates_after_api_key(tmp_path, 
 
 def test_post_setup_remote_blank_api_key_cancels_without_saving(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     monkeypatch.setattr(openviking_module, "_validate_openviking_reachability", lambda endpoint: (True, ""))
 
-    from hermes_cli import config as hermes_config
-    from hermes_cli import memory_setup
+    from openagents_cli import config as hermes_config
+    from openagents_cli import memory_setup
 
     save_config = MagicMock()
     monkeypatch.setattr(hermes_config, "save_config", save_config)
@@ -516,11 +516,11 @@ def test_post_setup_remote_blank_api_key_cancels_without_saving(tmp_path, monkey
 
 def test_post_setup_user_key_path_can_route_detected_root_key_to_root_setup(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
-    from hermes_cli import memory_setup
+    from openagents_cli import memory_setup
 
     def validate_values(values, *, require_api_key=False):
         assert values["api_key"] == "root-secret"
@@ -560,11 +560,11 @@ def test_post_setup_user_key_path_can_route_detected_root_key_to_root_setup(tmp_
 
 def test_post_setup_root_key_path_can_route_detected_user_key_to_user_setup(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
-    from hermes_cli import memory_setup
+    from openagents_cli import memory_setup
 
     def validate_values(values, *, require_api_key=False):
         assert values["api_key"] == "user-secret"
@@ -651,8 +651,8 @@ def test_start_local_openviking_server_uses_endpoint_host_and_port(monkeypatch):
 
 
 def test_start_local_openviking_server_writes_output_to_log(tmp_path, monkeypatch):
-    hermes_home = tmp_path / "hermes"
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    hermes_home = tmp_path / "openagents"
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     popen_calls = []
 
     class FakeProcess:
@@ -700,7 +700,7 @@ def test_https_local_endpoint_is_not_runtime_autostart_eligible(monkeypatch):
     assert provider._client is None
     assert warnings == [
         "Remote OpenViking server at https://localhost:1934 is not reachable; "
-        "OpenViking memory disabled for this Hermes run. "
+        "OpenViking memory disabled for this OpenAgents run. "
         "Check the configured endpoint and network connectivity."
     ]
 
@@ -733,7 +733,7 @@ def test_runtime_does_not_autostart_when_local_server_reports_unhealthy(monkeypa
     assert provider._client is None
     assert warnings == [
         "OpenViking server at http://localhost:1934 responded but reported unhealthy status. "
-        "OpenViking memory disabled for this Hermes run."
+        "OpenViking memory disabled for this OpenAgents run."
     ]
 
 
@@ -901,7 +901,7 @@ def test_runtime_openviking_waiter_attaches_client_after_health_recovers(monkeyp
     provider._api_key = "secret"
     provider._account = "acct"
     provider._user = "alice"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
     statuses = []
 
     provider._finish_runtime_openviking_start(
@@ -945,7 +945,7 @@ def test_runtime_openviking_waiter_warns_when_background_start_times_out(monkeyp
     assert warnings == [
         "Local OpenViking server at http://127.0.0.1:1934 is not reachable. "
         "Tried to start openviking-server, but it did not become reachable "
-        "within 60 seconds. OpenViking memory disabled for this Hermes run."
+        "within 60 seconds. OpenViking memory disabled for this OpenAgents run."
     ]
 
 
@@ -1038,7 +1038,7 @@ def test_initialize_emits_cli_warning_when_local_runtime_autostart_fails(monkeyp
     assert warnings == [
         "Local OpenViking server at http://localhost:1934 is not reachable. "
         "openviking-server was not found on PATH. "
-        "OpenViking memory disabled for this Hermes run."
+        "OpenViking memory disabled for this OpenAgents run."
     ]
 
 
@@ -1068,12 +1068,12 @@ def test_initialize_does_not_emit_cli_warning_when_callback_absent(monkeypatch):
 
 def test_post_setup_local_server_down_can_offer_autostart(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     monkeypatch.setattr(openviking_module, "_validate_openviking_setup_values", lambda values, *, require_api_key=False: (True, "", None))
 
-    from hermes_cli import memory_setup
+    from openagents_cli import memory_setup
 
     reachability_calls = []
 
@@ -1108,16 +1108,16 @@ def test_post_setup_local_server_down_can_offer_autostart(tmp_path, monkeypatch)
 
 def test_post_setup_invalid_env_profile_can_create_new_config(tmp_path, monkeypatch):
     _clear_openviking_env(monkeypatch)
-    hermes_home = tmp_path / "hermes"
+    hermes_home = tmp_path / "openagents"
     hermes_home.mkdir()
     ovcli_path = tmp_path / "broken" / "ovcli.conf"
     ovcli_path.parent.mkdir()
     ovcli_path.write_text("{", encoding="utf-8")
-    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     monkeypatch.setenv("OPENVIKING_CLI_CONFIG_FILE", str(ovcli_path))
     _allow_setup_validation(monkeypatch)
 
-    from hermes_cli import memory_setup
+    from openagents_cli import memory_setup
 
     choices = iter([1, 0, 0])
     monkeypatch.setattr(memory_setup, "_curses_select", lambda *args, **kwargs: next(choices))
@@ -1568,7 +1568,7 @@ def test_viking_client_delete_uses_identity_headers(monkeypatch):
         api_key="test-key",
         account="acct",
         user="alice",
-        agent="hermes",
+        agent="openagents",
     )
     captured = {}
 
@@ -1591,7 +1591,7 @@ def test_viking_client_delete_uses_identity_headers(monkeypatch):
     assert captured["url"] == "https://example.com/api/v1/fs"
     assert captured["kwargs"]["params"] == {"uri": "viking://user/memories/x.md"}
     assert captured["kwargs"]["headers"]["Authorization"] == "Bearer test-key"
-    assert captured["kwargs"]["headers"]["X-OpenViking-Actor-Peer"] == "hermes"
+    assert captured["kwargs"]["headers"]["X-OpenViking-Actor-Peer"] == "openagents"
 
 
 def test_viking_client_post_allows_per_request_timeout(monkeypatch):
@@ -1600,7 +1600,7 @@ def test_viking_client_post_allows_per_request_timeout(monkeypatch):
         api_key="test-key",
         account="acct",
         user="alice",
-        agent="hermes",
+        agent="openagents",
     )
     captured = {}
 
@@ -1707,12 +1707,12 @@ def test_viking_client_headers_include_bearer_when_api_key_set():
         api_key="test-key",
         account="acct",
         user="usr",
-        agent="hermes",
+        agent="openagents",
     )
     headers = client._headers()
     assert headers["X-API-Key"] == "test-key"
     assert headers["Authorization"] == "Bearer test-key"
-    assert headers["X-OpenViking-Actor-Peer"] == "hermes"
+    assert headers["X-OpenViking-Actor-Peer"] == "openagents"
     assert "X-OpenViking-Agent" not in headers
     assert "X-OpenViking-Account" not in headers
     assert "X-OpenViking-User" not in headers
@@ -1725,12 +1725,12 @@ def test_viking_client_headers_send_tenant_in_local_mode():
         api_key="",
         account="default",
         user="default",
-        agent="hermes",
+        agent="openagents",
     )
     headers = client._headers()
     assert headers["X-OpenViking-Account"] == "default"
     assert headers["X-OpenViking-User"] == "default"
-    assert headers["X-OpenViking-Actor-Peer"] == "hermes"
+    assert headers["X-OpenViking-Actor-Peer"] == "openagents"
     assert "X-OpenViking-Agent" not in headers
     assert "Authorization" not in headers
 
@@ -1743,12 +1743,12 @@ def test_viking_client_headers_send_tenant_when_empty_falls_back_to_default(monk
         api_key="",
         account="",
         user="",
-        agent="hermes",
+        agent="openagents",
     )
     headers = client._headers()
     assert headers["X-OpenViking-Account"] == "default"
     assert headers["X-OpenViking-User"] == "default"
-    assert headers["X-OpenViking-Actor-Peer"] == "hermes"
+    assert headers["X-OpenViking-Actor-Peer"] == "openagents"
     assert "X-OpenViking-Agent" not in headers
     assert "Authorization" not in headers
     assert "X-API-Key" not in headers
@@ -1760,7 +1760,7 @@ def test_viking_client_headers_can_include_tenant_for_trusted_retry():
         api_key="test-key",
         account="real-account",
         user="real-user",
-        agent="hermes",
+        agent="openagents",
     )
     headers = client._headers(include_tenant=True)
     assert headers["X-OpenViking-Account"] == "real-account"
@@ -1774,7 +1774,7 @@ def test_viking_client_retries_with_tenant_headers_for_trusted_mode(monkeypatch)
         api_key="test-key",
         account="acct",
         user="usr",
-        agent="hermes",
+        agent="openagents",
     )
     captured_headers = []
 
@@ -1819,7 +1819,7 @@ def test_viking_client_health_sends_auth_headers(monkeypatch):
         api_key="test-key",
         account="",
         user="",
-        agent="hermes",
+        agent="openagents",
     )
     captured = {}
 
@@ -1832,7 +1832,7 @@ def test_viking_client_health_sends_auth_headers(monkeypatch):
     assert client.health() is True
     assert captured["url"] == "https://example.com/health"
     assert captured["headers"]["Authorization"] == "Bearer test-key"
-    assert captured["headers"]["X-OpenViking-Actor-Peer"] == "hermes"
+    assert captured["headers"]["X-OpenViking-Actor-Peer"] == "openagents"
     assert "X-OpenViking-Agent" not in captured["headers"]
     assert "X-OpenViking-Account" not in captured["headers"]
     assert "X-OpenViking-User" not in captured["headers"]
@@ -1844,7 +1844,7 @@ def test_viking_client_validate_auth_uses_authenticated_system_status(monkeypatc
         api_key="test-key",
         account="acct",
         user="alice",
-        agent="hermes",
+        agent="openagents",
     )
     captured = {}
 
@@ -1866,7 +1866,7 @@ def test_viking_client_validate_auth_uses_authenticated_system_status(monkeypatc
     }
     assert captured["url"] == "https://example.com/api/v1/system/status"
     assert captured["headers"]["Authorization"] == "Bearer test-key"
-    assert captured["headers"]["X-OpenViking-Actor-Peer"] == "hermes"
+    assert captured["headers"]["X-OpenViking-Actor-Peer"] == "openagents"
     assert "X-OpenViking-Account" not in captured["headers"]
     assert "X-OpenViking-User" not in captured["headers"]
 
@@ -1878,7 +1878,7 @@ def test_viking_client_validate_root_access_uses_admin_accounts(monkeypatch):
         api_key="root-key",
         account="",
         user="",
-        agent="hermes",
+        agent="openagents",
     )
     captured = {}
 
@@ -1897,7 +1897,7 @@ def test_viking_client_validate_root_access_uses_admin_accounts(monkeypatch):
     assert client.validate_root_access() == {"status": "ok", "result": []}
     assert captured["url"] == "https://example.com/api/v1/admin/accounts"
     assert captured["headers"]["Authorization"] == "Bearer root-key"
-    assert captured["headers"]["X-OpenViking-Actor-Peer"] == "hermes"
+    assert captured["headers"]["X-OpenViking-Actor-Peer"] == "openagents"
     assert "X-OpenViking-Account" not in captured["headers"]
     assert "X-OpenViking-User" not in captured["headers"]
 
@@ -1934,7 +1934,7 @@ def test_validate_openviking_auth_uses_status_without_health(monkeypatch):
             assert api_key == "test-key"
             assert account == "acct"
             assert user == "alice"
-            assert agent == "hermes"
+            assert agent == "openagents"
 
         def validate_auth(self):
             events.append("status")
@@ -1947,7 +1947,7 @@ def test_validate_openviking_auth_uses_status_without_health(monkeypatch):
         "api_key": "test-key",
         "account": "acct",
         "user": "alice",
-        "agent": "hermes",
+        "agent": "openagents",
     })
 
     assert ok is True
@@ -1964,7 +1964,7 @@ def test_validate_openviking_root_access_uses_admin_endpoint(monkeypatch):
             assert api_key == "root-key"
             assert account == ""
             assert user == ""
-            assert agent == "hermes"
+            assert agent == "openagents"
 
         def validate_root_access(self):
             events.append("admin")
@@ -2020,7 +2020,7 @@ def test_validate_openviking_setup_values_local_dev_no_key_uses_health_only(monk
     monkeypatch.setattr(openviking_module, "_VikingClient", FakeVikingClient)
 
     ok, message, role = openviking_module._validate_openviking_setup_values(
-        {"endpoint": "localhost", "agent": "hermes"}
+        {"endpoint": "localhost", "agent": "openagents"}
     )
 
     assert ok is True
@@ -2124,7 +2124,7 @@ def test_validate_openviking_identity_value_matches_cli_rules(value, field, ok):
     assert valid is ok
     assert bool(normalized) is ok
 # ---------------------------------------------------------------------------
-# on_session_switch — flush + commit + rotate behavior (hermes-agent#28296)
+# on_session_switch — flush + commit + rotate behavior (openagents#28296)
 # ---------------------------------------------------------------------------
 
 def _make_provider_with_session(session_id: str, turn_count: int):
@@ -2252,7 +2252,7 @@ def test_sync_turn_captures_session_id_before_worker_runs():
     provider._api_key = ""
     provider._account = "acct"
     provider._user = "usr"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
     provider._session_id = "old-sid"
 
     started = threading.Event()
@@ -2297,7 +2297,7 @@ def test_sync_turn_captures_session_id_before_worker_runs():
     assert captured_payloads == [{
         "messages": [
             {"role": "user", "parts": [{"type": "text", "text": "u"}]},
-            {"role": "assistant", "parts": [{"type": "text", "text": "a"}], "peer_id": "hermes"},
+            {"role": "assistant", "parts": [{"type": "text", "text": "a"}], "peer_id": "openagents"},
         ]
     }]
 
@@ -2309,7 +2309,7 @@ def test_sync_turn_retries_batch_write_with_fresh_client():
     provider._api_key = ""
     provider._account = "acct"
     provider._user = "usr"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
     provider._session_id = "sid-1"
 
     clients = []
@@ -2341,7 +2341,7 @@ def test_sync_turn_retries_batch_write_with_fresh_client():
         {
             "messages": [
                 {"role": "user", "parts": [{"type": "text", "text": "u"}]},
-                {"role": "assistant", "parts": [{"type": "text", "text": "a"}], "peer_id": "hermes"},
+                {"role": "assistant", "parts": [{"type": "text", "text": "a"}], "peer_id": "openagents"},
             ]
         },
     )]
@@ -2354,7 +2354,7 @@ def test_sync_turn_structured_messages_include_assistant_peer_id():
     provider._api_key = ""
     provider._account = "acct"
     provider._user = "usr"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
     provider._session_id = "sid-structured"
 
     captured = []
@@ -2398,7 +2398,7 @@ def test_sync_turn_structured_messages_include_assistant_peer_id():
         {
             "messages": [
                 {"role": "user", "parts": [{"type": "text", "text": "u"}]},
-                {"role": "assistant", "parts": [{"type": "text", "text": "Looking."}], "peer_id": "hermes"},
+                {"role": "assistant", "parts": [{"type": "text", "text": "Looking."}], "peer_id": "openagents"},
                 {
                     "role": "assistant",
                     "parts": [
@@ -2411,9 +2411,9 @@ def test_sync_turn_structured_messages_include_assistant_peer_id():
                             "tool_status": "completed",
                         }
                     ],
-                    "peer_id": "hermes",
+                    "peer_id": "openagents",
                 },
-                {"role": "assistant", "parts": [{"type": "text", "text": "a"}], "peer_id": "hermes"},
+                {"role": "assistant", "parts": [{"type": "text", "text": "a"}], "peer_id": "openagents"},
             ]
         },
     )]
@@ -2504,7 +2504,7 @@ def test_end_then_switch_with_pending_tokens_does_not_double_commit():
 
 
 def test_session_needs_commit_guard_wins_over_stale_turn_count():
-    """Regression for hermes-agent#28296 review (M3): once a session is marked
+    """Regression for openagents#28296 review (M3): once a session is marked
     committed, _session_needs_commit must return False even if turn_count is
     still positive. A racing sync_turn can re-increment _turn_count after the
     commit+reset; without the guard ordering, a follow-up finalizer would
@@ -2607,7 +2607,7 @@ def test_on_session_switch_waits_for_all_writers_not_just_latest():
 
 
 def test_on_session_switch_does_not_block_caller_on_slow_drain():
-    """Regression for hermes-agent#28296 review (H1): on_session_switch must
+    """Regression for openagents#28296 review (H1): on_session_switch must
     NOT run the old-session drain/commit on the caller's thread. /new, /branch,
     /resume, /undo call this synchronously on the command thread, so a slow
     writer drain (up to _SESSION_DRAIN_TIMEOUT/_DEFERRED_COMMIT_TIMEOUT) or a
@@ -2655,7 +2655,7 @@ def test_on_session_switch_defers_old_commit_to_finalizer_thread():
     """The switch path rotates session state synchronously (cheap, in-memory)
     but offloads the old-session drain + commit onto a daemon finalizer so the
     caller's command thread (/new, /branch, /resume) never blocks on the up-to
-    -_DEFERRED_COMMIT_TIMEOUT drain or the commit POST. See hermes-agent#28296
+    -_DEFERRED_COMMIT_TIMEOUT drain or the commit POST. See openagents#28296
     review (the #41945 'do not block the turn thread' contract)."""
     import threading
 
@@ -2701,7 +2701,7 @@ def test_sync_turn_tracks_writer_under_session_id():
     provider._api_key = ""
     provider._account = "acct"
     provider._user = "usr"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
     provider._session_id = "sid-1"
 
     release = threading.Event()
@@ -2747,7 +2747,7 @@ def test_on_memory_write_uses_content_write_independent_of_session_rotation():
     provider._api_key = ""
     provider._account = "acct"
     provider._user = "usr"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
     provider._session_id = "old-sid"
 
     in_ctor = threading.Event()
@@ -2798,7 +2798,7 @@ def test_shutdown_waits_for_memory_write_worker(monkeypatch):
     provider._api_key = ""
     provider._account = "acct"
     provider._user = "usr"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
 
     worker_started = threading.Event()
     release_worker = threading.Event()
@@ -2853,7 +2853,7 @@ def test_on_memory_write_ignores_non_add_actions(action, content, monkeypatch):
     provider._api_key = ""
     provider._account = "acct"
     provider._user = "usr"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
     uri = "viking://user/peers/hermes/memories/preferences/mem_abc123.md"
     spawned = []
 
@@ -2884,7 +2884,7 @@ def _make_prefetch_provider() -> OpenVikingMemoryProvider:
     provider._api_key = ""
     provider._account = "acct"
     provider._user = "usr"
-    provider._agent = "hermes"
+    provider._agent = "openagents"
     return provider
 
 

@@ -22,7 +22,7 @@ Three distinct failure modes the user community hit during rollout:
    ``encrypted_content``) was briefly suppressed for ``is_xai_responses``
    in PR #26644 on the theory that xAI's OAuth/SuperGrok surface
    rejected replayed encrypted reasoning items.  That suppression was
-   reverted shortly after: xAI confirmed they explicitly want Hermes to
+   reverted shortly after: xAI confirmed they explicitly want OpenAgents to
    thread encrypted reasoning back across turns, and the original
    multi-turn failure mode was actually the prelude-SSE issue closed by
    Fix A above.  The remaining tests here lock in that xAI receives
@@ -401,7 +401,7 @@ def test_codex_reasoning_replay_includes_encrypted_content_for_xai():
 
     Earlier we stripped these on the theory that the OAuth/SuperGrok
     surface rejected them.  xAI subsequently confirmed they explicitly
-    want Hermes to thread encrypted reasoning back across turns for
+    want OpenAgents to thread encrypted reasoning back across turns for
     cross-turn coherence — that's the whole point of the partnership
     integration.
     """

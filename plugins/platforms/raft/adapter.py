@@ -614,7 +614,7 @@ class RaftAdapter(BasePlatformAdapter):
             payload = parsed
 
         # Do not gate on payload["schema"]: the bridge owns schema evolution;
-        # Hermes only verifies that wake hints are content-free.
+        # OpenAgents only verifies that wake hints are content-free.
         if _has_content_field(payload):
             return web.json_response({"ok": False, "error": "content_not_allowed"}, status=400)
 
@@ -706,7 +706,7 @@ class RaftAdapter(BasePlatformAdapter):
         return True
 
     async def handle_message(self, event: MessageEvent) -> None:
-        """Accept Raft wake hints without interrupting an active Hermes turn."""
+        """Accept Raft wake hints without interrupting an active OpenAgents turn."""
         if not self._message_handler:
             return
 
@@ -755,7 +755,7 @@ def _env_enablement() -> Optional[dict]:
 
 
 def register(ctx) -> None:
-    """Plugin entry point — called by the Hermes plugin system."""
+    """Plugin entry point — called by the OpenAgents plugin system."""
     ctx.register_platform(
         name="raft",
         label="Raft",

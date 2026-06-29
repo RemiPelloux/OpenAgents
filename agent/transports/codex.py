@@ -207,7 +207,7 @@ class ResponsesApiTransport(ProviderTransport):
         # NOTE: for the swapped case this routes ``web_search`` to Grok's
         # native search engine for xAI sessions instead of Hermes's
         # configured web provider (Tavily/etc.), and those results bypass
-        # Hermes's tool-trace / citation plumbing (they arrive baked into the
+        # OpenAgents's tool-trace / citation plumbing (they arrive baked into the
         # model's answer rather than as a tool result the loop observes).
         # Scoped to ``is_xai_responses`` deliberately; narrow to specific
         # models if a future grok variant should keep the client-side

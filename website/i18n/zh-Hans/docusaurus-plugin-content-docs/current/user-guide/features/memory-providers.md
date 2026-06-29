@@ -6,7 +6,7 @@ description: "外部记忆提供者插件 — Honcho、OpenViking、Mem0、Hinds
 
 # Memory Providers
 
-Hermes Agent 内置 8 个外部记忆提供者插件，为 Agent 提供跨会话的持久化知识，超越内置的 MEMORY.md 和 USER.md。同一时间只能激活**一个**外部提供者——内置记忆始终与其并行工作。
+OpenAgents 内置 8 个外部记忆提供者插件，为 Agent 提供跨会话的持久化知识，超越内置的 MEMORY.md 和 USER.md。同一时间只能激活**一个**外部提供者——内置记忆始终与其并行工作。
 
 ## 快速开始
 
@@ -18,7 +18,7 @@ hermes memory off        # 禁用外部提供者
 
 也可以通过 `hermes plugins` → Provider Plugins → Memory Provider 选择激活的记忆提供者。
 
-或在 `~/.hermes/config.yaml` 中手动设置：
+或在 `~/.openagents/config.yaml` 中手动设置：
 
 ```yaml
 memory:
@@ -68,7 +68,7 @@ hermes memory setup        # 选择 "honcho" — 运行 Honcho 专属的安装�
 
 旧版 `hermes honcho setup` 命令仍然有效（现在会重定向到 `hermes memory setup`），但只有在 Honcho 被选为激活记忆提供者后才会注册。
 
-**配置：** `$HERMES_HOME/honcho.json`（profile 本地）或 `~/.honcho/config.json`（全局）。解析顺序：`$HERMES_HOME/honcho.json` > `~/.hermes/honcho.json` > `~/.honcho/config.json`。参见[配置参考](https://github.com/hermes-ai/hermes-agent/blob/main/plugins/memory/honcho/README.md)和 [Honcho 集成指南](https://docs.honcho.dev/v3/guides/integrations/hermes)。
+**配置：** `$OPENAGENTS_HOME/honcho.json`（profile 本地）或 `~/.honcho/config.json`（全局）。解析顺序：`$OPENAGENTS_HOME/honcho.json` > `~/.openagents/honcho.json` > `~/.honcho/config.json`。参见[配置参考](https://github.com/hermes-ai/openagents/blob/main/plugins/memory/honcho/README.md)和 [Honcho 集成指南](https://docs.honcho.dev/v3/guides/integrations/hermes)。
 
 <details>
 <summary>完整配置参考</summary>
@@ -105,11 +105,11 @@ hermes memory setup        # 选择 "honcho" — 运行 Honcho 专属的安装�
 {
   "apiKey": "your-key-from-app.honcho.dev",
   "hosts": {
-    "hermes": {
+    "openagents": {
       "enabled": true,
-      "aiPeer": "hermes",
+      "aiPeer": "openagents",
       "peerName": "your-name",
-      "workspace": "hermes"
+      "workspace": "openagents"
     }
   }
 }
@@ -124,11 +124,11 @@ hermes memory setup        # 选择 "honcho" — 运行 Honcho 专属的安装�
 {
   "baseUrl": "http://localhost:8000",
   "hosts": {
-    "hermes": {
+    "openagents": {
       "enabled": true,
-      "aiPeer": "hermes",
+      "aiPeer": "openagents",
       "peerName": "your-name",
-      "workspace": "hermes"
+      "workspace": "openagents"
     }
   }
 }
@@ -142,15 +142,15 @@ hermes memory setup        # 选择 "honcho" — 运行 Honcho 专属的安装�
 
 **多 peer 配置：**
 
-Honcho 将对话建模为 peer 之间的消息交换——每个 Hermes profile 对应一个用户 peer 加一个 AI peer，共享同一个 workspace。workspace 是共享环境：用户 peer 在各 profile 间全局共享，每个 AI peer 拥有独立身份。每个 AI peer 从自身的观察中独立构建表示/card，因此 `coder` profile 保持代码导向，而 `writer` profile 针对同一用户保持编辑导向。
+Honcho 将对话建模为 peer 之间的消息交换——每个 OpenAgents profile 对应一个用户 peer 加一个 AI peer，共享同一个 workspace。workspace 是共享环境：用户 peer 在各 profile 间全局共享，每个 AI peer 拥有独立身份。每个 AI peer 从自身的观察中独立构建表示/card，因此 `coder` profile 保持代码导向，而 `writer` profile 针对同一用户保持编辑导向。
 
 映射关系：
 
 | 概念 | 含义 |
 |---------|-----------|
-| **Workspace** | 共享环境。同一 workspace 下的所有 Hermes profile 共享同一用户身份。 |
+| **Workspace** | 共享环境。同一 workspace 下的所有 OpenAgents profile 共享同一用户身份。 |
 | **用户 peer**（`peerName`） | 人类用户。在 workspace 内跨 profile 共享。 |
-| **AI peer**（`aiPeer`） | 每个 Hermes profile 一个。host key `hermes` → 默认；其他 profile 使用 `hermes.<profile>`。 |
+| **AI peer**（`aiPeer`） | 每个 OpenAgents profile 一个。host key `hermes` → 默认；其他 profile 使用 `hermes.<profile>`。 |
 | **Observation** | 每个 peer 的开关，控制 Honcho 从哪些消息中建模。`directional`（默认，全部开启）或 `unified`（单一观察者池）。 |
 
 ### 新建 profile，创建新 Honcho peer
@@ -167,7 +167,7 @@ hermes profile create coder --clone
 hermes honcho sync
 ```
 
-扫描所有 Hermes profile，为没有 host 块的 profile 创建 host 块，从默认 `hermes` 块继承设置，并提前创建新的 AI peer。幂等操作——跳过已有 host 块的 profile。
+扫描所有 OpenAgents profile，为没有 host 块的 profile 创建 host 块，从默认 `hermes` 块继承设置，并提前创建新的 AI peer。幂等操作——跳过已有 host 块的 profile。
 
 ### 每个 profile 的 observation 配置
 
@@ -205,13 +205,13 @@ hermes honcho sync
 ```json
 {
   "apiKey": "your-key",
-  "workspace": "hermes",
+  "workspace": "openagents",
   "peerName": "eri",
   "hosts": {
-    "hermes": {
+    "openagents": {
       "enabled": true,
-      "aiPeer": "hermes",
-      "workspace": "hermes",
+      "aiPeer": "openagents",
+      "workspace": "openagents",
       "peerName": "eri",
       "recallMode": "hybrid",
       "writeFrequency": "async",
@@ -232,7 +232,7 @@ hermes honcho sync
     "hermes.coder": {
       "enabled": true,
       "aiPeer": "coder",
-      "workspace": "hermes",
+      "workspace": "openagents",
       "peerName": "eri",
       "recallMode": "tools",
       "observation": {
@@ -243,7 +243,7 @@ hermes honcho sync
     "hermes.writer": {
       "enabled": true,
       "aiPeer": "writer",
-      "workspace": "hermes",
+      "workspace": "openagents",
       "peerName": "eri"
     }
   },
@@ -255,7 +255,7 @@ hermes honcho sync
 
 </details>
 
-参见[配置参考](https://github.com/hermes-ai/hermes-agent/blob/main/plugins/memory/honcho/README.md)和 [Honcho 集成指南](https://docs.honcho.dev/v3/guides/integrations/hermes)。
+参见[配置参考](https://github.com/hermes-ai/openagents/blob/main/plugins/memory/honcho/README.md)和 [Honcho 集成指南](https://docs.honcho.dev/v3/guides/integrations/hermes)。
 
 
 ---
@@ -283,7 +283,7 @@ openviking-server
 hermes memory setup    # 选择 "openviking"
 # 或手动配置：
 hermes config set memory.provider openviking
-echo "OPENVIKING_ENDPOINT=http://localhost:1933" >> ~/.hermes/.env
+echo "OPENVIKING_ENDPOINT=http://localhost:1933" >> ~/.openagents/.env
 ```
 
 **主要特性：**
@@ -311,10 +311,10 @@ echo "OPENVIKING_ENDPOINT=http://localhost:1933" >> ~/.hermes/.env
 hermes memory setup    # 选择 "mem0"
 # 或手动配置：
 hermes config set memory.provider mem0
-echo "MEM0_API_KEY=your-key" >> ~/.hermes/.env
+echo "MEM0_API_KEY=your-key" >> ~/.openagents/.env
 ```
 
-**配置：** `$HERMES_HOME/mem0.json`
+**配置：** `$OPENAGENTS_HOME/mem0.json`
 
 | 键 | 默认值 | 描述 |
 |-----|---------|-------------|
@@ -341,14 +341,14 @@ echo "MEM0_API_KEY=your-key" >> ~/.hermes/.env
 hermes memory setup    # 选择 "hindsight"
 # 或手动配置：
 hermes config set memory.provider hindsight
-echo "HINDSIGHT_API_KEY=your-key" >> ~/.hermes/.env
+echo "HINDSIGHT_API_KEY=your-key" >> ~/.openagents/.env
 ```
 
 安装向导会自动安装依赖，并仅安装所选模式所需的内容（云端用 `hindsight-client`，本地用 `hindsight-all`）。需要 `hindsight-client >= 0.4.22`（会话启动时若版本过旧则自动升级）。
 
 **本地模式 UI：** `hindsight-embed -p hermes ui start`
 
-**配置：** `$HERMES_HOME/hindsight/config.json`
+**配置：** `$OPENAGENTS_HOME/hindsight/config.json`
 
 | 键 | 默认值 | 描述 |
 |-----|---------|-------------|
@@ -359,14 +359,14 @@ echo "HINDSIGHT_API_KEY=your-key" >> ~/.hermes/.env
 | `auto_retain` | `true` | 自动保留对话轮次 |
 | `auto_recall` | `true` | 每轮对话前自动召回记忆 |
 | `retain_async` | `true` | 在服务器上异步处理保留操作 |
-| `retain_context` | `conversation between Hermes Agent and the User` | 保留记忆的上下文标签 |
+| `retain_context` | `conversation between OpenAgents and the User` | 保留记忆的上下文标签 |
 | `retain_tags` | — | 应用于保留记忆的默认标签；与每次工具调用的标签合并 |
 | `retain_source` | — | 附加到保留记忆的可选 `metadata.source` |
 | `retain_user_prefix` | `User` | 自动保留的对话记录中用户轮次前的标签 |
 | `retain_assistant_prefix` | `Assistant` | 自动保留的对话记录中助手轮次前的标签 |
 | `recall_tags` | — | 召回时用于过滤的标签 |
 
-完整配置参考参见[插件 README](https://github.com/NousResearch/hermes-agent/blob/main/plugins/memory/hindsight/README.md)。
+完整配置参考参见[插件 README](https://github.com/NousResearch/openagents/blob/main/plugins/memory/hindsight/README.md)。
 
 ---
 
@@ -394,7 +394,7 @@ hermes config set memory.provider holographic
 
 | 键 | 默认值 | 描述 |
 |-----|---------|-------------|
-| `db_path` | `$HERMES_HOME/memory_store.db` | SQLite 数据库路径 |
+| `db_path` | `$OPENAGENTS_HOME/memory_store.db` | SQLite 数据库路径 |
 | `auto_extract` | `false` | 会话结束时自动提取事实 |
 | `default_trust` | `0.5` | 默认信任评分（0.0–1.0） |
 
@@ -424,7 +424,7 @@ hermes config set memory.provider holographic
 hermes memory setup    # 选择 "retaindb"
 # 或手动配置：
 hermes config set memory.provider retaindb
-echo "RETAINDB_API_KEY=your-key" >> ~/.hermes/.env
+echo "RETAINDB_API_KEY=your-key" >> ~/.openagents/.env
 ```
 
 ---
@@ -455,7 +455,7 @@ hermes config set memory.provider byterover
 
 **主要特性：**
 - 自动预压缩提取（在上下文压缩丢弃内容前保存洞察）
-- 知识树存储于 `$HERMES_HOME/byterover/`（profile 范围隔离）
+- 知识树存储于 `$OPENAGENTS_HOME/byterover/`（profile 范围隔离）
 - SOC2 Type II 认证的云端同步（可选）
 
 ---
@@ -478,10 +478,10 @@ hermes config set memory.provider byterover
 hermes memory setup    # 选择 "supermemory"
 # 或手动配置：
 hermes config set memory.provider supermemory
-echo 'SUPERMEMORY_API_KEY=***' >> ~/.hermes/.env
+echo 'SUPERMEMORY_API_KEY=***' >> ~/.openagents/.env
 ```
 
-**配置：** `$HERMES_HOME/supermemory.json`
+**配置：** `$OPENAGENTS_HOME/supermemory.json`
 
 | 键 | 默认值 | 描述 |
 |-----|---------|-------------|
@@ -501,7 +501,7 @@ echo 'SUPERMEMORY_API_KEY=***' >> ~/.hermes/.env
 - 在会话边界时将整个会话**一次性导入**
 - 会话结束时同时导入到对话端点（`/v4/conversations`），用于 Supermemory 的 profile 和图谱构建
 - 在第一轮及可配置间隔注入 profile 事实
-- **Profile 范围容器**——在 `container_tag` 中使用 `{identity}`（例如 `hermes-{identity}` → `hermes-coder`），按 Hermes profile 隔离记忆
+- **Profile 范围容器**——在 `container_tag` 中使用 `{identity}`（例如 `hermes-{identity}` → `hermes-coder`），按 OpenAgents profile 隔离记忆
 - **多容器模式**——启用 `enable_custom_container_tags` 并配置 `custom_containers` 列表，让 Agent 跨命名容器读写。自动操作（同步、预取）保持在主容器上。
 
 <details>
@@ -509,7 +509,7 @@ echo 'SUPERMEMORY_API_KEY=***' >> ~/.hermes/.env
 
 ```json
 {
-  "container_tag": "hermes",
+  "container_tag": "openagents",
   "enable_custom_container_tags": true,
   "custom_containers": ["project-alpha", "shared-knowledge"],
   "custom_container_instructions": "Use project-alpha for coding context."
@@ -539,8 +539,8 @@ echo 'SUPERMEMORY_API_KEY=***' >> ~/.hermes/.env
 
 每个提供者的数据按 [profile](/user-guide/profiles) 隔离：
 
-- **本地存储提供者**（Holographic、ByteRover）使用 `$HERMES_HOME/` 路径，各 profile 路径不同
-- **配置文件提供者**（Honcho、Mem0、Hindsight、Supermemory）将配置存储在 `$HERMES_HOME/` 中，每个 profile 拥有独立凭证
+- **本地存储提供者**（Holographic、ByteRover）使用 `$OPENAGENTS_HOME/` 路径，各 profile 路径不同
+- **配置文件提供者**（Honcho、Mem0、Hindsight、Supermemory）将配置存储在 `$OPENAGENTS_HOME/` 中，每个 profile 拥有独立凭证
 - **云端提供者**（RetainDB）自动派生 profile 范围的项目名称
 - **环境变量提供者**（OpenViking）通过每个 profile 的 `.env` 文件配置
 

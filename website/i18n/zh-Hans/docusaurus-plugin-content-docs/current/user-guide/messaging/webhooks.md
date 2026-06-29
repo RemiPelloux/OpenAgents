@@ -1,12 +1,12 @@
 ---
 sidebar_position: 13
 title: "Webhooks"
-description: "接收来自 GitHub、GitLab 等服务的事件以触发 Hermes agent 运行"
+description: "接收来自 GitHub、GitLab 等服务的事件以触发 OpenAgents 运行"
 ---
 
 # Webhooks
 
-接收来自外部服务（GitHub、GitLab、JIRA、Stripe 等）的事件，并自动触发 Hermes agent 运行。Webhook 适配器运行一个 HTTP 服务器，接受 POST 请求、验证 HMAC 签名、将 payload（载荷）转换为 agent prompt（提示词），并将响应路由回来源或其他已配置的平台。
+接收来自外部服务（GitHub、GitLab、JIRA、Stripe 等）的事件，并自动触发 OpenAgents 运行。Webhook 适配器运行一个 HTTP 服务器，接受 POST 请求、验证 HMAC 签名、将 payload（载荷）转换为 agent prompt（提示词），并将响应路由回来源或其他已配置的平台。
 
 agent 处理事件后，可通过在 PR 上发布评论、向 Telegram/Discord 发送消息或记录结果来响应。
 
@@ -15,7 +15,7 @@ agent 处理事件后，可通过在 PR 上发布评论、向 Telegram/Discord �
 <div style={{position: 'relative', width: '100%', aspectRatio: '16 / 9', marginBottom: '1.5rem'}}>
   <iframe
     src="https://www.youtube.com/embed/WNYe5mD4fY8"
-    title="Hermes Agent — Webhooks Tutorial"
+    title="OpenAgents — Webhooks Tutorial"
     style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0}}
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
     allowFullScreen
@@ -46,7 +46,7 @@ hermes gateway setup
 
 ### 通过环境变量
 
-添加到 `~/.hermes/.env`：
+添加到 `~/.openagents/.env`：
 
 ```bash
 WEBHOOK_ENABLED=true
@@ -174,7 +174,7 @@ webhooks:
 
 ### 2. 添加路由配置
 
-按照上方示例，将 `github-pr` 路由添加到 `~/.hermes/config.yaml`。
+按照上方示例，将 `github-pr` 路由添加到 `~/.openagents/config.yaml`。
 
 ### 3. 确保 `gh` CLI 已认证
 
@@ -365,7 +365,7 @@ hermes webhook test github-issues --payload '{"issue": {"number": 42, "title": "
 
 ### 动态订阅的工作原理
 
-- 订阅存储在 `~/.hermes/webhook_subscriptions.json`
+- 订阅存储在 `~/.openagents/webhook_subscriptions.json`
 - webhook 适配器在每次收到请求时热重载该文件（基于 mtime 检测，开销可忽略不计）
 - `config.yaml` 中的静态路由始终优先于同名的动态订阅
 - 动态订阅与静态路由使用相同的格式和功能（events、prompt 模板、skills、delivery）

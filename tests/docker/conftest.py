@@ -19,7 +19,7 @@ from collections.abc import Iterator
 
 import pytest
 
-IMAGE_TAG = os.environ.get("HERMES_TEST_IMAGE", "hermes-agent-harness:latest")
+IMAGE_TAG = os.environ.get("HERMES_TEST_IMAGE", "openagents-harness:latest")
 
 
 def _docker_available() -> bool:
@@ -86,7 +86,7 @@ def container_name(request) -> Iterator[str]:
 # docker_exec — default to the unprivileged hermes user
 # ---------------------------------------------------------------------------
 #
-# Background: every Hermes runtime path inside the container drops to UID
+# Background: every OpenAgents runtime path inside the container drops to UID
 # 10000 (the ``hermes`` user) via ``s6-setuidgid hermes``. ``docker exec``
 # without ``-u`` runs as root, which is **not** representative of how
 # production code executes. PR #30136 review caught a real regression
@@ -104,7 +104,7 @@ def container_name(request) -> Iterator[str]:
 def docker_exec(
     container: str,
     *args: str,
-    user: str = "hermes",
+    user: str = "openagents",
     timeout: int = 30,
     extra_docker_args: tuple[str, ...] = (),
 ) -> subprocess.CompletedProcess[str]:
@@ -126,7 +126,7 @@ def docker_exec_sh(
     container: str,
     command: str,
     *,
-    user: str = "hermes",
+    user: str = "openagents",
     timeout: int = 30,
 ) -> subprocess.CompletedProcess[str]:
     """Run ``sh -c <command>`` inside the container as ``user``."""
@@ -227,7 +227,7 @@ def poll_container(
     *,
     deadline_s: float = 30.0,
     interval_s: float = 0.5,
-    user: str = "hermes",
+    user: str = "openagents",
 ) -> tuple[bool, str]:
     """Repeatedly run ``probe`` inside the container until it exits 0 or
     ``deadline_s`` elapses.

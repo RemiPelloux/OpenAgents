@@ -5,7 +5,7 @@ exists to prevent the auth.json ownership-mismatch bug where
 `docker exec <c> hermes login` would write /opt/data/auth.json as
 root:root mode 0600, leaving the supervised gateway (UID 10000) unable
 to read its own credentials and returning "Provider authentication
-failed: Hermes is not logged into Nous Portal" on every message.
+failed: OpenAgents is not logged into Nous Portal" on every message.
 
 These tests verify:
 
@@ -13,7 +13,7 @@ These tests verify:
    hermes user before the real binary runs.
 2. ``docker exec --user hermes <c> hermes …`` (already non-root) short-
    circuits and doesn't try to drop again.
-3. Files written under $HERMES_HOME from a ``docker exec`` session land
+3. Files written under $OPENAGENTS_HOME from a ``docker exec`` session land
    as hermes:hermes — the actual user-visible invariant.
 4. The HERMES_DOCKER_EXEC_AS_ROOT opt-out lets diagnostic sessions keep
    running as root deliberately.
@@ -53,8 +53,8 @@ def _wait_for_cont_init(container: str) -> None:
     failing ``test_shim_opt_out_keeps_root`` non-deterministically.
 
     The reliable "cont-init is done" signal is
-    ``$HERMES_HOME/logs/container-boot.log``: it is written by
-    ``02-reconcile-profiles`` (hermes_cli.container_boot), which s6 runs
+    ``$OPENAGENTS_HOME/logs/container-boot.log``: it is written by
+    ``02-reconcile-profiles`` (openagents_cli.container_boot), which s6 runs
     *strictly after* ``01-hermes-setup`` in lexicographic order. The
     reconciler always logs at least one ``profile=default`` line even for a
     bare ``sleep infinity`` container, so once that marker appears every
@@ -115,7 +115,7 @@ def test_shim_drops_root_to_hermes_uid(sleep_container: str) -> None:
     into it without forking subcommands. Simplest approach: have `hermes`
     do anything that writes to disk, then check the file's owner.
 
-    Use `hermes config set` which writes config.yaml under HERMES_HOME.
+    Use `hermes config set` which writes config.yaml under OPENAGENTS_HOME.
     The resulting file ownership tells us what UID the shim ended up at.
     """
     # Wipe any prior state.
@@ -128,7 +128,7 @@ def test_shim_drops_root_to_hermes_uid(sleep_container: str) -> None:
     # Default docker exec (root) — should be dropped by the shim.
     r = subprocess.run(
         ["docker", "exec", sleep_container,
-         "hermes", "config", "set", "_test.shim_marker", "1"],
+         "openagents", "config", "set", "_test.shim_marker", "1"],
         capture_output=True, text=True, timeout=30,
     )
     assert r.returncode == 0, f"config set failed: stdout={r.stdout!r} stderr={r.stderr!r}"
@@ -161,8 +161,8 @@ def test_shim_short_circuits_for_non_root_exec(sleep_container: str) -> None:
     )
 
     r = subprocess.run(
-        ["docker", "exec", "--user", "hermes", sleep_container,
-         "hermes", "config", "set", "_test.shim_short_circuit", "1"],
+        ["docker", "exec", "--user", "openagents", sleep_container,
+         "openagents", "config", "set", "_test.shim_short_circuit", "1"],
         capture_output=True, text=True, timeout=30,
     )
     assert r.returncode == 0, (
@@ -196,7 +196,7 @@ def test_shim_opt_out_keeps_root(sleep_container: str) -> None:
         ["docker", "exec",
          "-e", "HERMES_DOCKER_EXEC_AS_ROOT=1",
          sleep_container,
-         "hermes", "config", "set", "_test.opt_out", "1"],
+         "openagents", "config", "set", "_test.opt_out", "1"],
         capture_output=True, text=True, timeout=30,
     )
     assert r.returncode == 0, f"opt-out invocation failed: {r.stderr}"
@@ -232,7 +232,7 @@ def test_shim_opt_out_strict_truthiness(
         ["docker", "exec",
          "-e", f"HERMES_DOCKER_EXEC_AS_ROOT={falsy_value}",
          sleep_container,
-         "hermes", "config", "set", "_test.falsy", "1"],
+         "openagents", "config", "set", "_test.falsy", "1"],
         capture_output=True, text=True, timeout=30,
     )
     assert r.returncode == 0, f"falsy value {falsy_value!r} caused failure: {r.stderr}"
@@ -296,19 +296,19 @@ def test_e2e_login_then_supervised_gateway_can_read_auth(
     # Have the shim-protected `docker exec` write the auth store.
     # `hermes auth list` is read-only but still exercises _load_auth_store
     # under the shim's UID. We invoke `hermes config set` first to
-    # provoke a write into HERMES_HOME so we have something concrete to
+    # provoke a write into OPENAGENTS_HOME so we have something concrete to
     # owner-check.
     r = subprocess.run(
         ["docker", "exec", sleep_container,
-         "hermes", "config", "set", "_test.e2e_marker", "1"],
+         "openagents", "config", "set", "_test.e2e_marker", "1"],
         capture_output=True, text=True, timeout=30,
     )
     assert r.returncode == 0, f"config set failed: {r.stderr}"
 
     # The supervised UID (10000) must be able to read everything under
-    # HERMES_HOME that docker exec just wrote.
+    # OPENAGENTS_HOME that docker exec just wrote.
     r = subprocess.run(
-        ["docker", "exec", "--user", "hermes", sleep_container,
+        ["docker", "exec", "--user", "openagents", sleep_container,
          "find", "/opt/data", "-maxdepth", "2", "-type", "f",
          "!", "-readable", "-print"],
         capture_output=True, text=True, timeout=15,

@@ -1,15 +1,15 @@
 # Bitwarden Secrets Manager
 
-在进程启动时从 [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/) 拉取 API 密钥，而不是以明文形式存储在 `~/.hermes/.env` 中。一个引导密钥（机器账户访问令牌）替代了 N 个提供商密钥，轮换凭据只需在 Bitwarden Web 应用中修改一次即可。
+在进程启动时从 [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/) 拉取 API 密钥，而不是以明文形式存储在 `~/.openagents/.env` 中。一个引导密钥（机器账户访问令牌）替代了 N 个提供商密钥，轮换凭据只需在 Bitwarden Web 应用中修改一次即可。
 
 ## 工作原理
 
 1. 在 Bitwarden Secrets Manager 中创建一个**机器账户**，授予其对某个项目的读取权限，并生成一个**访问令牌**。
-2. Hermes 将该单一令牌以 `BWS_ACCESS_TOKEN` 的形式存储在 `~/.hermes/.env` 中。
-3. 每次 `hermes`（或 gateway，或 cron 任务）启动时，在加载 `~/.hermes/.env` 之后，Hermes 会调用 `bws secret list <project_id>` 并将返回的密钥写入 `os.environ`。
-4. 默认情况下，Hermes **覆盖**环境中已有的值，因此 Bitwarden 是唯一可信来源——在 Web 应用中轮换一次密钥，每个 Hermes 进程在下次启动时即可获取最新值。如果希望 `.env` 优先，可在配置中将 `override_existing: false`。
+2. OpenAgents 将该单一令牌以 `BWS_ACCESS_TOKEN` 的形式存储在 `~/.openagents/.env` 中。
+3. 每次 `hermes`（或 gateway，或 cron 任务）启动时，在加载 `~/.openagents/.env` 之后，Hermes 会调用 `bws secret list <project_id>` 并将返回的密钥写入 `os.environ`。
+4. 默认情况下，Hermes **覆盖**环境中已有的值，因此 Bitwarden 是唯一可信来源——在 Web 应用中轮换一次密钥，每个 OpenAgents 进程在下次启动时即可获取最新值。如果希望 `.env` 优先，可在配置中将 `override_existing: false`。
 
-`bws` 二进制文件在首次使用时会自动下载到 `~/.hermes/bin/`，无需 `apt`、`brew` 或 `sudo`。
+`bws` 二进制文件在首次使用时会自动下载到 `~/.openagents/bin/`，无需 `apt`、`brew` 或 `sudo`。
 
 ## 为什么使用机器账户（以及为什么没有双因素认证提示）
 
@@ -26,7 +26,7 @@ Bitwarden Secrets Manager 专为非交互式工作负载设计：机器账户不
 1. 通过产品切换器切换到 **Secrets Manager**。
 2. 创建或选择一个**项目**（例如"Hermes keys"）。
 3. 将提供商密钥添加为 secret。secret 的**名称**将成为环境变量名——使用 `OPENROUTER_API_KEY`、`ANTHROPIC_API_KEY` 等。
-4. **Machine accounts → New machine account → My Hermes machine** → **Projects** 标签页 → 授予对你的项目的 Read 权限。
+4. **Machine accounts → New machine account → My OpenAgents machine** → **Projects** 标签页 → 授予对你的项目的 Read 权限。
 5. **Access tokens** 标签页 → **Create access token** → 选择**永不**过期（或指定日期）→ 复制令牌（以 `0.` 开头）。Bitwarden 无法再次检索该令牌——请妥善保存副本。
 
 Secrets Manager 包含在 Bitwarden 免费套餐中（有使用限制）；无需付费计划即可试用。
@@ -39,8 +39,8 @@ hermes secrets bitwarden setup
 
 该命令将：
 
-1. 下载并验证 `bws v2.0.0`，存放至 `~/.hermes/bin/bws`。
-2. 提示输入访问令牌（输入内容隐藏）。以 `BWS_ACCESS_TOKEN` 形式存储在 `~/.hermes/.env` 中。
+1. 下载并验证 `bws v2.0.0`，存放至 `~/.openagents/bin/bws`。
+2. 提示输入访问令牌（输入内容隐藏）。以 `BWS_ACCESS_TOKEN` 形式存储在 `~/.openagents/.env` 中。
 3. 询问机器账户所属的 Bitwarden 区域——**US Cloud**、**EU Cloud** 或**自托管/自定义 URL**。以 `secrets.bitwarden.server_url` 形式存储在 `config.yaml` 中，并作为 `BWS_SERVER_URL` 传递给 `bws`。
 4. 列出机器账户可见的项目，选择其中一个。以 `secrets.bitwarden.project_id` 形式存储在 `config.yaml` 中。
 5. 测试拉取该项目的 secret，并显示将解析出哪些环境变量。
@@ -76,7 +76,7 @@ hermes secrets bitwarden status
 
 ## 配置
 
-`~/.hermes/config.yaml` 中的默认值：
+`~/.openagents/config.yaml` 中的默认值：
 
 ```yaml
 secrets:
@@ -98,11 +98,11 @@ secrets:
 | `server_url` | `""` | Bitwarden 区域或自托管端点。为空时使用 `bws` 默认值（US Cloud，`https://vault.bitwarden.com`）。欧盟云设为 `https://vault.bitwarden.eu`，自托管则填写自己的 URL。以 `BWS_SERVER_URL` 形式传递给 `bws` 子进程。 |
 | `cache_ttl_seconds` | `300` | 进程内拉取结果的复用时长。设为 `0` 可禁用缓存。缓存按进程隔离；新的 `hermes` 调用从头开始。 |
 | `override_existing` | `true` | 为 true 时，Bitwarden 的值会覆盖环境中已有的任何值（使 Web 应用中的轮换真正生效）。如果希望本地 `.env` / shell 导出优先，设为 `false`。 |
-| `auto_install` | `true` | 为 true 时，首次使用时自动将 `bws` 下载到 `~/.hermes/bin/`。 |
+| `auto_install` | `true` | 为 true 时，首次使用时自动将 `bws` 下载到 `~/.openagents/bin/`。 |
 
 ## 故障模式
 
-Bitwarden 永远不会阻塞 Hermes 启动。如果出现任何问题，stderr 会显示一行警告，Hermes 继续使用 `.env` 中已有的凭据：
+Bitwarden 永远不会阻塞 OpenAgents 启动。如果出现任何问题，stderr 会显示一行警告，Hermes 继续使用 `.env` 中已有的凭据：
 
 | 现象 | 原因 | 修复方法 |
 |---|---|---|
@@ -122,8 +122,8 @@ Bitwarden 永远不会阻塞 Hermes 启动。如果出现任何问题，stderr �
 
 ## 不适用场景
 
-- **单机个人使用**，`~/.hermes/.env` 已经够用。你只是用一个凭据换了另一个，并在启动时增加了网络依赖。
+- **单机个人使用**，`~/.openagents/.env` 已经够用。你只是用一个凭据换了另一个，并在启动时增加了网络依赖。
 - **无法访问 `api.bitwarden.com` 的隔离环境**。
 - **CI/CD** 场景，已有现成的 secret 注入机制（GitHub Actions secrets、Vault 等）——选择一种方式，不要两者并用。
 
-适合使用此功能的场景：多机器集群、共享开发机、gateway VPS，或任何需要跨多个 Hermes 安装进行集中轮换和吊销管理的场景。
+适合使用此功能的场景：多机器集群、共享开发机、gateway VPS，或任何需要跨多个 OpenAgents 安装进行集中轮换和吊销管理的场景。

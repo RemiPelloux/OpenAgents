@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: "工具与工具集"
-description: "Hermes Agent 工具概览——可用工具、工具集工作方式及终端后端"
+description: "OpenAgents 工具概览——可用工具、工具集工作方式及终端后端"
 ---
 
 # 工具与工具集
@@ -10,7 +10,7 @@ description: "Hermes Agent 工具概览——可用工具、工具集工作方�
 
 ## 可用工具
 
-Hermes 内置了丰富的工具注册表，涵盖网页搜索、浏览器自动化、终端执行、文件编辑、记忆、委托、RL 训练、消息投递、Home Assistant 等功能。
+OpenAgents 内置了丰富的工具注册表，涵盖网页搜索、浏览器自动化、终端执行、文件编辑、记忆、委托、RL 训练、消息投递、Home Assistant 等功能。
 
 :::note
 **Honcho 跨会话记忆**作为记忆提供者插件（`plugins/memory/honcho/`）提供，而非内置工具集。安装方式请参阅 [Plugins](./plugins.md)。
@@ -69,7 +69,7 @@ hermes tools
 ### 配置
 
 ```yaml
-# 在 ~/.hermes/config.yaml 中
+# 在 ~/.openagents/config.yaml 中
 terminal:
   backend: local    # 或：docker, ssh, singularity, modal, daytona
   cwd: "."          # 工作目录
@@ -84,9 +84,9 @@ terminal:
   docker_image: python:3.11-slim
 ```
 
-**单个持久容器，在整个进程生命周期内共享。** Hermes 在首次使用时启动一个长期运行的容器（`docker run -d ... sleep 2h`），并通过 `docker exec` 将所有终端、文件及 `execute_code` 调用路由到同一容器中。工作目录变更、已安装的包、环境调整以及写入 `/workspace` 的文件，在同一 Hermes 进程的整个生命周期内，跨 `/new`、`/reset` 和 `delegate_task` 子 Agent 均会保留。容器在关闭时停止并删除。
+**单个持久容器，在整个进程生命周期内共享。** OpenAgents 在首次使用时启动一个长期运行的容器（`docker run -d ... sleep 2h`），并通过 `docker exec` 将所有终端、文件及 `execute_code` 调用路由到同一容器中。工作目录变更、已安装的包、环境调整以及写入 `/workspace` 的文件，在同一 OpenAgents 进程的整个生命周期内，跨 `/new`、`/reset` 和 `delegate_task` 子 Agent 均会保留。容器在关闭时停止并删除。
 
-这意味着 Docker 后端的行为类似持久化沙箱虚拟机，而非每次命令都使用全新容器。如果你执行过一次 `pip install foo`，该包在本次会话的剩余时间内均可用。如果你执行了 `cd /workspace/project`，后续的 `ls` 调用将看到该目录。完整的生命周期详情及控制 `/workspace` 和 `/root` 是否跨 Hermes 重启保留的 `container_persistent` 标志，请参阅 [配置 → Docker 后端](../configuration.md#docker-backend)。
+这意味着 Docker 后端的行为类似持久化沙箱虚拟机，而非每次命令都使用全新容器。如果你执行过一次 `pip install foo`，该包在本次会话的剩余时间内均可用。如果你执行了 `cd /workspace/project`，后续的 `ls` 调用将看到该目录。完整的生命周期详情及控制 `/workspace` 和 `/root` 是否跨 OpenAgents 重启保留的 `container_persistent` 标志，请参阅 [配置 → Docker 后端](../configuration.md#docker-backend)。
 
 ### SSH 后端
 
@@ -97,7 +97,7 @@ terminal:
   backend: ssh
 ```
 ```bash
-# 在 ~/.hermes/.env 中设置凭据
+# 在 ~/.openagents/.env 中设置凭据
 TERMINAL_SSH_HOST=my-server.example.com
 TERMINAL_SSH_USER=myuser
 TERMINAL_SSH_KEY=~/.ssh/id_rsa
@@ -171,8 +171,8 @@ PTY 模式（`pty=true`）可启用 Codex 和 Claude Code 等交互式 CLI 工�
 
 ## Sudo 支持
 
-如果命令需要 sudo，系统会提示你输入密码（在本次会话内缓存）。也可在 `~/.hermes/.env` 中设置 `SUDO_PASSWORD`。
+如果命令需要 sudo，系统会提示你输入密码（在本次会话内缓存）。也可在 `~/.openagents/.env` 中设置 `SUDO_PASSWORD`。
 
 :::warning
-在消息平台上，如果 sudo 失败，输出中会提示将 `SUDO_PASSWORD` 添加到 `~/.hermes/.env`。
+在消息平台上，如果 sudo 失败，输出中会提示将 `SUDO_PASSWORD` 添加到 `~/.openagents/.env`。
 :::

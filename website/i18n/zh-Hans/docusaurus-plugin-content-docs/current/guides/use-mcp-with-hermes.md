@@ -1,25 +1,25 @@
 ---
 sidebar_position: 6
-title: "在 Hermes 中使用 MCP"
-description: "将 MCP 服务器连接到 Hermes Agent、过滤其工具并在实际工作流中安全使用的实践指南"
+title: "在 OpenAgents 中使用 MCP"
+description: "将 MCP 服务器连接到 OpenAgents、过滤其工具并在实际工作流中安全使用的实践指南"
 ---
 
-# 在 Hermes 中使用 MCP
+# 在 OpenAgents 中使用 MCP
 
-本指南介绍如何在日常工作流中实际使用 Hermes Agent 的 MCP 功能。
+本指南介绍如何在日常工作流中实际使用 OpenAgents 的 MCP 功能。
 
 如果功能页面解释的是 MCP 是什么，本指南则关注如何快速、安全地从中获取价值。
 
 ## 何时应该使用 MCP？
 
 在以下情况下使用 MCP：
-- 工具已以 MCP 形式存在，且你不想构建原生 Hermes 工具
-- 你希望 Hermes 通过干净的 RPC 层操作本地或远程系统
+- 工具已以 MCP 形式存在，且你不想构建原生 OpenAgents 工具
+- 你希望 OpenAgents 通过干净的 RPC 层操作本地或远程系统
 - 你需要细粒度的按服务器暴露控制
-- 你希望将 Hermes 连接到内部 API、数据库或公司系统，而无需修改 Hermes 核心
+- 你希望将 OpenAgents 连接到内部 API、数据库或公司系统，而无需修改 OpenAgents 核心
 
 在以下情况下不要使用 MCP：
-- 内置 Hermes 工具已能很好地完成该工作
+- 内置 OpenAgents 工具已能很好地完成该工作
 - 服务器暴露了大量危险工具，而你没有准备好对其进行过滤
 - 你只需要一个非常窄的集成，原生工具会更简单、更安全
 
@@ -27,9 +27,9 @@ description: "将 MCP 服务器连接到 Hermes Agent、过滤其工具并在实
 
 将 MCP 视为一个适配器层：
 
-- Hermes 仍然是 agent
+- OpenAgents 仍然是 agent
 - MCP 服务器提供工具
-- Hermes 在启动或重新加载时发现这些工具
+- OpenAgents 在启动或重新加载时发现这些工具
 - 模型可以像使用普通工具一样使用它们
 - 你控制每个服务器有多少内容可见
 
@@ -42,7 +42,7 @@ description: "将 MCP 服务器连接到 Hermes Agent、过滤其工具并在实
 如果你在没有附加组件的情况下安装，需要单独添加 MCP：
 
 ```bash
-cd ~/.hermes/hermes-agent
+cd ~/.openagents/openagents
 uv pip install -e ".[mcp]"
 ```
 
@@ -79,8 +79,8 @@ Inspect this project and summarize the repo layout.
 
 你可以通过以下几种方式验证 MCP：
 
-- 配置后 Hermes 横幅/状态应显示 MCP 集成
-- 询问 Hermes 当前有哪些可用工具
+- 配置后 OpenAgents 横幅/状态应显示 MCP 集成
+- 询问 OpenAgents 当前有哪些可用工具
 - 配置更改后使用 `/reload-mcp`
 - 如果服务器连接失败，检查日志
 
@@ -109,32 +109,32 @@ mcp_servers:
 
 对于敏感系统，这通常是最佳默认设置。
 
-## WSL2：将 WSL 中的 Hermes 桥接到 Windows Chrome
+## WSL2：将 WSL 中的 OpenAgents 桥接到 Windows Chrome
 
 以下是适用场景的实际配置：
 
-- Hermes 在 WSL2 内运行
+- OpenAgents 在 WSL2 内运行
 - 你想控制的浏览器是 Windows 上已登录的普通 Chrome
 - 从 WSL 使用 `/browser connect` 不稳定或不可靠
 
 在此配置中，Hermes **不**直接连接到 Chrome，而是：
 
-- Hermes 在 WSL 中运行
-- Hermes 启动一个本地 stdio MCP 服务器
+- OpenAgents 在 WSL 中运行
+- OpenAgents 启动一个本地 stdio MCP 服务器
 - 该 MCP 服务器通过 Windows 互操作（`cmd.exe` 或 `powershell.exe`）启动
 - MCP 服务器附加到你的实时 Windows Chrome 会话
 
 心智模型：
 
 ```text
-Hermes (WSL) -> MCP stdio bridge -> Windows Chrome
+OpenAgents (WSL) -> MCP stdio bridge -> Windows Chrome
 ```
 
 ### 为什么此模式有用
 
 - 你保留真实的 Windows 浏览器配置文件、Cookie 和登录状态
-- Hermes 保持在其支持的 Unix 环境（WSL2）中
-- 浏览器控制以 MCP 工具的形式暴露，而不依赖 Hermes 核心浏览器传输
+- OpenAgents 保持在其支持的 Unix 环境（WSL2）中
+- 浏览器控制以 MCP 工具的形式暴露，而不依赖 OpenAgents 核心浏览器传输
 
 ### 推荐服务器
 
@@ -152,7 +152,7 @@ hermes mcp add chrome-devtools-win --command cmd.exe --args /c npx -y chrome-dev
 hermes mcp test chrome-devtools-win
 ```
 
-然后启动一个新的 Hermes 会话或运行：
+然后启动一个新的 OpenAgents 会话或运行：
 
 ```text
 /reload-mcp
@@ -168,7 +168,7 @@ hermes mcp test chrome-devtools-win
 
 ### 何时 `/browser connect` 不适用
 
-如果 Hermes 在 WSL 中运行而 Chrome 在 Windows 上运行，即使 Chrome 已打开且可调试，`/browser connect` 也可能失败。
+如果 OpenAgents 在 WSL 中运行而 Chrome 在 Windows 上运行，即使 Chrome 已打开且可调试，`/browser connect` 也可能失败。
 
 常见原因：
 
@@ -209,14 +209,14 @@ mcp_servers:
 
 ## 过滤实际影响什么？
 
-Hermes 中 MCP 暴露的功能分为两类：
+OpenAgents 中 MCP 暴露的功能分为两类：
 
 1. 服务器原生 MCP 工具
 - 通过以下方式过滤：
   - `tools.include`
   - `tools.exclude`
 
-2. Hermes 添加的实用工具包装器
+2. OpenAgents 添加的实用工具包装器
 - 通过以下方式过滤：
   - `tools.resources`
   - `tools.prompts`
@@ -241,7 +241,7 @@ Prompts（提示词）：
 
 ### 模式 1：本地项目助手
 
-当你希望 Hermes 在有界工作区内推理时，使用 MCP 连接仓库本地的文件系统或 git 服务器。
+当你希望 OpenAgents 在有界工作区内推理时，使用 MCP 连接仓库本地的文件系统或 git 服务器。
 
 ```yaml
 mcp_servers:
@@ -353,7 +353,7 @@ mcp_servers:
       resources: false
 ```
 
-启动 Hermes 并询问：
+启动 OpenAgents 并询问：
 
 ```text
 Search the codebase for references to MCP and summarize the main integration points.
@@ -393,13 +393,13 @@ mcp_servers:
     args: ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/project"]
 ```
 
-现在 Hermes 可以组合使用它们：
+现在 OpenAgents 可以组合使用它们：
 
 ```text
 Inspect the local project files, then create a GitHub issue summarizing the bug you find.
 ```
 
-这就是 MCP 的强大之处：无需修改 Hermes 核心即可实现多系统工作流。
+这就是 MCP 的强大之处：无需修改 OpenAgents 核心即可实现多系统工作流。
 
 ## 安全使用建议
 
@@ -458,7 +458,7 @@ tools:
 
 ### "为什么我看到的工具比 MCP 服务器公告的少？"
 
-因为 Hermes 现在遵守你的按服务器策略和能力感知注册。这是预期行为，通常也是期望的结果。
+因为 OpenAgents 现在遵守你的按服务器策略和能力感知注册。这是预期行为，通常也是期望的结果。
 
 ### "如何在不删除配置的情况下移除 MCP 服务器？"
 

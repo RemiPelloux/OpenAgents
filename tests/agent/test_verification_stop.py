@@ -144,9 +144,9 @@ def test_verify_on_stop_default_path_through_load_config(tmp_path, clear_verify_
     # boolean False, so even an interactive surface resolves OFF without an
     # explicit opt-in. This is the path the unit-level tests above cannot
     # exercise.
-    clear_verify_env.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    clear_verify_env.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
 
-    from hermes_cli.config import load_config
+    from openagents_cli.config import load_config
 
     merged = load_config()
     assert merged["agent"]["verify_on_stop"] is False
@@ -161,7 +161,7 @@ def test_verify_on_stop_default_path_through_load_config(tmp_path, clear_verify_
 
 
 def test_no_nudge_after_fresh_pass(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     _node_project(tmp_path)
     changed = str(tmp_path / "src" / "app.ts")
 
@@ -177,7 +177,7 @@ def test_no_nudge_after_fresh_pass(tmp_path, monkeypatch):
 
 
 def test_nudge_checks_all_edited_workspaces(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     project_a = tmp_path / "a"
     project_b = tmp_path / "b"
     _make_project(project_a)
@@ -204,7 +204,7 @@ def test_nudge_checks_all_edited_workspaces(tmp_path, monkeypatch):
 
 
 def test_nudge_after_unverified_edit_with_known_command(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     _node_project(tmp_path)
     changed = str(tmp_path / "src" / "app.ts")
     mark_workspace_edited(session_id="s1", cwd=tmp_path, paths=[changed])
@@ -218,7 +218,7 @@ def test_nudge_after_unverified_edit_with_known_command(tmp_path, monkeypatch):
 
 
 def test_nudge_includes_failed_output_summary(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     _node_project(tmp_path)
     changed = str(tmp_path / "src" / "app.ts")
 
@@ -239,7 +239,7 @@ def test_nudge_includes_failed_output_summary(tmp_path, monkeypatch):
 
 
 def test_no_suite_nudge_requests_temp_script(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     (tmp_path / "package.json").write_text("{}", encoding="utf-8")
     changed = str(tmp_path / "src" / "app.ts")
 
@@ -252,7 +252,7 @@ def test_no_suite_nudge_requests_temp_script(tmp_path, monkeypatch):
 
 
 def test_ad_hoc_pass_satisfies_no_suite_stop_loop(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     (tmp_path / "package.json").write_text("{}", encoding="utf-8")
     changed = str(tmp_path / "src" / "app.ts")
     script = Path(tempfile.gettempdir()) / f"hermes-ad-hoc-stop-{tmp_path.name}.py"
@@ -272,7 +272,7 @@ def test_ad_hoc_pass_satisfies_no_suite_stop_loop(tmp_path, monkeypatch):
 
 
 def test_nudge_attempts_are_bounded(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     _node_project(tmp_path)
     changed = str(tmp_path / "src" / "app.ts")
     mark_workspace_edited(session_id="s1", cwd=tmp_path, paths=[changed])
@@ -305,7 +305,7 @@ def test_nudge_attempts_are_bounded(tmp_path, monkeypatch):
     ],
 )
 def test_doc_only_edit_does_not_nudge(tmp_path, monkeypatch, doc_name):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     _node_project(tmp_path)
     changed = str(tmp_path / doc_name)
     mark_workspace_edited(session_id="s1", cwd=tmp_path, paths=[changed])
@@ -315,7 +315,7 @@ def test_doc_only_edit_does_not_nudge(tmp_path, monkeypatch, doc_name):
 
 
 def test_mixed_doc_and_code_edit_still_nudges(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".hermes"))
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     _node_project(tmp_path)
     doc = str(tmp_path / "README.md")
     code = str(tmp_path / "src" / "app.ts")

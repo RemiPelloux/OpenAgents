@@ -3,7 +3,7 @@
 Bootstrap a video production kanban from a structured plan JSON.
 
 Reads a plan.json describing the team + brief, expands templates from
-../assets/, and writes a setup.sh that creates Hermes profiles and fires the
+../assets/, and writes a setup.sh that creates OpenAgents profiles and fires the
 initial kanban task.
 
 Profile-config patching, SOUL.md-per-profile, TEAM.md task-graph convention,
@@ -104,7 +104,7 @@ def validate_plan(plan: dict) -> list[str]:
                     if not PROFILE_NAME_RE.match(t["profile"]):
                         errors.append(
                             f"team[{i}].profile {t['profile']!r} must match "
-                            f"[a-z0-9][a-z0-9_-]{{0,63}} per Hermes profile rules"
+                            f"[a-z0-9][a-z0-9_-]{{0,63}} per OpenAgents profile rules"
                         )
                     if t["profile"] in seen_profiles:
                         errors.append(

@@ -163,7 +163,7 @@ def test_stage2_repairs_profiles_and_cron_ownership(
         '/opt/data/cron/root_owned.json',
         timeout=5,
     )
-    assert "hermes" in r.stdout, (
+    assert "openagents" in r.stdout, (
         f"expected hermes-owned files after restart, got: {r.stdout!r} — "
         f"stage2 hook did not repair profiles/ and cron/ ownership"
     )

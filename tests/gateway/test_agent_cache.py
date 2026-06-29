@@ -305,7 +305,7 @@ class TestExtractCacheBustingConfig:
             calls.append(True)
             return {
                 "honcho.peer_name": "eri",
-                "honcho.ai_peer": "hermes",
+                "honcho.ai_peer": "openagents",
                 "honcho.pin_peer_name": True,
                 "honcho.runtime_peer_prefix": "tg_",
                 "honcho.user_peer_aliases": [("123", "eri")],
@@ -351,7 +351,7 @@ class TestExtractCacheBustingConfig:
 
         class FakeConfig:
             peer_name = "eri"
-            ai_peer = "hermes"
+            ai_peer = "openagents"
             pin_peer_name = False
             runtime_peer_prefix = "tg_"
             user_peer_aliases = {"123": "eri"}
@@ -1599,7 +1599,7 @@ class TestAgentCacheMessageCountRebaseline:
         writes), turn appends its own rows, then the post-turn re-baseline
         runs — so the NEXT turn's guard sees no external change and reuses.
         """
-        from hermes_state import SessionDB
+        from openagents_state import SessionDB
 
         db = SessionDB(db_path=tmp_path / "sessions.db")
         db.create_session("s1", source="telegram")
@@ -1634,7 +1634,7 @@ class TestAgentCacheMessageCountRebaseline:
         """After the re-baseline, a DIFFERENT process appending to the same
         session must still flip the guard to rebuild (the #45966 fix holds).
         """
-        from hermes_state import SessionDB
+        from openagents_state import SessionDB
 
         db = SessionDB(db_path=tmp_path / "sessions.db")
         db.create_session("s1", source="telegram")
@@ -1663,7 +1663,7 @@ class TestAgentCacheMessageCountRebaseline:
     def test_rebaseline_is_fail_safe_and_skips_legacy_and_pending(self, tmp_path):
         """Re-baseline must never crash and must leave legacy 2-tuples and
         pending-sentinel entries untouched."""
-        from hermes_state import SessionDB
+        from openagents_state import SessionDB
         from gateway.run import _AGENT_PENDING_SENTINEL
 
         db = SessionDB(db_path=tmp_path / "sessions.db")

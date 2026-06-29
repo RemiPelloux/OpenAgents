@@ -8,7 +8,7 @@ guard.  Passing ``tools=None`` therefore raises::
 
 …before any HTTP request is issued.  This trips the
 ``openai-codex`` / ``gpt-5.5`` combo on ``chatgpt.com/backend-api/codex``
-whenever the user runs Hermes without external tools registered: the
+whenever the user runs OpenAgents without external tools registered: the
 agent loop catches the TypeError, sees no HTTP status, classifies it as
 non-retryable, and aborts (#32892).
 
