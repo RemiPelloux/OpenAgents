@@ -5,7 +5,7 @@
 # OpenAgents
 
 <p align="center">
-  <a href="https://github.com/NousResearch/Hermes-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/RemiPelloux/OpenAgents/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="#"><img src="https://img.shields.io/badge/Python-3.11%2B-blue?style=for-the-badge" alt="Python 3.11+"></a>
   <a href="#"><img src="https://img.shields.io/badge/CLI-openagents-FFD700?style=for-the-badge" alt="CLI: openagents"></a>
 </p>
@@ -179,6 +179,4 @@ Primary remote for this fork: [RemiPelloux/OpenAgents](https://github.com/RemiPe
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
-
-Built on [Hermes Agent](https://github.com/NousResearch/Hermes-agent) by [Nous Research](https://nousresearch.com).
+[MIT](LICENSE) — original work © [Nous Research](https://nousresearch.com) (Hermes Agent); OpenAgents fork © Remi Pelloux (2026). Both notices must be retained in copies and derivative works.
