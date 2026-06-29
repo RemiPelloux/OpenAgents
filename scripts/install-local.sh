@@ -40,9 +40,8 @@ link_cli_commands() {
   mkdir -p "$LOCAL_BIN"
   chmod +x "$LAUNCHER"
   ln -sf "$LAUNCHER" "$LOCAL_BIN/openagents"
-  ln -sf "$LAUNCHER" "$LOCAL_BIN/hermes"
+  rm -f "$LOCAL_BIN/hermes"
   echo "  ✓ $LOCAL_BIN/openagents → openagents-launch.sh"
-  echo "  ✓ $LOCAL_BIN/hermes → openagents-launch.sh"
   for name in openagents-run openagents-acp; do
     target="$ROOT/venv/bin/$name"
     if [[ -x "$target" ]]; then
