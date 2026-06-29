@@ -1647,15 +1647,17 @@ DEFAULT_CONFIG = {
         # facing session on launch instead of forging a fresh one.
         # Mirrors `hermes -c` muscle memory.  Default off so existing
         # users aren't surprised.  HERMES_TUI_RESUME=<id> always wins.
-        "tui_auto_resume_recent": False,
+        "tui_auto_resume_recent": True,
         # Launch animation (OpenCode-style little monster) before the welcome
         # banner in interactive CLI/TUI. Set false to skip.
         "startup_animation": True,
         # Session behaviour when starting interactive chat without --resume/-c:
-        #   new    — start a fresh session (default)
-        #   last   — resume the most recent CLI/TUI session
+        #   new    — start a fresh session
+        #   last   — resume the most recent CLI/TUI session (OpenPro daily default)
         #   prompt — interactive session picker (same as `openagents sessions browse`)
-        "session_on_launch": "new",
+        "session_on_launch": "last",
+        # Optional override for the animated status-bar brand (empty = skin default).
+        "status_brand": "",
         # When starting a fresh session, show a numbered list of recent sessions
         # so you can `/resume <n>` without running sessions list first.
         "startup_show_sessions": True,
@@ -3027,7 +3029,7 @@ DEFAULT_CONFIG = {
 
 
     # Config schema version - bump this when adding new required fields
-    "_config_version": 33,
+    "_config_version": 34,
 }
 
 # =============================================================================

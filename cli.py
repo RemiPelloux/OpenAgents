@@ -3242,6 +3242,9 @@ def _build_compact_banner() -> str:
     if skin_name == "default":
         line1 = "⚕ NOUS HERMES - AI Agent Framework"
         tiny_line = "⚕ NOUS HERMES"
+    elif skin_name == "opencode":
+        line1 = "OpenAgents · OpenPro"
+        tiny_line = "OpenAgents"
     else:
         agent_name = _skin.get_branding("agent_name", "OpenAgents") if _skin else "OpenAgents"
         line1 = f"{agent_name} - AI Agent Framework"
@@ -4539,6 +4542,36 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
             return f"  {txt}  ({elapsed_str})"
         return f"  {txt}"
 
+    def _status_bar_brand_label(self) -> str:
+        """Animated mascot + brand for the status bar, or legacy ⚕."""
+        try:
+            from openagents_cli.skin_engine import get_active_status_brand
+            from openagents_cli.mascot import status_bar_prefix
+
+            brand = get_active_status_brand("")
+            if brand:
+                return status_bar_prefix(brand)
+        except Exception:
+            pass
+        return "⚕"
+
+    def _status_bar_brand_fragments(self) -> list:
+        """prompt_toolkit fragments for the status-bar leading brand."""
+        try:
+            from openagents_cli.skin_engine import get_active_status_brand
+            from openagents_cli.mascot import animated_face
+
+            brand = get_active_status_brand("")
+            if brand:
+                return [
+                    ("class:status-bar", " "),
+                    ("class:status-bar-strong", animated_face()),
+                    ("class:status-bar-dim", f" {brand} "),
+                ]
+        except Exception:
+            pass
+        return [("class:status-bar", " ⚕ ")]
+
     # ── Petdex mascot (base-CLI pet pane) ───────────────────────────────
     #
     # Parity with the TUI: a half-block sprite rendered as a prompt_toolkit
@@ -4816,13 +4849,14 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
             duration_label = snapshot["duration"]
 
             yolo_active = self._is_session_yolo_active()
+            brand = self._status_bar_brand_label()
             if width < 52:
-                text = f"⚕ {snapshot['model_short']} · {duration_label}"
+                text = f"{brand} · {snapshot['model_short']} · {duration_label}"
                 if yolo_active:
                     text += " · ⚠ YOLO"
                 return self._trim_status_bar_text(text, width)
             if width < 76:
-                parts = [f"⚕ {snapshot['model_short']}", percent_label]
+                parts = [brand, snapshot['model_short'], percent_label]
                 compressions = snapshot.get("compressions", 0)
                 if compressions:
                     parts.append(f"🗜️ {compressions}")
@@ -4848,7 +4882,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
                 context_label = "ctx --"
 
             compressions = snapshot.get("compressions", 0)
-            parts = [f"⚕ {snapshot['model_short']}", context_label, percent_label]
+            parts = [brand, snapshot['model_short'], context_label, percent_label]
             if compressions:
                 parts.append(f"🗜️ {compressions}")
             bg_count = snapshot.get("active_background_tasks", 0)
@@ -4871,7 +4905,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
                 parts.append("⚠ YOLO")
             return self._trim_status_bar_text(" │ ".join(parts), width)
         except Exception:
-            return f"⚕ {self.model if getattr(self, 'model', None) else 'Hermes'}"
+            return f"{self._status_bar_brand_label()} · {self.model if getattr(self, 'model', None) else 'OpenAgents'}"
 
     def _get_status_bar_fragments(self):
         if not self._status_bar_visible or getattr(self, '_model_picker_state', None):
@@ -4888,12 +4922,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
             yolo_active = self._is_session_yolo_active()
 
             if width < 52:
-                frags = [
-                    ("class:status-bar", " ⚕ "),
+                frags = list(self._status_bar_brand_fragments())
+                frags.extend([
                     ("class:status-bar-strong", snapshot["model_short"]),
                     ("class:status-bar-dim", " · "),
                     ("class:status-bar-dim", duration_label),
-                ]
+                ])
                 if yolo_active:
                     frags.append(("class:status-bar-dim", " · "))
                     frags.append(("class:status-bar-yolo", "⚠ YOLO"))
@@ -4906,12 +4940,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
                     bg_count = snapshot.get("active_background_tasks", 0)
                     bg_proc_count = snapshot.get("active_background_processes", 0)
                     bg_subagent_count = snapshot.get("active_background_subagents", 0)
-                    frags = [
-                        ("class:status-bar", " ⚕ "),
+                    frags = list(self._status_bar_brand_fragments())
+                    frags.extend([
                         ("class:status-bar-strong", snapshot["model_short"]),
                         ("class:status-bar-dim", " · "),
                         (self._status_bar_context_style(percent), percent_label),
-                    ]
+                    ])
                     if compressions:
                         frags.append(("class:status-bar-dim", " · "))
                         frags.append((self._compression_count_style(compressions), f"🗜️ {compressions}"))
@@ -4945,8 +4979,8 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
                     bg_count = snapshot.get("active_background_tasks", 0)
                     bg_proc_count = snapshot.get("active_background_processes", 0)
                     bg_subagent_count = snapshot.get("active_background_subagents", 0)
-                    frags = [
-                        ("class:status-bar", " ⚕ "),
+                    frags = list(self._status_bar_brand_fragments())
+                    frags.extend([
                         ("class:status-bar-strong", snapshot["model_short"]),
                         ("class:status-bar-dim", " │ "),
                         ("class:status-bar-dim", context_label),
@@ -4954,7 +4988,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
                         (bar_style, self._build_context_bar(percent)),
                         ("class:status-bar-dim", " "),
                         (bar_style, percent_label),
-                    ]
+                    ])
                     if compressions:
                         frags.append(("class:status-bar-dim", " │ "))
                         frags.append((self._compression_count_style(compressions), f"🗜️ {compressions}"))
@@ -5830,19 +5864,47 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
         self._tool_callbacks_installed = True
 
     def _ensure_tirith_security(self) -> None:
-        """Resolve tirith when enabled (Homebrew/PATH or auto-install)."""
+        """Resolve tirith when enabled; confirm active scanners once at startup."""
         if getattr(self, "_tirith_security_checked", False):
             return
         self._tirith_security_checked = True
         security_cfg = self.config.get("security", {}) or {}
-        if not security_cfg.get("tirith_enabled", True):
-            return
+        tirith_enabled = security_cfg.get("tirith_enabled", True)
+        builtin_on = security_cfg.get("builtin_command_scanner", True)
         try:
-            from tools.tirith_security import ensure_installed
-
-            ensure_installed(log_failures=False)
+            from tools.builtin_command_security import is_enabled as builtin_enabled
+            builtin_on = builtin_on and builtin_enabled()
         except Exception:
             pass
+
+        tirith_path = None
+        if tirith_enabled:
+            try:
+                from tools.tirith_security import ensure_installed
+
+                tirith_path = ensure_installed(log_failures=False)
+            except Exception:
+                pass
+
+        if not (tirith_path or builtin_on):
+            return
+
+        parts = []
+        if tirith_path:
+            parts.append("Tirith")
+        if builtin_on:
+            parts.append("built-in")
+        if not parts:
+            return
+        try:
+            from openagents_cli.skin_engine import get_active_status_brand
+
+            brand = get_active_status_brand("OpenPro")
+            label = brand or "OpenPro"
+        except Exception:
+            label = "OpenPro"
+        scanners = " + ".join(parts)
+        self._console_print(f"[dim]{label} · {scanners} scanner active[/]")
 
     
     def _show_security_advisories(self):
@@ -12625,6 +12687,13 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
             _welcome_text = "Welcome to OpenAgents! Type your message or /help for commands."
             _welcome_color = "#FFF8DC"
         self._console_print(f"[{_welcome_color}]{_welcome_text}[/]")
+        try:
+            _tagline = _welcome_skin.get_branding("tagline", "")
+            if _tagline:
+                _dim = _welcome_skin.get_color("banner_dim", "#B8860B")
+                self._console_print(f"[dim {_dim}]{_tagline}[/]")
+        except Exception:
+            pass
 
         # Warm the /model picker's provider-models cache off-thread during this
         # idle window (banner shown, user about to type). The no-args picker

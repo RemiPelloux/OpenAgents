@@ -400,6 +400,8 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
         },
         "branding": {
             "agent_name": "OpenAgents",
+            "status_brand": "OpenPro",
+            "tagline": "OpenPro · terminal-native agents",
             "welcome": "OpenAgents · OpenPro · little monster ready. Type a message or /help.",
             "goodbye": "Session closed. ›_",
             "response_label": " › OpenAgents ",
@@ -899,6 +901,20 @@ def get_active_prompt_symbol(fallback: str = "❯") -> str:
 
     return f"{cleaned or fallback.strip()} "
 
+
+
+def get_active_status_brand(fallback: str = "") -> str:
+    """Status-bar brand label (e.g. OpenPro). Config overrides skin."""
+    try:
+        from openagents_cli.config import load_config
+
+        display = (load_config() or {}).get("display") or {}
+        override = display.get("status_brand")
+        if override is not None and str(override).strip():
+            return str(override).strip()
+        return get_active_skin().get_branding("status_brand", fallback)
+    except Exception:
+        return fallback
 
 
 def get_active_help_header(fallback: str = "(^_^)? Available Commands") -> str:
