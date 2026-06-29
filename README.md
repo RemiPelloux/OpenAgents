@@ -49,11 +49,22 @@ cd OpenAgents
 openagents setup          # first-time wizard (optional if install script ran)
 ```
 
-No need to `source venv/bin/activate` — the installer links `openagents` into **`~/.local/bin`**. Ensure that directory is on your PATH (same as `uv` / Homebrew user tools):
+No need to `source venv/bin/activate` — the installer links `openagents` into **`~/.local/bin`** via a fast launcher (bytecode cache under `~/.openagents/cache/pycache`). Ensure that directory is on your PATH:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"   # add to ~/.zshrc once if needed
 ```
+
+**Pelloux fork standards:** [docs/PELLOUX_GUIDELINES.md](docs/PELLOUX_GUIDELINES.md) — install UX, OpenCode theme, performance defaults.
+
+**Install flags:**
+
+| Flag | Effect |
+|------|--------|
+| *(none)* | Reuse venv, install `.[all]`, link CLI |
+| `--link-only` | Refresh `~/.local/bin` links only |
+| `--recreate` | Delete and rebuild venv |
+| `--dev` | Include pytest, ruff, etc. |
 
 Or manually:
 

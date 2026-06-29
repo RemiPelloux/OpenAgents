@@ -9668,6 +9668,14 @@ def _cmd_update_impl(args, gateway_mode: bool):
         # UI, desktop rebuild) are non-core and can't brick the venv.
         _clear_update_incomplete_marker()
 
+        try:
+            from openagents_fork import refresh_source_install_cli_links
+
+            if refresh_source_install_cli_links(PROJECT_ROOT):
+                print("  ✓ Refreshed ~/.local/bin CLI links")
+        except Exception:
+            logger.debug("source-install CLI link refresh failed", exc_info=True)
+
         _refresh_active_lazy_features()
 
         _update_node_dependencies()
