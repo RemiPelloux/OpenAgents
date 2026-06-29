@@ -1648,6 +1648,19 @@ DEFAULT_CONFIG = {
         # Mirrors `hermes -c` muscle memory.  Default off so existing
         # users aren't surprised.  HERMES_TUI_RESUME=<id> always wins.
         "tui_auto_resume_recent": False,
+        # Launch animation (OpenCode-style little monster) before the welcome
+        # banner in interactive CLI/TUI. Set false to skip.
+        "startup_animation": True,
+        # Session behaviour when starting interactive chat without --resume/-c:
+        #   new    — start a fresh session (default)
+        #   last   — resume the most recent CLI/TUI session
+        #   prompt — interactive session picker (same as `openagents sessions browse`)
+        "session_on_launch": "new",
+        # When starting a fresh session, show a numbered list of recent sessions
+        # so you can `/resume <n>` without running sessions list first.
+        "startup_show_sessions": True,
+        # How many recent sessions to show in the startup list / launch picker.
+        "startup_sessions_limit": 8,
         # When true (default), `hermes --tui` drops a one-time hint
         # ("subagents working · /agents to watch live") the first time a turn
         # starts delegating, nudging the user toward the live spawn-tree
@@ -3013,7 +3026,7 @@ DEFAULT_CONFIG = {
 
 
     # Config schema version - bump this when adding new required fields
-    "_config_version": 31,
+    "_config_version": 32,
 }
 
 # =============================================================================

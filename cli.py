@@ -3257,7 +3257,7 @@ def _build_compact_banner() -> str:
 
     w = min(shutil.get_terminal_size().columns - 2, 88)
     if w < 30:
-        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]- Nous Research[/]\n"
+        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]· OpenPro[/]\n"
 
     inner = w - 2  # inside the box border
     bar = "═" * w
@@ -6544,6 +6544,8 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
         print()
         if reason == "history":
             print("(._.) No messages in the current chat yet — here are recent sessions you can resume:")
+        elif reason == "startup":
+            print("(◕‿◕) Recent sessions — resume with /resume <number> or /resume <title>:")
         else:
             print("  Recent sessions:")
         print()
@@ -12592,6 +12594,15 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
         except Exception:
             pass
 
+        try:
+            display_cfg = self.config.get("display") or {}
+            if display_cfg.get("startup_animation", True):
+                from openagents_cli.startup_animation import play_startup_animation
+
+                play_startup_animation(enabled=True)
+        except Exception:
+            pass
+
         self.show_banner()
         # Surface any active supply-chain security advisories right after the
         # welcome banner. Quiet/single-query paths call this themselves.
@@ -12601,6 +12612,14 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
         if self._resumed:
             if self._preload_resumed_session():
                 self._display_resumed_history()
+        else:
+            try:
+                display_cfg = self.config.get("display") or {}
+                if display_cfg.get("startup_show_sessions", True):
+                    limit = int(display_cfg.get("startup_sessions_limit", 8) or 8)
+                    self._show_recent_sessions(reason="startup", limit=limit)
+            except Exception:
+                pass
 
         try:
             from openagents_cli.skin_engine import get_active_skin

@@ -1145,6 +1145,18 @@ display:
   #
   skin: default
 
+  # Little monster animation before the welcome banner (interactive CLI/TUI).
+  startup_animation: true
+
+  # Session behaviour when launching without --resume / -c:
+  #   new    — fresh session (default)
+  #   last   — resume most recent session
+  #   prompt — interactive session picker
+  session_on_launch: new
+
+  # Show numbered recent sessions on fresh launch (/resume <n> to continue).
+  startup_show_sessions: true
+  startup_sessions_limit: 8
 # =============================================================================
 # Model Aliases — short names for /model command
 # =============================================================================

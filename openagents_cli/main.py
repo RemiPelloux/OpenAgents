@@ -2003,6 +2003,19 @@ def _launch_tui(
     accept_hooks: bool = False,
 ):
     """Replace current process with the TUI."""
+    if not quiet and not query:
+        try:
+            from openagents_cli.config import load_config
+            from openagents_cli.skin_engine import init_skin_from_config
+            from openagents_cli.startup_animation import play_startup_animation
+
+            _cfg = load_config()
+            init_skin_from_config(_cfg)
+            _display = _cfg.get("display") or {}
+            play_startup_animation(enabled=bool(_display.get("startup_animation", True)))
+        except Exception:
+            pass
+
     tui_dir = PROJECT_ROOT / "ui-tui"
 
     import tempfile
@@ -2253,6 +2266,13 @@ def cmd_chat(args):
             args.resume = resolved
         # If resolution fails, keep the original value — _init_agent will
         # report "Session not found" with the original input
+
+    try:
+        from openagents_cli.session_launch import apply_session_on_launch
+
+        apply_session_on_launch(args, use_tui=use_tui)
+    except Exception:
+        pass
 
     # xAI retirement warning — one-shot, non-blocking, never fails startup
     try:
