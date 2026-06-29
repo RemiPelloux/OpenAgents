@@ -43,16 +43,33 @@ This repository is a **professional fork and rename** of [Hermes Agent](https://
 git clone https://github.com/RemiPelloux/OpenAgents.git
 cd OpenAgents
 
-# Create virtual environment
+# One-command local install (venv + deps + ~/.openagents config)
+./scripts/install-local.sh
+
+source venv/bin/activate
+openagents setup          # first-time wizard (optional if install script ran)
+```
+
+Or manually:
+
+```bash
 uv venv venv --python 3.11
 source venv/bin/activate
-
-# Install with all optional extras (recommended for development)
 uv pip install -e ".[all,dev]"
-
-# First-time setup
 openagents setup
 ```
+
+**Theme:** default skin is **OpenCode** (`display.skin: opencode`) — warm dark terminal, blue accent, code-style spinner. Switch anytime with `/skin opencode` or `/skin default`.
+
+### Connect OpenAI Codex (ChatGPT subscription)
+
+```bash
+openagents auth add openai-codex   # device-code login in browser
+openagents model                   # select a Codex model (gpt-5.x, etc.)
+openagents doctor                  # verify provider + credentials
+```
+
+Codex uses OAuth (not an API key). Works from CLI and the web dashboard (`openagents dashboard` → Providers → OpenAI Codex).
 
 ### Daily usage
 

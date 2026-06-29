@@ -102,6 +102,7 @@ BUILT-IN SKINS
 - ``ares``    — Crimson/bronze war-god theme with custom spinner wings
 - ``mono``    — Clean grayscale monochrome
 - ``slate``   — Cool blue developer-focused theme
+- ``opencode`` — OpenCode-inspired warm dark terminal with blue accent
 - ``daylight`` — Light background theme with dark text and blue accents
 - ``warm-lightmode`` — Warm brown/gold text for light terminal backgrounds
 
@@ -345,6 +346,80 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
             "help_header": "(^_^)? Available Commands",
         },
         "tool_prefix": "┊",
+    },
+    "opencode": {
+        "name": "opencode",
+        "description": "OpenCode-inspired — warm terminal dark, blue accent, monospace energy",
+        "colors": {
+            "banner_border": "#646262",
+            "banner_title": "#fdfcfc",
+            "banner_accent": "#007aff",
+            "banner_dim": "#9a9898",
+            "banner_text": "#f1eeee",
+            "ui_accent": "#007aff",
+            "ui_label": "#9a9898",
+            "ui_ok": "#30d158",
+            "ui_error": "#ff3b30",
+            "ui_warn": "#ff9f0a",
+            "prompt": "#fdfcfc",
+            "input_rule": "#646262",
+            "response_border": "#007aff",
+            "status_bar_bg": "#201d1d",
+            "status_bar_text": "#fdfcfc",
+            "status_bar_strong": "#007aff",
+            "status_bar_dim": "#9a9898",
+            "status_bar_good": "#30d158",
+            "status_bar_warn": "#ff9f0a",
+            "status_bar_bad": "#ff3b30",
+            "status_bar_critical": "#ff3b30",
+            "session_label": "#007aff",
+            "session_border": "#646262",
+            "completion_menu_bg": "#201d1d",
+            "completion_menu_current_bg": "#302c2c",
+            "completion_menu_meta_bg": "#201d1d",
+            "completion_menu_meta_current_bg": "#302c2c",
+            "voice_status_bg": "#201d1d",
+            "selection_bg": "#302c2c",
+        },
+        "spinner": {
+            "waiting_faces": ["(>)", "(|)", "(~)", "(.)", "(_)"],
+            "thinking_faces": ["({)", "(})", "(=>)", "(<=)", "(::)"],
+            "thinking_verbs": [
+                "compiling", "indexing", "refactoring", "typechecking",
+                "linking", "running tests", "patching", "reviewing diff",
+                "fetching context", "planning edits",
+            ],
+            "wings": [
+                ["⟨>", ">⟩"],
+                ["⟨|", "|⟩"],
+                ["⟨{", "}⟩"],
+                ["⟨~", "~⟩"],
+            ],
+        },
+        "branding": {
+            "agent_name": "OpenAgents",
+            "welcome": "OpenAgents · OpenCode theme loaded. Type a message or /help.",
+            "goodbye": "Session closed. ›_",
+            "response_label": " › OpenAgents ",
+            "prompt_symbol": "›",
+            "help_header": "[/] Commands",
+        },
+        "tool_prefix": "›",
+        "banner_logo": """[bold #fdfcfc] ██████╗ ██████╗ ███████╗███╗   ██╗ █████╗ ███████╗███████╗███╗   ██╗████████╗███████╗[/]
+[bold #f1eeee]██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔════╝██╔════╝████╗  ██║╚══██╔══╝██╔════╝[/]
+[#007aff]██║   ██║██████╔╝█████╗  ██╔██╗ ██║███████║█████╗  █████╗  ██╔██╗ ██║   ██║   ███████╗[/]
+[#007aff]██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║██╔══██║██╔══╝  ██╔══╝  ██║╚██╗██║   ██║   ╚════██║[/]
+[#9a9898]╚██████╔╝██║     ███████╗██║ ╚████║██║  ██║██║     ███████╗██║ ╚████║   ██║   ███████║[/]
+[#646262] ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝[/]""",
+        "banner_hero": """[#201d1d]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
+[#302c2c]⠀⠀⠀⠀⠀⣀⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⠀⠀⠀⠀⠀[/]
+[#007aff]⠀⠀⠀⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠀⠀⠀[/]
+[#007aff]⠀⠀⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣇⠀⠀[/]
+[#fdfcfc]⠀⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡆⠀[/]
+[#fdfcfc]⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀[/]
+[#9a9898]⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀[/]
+[#646262]⠀⠀⠙⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠋⠀⠀[/]
+[dim #9a9898]⠀⠀⠀⠀⠀› terminal-native · monospace-first ⠀⠀⠀[/]""",
     },
     "daylight": {
         "name": "daylight",

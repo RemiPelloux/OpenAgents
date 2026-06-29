@@ -36,6 +36,15 @@ class TestSkinConfig:
         assert skin.get_branding("agent_name") == "OpenAgents"
         assert skin.get_branding("nonexistent", "fallback") == "fallback"
 
+    def test_opencode_skin_has_spinner_and_colors(self):
+        from openagents_cli.skin_engine import load_skin
+        skin = load_skin("opencode")
+        assert skin.name == "opencode"
+        assert skin.get_color("ui_accent") == "#007aff"
+        assert skin.get_color("status_bar_bg") == "#201d1d"
+        assert skin.spinner.get("thinking_verbs")
+        assert skin.get_branding("prompt_symbol") == "›"
+
     def test_get_spinner_wings_empty_for_default(self):
         from openagents_cli.skin_engine import load_skin
         skin = load_skin("default")
