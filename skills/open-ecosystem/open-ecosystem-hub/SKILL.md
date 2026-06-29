@@ -1,0 +1,87 @@
+---
+name: open-ecosystem-hub
+description: "Use when working across the Open product suite — routes to OpenAgents, Open Pro, Open Brain, Open Memory, Open Whistle, or Open App."
+version: 1.0.0
+author: Remi Pelloux
+license: MIT
+platforms: [linux, macos, windows]
+metadata:
+  hermes:
+    tags: [open, ecosystem, openagents, openpro, openbrain, openmemory, openwhistle, routing]
+    related_skills: [openagents, open-pro, open-brain, open-memory, open-whistle, open-app]
+---
+
+# Open Ecosystem Hub
+
+The **Open** suite is a family of self-hosted and product-grade tools built around AI agents, professional workflows, persistent memory, and compliance. Use this hub to pick the right skill before diving in.
+
+## Product map
+
+| Product | Skill | One-line purpose |
+|---------|-------|------------------|
+| **OpenAgents** | `openagents` | Multi-surface AI agent (CLI, gateway, desktop, web) |
+| **Open Pro** | `open-pro` | Flutter mobile app — candidate & recruiter hiring platform |
+| **Open Brain** | `open-brain` | Shared persistent memory infrastructure (SQL + vectors + MCP) |
+| **Open Memory** | `open-memory` | Agent memory inside OpenAgents + bridges to Open Brain |
+| **Open Whistle** | `open-whistle` | Self-hosted whistleblower reporting (HinSchG / EU compliant) |
+| **Open App** | `open-app` | Client surfaces — desktop, web dashboard, TUI, mobile shells |
+
+## When to use this hub
+
+- User mentions "Open" products without naming one specifically
+- Task spans multiple products (e.g. "agent remembers hiring prefs in Open Pro")
+- You need the correct repo, CLI, or integration path
+
+## Routing rules
+
+1. **Agent behavior, tools, gateway, cron, skills** → load `openagents` (bundled under `skills/autonomous-ai-agents/hermes-agent/`)
+2. **Flutter / OpenPro-Mobile / candidate-recruiter flows** → load `open-pro`
+3. **Cross-tool memory database, MCP memory server, pgvector** → load `open-brain`
+4. **OpenAgents `memory_*` tools, Honcho, session recall, `~/.openagents/memory`** → load `open-memory`
+5. **Whistleblower channel, HinSchG, case reports, SDKs** → load `open-whistle`
+6. **Desktop app, web dashboard, TUI, "open the app"** → load `open-app`
+
+## Typical cross-product flows
+
+### Agent + shared memory
+
+```
+Open Brain (source of truth) ← MCP → OpenAgents (open-memory skill)
+```
+
+Configure Open Brain MCP in OpenAgents (`openagents mcp` or `~/.openagents/config.yaml`), then use agent memory tools for session-local facts and Open Brain for durable cross-session knowledge.
+
+### Hiring workflow
+
+```
+Open Pro (mobile UX) ← API → backend services
+OpenAgents (automation) ← optional: cron, gateway, delegate subagents
+```
+
+Use `open-pro` for UI/code changes; use `openagents` for agent-side automation (screening drafts, calendar prep, Slack/Telegram notifications).
+
+### Compliance reporting
+
+```
+Open Whistle (secure intake) — standalone FastAPI app
+OpenAgents — optional triage assistant (never store raw reports in agent memory without redaction)
+```
+
+Keep whistleblower identity out of general agent memory; use `open-whistle` APIs via official SDKs only.
+
+## Repositories (maintainer reference)
+
+| Product | Primary repo |
+|---------|--------------|
+| OpenAgents | https://github.com/RemiPelloux/OpenAgents |
+| Open Whistle SDKs | https://github.com/RemiPelloux/openwhistle-sdks |
+| Open Whistle (upstream app) | https://github.com/openwhistle/OpenWhistle |
+| Open Brain (reference) | https://github.com/NateBJones-Projects/OB1 |
+| Open Pro | `OpenPro-Mobile/` (Flutter monorepo path in your workspace) |
+
+## Verification checklist
+
+- [ ] Identified which Open product owns the user request
+- [ ] Loaded the specific skill (`open-pro`, `open-brain`, etc.) — not just this hub
+- [ ] Cross-product tasks document data boundaries (memory, PII, compliance)
+- [ ] OpenAgents tasks use `openagents` CLI, not legacy `hermes` unless migrating

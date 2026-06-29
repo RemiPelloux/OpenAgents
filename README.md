@@ -149,6 +149,22 @@ python -m pytest tests/tools/ -q
 
 Read [AGENTS.md](AGENTS.md) before making changes — it documents module boundaries, config conventions, profiles, and testing expectations.
 
+### Open ecosystem skills
+
+Bundled skills for the Open product suite live under `skills/open-ecosystem/`:
+
+| Skill | Product |
+|-------|---------|
+| `open-ecosystem-hub` | Routes across all Open products |
+| `openagents` | This repo (see `skills/autonomous-ai-agents/hermes-agent/`) |
+| `open-pro` | Flutter hiring mobile app |
+| `open-brain` | Shared MCP memory infrastructure |
+| `open-memory` | OpenAgents memory + Honcho |
+| `open-whistle` | Whistleblower compliance platform |
+| `open-app` | Desktop, web dashboard, TUI |
+
+Load with `/skills open-ecosystem-hub` or `openagents chat -s open-pro`.
+
 ### Rename map (Hermes → OpenAgents)
 
 | Hermes (legacy) | OpenAgents |

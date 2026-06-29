@@ -8,8 +8,8 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [hermes, setup, configuration, multi-agent, spawning, cli, gateway, development]
-    homepage: https://github.com/NousResearch/openagents
-    related_skills: [claude-code, codex, opencode]
+    homepage: https://github.com/RemiPelloux/OpenAgents
+    related_skills: [open-ecosystem-hub, open-app, open-memory, claude-code, codex, opencode]
 ---
 
 # OpenAgents
