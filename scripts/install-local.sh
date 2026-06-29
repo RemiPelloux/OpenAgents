@@ -10,6 +10,33 @@ if ! command -v "$PYTHON" >/dev/null 2>&1; then
   PYTHON=python3
 fi
 
+LOCAL_BIN="${HOME}/.local/bin"
+
+link_cli_commands() {
+  mkdir -p "$LOCAL_BIN"
+  local name target
+  for name in openagents openagents-run openagents-acp hermes; do
+    target="$ROOT/venv/bin/$name"
+    if [[ -x "$target" ]]; then
+      ln -sf "$target" "$LOCAL_BIN/$name"
+      echo "  ✓ $LOCAL_BIN/$name"
+    fi
+  done
+  # Record install location for doctor/update tooling
+  mkdir -p "$HOME/.openagents"
+  printf '%s\n' "$ROOT" >"$HOME/.openagents/source-install-root"
+}
+
+ensure_path_hint() {
+  if [[ ":$PATH:" == *":$LOCAL_BIN:"* ]]; then
+    return 0
+  fi
+  echo ""
+  echo "⚠  $LOCAL_BIN is not on your PATH yet."
+  echo "   Add this line to ~/.zshrc or ~/.bash_profile, then open a new terminal:"
+  echo '   export PATH="$HOME/.local/bin:$PATH"'
+}
+
 echo "→ Creating venv with $PYTHON..."
 if command -v uv >/dev/null 2>&1; then
   uv venv venv --python "$PYTHON"
@@ -25,6 +52,9 @@ else
   pip install -e ".[all,dev]"
 fi
 
+echo "→ Linking CLI into ~/.local/bin (no 'source venv' needed)..."
+link_cli_commands
+
 echo "→ Ensuring ~/.openagents config..."
 mkdir -p "$HOME/.openagents"
 if [[ ! -f "$HOME/.openagents/config.yaml" ]]; then
@@ -37,13 +67,13 @@ model:
 EOF
 fi
 
+ensure_path_hint
+
 echo ""
-echo "✓ Install complete."
+echo "✓ Install complete — run from any directory:"
 echo ""
-echo "  source $ROOT/venv/bin/activate"
 echo "  openagents --version"
 echo "  openagents doctor"
-echo "  openagents model          # pick provider (OpenAI Codex, OpenRouter, …)"
-echo "  openagents auth add openai-codex   # ChatGPT / Codex subscription login"
-echo "  openagents                  # interactive chat (OpenCode theme)"
-echo "  /skin opencode              # switch theme anytime"
+echo "  openagents model"
+echo "  openagents auth add openai-codex"
+echo "  openagents"

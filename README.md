@@ -43,11 +43,16 @@ This repository is a **professional fork and rename** of [Hermes Agent](https://
 git clone https://github.com/RemiPelloux/OpenAgents.git
 cd OpenAgents
 
-# One-command local install (venv + deps + ~/.openagents config)
+# One-command local install (venv + deps + global `openagents` command)
 ./scripts/install-local.sh
 
-source venv/bin/activate
 openagents setup          # first-time wizard (optional if install script ran)
+```
+
+No need to `source venv/bin/activate` — the installer links `openagents` into **`~/.local/bin`**. Ensure that directory is on your PATH (same as `uv` / Homebrew user tools):
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # add to ~/.zshrc once if needed
 ```
 
 Or manually:
@@ -56,6 +61,7 @@ Or manually:
 uv venv venv --python 3.11
 source venv/bin/activate
 uv pip install -e ".[all,dev]"
+./scripts/install-local.sh   # re-run only the link step after manual pip install
 openagents setup
 ```
 
