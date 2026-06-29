@@ -68,10 +68,11 @@ def _env_int(key: str, default: int) -> int:
 def _load_security_config() -> dict:
     """Load security settings from config.yaml, with env var overrides."""
     defaults = {
-        "tirith_enabled": True,
+        "tirith_enabled": False,
         "tirith_path": "tirith",
         "tirith_timeout": 5,
         "tirith_fail_open": True,
+        "builtin_command_scanner": True,
     }
     try:
         from openagents_cli.config import load_config

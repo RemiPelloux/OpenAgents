@@ -5830,22 +5830,17 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
         self._tool_callbacks_installed = True
 
     def _ensure_tirith_security(self) -> None:
-        """Check tirith availability once before tools can run terminal commands."""
+        """Warm optional tirith install; built-in scanner is always active."""
         if getattr(self, "_tirith_security_checked", False):
             return
         self._tirith_security_checked = True
+        security_cfg = self.config.get("security", {}) or {}
+        if not security_cfg.get("tirith_enabled", False):
+            return
         try:
-            from tools.tirith_security import ensure_installed, is_platform_supported
+            from tools.tirith_security import ensure_installed
 
-            tirith_path = ensure_installed(log_failures=False)
-            if tirith_path is None and is_platform_supported():
-                security_cfg = self.config.get("security", {}) or {}
-                tirith_enabled = security_cfg.get("tirith_enabled", True)
-                if tirith_enabled:
-                    _cprint(
-                        f"  {_DIM}⚠ tirith security scanner enabled but not available "
-                        f"— command scanning will use pattern matching only{_RST}"
-                    )
+            ensure_installed(log_failures=False)
         except Exception:
             pass
 

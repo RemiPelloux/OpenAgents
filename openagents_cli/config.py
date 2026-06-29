@@ -2421,11 +2421,12 @@ DEFAULT_CONFIG = {
     # Or dict format: {"name": {"description": "...", "system_prompt": "...", "tone": "...", "style": "..."}}
     "personalities": {},
 
-    # Pre-exec security scanning via tirith
+    # Pre-exec security scanning: built-in Python scanner (default) + optional tirith
     "security": {
         "allow_private_urls": False,  # Allow requests to private/internal IPs (for OpenWrt, proxies, VPNs)
         "redact_secrets": True,
-        "tirith_enabled": True,
+        "builtin_command_scanner": True,  # OpenAgents built-in scanner (no external binary)
+        "tirith_enabled": False,  # Optional external tirith binary (brew install sheeki03/tap/tirith)
         "tirith_path": "tirith",
         "tirith_timeout": 5,
         "tirith_fail_open": True,
@@ -3026,7 +3027,7 @@ DEFAULT_CONFIG = {
 
 
     # Config schema version - bump this when adding new required fields
-    "_config_version": 32,
+    "_config_version": 33,
 }
 
 # =============================================================================

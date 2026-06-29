@@ -1634,9 +1634,10 @@ def check_all_command_guards(command: str, env_type: str,
     # Tirith check — wrapper guarantees no raise for expected failures.
     # Only catch ImportError (module not installed).
     tirith_result = {"action": "allow", "findings": [], "summary": ""}
+    scan_results = []
     try:
-        from tools.tirith_security import check_command_security
-        tirith_result = check_command_security(command)
+        from tools.tirith_security import check_command_security as tirith_scan
+        scan_results.append(tirith_scan(command))
     except ImportError:
         # Tirith module not installed.  When tirith_fail_open is True (the
         # default) we silently allow, matching the pre-existing behaviour.
@@ -1654,7 +1655,7 @@ def check_all_command_guards(command: str, env_type: str,
         except Exception:
             pass
         if not _tirith_fail_open:
-            tirith_result = {
+            scan_results.append({
                 "action": "warn",
                 "findings": [
                     {
@@ -1670,8 +1671,24 @@ def check_all_command_guards(command: str, env_type: str,
                     }
                 ],
                 "summary": "Tirith unavailable (fail-closed)",
-            }
-        # else: tirith_fail_open is True — allow as before (tirith_result stays "allow")
+            })
+        # else: tirith_fail_open is True — allow as before (no tirith result added)
+
+    try:
+        from tools.builtin_command_security import (
+            check_command_security as builtin_scan,
+            is_enabled as builtin_scan_enabled,
+            merge_scan_results,
+        )
+        if builtin_scan_enabled():
+            scan_results.append(builtin_scan(command))
+    except ImportError:
+        pass
+
+    if len(scan_results) == 1:
+        tirith_result = scan_results[0]
+    elif len(scan_results) > 1:
+        tirith_result = merge_scan_results(*scan_results)
 
     # Dangerous command check (detection only, no approval)
     is_dangerous, pattern_key, description = detect_dangerous_command(command)
@@ -1690,10 +1707,10 @@ def check_all_command_guards(command: str, env_type: str,
     if tirith_result["action"] in {"block", "warn"}:
         findings = tirith_result.get("findings") or []
         rule_id = findings[0].get("rule_id", "unknown") if findings else "unknown"
-        tirith_key = f"tirith:{rule_id}"
+        scan_key = f"scanner:{rule_id}"
         tirith_desc = _format_tirith_description(tirith_result)
-        if not is_approved(session_key, tirith_key):
-            warnings.append((tirith_key, tirith_desc, True))
+        if not is_approved(session_key, scan_key):
+            warnings.append((scan_key, tirith_desc, True))
 
     if is_dangerous:
         if not is_approved(session_key, pattern_key):
