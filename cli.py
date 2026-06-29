@@ -5830,12 +5830,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
         self._tool_callbacks_installed = True
 
     def _ensure_tirith_security(self) -> None:
-        """Warm optional tirith install; built-in scanner is always active."""
+        """Resolve tirith when enabled (Homebrew/PATH or auto-install)."""
         if getattr(self, "_tirith_security_checked", False):
             return
         self._tirith_security_checked = True
         security_cfg = self.config.get("security", {}) or {}
-        if not security_cfg.get("tirith_enabled", False):
+        if not security_cfg.get("tirith_enabled", True):
             return
         try:
             from tools.tirith_security import ensure_installed

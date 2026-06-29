@@ -2425,8 +2425,8 @@ DEFAULT_CONFIG = {
     "security": {
         "allow_private_urls": False,  # Allow requests to private/internal IPs (for OpenWrt, proxies, VPNs)
         "redact_secrets": True,
-        "builtin_command_scanner": True,  # OpenAgents built-in scanner (no external binary)
-        "tirith_enabled": False,  # Optional external tirith binary (brew install sheeki03/tap/tirith)
+        "builtin_command_scanner": True,  # OpenAgents built-in scanner (always on)
+        "tirith_enabled": True,  # External tirith binary (brew install sheeki03/tap/tirith)
         "tirith_path": "tirith",
         "tirith_timeout": 5,
         "tirith_fail_open": True,

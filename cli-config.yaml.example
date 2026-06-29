@@ -337,7 +337,7 @@ terminal:
 #
 # security:
 #   builtin_command_scanner: true
-#   tirith_enabled: false
+#   tirith_enabled: true
 #   tirith_path: "tirith"
 #   tirith_timeout: 5
 #   tirith_fail_open: true
