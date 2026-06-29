@@ -162,21 +162,46 @@ Read [AGENTS.md](AGENTS.md) before making changes — it documents module bounda
 
 ---
 
-## Upstream
+## Updating
 
-OpenAgents tracks [NousResearch/Hermes-agent](https://github.com/NousResearch/Hermes-agent) as its upstream. To sync:
+### Users (daily)
 
 ```bash
-git remote add upstream https://github.com/NousResearch/Hermes-agent.git  # once
-git fetch upstream
-git merge upstream/main
-openagents update
+openagents update          # pull latest OpenAgents + refresh dependencies
+openagents update --check  # see if an update is available
+openagents doctor          # verify everything after an update
 ```
 
-Primary remote for this fork: [RemiPelloux/OpenAgents](https://github.com/RemiPelloux/OpenAgents).
+That pulls from **`origin`** ([RemiPelloux/OpenAgents](https://github.com/RemiPelloux/OpenAgents)) — already rebranded, ready to run.
+
+### Maintainers (new Hermes Agent release)
+
+When [NousResearch/Hermes-agent](https://github.com/NousResearch/Hermes-agent) publishes a new version:
+
+```bash
+./scripts/sync_from_hermes.sh        # merge upstream + rebrand + smoke tests
+git commit -am "Sync Hermes upstream and reapply OpenAgents rebrand."
+git push origin main
+```
+
+Full details: **[docs/UPSTREAM.md](docs/UPSTREAM.md)**
+
+---
+
+## Upstream lineage
+
+OpenAgents tracks [NousResearch/Hermes-agent](https://github.com/NousResearch/Hermes-agent) for feature releases. Recommended remotes:
+
+```bash
+git remote add origin git@github.com:RemiPelloux/OpenAgents.git      # your install
+git remote add upstream https://github.com/NousResearch/Hermes-agent.git  # Hermes source (maintainers)
+```
+
+Primary distribution: [RemiPelloux/OpenAgents](https://github.com/RemiPelloux/OpenAgents).
 
 ---
 
 ## License
 
 [MIT](LICENSE) — original work © [Nous Research](https://nousresearch.com) (Hermes Agent); OpenAgents fork © Remi Pelloux (2026). Both notices must be retained in copies and derivative works.
+

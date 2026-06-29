@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 from openagents_constants import get_openagents_home
+from openagents_fork import DISTRIBUTION_REPO_HTTPS, DISTRIBUTION_REPO_CANONICAL
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 # rich and prompt_toolkit are imported lazily (inside the functions that use
@@ -121,8 +122,8 @@ _UPDATE_CHECK_CACHE_SECONDS = 6 * 3600
 # (e.g. nix-built hermes — no local git history to count against).
 UPDATE_AVAILABLE_NO_COUNT = -1
 
-_UPSTREAM_REPO_URL = "https://github.com/NousResearch/openagents.git"
-_OFFICIAL_REPO_CANONICAL = "github.com/nousresearch/openagents"
+_UPSTREAM_REPO_URL = DISTRIBUTION_REPO_HTTPS
+_OFFICIAL_REPO_CANONICAL = DISTRIBUTION_REPO_CANONICAL
 
 
 def _canonical_github_remote(url: str | None) -> str:
@@ -458,7 +459,7 @@ def get_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]:
     return {"upstream": upstream, "local": local, "ahead": max(ahead, 0)}
 
 
-_RELEASE_URL_BASE = "https://github.com/NousResearch/openagents/releases/tag"
+_RELEASE_URL_BASE = "https://github.com/RemiPelloux/OpenAgents/releases/tag"
 _latest_release_cache: Optional[tuple] = None  # (tag, url) once resolved
 
 

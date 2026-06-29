@@ -265,6 +265,12 @@ from pathlib import Path
 from typing import Optional
 
 
+from openagents_fork import (
+    DISTRIBUTION_REPO_HTTPS,
+    DISTRIBUTION_REPO_URLS,
+    IS_REBRANDED_HERMES_FORK,
+    SYNC_FROM_HERMES_SCRIPT,
+)
 from openagents_cli.subcommands._shared import add_accept_hooks_flag as _add_accept_hooks_flag
 from openagents_cli.subcommands.cron import build_cron_parser
 from openagents_cli.subcommands.gateway import build_gateway_parser
@@ -6629,13 +6635,8 @@ def _discard_stashed_changes(
 # Fork detection and upstream management for `hermes update`
 # =========================================================================
 
-OFFICIAL_REPO_URLS = {
-    "https://github.com/NousResearch/openagents.git",
-    "git@github.com:NousResearch/openagents.git",
-    "https://github.com/NousResearch/openagents",
-    "git@github.com:NousResearch/openagents",
-}
-OFFICIAL_REPO_URL = "https://github.com/NousResearch/openagents.git"
+OFFICIAL_REPO_URLS = DISTRIBUTION_REPO_URLS
+OFFICIAL_REPO_URL = DISTRIBUTION_REPO_HTTPS
 SKIP_UPSTREAM_PROMPT_FILE = ".skip_upstream_prompt"
 
 
@@ -6684,6 +6685,22 @@ def _has_upstream_remote(git_cmd: list[str], cwd: Path) -> bool:
         return result.returncode == 0
     except Exception:
         return False
+
+
+def _get_upstream_url(git_cmd: list[str], cwd: Path) -> Optional[str]:
+    """Return the URL of the upstream remote, if configured."""
+    try:
+        result = subprocess.run(
+            git_cmd + ["remote", "get-url", "upstream"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return None
 
 
 def _add_upstream_remote(git_cmd: list[str], cwd: Path) -> bool:
@@ -6769,7 +6786,7 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path) -> None:
         # Ask user if they want to add upstream
         print()
         print("ℹ Your fork is not tracking the official OpenAgents repository.")
-        print("  This means you may miss updates from NousResearch/openagents.")
+        print(f"  This means you may miss updates from {DISTRIBUTION_REPO_HTTPS}.")
         print()
         try:
             response = (
@@ -6782,17 +6799,13 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path) -> None:
         if response in {"", "y", "yes"}:
             print("→ Adding upstream remote...")
             if _add_upstream_remote(git_cmd, cwd):
-                print(
-                    "  ✓ Added upstream: https://github.com/NousResearch/openagents.git"
-                )
+                print(f"  ✓ Added upstream: {OFFICIAL_REPO_URL}")
                 has_upstream = True
             else:
                 print("  ✗ Failed to add upstream remote. Skipping upstream sync.")
                 return
         else:
-            print(
-                "  Skipped. Run 'git remote add upstream https://github.com/NousResearch/openagents.git' to add later."
-            )
+            print(f"  Skipped. Run 'git remote add upstream {OFFICIAL_REPO_URL}' to add later.")
             _mark_skip_upstream_prompt()
             return
 
@@ -6827,8 +6840,17 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path) -> None:
         print()
         print(f"ℹ Your fork has {origin_ahead} commit(s) not on upstream.")
         print("  Skipping upstream sync to preserve your changes.")
-        print("  If you want to merge upstream changes, run:")
-        print("    git pull upstream main")
+        if IS_REBRANDED_HERMES_FORK:
+            upstream_url = _get_upstream_url(git_cmd, cwd)
+            if upstream_url and "Hermes-agent" in upstream_url:
+                print("  To merge a new Hermes Agent release into OpenAgents, run:")
+                print(f"    ./{SYNC_FROM_HERMES_SCRIPT}")
+            else:
+                print("  To pull the latest OpenAgents release, run:")
+                print("    openagents update")
+        else:
+            print("  If you want to merge upstream changes, run:")
+            print("    git pull upstream main")
         return
 
     # If upstream is not ahead, fork is up to date
