@@ -8797,6 +8797,26 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             else:
                 return getattr(_blueprint_result, "text", "") or None
 
+        if canonical == "company":
+            _company_result = await self._handle_company_command(event)
+            _company_seed = getattr(_company_result, "agent_seed", None)
+            if _company_seed:
+                _ack = getattr(_company_result, "text", "") or ""
+                if _ack:
+                    try:
+                        adapter = self.adapters.get(source.platform)
+                        if adapter:
+                            _ack_meta = self._thread_metadata_for_source(source)
+                            await adapter.send(str(source.chat_id), _ack, metadata=_ack_meta)
+                    except Exception:
+                        logger.debug("company ack send failed", exc_info=True)
+                try:
+                    event.text = _company_seed
+                except Exception:
+                    return getattr(_company_result, "text", "") or None
+            else:
+                return getattr(_company_result, "text", "") or None
+
         if canonical == "retry":
             return await self._handle_retry_command(event)
         
@@ -11302,6 +11322,19 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             from openagents_cli.blueprint_cmd import BlueprintCommandResult
 
             return BlueprintCommandResult(f"Cron blueprint command failed: {e}")
+
+    async def _handle_company_command(self, event: MessageEvent):
+        """Handle /company in the gateway (shared handler with CLI/TUI)."""
+        args = (event.get_command_args() or "").strip()
+        try:
+            from openagents_cli.company_cmd import handle_company_command
+
+            return handle_company_command(args)
+        except Exception as e:
+            logger.debug("company command failed: %s", e)
+            from openagents_cli.company_cmd import CompanyCommandResult
+
+            return CompanyCommandResult(f"Company command failed: {e}")
 
     # ────────────────────────────────────────────────────────────────
     # /goal — persistent cross-turn goals (Ralph-style loop)

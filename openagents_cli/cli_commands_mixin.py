@@ -1386,6 +1386,27 @@ class CLICommandsMixin:
             output = f"Suggestions command failed: {e}"
         self._console_print(output)
 
+    def _handle_company_command(self, cmd: str):
+        """Handle /company — scaffold and run multi-agent company workspaces."""
+        import shlex
+
+        try:
+            tokens = shlex.split(cmd)[1:] if cmd else []
+        except ValueError:
+            tokens = (cmd or "").split()[1:]
+        args = " ".join(shlex.quote(t) for t in tokens)
+        try:
+            from openagents_cli.company_cmd import handle_company_command
+
+            result = handle_company_command(args)
+        except Exception as e:
+            self._console_print(f"Company command failed: {e}")
+            return
+        self._console_print(result.text)
+        seed = getattr(result, "agent_seed", None)
+        if seed:
+            self._pending_agent_seed = seed
+
     def _handle_blueprint_command(self, cmd: str):
         """Handle /blueprint — set up an automation from a blueprint template.
 
@@ -1412,8 +1433,6 @@ class CLICommandsMixin:
         self._console_print(result.text)
         seed = getattr(result, "agent_seed", None)
         if seed:
-            # One-shot: the interactive loop picks this up right after the
-            # slash command returns and runs it as a normal agent turn.
             self._pending_agent_seed = seed
 
     def _handle_curator_command(self, cmd: str):

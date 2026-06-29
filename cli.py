@@ -8390,6 +8390,8 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
             self._handle_cron_command(cmd_original)
         elif canonical == "suggestions":
             self._handle_suggestions_command(cmd_original)
+        elif canonical == "company":
+            self._handle_company_command(cmd_original)
         elif canonical == "blueprint":
             self._handle_blueprint_command(cmd_original)
         elif canonical == "curator":
