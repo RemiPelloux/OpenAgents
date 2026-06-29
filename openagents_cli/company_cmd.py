@@ -334,29 +334,65 @@ def _assignments_yaml(roles: tuple[RoleTemplate, ...]) -> Dict[str, Any]:
     }
 
 
-def scaffold_company(
-    root: Path,
+def _resolve_template_roles(
+    template: str,
+    *,
+    role_ids: Optional[List[str]] = None,
+) -> tuple[RoleTemplate, ...]:
+    """Return role templates for a template, optionally filtered by id."""
+    base = TEMPLATES.get(template) or TEMPLATES["startup"]
+    if not role_ids:
+        return base
+    wanted = {str(r).strip().lower() for r in role_ids if str(r).strip()}
+    picked = tuple(r for r in base if r.role_id in wanted)
+    if not picked:
+        raise ValueError(
+            f"no roles matched {role_ids!r} for template {template!r}; "
+            f"available: {[r.role_id for r in base]}"
+        )
+    if "ceo" not in {r.role_id for r in picked}:
+        ceo = next((r for r in base if r.role_id == "ceo"), None)
+        if ceo is not None:
+            picked = (ceo,) + picked
+    return picked
+
+
+def _parse_role_ids(raw: str) -> Optional[List[str]]:
+    text = (raw or "").strip()
+    if not text:
+        return None
+    return [part.strip().lower() for part in text.split(",") if part.strip()]
+
+
+def apply_company_init(
     *,
     name: str,
+    path: str,
     template: str = "startup",
     mission: str = "",
+    role_ids: Optional[List[str]] = None,
     register_project: bool = True,
 ) -> Path:
-    """Create company folder layout. Returns the company root path."""
-    root = root.expanduser().resolve()
+    """Create a company workspace (CLI + agent apply entry point)."""
+    target = Path(path).expanduser()
+    if not target.is_absolute():
+        target = Path(os.getcwd()) / target
+    roles = _resolve_template_roles(template, role_ids=role_ids)
+    root = target
     if root.exists() and any(root.iterdir()):
         raise FileExistsError(f"target not empty: {root}")
 
     slug = _slugify(name)
-    roles = TEMPLATES.get(template) or TEMPLATES["startup"]
     if template not in TEMPLATES:
         logger.warning("Unknown company template %r, using startup", template)
+        template = "startup"
+        roles = _resolve_template_roles(template, role_ids=role_ids)
 
     manifest: Dict[str, Any] = {
         "version": 1,
         "name": name.strip() or slug,
         "slug": slug,
-        "template": template if template in TEMPLATES else "startup",
+        "template": template,
         "mission": mission.strip()
         or f"Build and ship outcomes for {name.strip() or slug}.",
         "created_at": int(time.time()),
@@ -421,19 +457,41 @@ def scaffold_company(
     return root
 
 
+def scaffold_company(
+    root: Path,
+    *,
+    name: str,
+    template: str = "startup",
+    mission: str = "",
+    register_project: bool = True,
+    role_ids: Optional[List[str]] = None,
+) -> Path:
+    """Create company folder layout. Returns the company root path."""
+    return apply_company_init(
+        name=name,
+        path=str(root),
+        template=template,
+        mission=mission,
+        role_ids=role_ids,
+        register_project=register_project,
+    )
+
+
 def _format_help() -> str:
     lines = [
         "Company workspace — multi-agent folder with roles, subagents, and skills.\n",
-        "  /company init <name> [path]     Create scaffold (templates: startup, studio, minimal)",
+        "  /company init [name]            Guided setup (agent asks questions)",
+        "  /company init <name> mission=…  Create directly (power user)",
         "  /company status                 Show active company from cwd",
         "  /company roles [role-id]        List roles or show details",
         "  /company delegate <role> <goal> Run work as a role (seeds next agent turn)",
-        "  /company spawn <role> <goal>    Alias for delegate",
+        "",
+        "Templates: startup (product team), studio (creative), minimal (ceo+worker)",
         "",
         "Examples:",
-        "  /company init Acme ./acme-corp",
-        "  /company init \"My Studio\" template=studio",
-        "  /company delegate engineer Fix the login bug in workspace/",
+        "  /company init                   I'll ask about name, mission, roles, path",
+        "  /company init OpenPro           Guided setup with name pre-filled",
+        "  /company init Acme mission=\"Build SaaS\" template=startup path=./acme",
     ]
     root = find_company_root()
     if root:
@@ -503,6 +561,93 @@ def _parse_kv(tokens: List[str]) -> Tuple[Dict[str, str], List[str]]:
                 continue
         rest.append(tok)
     return values, rest
+
+
+def _init_has_direct_params(kv: Dict[str, str]) -> bool:
+    """True when the user supplied enough inline params to skip the interview."""
+    return bool((kv.get("mission") or "").strip())
+
+
+def _build_init_seed(
+    *,
+    name: Optional[str] = None,
+    path: Optional[str] = None,
+    template: Optional[str] = None,
+    mission: Optional[str] = None,
+    roles: Optional[str] = None,
+    cwd: Optional[str] = None,
+) -> str:
+    """Agent instruction to interview the user, then create the company."""
+    cwd = cwd or os.getcwd()
+    template_catalog = "\n".join(
+        f"  - **{key}**: {', '.join(r.role_id for r in roles_tuple)}"
+        for key, roles_tuple in TEMPLATES.items()
+    )
+    known_name = (name or "").strip()
+    known_path = (path or "").strip()
+    known_template = (template or "").strip()
+    known_mission = (mission or "").strip()
+    known_roles = (roles or "").strip()
+
+    prefill = []
+    if known_name:
+        prefill.append(f"- Company name (already given): {known_name}")
+    if known_mission:
+        prefill.append(f"- Mission (already given): {known_mission}")
+    if known_template:
+        prefill.append(f"- Template (already given): {known_template}")
+    if known_path:
+        prefill.append(f"- Folder path (already given): {known_path}")
+    if known_roles:
+        prefill.append(f"- Roles subset (already given): {known_roles}")
+    prefill_block = "\n".join(prefill) if prefill else "- (nothing pre-filled yet)"
+
+    default_path = known_path or (f"./{_slugify(known_name)}" if known_name else "./<slug>")
+
+    return (
+        "The user wants to create an OpenAgents **company workspace** — a folder with "
+        "roles, subagent SOUL files, skills map, and a playbook for multi-agent work.\n\n"
+        f"Working directory: `{cwd}`\n\n"
+        "Already known:\n"
+        f"{prefill_block}\n\n"
+        "Interview the user for anything still missing. Ask **one question at a time**, "
+        "offering sensible defaults in brackets:\n"
+        "1. **Company name** — short display name\n"
+        "2. **Mission** — 1–2 sentences on what this company builds or delivers\n"
+        "3. **Team template** — one of:\n"
+        f"{template_catalog}\n"
+        "   Or pick a template and name which roles to keep (comma-separated ids).\n"
+        "4. **Extra roles** (optional) — any specialist roles to add beyond the template? "
+        "If yes, note their focus; you can add `roles/<id>.yaml` + `agents/<id>/` after "
+        "scaffold by copying an existing role as a pattern.\n"
+        f"5. **Folder path** — empty directory to create [default: {default_path}]\n"
+        "6. **Confirm** — recap name, mission, template, roles, and path before creating.\n\n"
+        "When you have final answers, create the company by running **one** terminal command "
+        "(use the terminal tool). Quote paths/mission for the shell:\n"
+        "```\n"
+        "openagents company apply "
+        "--name \"<Company Name>\" "
+        "--path \"<folder>\" "
+        "--template startup "
+        "--mission \"<mission>\" "
+        "[--roles ceo,engineer,researcher] "
+        "[--no-project]\n"
+        "```\n\n"
+        "Rules:\n"
+        "- Do not create files manually unless the user asked for custom roles beyond templates.\n"
+        "- Refuse to scaffold into a non-empty folder; pick another path if needed.\n"
+        "- After success, tell the user to `cd` into the folder and run "
+        "`/company delegate ceo <first goal>`.\n"
+        "- If they want kanban, suggest `/kanban init <slug>` next.\n"
+    )
+
+
+def _format_init_ack(name: Optional[str] = None) -> str:
+    label = f" **{name}**" if name else ""
+    return (
+        f"Setting up company{label}… I'll ask a few questions on the next turn "
+        "(name, mission, team template, roles, folder path)."
+    )
 
 
 def _build_delegate_seed(root: Path, role_id: str, goal: str) -> str:
@@ -581,40 +726,59 @@ def handle_company_command(args: str) -> CompanyCommandResult:
 
     if verb == "init":
         kv, leftovers = _parse_kv(rest)
-        if not leftovers:
-            return CompanyCommandResult(
-                text="Usage: /company init <name> [path] [template=startup|studio|minimal]"
-            )
-        name = leftovers[0]
-        path_arg = leftovers[1] if len(leftovers) > 1 else f"./{_slugify(name)}"
-        template = kv.get("template", "startup")
-        mission = kv.get("mission", "")
+        name = leftovers[0] if leftovers else kv.get("name", "").strip() or None
+        path_arg = leftovers[1] if len(leftovers) > 1 else kv.get("path", "").strip() or None
+        template = kv.get("template", "").strip() or None
+        mission = kv.get("mission", "").strip()
+        roles_raw = kv.get("roles", "").strip()
         register = kv.get("register_project", "true").lower() not in {"0", "false", "no"}
 
-        target = Path(path_arg).expanduser()
-        if not target.is_absolute():
-            target = Path(os.getcwd()) / target
+        if not _init_has_direct_params(kv):
+            return CompanyCommandResult(
+                text=_format_init_ack(name),
+                agent_seed=_build_init_seed(
+                    name=name,
+                    path=path_arg,
+                    template=template,
+                    mission=mission or None,
+                    roles=roles_raw or None,
+                    cwd=os.getcwd(),
+                ),
+            )
+
+        if not name:
+            return CompanyCommandResult(
+                text="Company name required for direct init. "
+                "Use `/company init <name> mission=\"…\"` or bare `/company init` for guided setup."
+            )
+
+        path_final = path_arg or f"./{_slugify(name)}"
+        template_final = template or "startup"
+        role_ids = _parse_role_ids(roles_raw)
 
         try:
-            root = scaffold_company(
-                target,
+            root = apply_company_init(
                 name=name,
-                template=template,
+                path=path_final,
+                template=template_final,
                 mission=mission,
+                role_ids=role_ids,
                 register_project=register,
             )
         except FileExistsError as exc:
+            return CompanyCommandResult(text=str(exc))
+        except ValueError as exc:
             return CompanyCommandResult(text=str(exc))
         except Exception as exc:
             logger.exception("company init failed")
             return CompanyCommandResult(text=f"Company init failed: {exc}")
 
         manifest = load_manifest(root)
-        roles = _list_role_ids(manifest)
+        roles_list = _list_role_ids(manifest)
         return CompanyCommandResult(
             text=(
                 f"Created company **{manifest.get('name')}** at `{root}`\n"
-                f"Roles: {', '.join(roles)}\n"
+                f"Roles: {', '.join(roles_list)}\n"
                 f"Read `{COMPANY_PLAYBOOK}` · try `/company delegate ceo <goal>`"
             )
         )
@@ -659,3 +823,92 @@ def handle_company_command(args: str) -> CompanyCommandResult:
     close = difflib.get_close_matches(verb, ["init", "status", "roles", "delegate", "spawn"], n=1)
     hint = f" Did you mean `{close[0]}`?" if close else ""
     return CompanyCommandResult(text=f"Unknown subcommand `{verb}`.{hint}\n\n" + _format_help())
+
+
+# ---------------------------------------------------------------------------
+# Terminal CLI — ``openagents company apply …`` (used by guided init)
+# ---------------------------------------------------------------------------
+
+
+def build_parser(parent_subparsers) -> Any:
+    """Attach the ``company`` subcommand tree."""
+    import argparse
+
+    parser = parent_subparsers.add_parser(
+        "company",
+        help="Create and manage multi-agent company workspaces",
+        description=(
+            "Scaffold company folders with roles, subagent configs, and skills maps. "
+            "The interactive `/company init` flow uses `company apply` after interviewing "
+            "the user."
+        ),
+    )
+    sub = parser.add_subparsers(dest="company_action")
+
+    apply_p = sub.add_parser(
+        "apply",
+        help="Create a company workspace from explicit parameters",
+    )
+    apply_p.add_argument("--name", required=True, help="Company display name")
+    apply_p.add_argument(
+        "--path", required=True, help="Empty folder to create (relative or absolute)",
+    )
+    apply_p.add_argument(
+        "--template",
+        default="startup",
+        choices=sorted(TEMPLATES.keys()),
+        help="Role template preset",
+    )
+    apply_p.add_argument("--mission", default="", help="Company mission statement")
+    apply_p.add_argument(
+        "--roles",
+        default="",
+        help="Comma-separated role ids to include from the template (ceo always kept)",
+    )
+    apply_p.add_argument(
+        "--no-project",
+        action="store_true",
+        help="Skip projects.db registration",
+    )
+
+    parser.set_defaults(_company_parser=parser)
+    return parser
+
+
+def company_command(args) -> int:
+    """Entry point from ``openagents company …`` argparse dispatch."""
+    import sys
+
+    action = getattr(args, "company_action", None)
+    if action != "apply":
+        parser = getattr(args, "_company_parser", None)
+        if parser is not None:
+            parser.print_help()
+        else:
+            print("usage: openagents company apply --name … --path …", file=sys.stderr)
+        return 1
+
+    role_ids = _parse_role_ids(getattr(args, "roles", "") or "")
+    try:
+        root = apply_company_init(
+            name=args.name,
+            path=args.path,
+            template=args.template,
+            mission=args.mission or "",
+            role_ids=role_ids,
+            register_project=not getattr(args, "no_project", False),
+        )
+    except (FileExistsError, ValueError) as exc:
+        print(f"company apply failed: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        logger.exception("company apply failed")
+        print(f"company apply failed: {exc}", file=sys.stderr)
+        return 1
+
+    manifest = load_manifest(root)
+    roles = _list_role_ids(manifest)
+    print(f"Created company {manifest.get('name')} at {root}")
+    print(f"Roles: {', '.join(roles)}")
+    return 0
+

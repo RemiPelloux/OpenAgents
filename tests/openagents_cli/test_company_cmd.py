@@ -47,13 +47,63 @@ def test_find_company_root_walks_up(company_env):
     assert find_company_root(nested) == root
 
 
-def test_handle_init_command(company_env):
-    res = handle_company_command('init "Test Co" ./test-co template=minimal')
+def test_handle_init_command_direct(company_env):
+    res = handle_company_command(
+        'init "Test Co" ./test-co template=minimal mission="Ship tests"'
+    )
     assert res.agent_seed is None
     assert "Created company" in res.text
     assert (company_env / "test-co" / MANIFEST_NAME).is_file()
     manifest = load_manifest(company_env / "test-co")
     assert len(manifest["roles"]) == 2
+
+
+def test_handle_init_guided_seeds_agent(company_env):
+    res = handle_company_command("init")
+    assert res.agent_seed is not None
+    assert "Interview the user" in res.agent_seed
+    assert "openagents company apply" in res.agent_seed
+
+
+def test_handle_init_name_only_is_guided(company_env):
+    res = handle_company_command("init OpenPro")
+    assert res.agent_seed is not None
+    assert "OpenPro" in res.agent_seed
+
+
+def test_company_apply_cli(company_env):
+    from openagents_cli.company_cmd import company_command
+    from argparse import Namespace
+
+    args = Namespace(
+        company_action="apply",
+        name="CLI Co",
+        path="./cli-co",
+        template="minimal",
+        mission="From CLI",
+        roles="",
+        no_project=True,
+    )
+    assert company_command(args) == 0
+    assert (company_env / "cli-co" / MANIFEST_NAME).is_file()
+
+
+def test_role_filter(company_env):
+    root = company_env / "subset"
+    scaffold_company(
+        root,
+        name="Subset",
+        template="startup",
+        mission="Test",
+        register_project=False,
+        role_ids=["engineer", "researcher"],
+    )
+    manifest = load_manifest(root)
+    ids = {r["id"] for r in manifest["roles"]}
+    assert "ceo" in ids
+    assert "engineer" in ids
+    assert "researcher" in ids
+    assert "writer" not in ids
 
 
 def test_handle_delegate_seeds_agent(company_env):

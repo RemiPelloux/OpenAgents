@@ -4292,6 +4292,13 @@ def cmd_project(args):
     return projects_command(args)
 
 
+def cmd_company(args):
+    """Create multi-agent company workspaces."""
+    from openagents_cli.company_cmd import company_command
+
+    return company_command(args)
+
+
 def cmd_hooks(args):
     """Shell-hook inspection and management."""
     from openagents_cli.hooks import hooks_command
@@ -12735,6 +12742,14 @@ def main():
 
     project_parser = _build_project_parser(subparsers)
     project_parser.set_defaults(func=cmd_project)
+
+    # =========================================================================
+    # company command — multi-agent company workspace scaffolding
+    # =========================================================================
+    from openagents_cli.company_cmd import build_parser as _build_company_parser
+
+    company_parser = _build_company_parser(subparsers)
+    company_parser.set_defaults(func=cmd_company)
 
     # =========================================================================
     # hooks command — shell-hook inspection and management

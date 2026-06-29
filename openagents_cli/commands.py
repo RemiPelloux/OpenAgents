@@ -201,7 +201,7 @@ COMMAND_REGISTRY: list[CommandDef] = [
     CommandDef("company", "Scaffold a multi-agent company folder (roles, subagents, skills)",
                "Tools & Skills", aliases=("co",),
                args_hint="[init|status|roles|delegate] ...",
-               subcommands=("init", "status", "roles", "delegate", "spawn", "show")),
+               subcommands=("init", "status", "roles", "delegate", "spawn", "show", "apply")),
     CommandDef("kanban", "Multi-profile collaboration board (tasks, links, comments)",
                "Tools & Skills", args_hint="[subcommand]",
                subcommands=("init", "boards", "create", "list", "ls", "show", "assign",
