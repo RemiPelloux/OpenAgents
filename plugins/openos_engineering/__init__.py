@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from plugins.openos_engineering.cli import openos_init_profiles_command
+from plugins.openos_engineering.cli import openos_command, register_cli
 from plugins.openos_engineering.tools import (
     INVOKE_OPENCODE_SCHEMA,
     check_openos_engineering_available,
@@ -23,6 +23,7 @@ def register(ctx) -> None:
     ctx.register_cli_command(
         name="openos",
         help="OpenOS W4 engineering workflow utilities",
-        handler_fn=openos_init_profiles_command,
-        description="Scaffold product_owner, developer, and qa profiles for W4.",
+        setup_fn=register_cli,
+        handler_fn=openos_command,
+        description="Scaffold W4 profiles and handle OpenOrchestrator run dispatch.",
     )

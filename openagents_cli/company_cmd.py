@@ -178,6 +178,16 @@ _MINIMAL_ROLES: tuple[RoleTemplate, ...] = (
 
 _OPENPRO_ENGINEERING_ROLES: tuple[RoleTemplate, ...] = (
     RoleTemplate(
+        "engineering_orchestrator",
+        "Engineering Orchestrator",
+        "orchestrator",
+        ("delegation", "mcp", "todo"),
+        ("open-dev-workflow", "open-ticket"),
+        "You coordinate the W4 engineering loop: PO creates tickets, Dev implements "
+        "via OpenCode, QA validates. Delegate via delegate_task; never write code yourself.",
+        "W4 routing, assignment, and synthesis.",
+    ),
+    RoleTemplate(
         "product_owner",
         "Product Owner",
         "leaf",

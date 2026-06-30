@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 from typing import Any, Dict
 
-from plugins.openos_engineering.opencode_runner import run_opencode_headless
+from plugins.openos_engineering.opencode_runner import run_opencode_headless, verify_opencode_binary
+from plugins.openos_engineering.rec_client import emit_rec_event
 from plugins.openos_engineering.ticket_client import (
-    build_ticket_prompt,
+    build_task_prompt,
     get_ticket,
     update_ticket_status,
 )
@@ -16,7 +17,7 @@ INVOKE_OPENCODE_SCHEMA: Dict[str, Any] = {
     "name": "invoke_opencode",
     "description": (
         "Delegate coding work to OpenOS OpenCode for a ticket. "
-        "Fetches ticket context, runs headless OpenCode, returns summary."
+        "OpenCode loads ticket context via OPENTICKET_TICKET_ID; returns summary."
     ),
     "parameters": {
         "type": "object",
@@ -49,13 +50,7 @@ INVOKE_OPENCODE_SCHEMA: Dict[str, Any] = {
 
 
 def check_openos_engineering_available() -> bool:
-    try:
-        from plugins.openos_engineering.opencode_runner import resolve_opencode_binary
-
-        resolve_opencode_binary()
-        return True
-    except RuntimeError:
-        return False
+    return verify_opencode_binary()
 
 
 def handle_invoke_opencode(args: Dict[str, Any]) -> str:
@@ -70,18 +65,41 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
 
     ticket = get_ticket(ticket_id)
     tid = str(ticket.get("id") or ticket_id)
-    prompt = build_ticket_prompt(ticket, mode)
+    correlation_id = str(ticket.get("correlation_id") or "") or None
+    prompt = build_task_prompt(ticket, mode)
 
     if mode == "implement" and ticket.get("status") == "todo":
-        update_ticket_status(tid, "in_progress", actor_profile="developer")
+        update_ticket_status(
+            tid,
+            "in_progress",
+            actor_profile="developer",
+            correlation_id=correlation_id,
+        )
 
     result = run_opencode_headless(
         prompt,
         cwd=cwd,
         ticket_id=tid,
+        correlation_id=correlation_id,
         max_turns=max_turns,
         resume_session_id=resume,
     )
+
+    profile = "qa" if mode in {"review", "test"} else "developer"
+
+    if result["ok"]:
+        emit_rec_event(
+            "agent.run.completed",
+            {
+                "ticket_id": tid,
+                "ticket_key": ticket.get("ticket_key"),
+                "mode": mode,
+                "summary": result["summary"][:500],
+            },
+            correlation_id=correlation_id,
+            agent_profile=profile,
+            target_id=tid,
+        )
 
     if not result["ok"]:
         return (
@@ -89,7 +107,12 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
             f"{result.get('stderr') or result.get('summary')}"
         )
 
+    files_note = ""
+    if result.get("files_edited"):
+        files_note = f"\nFiles edited: {', '.join(result['files_edited'][:10])}"
+
     return (
-        f"OpenCode completed for ticket {ticket.get('ticket_key', tid)}.\n\n"
-        f"{result['summary']}"
+        f"OpenCode completed for ticket {ticket.get('ticket_key', tid)}.\n"
+        f"Ticket in_review transition is handled by OpenCode session-complete webhook.\n\n"
+        f"{result['summary']}{files_note}"
     )

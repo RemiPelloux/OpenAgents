@@ -252,6 +252,9 @@ Bundled skills for the Open product suite live under `skills/open-ecosystem/`:
 | Skill | Product |
 |-------|---------|
 | `open-ecosystem-hub` | Routes across all Open products |
+| `open-dev-workflow` | W4 ticket → OpenCode → QA playbook |
+| `open-ticket` | OpenTicket MCP tools |
+| `open-code` | OpenCode delegation via `invoke_opencode` |
 | `openagents` | This repo (see `skills/autonomous-ai-agents/hermes-agent/`) |
 | `open-pro` | Flutter hiring mobile app |
 | `open-brain` | Shared MCP memory infrastructure |
