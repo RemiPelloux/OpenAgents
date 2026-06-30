@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT" && npm run typecheck --if-present || exit 1
+cd "$ROOT" && npm run build --if-present || exit 1

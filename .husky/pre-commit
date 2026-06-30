@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+ROOT="$(git rev-parse --show-toplevel)"
+bash "$ROOT/scripts/check-quality.sh" || exit 1
+cd "$ROOT" && npm run typecheck --if-present || exit 1
+cd "$ROOT" && npm test --if-present || exit 1
