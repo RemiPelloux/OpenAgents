@@ -1,14 +1,14 @@
 ---
 name: open-ecosystem-hub
-description: "Use when working across the Open product suite — routes to OpenAgents, Open Pro, Open Brain, Open Memory, Open Whistle, or Open App."
-version: 1.0.0
+description: "Use when working across the Open product suite — routes to OpenAgents, OpenCode, OpenTicket, Open Pro, Open Brain, Open Memory, Open Whistle, or Open App."
+version: 1.1.0
 author: Remi Pelloux
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [open, ecosystem, openagents, openpro, openbrain, openmemory, openwhistle, routing]
-    related_skills: [openagents, open-pro, open-brain, open-memory, open-whistle, open-app]
+    tags: [open, ecosystem, openagents, opencode, openticket, openpro, openbrain, openmemory, openwhistle, routing]
+    related_skills: [openagents, open-code, open-ticket, open-dev-workflow, open-pro, open-brain, open-memory, open-whistle, open-app]
 ---
 
 # Open Ecosystem Hub
@@ -20,6 +20,8 @@ The **Open** suite is a family of self-hosted and product-grade tools built arou
 | Product | Skill | One-line purpose |
 |---------|-------|------------------|
 | **OpenAgents** | `openagents` | Multi-surface AI agent (CLI, gateway, desktop, web) |
+| **OpenCode** | `open-code` | OpenOS engineering co-pilot — headless coding via W4 |
+| **OpenTicket** | `open-ticket` | Issue tracker (Jira) — PO/Dev/QA ticket workflow |
 | **Open Pro** | `open-pro` | Flutter mobile app — candidate & recruiter hiring platform |
 | **Open Brain** | `open-brain` | Shared persistent memory infrastructure (SQL + vectors + MCP) |
 | **Open Memory** | `open-memory` | Agent memory inside OpenAgents + bridges to Open Brain |
@@ -35,11 +37,14 @@ The **Open** suite is a family of self-hosted and product-grade tools built arou
 ## Routing rules
 
 1. **Agent behavior, tools, gateway, cron, skills** → load `openagents` (bundled under `skills/autonomous-ai-agents/hermes-agent/`)
-2. **Flutter / OpenPro-Mobile / candidate-recruiter flows** → load `open-pro`
-3. **Cross-tool memory database, MCP memory server, pgvector** → load `open-brain`
-4. **OpenAgents `memory_*` tools, Honcho, session recall, `~/.openagents/memory`** → load `open-memory`
-5. **Whistleblower channel, HinSchG, case reports, SDKs** → load `open-whistle`
-6. **Desktop app, web dashboard, TUI, "open the app"** → load `open-app`
+2. **Ticket → Dev → OpenCode → QA (W4)** → load `open-dev-workflow`, then `open-ticket` + `open-code`
+3. **Coding via OpenOS OpenCode fork** → load `open-code` (not npm `opencode` skill)
+4. **Tickets, backlog, acceptance criteria** → load `open-ticket`
+5. **Flutter / OpenPro-Mobile / candidate-recruiter flows** → load `open-pro`
+6. **Cross-tool memory database, MCP memory server, pgvector** → load `open-brain`
+7. **OpenAgents `memory_*` tools, Honcho, session recall, `~/.openagents/memory`** → load `open-memory`
+8. **Whistleblower channel, HinSchG, case reports, SDKs** → load `open-whistle`
+9. **Desktop app, web dashboard, TUI, "open the app"** → load `open-app`
 
 ## Typical cross-product flows
 

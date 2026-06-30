@@ -176,10 +176,45 @@ _MINIMAL_ROLES: tuple[RoleTemplate, ...] = (
     ),
 )
 
+_OPENPRO_ENGINEERING_ROLES: tuple[RoleTemplate, ...] = (
+    RoleTemplate(
+        "product_owner",
+        "Product Owner",
+        "leaf",
+        ("delegation", "mcp"),
+        ("open-ticket", "open-dev-workflow"),
+        "You are the Product Owner. Create OpenTicket stories with clear "
+        "acceptance criteria. Transition tickets to todo for developer pickup. "
+        "You do not write code.",
+        "Backlog, stories, acceptance criteria, ticket refinement.",
+    ),
+    RoleTemplate(
+        "developer",
+        "Developer",
+        "leaf",
+        ("delegation", "terminal", "mcp", "openos_engineering"),
+        ("open-code", "open-ticket", "open-dev-workflow"),
+        "You are the Developer. Read assigned tickets, use invoke_opencode for "
+        "all code changes, and move tickets to in_progress. Never close to done.",
+        "Implementation via OpenCode, ticket status updates.",
+    ),
+    RoleTemplate(
+        "qa",
+        "Quality Assurance",
+        "leaf",
+        ("terminal", "mcp", "openos_engineering"),
+        ("open-code", "open-ticket", "open-dev-workflow"),
+        "You are QA. Verify acceptance criteria with invoke_opencode review/test "
+        "mode. Only you may transition tickets from qa to done.",
+        "Test plans, regression, ticket sign-off.",
+    ),
+)
+
 TEMPLATES: Dict[str, tuple[RoleTemplate, ...]] = {
     "startup": _STARTUP_ROLES,
     "studio": _STUDIO_ROLES,
     "minimal": _MINIMAL_ROLES,
+    "openpro-engineering": _OPENPRO_ENGINEERING_ROLES,
 }
 
 

@@ -1,0 +1,9 @@
+name: openos-engineering
+version: "0.1.0"
+description: "OpenOS W4 integration — invoke OpenCode for ticket-backed coding, OpenTicket client, Kanban opencode lane."
+author: OpenPro
+kind: standalone
+platforms:
+  - linux
+  - macos
+  - windows

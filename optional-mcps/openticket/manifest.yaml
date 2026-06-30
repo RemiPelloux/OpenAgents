@@ -1,0 +1,22 @@
+manifest_version: 1
+
+name: openticket
+description: Create, read, and update OpenTicket issues for PO/Dev/QA W4 workflow.
+source: OpenOS OpenTicket
+
+transport:
+  type: stdio
+  command: pnpm
+  args:
+    - exec
+    - tsx
+    - apps/mcp-server/src/index.ts
+  cwd: "${OPENOS_ROOT}/OpenTicket"
+
+post_install: |
+  Ensure OpenTicket API is running on port 3020:
+    cd OpenTicket && docker compose up -d postgres api
+
+  Set OPENTICKET_API_URL=http://localhost:3020 in ~/.openagents/.env
+
+  Tools: create_ticket, get_ticket, update_ticket_status, list_tickets
