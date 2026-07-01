@@ -1,0 +1,9 @@
+name: openpro-prospection
+version: "0.1.0"
+description: "OpenPro TikTok prospection — enrich leads, provision companies, job+video, outreach."
+author: OpenPro
+kind: standalone
+platforms:
+  - linux
+  - macos
+  - windows

@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [open, ecosystem, openagents, opencode, openticket, openpro, openbrain, openmemory, openwhistle, routing]
-    related_skills: [openagents, open-code, open-ticket, open-dev-workflow, open-pro, open-brain, open-memory, open-whistle, open-app]
+    related_skills: [openagents, open-code, open-ticket, open-dev-workflow, open-pro, openpro-tiktok-prospection, open-brain, open-memory, open-whistle, open-app]
 ---
 
 # Open Ecosystem Hub
@@ -23,6 +23,7 @@ The **Open** suite is a family of self-hosted and product-grade tools built arou
 | **OpenCode** | `open-code` | OpenOS engineering co-pilot — headless coding via W4 |
 | **OpenTicket** | `open-ticket` | Issue tracker (Jira) — PO/Dev/QA ticket workflow |
 | **Open Pro** | `open-pro` | Flutter mobile app — candidate & recruiter hiring platform |
+| **OpenPro TikTok Prospection** | `openpro-tiktok-prospection` | OpenTeam harvest → OpenPro accounts + outreach |
 | **Open Brain** | `open-brain` | Shared persistent memory infrastructure (SQL + vectors + MCP) |
 | **Open Memory** | `open-memory` | Agent memory inside OpenAgents + bridges to Open Brain |
 | **Open Whistle** | `open-whistle` | Self-hosted whistleblower reporting (HinSchG / EU compliant) |
