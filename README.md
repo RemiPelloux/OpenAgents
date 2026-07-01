@@ -316,6 +316,16 @@ Primary distribution: [RemiPelloux/OpenAgents](https://github.com/RemiPelloux/Op
 
 ---
 
+## Company Brain (Axon)
+
+OpenOS mesh docs are indexed in **OpenBrain**. Query via MCP `search_knowledge` with `domain: openos`.
+
+- Skill: [skills/open-ecosystem/open-brain/SKILL.md](skills/open-ecosystem/open-brain/SKILL.md)
+- Mesh env: [docs/openos-mesh-env.md](docs/openos-mesh-env.md)
+- Sync: `../scripts/brain-sync-docs.sh --app OpenAgents` from OpenOS root
+
+---
+
 ## License
 
 [MIT](LICENSE) — original work © [Nous Research](https://nousresearch.com) (Hermes Agent); OpenAgents fork © Remi Pelloux (2026). Both notices must be retained in copies and derivative works.

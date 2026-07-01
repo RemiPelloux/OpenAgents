@@ -5,3 +5,24 @@ Canonical reference: [OpenOS/infra/docs/secrets-mesh.md](../../infra/docs/secret
 Copy [infra/config/openagents.env.example](../../infra/config/openagents.env.example) into `~/.openagents/.env` when running the TikTok prospection plugin.
 
 `OPENAGENTS_API_KEY` is **inbound auth for the gateway** (set on OpenTeam, not in OpenAgents). Outbound keys: `OPENPRO_AGENT_API_KEY`, `PROSPECTION_API_KEY`.
+
+## OpenBrain (Axon) — doc RAG + knowledge MCP
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENBRAIN_API_URL` | OpenBrain API base (default `http://localhost:3001`) |
+| `AXON_AGENT_API_KEY` | Agent key for MCP Knowledge + bulk doc sync |
+| `OPENBRAIN_AGENT_API_KEY` | Alias accepted by OpenOS `brain-sync-docs.sh` |
+
+**MCP Knowledge endpoint:** `$OPENBRAIN_API_URL/api/v1/mcp/knowledge`
+
+**OpenOS doc search:** MCP tool `search_knowledge` with `domain: "openos"` and optional `app: "openticket"`.
+
+**Sync OpenOS docs into Axon** (from OpenOS repo root, OpenBrain running):
+
+```bash
+./scripts/validate-brain-corpus.sh
+./scripts/brain-sync-docs.sh --tier 0
+```
+
+**Cadence:** manual after doc changes; optional nightly CI dry-run. See [OpenBrain/docs/OPENOS-DOCS-RAG.md](../../OpenBrain/docs/OPENOS-DOCS-RAG.md).
