@@ -4299,6 +4299,20 @@ def cmd_company(args):
     return company_command(args)
 
 
+def cmd_openagentui(args):
+    """Start/stop the local OpenAgentUI visual workflow builder."""
+    from openagents_cli.openagentui_cmd import openagentui_command
+
+    return openagentui_command(args)
+
+
+def cmd_openagentconfig(args):
+    """Run/list/inspect saved OpenAgentUI workflows headlessly."""
+    from openagents_cli.openagentui_config_cmd import openagentconfig_command
+
+    return openagentconfig_command(args)
+
+
 def cmd_hooks(args):
     """Shell-hook inspection and management."""
     from openagents_cli.hooks import hooks_command
@@ -12750,6 +12764,18 @@ def main():
 
     company_parser = _build_company_parser(subparsers)
     company_parser.set_defaults(func=cmd_company)
+
+    # =========================================================================
+    # openagentui / openagent-config — visual workflow builder
+    # =========================================================================
+    from openagents_cli.openagentui_cmd import build_parser as _build_openagentui_parser
+    from openagents_cli.openagentui_config_cmd import build_parser as _build_openagentconfig_parser
+
+    openagentui_parser = _build_openagentui_parser(subparsers)
+    openagentui_parser.set_defaults(func=cmd_openagentui)
+
+    openagentconfig_parser = _build_openagentconfig_parser(subparsers)
+    openagentconfig_parser.set_defaults(func=cmd_openagentconfig)
 
     # =========================================================================
     # hooks command — shell-hook inspection and management

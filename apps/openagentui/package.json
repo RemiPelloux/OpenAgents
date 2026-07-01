@@ -1,0 +1,24 @@
+{
+  "name": "openagentui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAgentUI — OpenPro's local visual workflow builder for OpenAgents. Rebranded fork of the workflow-builder canvas from firecrawl/open-agent-builder (MIT) — see README.md for attribution.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.3.6",
+    "next": "^15.1.6",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.5.4"
+  }
+}

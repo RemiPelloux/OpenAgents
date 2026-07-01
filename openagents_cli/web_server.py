@@ -254,6 +254,12 @@ from openagents_cli.memory_oauth import router as _memory_oauth_router  # noqa: 
 
 app.include_router(_memory_oauth_router)
 
+# OpenAgentUI (visual workflow builder) CRUD/execute routes — kept out of
+# this file for the same reason as memory OAuth above.
+from openagents_cli.openagentui_server import router as _openagentui_router  # noqa: E402
+
+app.include_router(_openagentui_router)
+
 # ---------------------------------------------------------------------------
 # Session token for protecting sensitive endpoints (reveal).
 # The desktop shell mints the token and injects it via

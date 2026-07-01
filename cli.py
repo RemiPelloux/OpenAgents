@@ -8392,6 +8392,10 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin):
             self._handle_suggestions_command(cmd_original)
         elif canonical == "company":
             self._handle_company_command(cmd_original)
+        elif canonical == "openagentui":
+            self._handle_openagentui_command(cmd_original)
+        elif canonical == "openagentconfig":
+            self._handle_openagentconfig_command(cmd_original)
         elif canonical == "blueprint":
             self._handle_blueprint_command(cmd_original)
         elif canonical == "curator":

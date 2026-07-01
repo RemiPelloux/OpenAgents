@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [openbrain, axon, mcp, knowledge, openos, rag]
-    related_skills: [open-ecosystem-hub, open-memory, openagents]
+    related_skills: [open-ecosystem-hub, open-memory, openagents, open-agentui]
 ---
 
 # Open Brain (Axon)
@@ -72,6 +72,38 @@ Reload after config change: `/mcp reload` or restart gateway.
 | `search_knowledge` (no domain) | Validated graph nodes (processes, rules) |
 | `get_skills_file` | Agent Skills File export |
 | `ingest_content` | New content through connectors (human review path) |
+
+## OpenAgentUI workflow tools (OpenBrain → OpenAgents)
+
+When **OpenAgents dashboard** is running (`openagents dashboard`, default `:9119`), OpenBrain Knowledge MCP can **list, create, and run** OpenAgentUI workflows — no canvas required.
+
+| Tool / resource | Purpose |
+|-----------------|---------|
+| `list_openagentui_workflows` | List all saved workflows |
+| `ensure_openagentui_workflow` | Create from YAML if name missing |
+| `create_openagentui_workflow` | Create/overwrite from YAML |
+| `run_openagentui_workflow` | Execute by name or id |
+| `company-brain://openagentui/workflows` | Resource: full workflow list JSON |
+
+Env:
+
+```bash
+OPENAGENTS_DASHBOARD_URL=http://127.0.0.1:9119
+```
+
+OpenAgents agents can also self-author workflows via native toolset `openagentui` — see skill **`open-agentui`**.
+
+Example:
+
+```json
+{
+  "tool": "ensure_openagentui_workflow",
+  "arguments": {
+    "name": "Lead digest",
+    "yaml": "id: wf_digest\nname: Lead digest\nnodes: [...]\nedges: [...]"
+  }
+}
+```
 
 ## Agent usage patterns
 

@@ -8814,8 +8814,14 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     event.text = _company_seed
                 except Exception:
                     return getattr(_company_result, "text", "") or None
-            else:
-                return getattr(_company_result, "text", "") or None
+
+        if canonical == "openagentui":
+            _oaui_result = await self._handle_openagentui_command(event)
+            return getattr(_oaui_result, "text", "") or None
+
+        if canonical == "openagentconfig":
+            _oac_result = await self._handle_openagentconfig_command(event)
+            return getattr(_oac_result, "text", "") or None
 
         if canonical == "retry":
             return await self._handle_retry_command(event)
@@ -11335,6 +11341,32 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             from openagents_cli.company_cmd import CompanyCommandResult
 
             return CompanyCommandResult(f"Company command failed: {e}")
+
+    async def _handle_openagentui_command(self, event: MessageEvent):
+        """Handle /OpenAgentUI in the gateway (shared handler with CLI/TUI)."""
+        args = (event.get_command_args() or "").strip()
+        try:
+            from openagents_cli.openagentui_cmd import handle_openagentui_command
+
+            return handle_openagentui_command(args)
+        except Exception as e:
+            logger.debug("openagentui command failed: %s", e)
+            from openagents_cli.openagentui_cmd import OpenAgentUiCommandResult
+
+            return OpenAgentUiCommandResult(f"OpenAgentUI command failed: {e}")
+
+    async def _handle_openagentconfig_command(self, event: MessageEvent):
+        """Handle /OpenAgentConfig in the gateway (shared handler with CLI/TUI)."""
+        args = (event.get_command_args() or "").strip()
+        try:
+            from openagents_cli.openagentui_config_cmd import handle_openagentconfig_command
+
+            return handle_openagentconfig_command(args)
+        except Exception as e:
+            logger.debug("openagentconfig command failed: %s", e)
+            from openagents_cli.openagentui_config_cmd import OpenAgentConfigCommandResult
+
+            return OpenAgentConfigCommandResult(f"OpenAgentConfig command failed: {e}")
 
     # ────────────────────────────────────────────────────────────────
     # /goal — persistent cross-turn goals (Ralph-style loop)

@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [open, ecosystem, openagents, opencode, openticket, openpro, openbrain, openmemory, openwhistle, routing]
-    related_skills: [openagents, open-code, open-ticket, open-dev-workflow, open-pro, openpro-tiktok-prospection, open-brain, open-memory, open-whistle, open-app]
+    related_skills: [openagents, open-code, open-ticket, open-dev-workflow, open-pro, openpro-tiktok-prospection, open-brain, open-memory, open-whistle, open-app, open-agentui]
 ---
 
 # Open Ecosystem Hub
@@ -25,6 +25,7 @@ The **Open** suite is a family of self-hosted and product-grade tools built arou
 | **Open Pro** | `open-pro` | Flutter mobile app — candidate & recruiter hiring platform |
 | **OpenPro TikTok Prospection** | `openpro-tiktok-prospection` | OpenTeam harvest → OpenPro accounts + outreach |
 | **Open Brain** | `open-brain` | Shared persistent memory infrastructure (SQL + vectors + MCP) |
+| **OpenAgentUI** | `open-agentui` | Visual/headless OpenAgents workflows (YAML, MCP, self-authoring) |
 | **Open Memory** | `open-memory` | Agent memory inside OpenAgents + bridges to Open Brain |
 | **Open Whistle** | `open-whistle` | Self-hosted whistleblower reporting (HinSchG / EU compliant) |
 | **Open App** | `open-app` | Client surfaces — desktop, web dashboard, TUI, mobile shells |
@@ -46,8 +47,19 @@ The **Open** suite is a family of self-hosted and product-grade tools built arou
 7. **OpenAgents `memory_*` tools, Honcho, session recall, `~/.openagents/memory`** → load `open-memory`
 8. **Whistleblower channel, HinSchG, case reports, SDKs** → load `open-whistle`
 9. **Desktop app, web dashboard, TUI, "open the app"** → load `open-app`
+10. **Visual or headless multi-step agent workflows (YAML, run/approve)** → load `open-agentui`
 
 ## Typical cross-product flows
+
+### OpenBrain builds an OpenAgentUI workflow
+
+```
+User asks OpenBrain agent → ensure_openagentui_workflow (MCP)
+  → OpenAgents dashboard REST → ~/.openagents/openagentui/workflows/
+  → run_openagentui_workflow (smoke test)
+```
+
+Requires `openagents dashboard` + `OPENAGENTS_DASHBOARD_URL` in OpenBrain.
 
 ### Agent + shared memory
 

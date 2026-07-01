@@ -4387,6 +4387,87 @@ class APIServerAdapter(BasePlatformAdapter):
 
         return web.json_response({"run_id": run_id, "status": "stopping"})
 
+    # ------------------------------------------------------------------
+    # OpenAgentUI — mesh REST for other apps (OpenTeam, OpenOrchestrator)
+    # to trigger saved visual-builder workflows. Mirrors the /v1/runs
+    # trigger/status/approval shape above; execution itself lives in
+    # openagentui.engine (local JSON store, no run_streams bookkeeping
+    # needed since a workflow execution is already persisted per-node).
+    # ------------------------------------------------------------------
+
+    async def _handle_openagentui_run(self, request: "web.Request") -> "web.Response":
+        """POST /v1/openagentui/workflows/{workflow_id}/run — CC-OA-OAUI-001."""
+        auth_err = self._check_auth(request)
+        if auth_err:
+            return auth_err
+
+        workflow_id = request.match_info["workflow_id"]
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        from openagentui import store as _oaui_store
+
+        workflow = _oaui_store.get_workflow(workflow_id) or _oaui_store.find_workflow_by_name(workflow_id)
+        if workflow is None:
+            return web.json_response(
+                _openai_error(f"Unknown OpenAgentUI workflow: {workflow_id}", code="workflow_not_found"),
+                status=404,
+            )
+
+        inputs = body.get("inputs") if isinstance(body, dict) else None
+        if inputs is not None and not isinstance(inputs, dict):
+            return web.json_response(_openai_error("'inputs' must be an object"), status=400)
+
+        loop = asyncio.get_running_loop()
+        from openagentui.engine import run_workflow as _run_workflow
+
+        execution = await loop.run_in_executor(None, lambda: _run_workflow(workflow, inputs or {}))
+        return web.json_response(execution.to_dict(), status=202)
+
+    async def _handle_openagentui_get_execution(self, request: "web.Request") -> "web.Response":
+        """GET /v1/openagentui/workflows/{workflow_id}/executions/{run_id} — CC-OA-OAUI-002."""
+        auth_err = self._check_auth(request)
+        if auth_err:
+            return auth_err
+
+        from openagentui import store as _oaui_store
+
+        execution = _oaui_store.get_execution(request.match_info["run_id"])
+        if execution is None or execution.workflow_id != request.match_info["workflow_id"]:
+            return web.json_response(_openai_error("Execution not found", code="execution_not_found"), status=404)
+        return web.json_response(execution.to_dict())
+
+    async def _handle_openagentui_approval(self, request: "web.Request") -> "web.Response":
+        """POST /v1/openagentui/workflows/{workflow_id}/executions/{run_id}/approval."""
+        auth_err = self._check_auth(request)
+        if auth_err:
+            return auth_err
+
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response(_openai_error("Invalid JSON"), status=400)
+
+        raw_choice = str(body.get("choice") or body.get("decision") or "").strip().lower()
+        decision = {"approve": "approved", "allow": "approved", "deny": "rejected"}.get(raw_choice, raw_choice)
+        if decision not in {"approved", "rejected"}:
+            return web.json_response(
+                _openai_error("'choice' must be one of: approve, deny (or approved/rejected)"), status=400,
+            )
+
+        from openagentui.approvals import resolve_approval
+
+        try:
+            loop = asyncio.get_running_loop()
+            execution = await loop.run_in_executor(
+                None, resolve_approval, request.match_info["run_id"], decision
+            )
+        except ValueError as exc:
+            return web.json_response(_openai_error(str(exc), code="approval_error"), status=409)
+        return web.json_response(execution.to_dict())
+
     async def _sweep_orphaned_runs(self) -> None:
         """Periodically clean up run streams that were never consumed."""
         while True:
@@ -4477,6 +4558,16 @@ class APIServerAdapter(BasePlatformAdapter):
             self._app.router.add_get("/v1/runs/{run_id}/events", self._handle_run_events)
             self._app.router.add_post("/v1/runs/{run_id}/approval", self._handle_run_approval)
             self._app.router.add_post("/v1/runs/{run_id}/stop", self._handle_stop_run)
+            # OpenAgentUI — trigger/inspect/approve saved visual-builder workflows
+            self._app.router.add_post("/v1/openagentui/workflows/{workflow_id}/run", self._handle_openagentui_run)
+            self._app.router.add_get(
+                "/v1/openagentui/workflows/{workflow_id}/executions/{run_id}",
+                self._handle_openagentui_get_execution,
+            )
+            self._app.router.add_post(
+                "/v1/openagentui/workflows/{workflow_id}/executions/{run_id}/approval",
+                self._handle_openagentui_approval,
+            )
             # Store the adapter after native routes are registered. Local Hermes-Relay
             # bootstrap shims use this key as a feature-detection hook; registering
             # native routes first lets those shims no-op instead of shadowing the

@@ -1,0 +1,327 @@
+/* OpenAgentUI — dark teal/amber palette matching OpenAgents' "Hermes Teal"
+   dashboard theme (see web/src/themes/presets.ts defaultTheme). No Tailwind:
+   a small hand-rolled design system keeps this app's dependency footprint
+   (and build risk) minimal. */
+
+:root {
+  --oaui-bg: #041c1c;
+  --oaui-bg-elevated: #0a2b2b;
+  --oaui-surface: #0f3535;
+  --oaui-border: #1c4a4a;
+  --oaui-text: #eafaf6;
+  --oaui-text-dim: #9fc9c2;
+  --oaui-accent: #ffbd38;
+  --oaui-accent-soft: rgba(255, 189, 56, 0.18);
+  --oaui-danger: #ff6b6b;
+  --oaui-success: #4ade80;
+  --oaui-info: #38bdf8;
+  --oaui-radius: 0.6rem;
+  --oaui-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --oaui-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--oaui-bg);
+  color: var(--oaui-text);
+  font-family: var(--oaui-font);
+}
+
+a {
+  color: var(--oaui-accent);
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+.oaui-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.oaui-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--oaui-border);
+  background: var(--oaui-bg-elevated);
+}
+
+.oaui-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.oaui-brand-mark {
+  color: var(--oaui-accent);
+}
+
+.oaui-brand-sub {
+  font-size: 0.75rem;
+  color: var(--oaui-text-dim);
+  font-weight: 400;
+}
+
+.oaui-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--oaui-radius);
+  border: 1px solid var(--oaui-border);
+  background: var(--oaui-surface);
+  color: var(--oaui-text);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.oaui-btn:hover {
+  border-color: var(--oaui-accent);
+}
+
+.oaui-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.oaui-btn-primary {
+  background: var(--oaui-accent);
+  color: #1a1200;
+  border-color: var(--oaui-accent);
+  font-weight: 600;
+}
+
+.oaui-btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.oaui-btn-danger {
+  border-color: var(--oaui-danger);
+  color: var(--oaui-danger);
+}
+
+.oaui-page {
+  padding: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.oaui-card {
+  background: var(--oaui-bg-elevated);
+  border: 1px solid var(--oaui-border);
+  border-radius: var(--oaui-radius);
+  padding: 1rem;
+}
+
+.oaui-card-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.oaui-card-title {
+  font-weight: 600;
+}
+
+.oaui-card-desc {
+  font-size: 0.85rem;
+  color: var(--oaui-text-dim);
+}
+
+.oaui-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.oaui-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--oaui-accent-soft);
+  color: var(--oaui-accent);
+  margin-right: 0.3rem;
+}
+
+.oaui-editor {
+  display: grid;
+  grid-template-columns: 220px 1fr 320px;
+  flex: 1;
+  min-height: 0;
+}
+
+.oaui-panel {
+  background: var(--oaui-bg-elevated);
+  border-right: 1px solid var(--oaui-border);
+  padding: 0.85rem;
+  overflow-y: auto;
+}
+
+.oaui-panel-right {
+  border-right: none;
+  border-left: 1px solid var(--oaui-border);
+}
+
+.oaui-panel-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--oaui-text-dim);
+  margin-bottom: 0.6rem;
+}
+
+.oaui-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--oaui-radius);
+  border: 1px solid var(--oaui-border);
+  margin-bottom: 0.4rem;
+  cursor: grab;
+  font-size: 0.85rem;
+  background: var(--oaui-surface);
+}
+
+.oaui-palette-item:hover {
+  border-color: var(--oaui-accent);
+}
+
+.oaui-canvas-wrap {
+  position: relative;
+  background: var(--oaui-bg);
+}
+
+.oaui-node {
+  border-radius: var(--oaui-radius);
+  border: 1.5px solid var(--oaui-border);
+  background: var(--oaui-surface);
+  min-width: 170px;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.oaui-node.selected {
+  border-color: var(--oaui-accent);
+}
+
+.oaui-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--oaui-border);
+  font-weight: 600;
+}
+
+.oaui-node-body {
+  padding: 0.4rem 0.6rem;
+  color: var(--oaui-text-dim);
+  font-size: 0.72rem;
+  max-height: 3.2em;
+  overflow: hidden;
+}
+
+.oaui-node.status-running {
+  border-color: var(--oaui-info);
+  animation: oaui-pulse 1.2s infinite;
+}
+
+.oaui-node.status-completed {
+  border-color: var(--oaui-success);
+}
+
+.oaui-node.status-failed {
+  border-color: var(--oaui-danger);
+}
+
+.oaui-node.status-pending-approval {
+  border-color: var(--oaui-accent);
+}
+
+@keyframes oaui-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(56, 189, 248, 0.08); }
+}
+
+.oaui-field {
+  margin-bottom: 0.75rem;
+}
+
+.oaui-field label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--oaui-text-dim);
+  margin-bottom: 0.25rem;
+}
+
+.oaui-field input,
+.oaui-field textarea,
+.oaui-field select {
+  width: 100%;
+  background: var(--oaui-surface);
+  border: 1px solid var(--oaui-border);
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  color: var(--oaui-text);
+  font-size: 0.82rem;
+  font-family: var(--oaui-mono);
+}
+
+.oaui-field textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.oaui-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-family: var(--oaui-mono);
+  font-size: 0.75rem;
+}
+
+.oaui-log-line {
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.35rem;
+  background: var(--oaui-surface);
+  border: 1px solid var(--oaui-border);
+}
+
+.oaui-log-line.failed {
+  border-color: var(--oaui-danger);
+  color: var(--oaui-danger);
+}
+
+.oaui-log-line.completed {
+  border-color: var(--oaui-success);
+}
+
+.oaui-log-line.pending-approval {
+  border-color: var(--oaui-accent);
+}
+
+.oaui-empty {
+  color: var(--oaui-text-dim);
+  font-size: 0.85rem;
+  padding: 2rem 0;
+  text-align: center;
+}

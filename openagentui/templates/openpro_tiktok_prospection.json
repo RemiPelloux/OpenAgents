@@ -1,0 +1,203 @@
+{
+  "id": "tpl_openpro_tiktok_prospection",
+  "name": "OpenPro — TikTok lead prospection",
+  "description": "Flagship OpenAgentUI scenario: dedupe a TikTok lead, provision an OpenPro recruiter account, post the job with the lead's video, and outreach by email + (approved) TikTok DM. Every 'mcp' node below calls a real registered OpenAgents tool from the openpro_prospection plugin — see plugins/openpro_prospection/tools.py for exact response shapes; adjust the {{ nodes.<id>.output.* }} field paths in condition/param bindings to match your OpenPro API's actual JSON.",
+  "category": "prospection",
+  "tags": ["openpro", "tiktok", "prospection", "flagship"],
+  "isTemplate": true,
+  "createdAt": "",
+  "updatedAt": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "position": { "x": 0, "y": 0 },
+      "data": {
+        "label": "Lead in",
+        "inputVariables": [
+          { "name": "company_name", "required": true },
+          { "name": "city", "defaultValue": "France" },
+          { "name": "video_url", "required": true },
+          { "name": "tiktok_account", "defaultValue": "" },
+          { "name": "profile_url", "defaultValue": "" },
+          { "name": "recruiter_id", "defaultValue": "" }
+        ]
+      }
+    },
+    {
+      "id": "check_duplicate",
+      "type": "mcp",
+      "position": { "x": 0, "y": 150 },
+      "data": {
+        "label": "Check duplicate company",
+        "mcpTool": "check_company_duplicate",
+        "mcpParams": { "company_name": "{{ company_name }}", "city": "{{ city }}" },
+        "outputField": "duplicate_check"
+      }
+    },
+    {
+      "id": "duplicate_gate",
+      "type": "if-else",
+      "position": { "x": 0, "y": 300 },
+      "data": {
+        "label": "Already in OpenPro?",
+        "condition": "duplicate_check.duplicate == True"
+      }
+    },
+    {
+      "id": "report_skipped_duplicate",
+      "type": "mcp",
+      "position": { "x": -250, "y": 450 },
+      "data": {
+        "label": "Report: skipped (duplicate)",
+        "mcpTool": "report_prospection_status",
+        "mcpParams": { "video_url": "{{ video_url }}", "status": "skipped_duplicate", "company_name": "{{ company_name }}", "city": "{{ city }}" }
+      }
+    },
+    {
+      "id": "enrich_lead",
+      "type": "mcp",
+      "position": { "x": 250, "y": 450 },
+      "data": {
+        "label": "Enrich TikTok lead",
+        "mcpTool": "enrich_tiktok_lead",
+        "mcpParams": {
+          "lead": {
+            "company_name": "{{ company_name }}",
+            "city": "{{ city }}",
+            "video_url": "{{ video_url }}",
+            "account": "{{ tiktok_account }}",
+            "profile_url": "{{ profile_url }}"
+          }
+        },
+        "outputField": "enriched"
+      }
+    },
+    {
+      "id": "provision_company",
+      "type": "mcp",
+      "position": { "x": 250, "y": 600 },
+      "data": {
+        "label": "Provision OpenPro company",
+        "mcpTool": "provision_openpro_company",
+        "mcpParams": {
+          "brief": "{{ enriched.brief }}",
+          "company_name": "{{ company_name }}",
+          "city": "{{ city }}",
+          "video_url": "{{ video_url }}",
+          "tiktok_account": "{{ tiktok_account }}"
+        },
+        "outputField": "provision_result"
+      }
+    },
+    {
+      "id": "email_gate",
+      "type": "if-else",
+      "position": { "x": 250, "y": 750 },
+      "data": {
+        "label": "Email found?",
+        "condition": "enriched.email != None"
+      }
+    },
+    {
+      "id": "report_no_email",
+      "type": "mcp",
+      "position": { "x": 0, "y": 900 },
+      "data": {
+        "label": "Report: skipped (no email)",
+        "mcpTool": "report_prospection_status",
+        "mcpParams": { "video_url": "{{ video_url }}", "status": "skipped_no_email", "company_name": "{{ company_name }}", "city": "{{ city }}" }
+      }
+    },
+    {
+      "id": "create_job",
+      "type": "mcp",
+      "position": { "x": 500, "y": 900 },
+      "data": {
+        "label": "Create job post with video",
+        "mcpTool": "create_job_post_with_media",
+        "mcpParams": {
+          "recruiter_id": "{{ provision_result.recruiter_id }}",
+          "title": "Offre recrutée depuis TikTok",
+          "video_url": "{{ video_url }}"
+        },
+        "outputField": "job_post"
+      }
+    },
+    {
+      "id": "send_email",
+      "type": "mcp",
+      "position": { "x": 500, "y": 1050 },
+      "data": {
+        "label": "Email outreach",
+        "mcpTool": "send_prospect_email",
+        "mcpParams": {
+          "email": "{{ enriched.email }}",
+          "company_name": "{{ company_name }}",
+          "job_url": "{{ job_post.url }}",
+          "video_url": "{{ video_url }}",
+          "tiktok_account": "{{ tiktok_account }}"
+        }
+      }
+    },
+    {
+      "id": "dm_approval",
+      "type": "user-approval",
+      "position": { "x": 500, "y": 1200 },
+      "data": {
+        "label": "Approve TikTok DM outreach",
+        "approvalMessage": "Send a TikTok DM to {{ tiktok_account }} ({{ company_name }}) for {{ video_url }}?"
+      }
+    },
+    {
+      "id": "send_dm",
+      "type": "mcp",
+      "position": { "x": 500, "y": 1350 },
+      "data": {
+        "label": "TikTok DM outreach",
+        "mcpTool": "send_tiktok_dm",
+        "mcpParams": { "profile_url": "{{ profile_url }}", "account": "{{ tiktok_account }}", "video_url": "{{ video_url }}" }
+      }
+    },
+    {
+      "id": "report_provisioned",
+      "type": "mcp",
+      "position": { "x": 500, "y": 1500 },
+      "data": {
+        "label": "Report: provisioned",
+        "mcpTool": "report_prospection_status",
+        "mcpParams": {
+          "video_url": "{{ video_url }}",
+          "status": "provisioned",
+          "company_name": "{{ company_name }}",
+          "city": "{{ city }}",
+          "openpro_recruiter_id": "{{ provision_result.recruiter_id }}",
+          "openpro_post_id": "{{ job_post.id }}"
+        }
+      }
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "position": { "x": 250, "y": 1650 },
+      "data": { "label": "Done" }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "start", "target": "check_duplicate" },
+    { "id": "e2", "source": "check_duplicate", "target": "duplicate_gate" },
+    { "id": "e3", "source": "duplicate_gate", "target": "report_skipped_duplicate", "sourceHandle": "true" },
+    { "id": "e4", "source": "duplicate_gate", "target": "enrich_lead", "sourceHandle": "false" },
+    { "id": "e5", "source": "report_skipped_duplicate", "target": "end" },
+    { "id": "e6", "source": "enrich_lead", "target": "provision_company" },
+    { "id": "e7", "source": "provision_company", "target": "email_gate" },
+    { "id": "e8", "source": "email_gate", "target": "report_no_email", "sourceHandle": "false" },
+    { "id": "e9", "source": "email_gate", "target": "create_job", "sourceHandle": "true" },
+    { "id": "e10", "source": "report_no_email", "target": "end" },
+    { "id": "e11", "source": "create_job", "target": "send_email" },
+    { "id": "e12", "source": "send_email", "target": "dm_approval" },
+    { "id": "e13", "source": "dm_approval", "target": "send_dm", "sourceHandle": "approved" },
+    { "id": "e14", "source": "send_dm", "target": "report_provisioned" },
+    { "id": "e15", "source": "report_provisioned", "target": "end" }
+  ]
+}

@@ -24,6 +24,7 @@ This repository is a **professional fork and rename** of [Hermes Agent](https://
 | **Model-agnostic** | OpenAI, Anthropic, OpenRouter, local endpoints, and many provider plugins |
 | **Tooling** | Terminal, files, web, browser, MCP, code execution, subagents, cron |
 | **Company workspaces** | `/company` scaffolds a folder with roles, subagent SOUL files, skills map, and CEO orchestration |
+| **Visual workflows** | `/OpenAgentUI` — a local React Flow builder for chaining agent/tool/http/approval nodes; run saved scenarios with `/OpenAgentConfig`, or let any agent trigger them mid-conversation |
 | **Learning loop** | Persistent memory, skills hub, session search, optional Honcho integration |
 | **Production-ready** | Profiles, credential pools, gateway services, Docker, Tirith + built-in command scanner |
 | **Extensible** | Plugins, skills, hooks, and optional MCP catalogs |
@@ -166,6 +167,24 @@ Subagents are spawned via `delegate_task` or `/company delegate <role> …`. The
 
 ---
 
+## Visual workflows (OpenAgentUI)
+
+**OpenAgentUI** is a local-only visual workflow builder — a rebranded, native fork of [firecrawl/open-agent-builder](https://github.com/firecrawl/open-agent-builder) with the cloud dependencies (Convex, Clerk, Arcade, E2B) stripped out and replaced by OpenAgents' own agent loop, tool registry, and JSON-file persistence under `~/.openagents/openagentui/`.
+
+| Command | What it does |
+|---------|----------------|
+| `/OpenAgentUI true` | Launch the local builder UI (React Flow canvas) and open it in your browser |
+| `/OpenAgentUI stop` | Stop the builder UI process |
+| `/OpenAgentConfig` | List saved workflows |
+| `/OpenAgentConfig run <name> key=value ...` | Run a saved workflow headlessly (no UI process required) |
+| `/OpenAgentConfig approve\|reject <execution_id>` | Resolve a paused `user-approval` node and resume |
+
+Workflows chain `agent` (an LLM turn via `run_agent.py`), `mcp` (a deterministic call into any registered tool/plugin), `transform` (sandboxed Python), `http`, `if-else`/`while`, `user-approval`, and `set-state` nodes. Any agent/subagent can also trigger a saved workflow mid-conversation via the `run_openagentui_workflow` tool (toolset `openagentui`) — e.g. a flagship bundled scenario chains TikTok lead discovery into an OpenPro company + job post + outreach DM.
+
+Full details, node-type reference, and REST/MCP contract: **[docs/openagentui.md](docs/openagentui.md)**.
+
+---
+
 ## Project layout
 
 ```
@@ -185,6 +204,8 @@ OpenAgents/
 ├── web/                    # Local web dashboard (React)
 ├── ui-tui/                 # Terminal UI package
 ├── apps/desktop/           # Electron desktop app
+├── apps/openagentui/       # OpenAgentUI visual workflow builder (Next.js, rebranded)
+├── openagentui/            # OpenAgentUI Python execution engine (schema, store, engine, node executors)
 ├── tests/                  # Pytest suite
 └── website/docs/           # Documentation site source
 ```

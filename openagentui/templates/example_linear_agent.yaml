@@ -1,0 +1,40 @@
+# OpenAgentUI — minimal linear workflow (copy as starting point)
+# Install: POST /api/openagentui/workflows/from-yaml  OR  ensure_openagentui_workflow(name, yaml)
+
+id: wf_example_linear
+name: Example Linear Agent
+description: Start → agent (Mistral) → end. No UI required.
+category: examples
+tags: [example, mistral, headless]
+nodes:
+  - id: start
+    type: start
+    data:
+      label: Inputs
+      inputVariables:
+        - name: topic
+          required: true
+          defaultValue: OpenOS
+  - id: research
+    type: agent
+    data:
+      label: Summarize topic
+      instructions: |
+        Briefly explain {{ topic }} for a technical audience.
+        Keep under 200 words.
+      model: mistral-medium-latest
+      tools: []
+      maxIterations: 3
+  - id: end
+    type: end
+    data:
+      label: Done
+      outputMapping:
+        summary: "{{ nodes.research.output }}"
+edges:
+  - id: e_start_research
+    source: start
+    target: research
+  - id: e_research_end
+    source: research
+    target: end

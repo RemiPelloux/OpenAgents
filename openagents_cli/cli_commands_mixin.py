@@ -1407,6 +1407,42 @@ class CLICommandsMixin:
         if seed:
             self._pending_agent_seed = seed
 
+    def _handle_openagentui_command(self, cmd: str):
+        """Handle /OpenAgentUI — start/stop the local visual workflow builder."""
+        import shlex
+
+        try:
+            tokens = shlex.split(cmd)[1:] if cmd else []
+        except ValueError:
+            tokens = (cmd or "").split()[1:]
+        args = " ".join(shlex.quote(t) for t in tokens)
+        try:
+            from openagents_cli.openagentui_cmd import handle_openagentui_command
+
+            result = handle_openagentui_command(args)
+        except Exception as e:
+            self._console_print(f"OpenAgentUI command failed: {e}")
+            return
+        self._console_print(result.text)
+
+    def _handle_openagentconfig_command(self, cmd: str):
+        """Handle /OpenAgentConfig — run or manage saved OpenAgentUI workflows."""
+        import shlex
+
+        try:
+            tokens = shlex.split(cmd)[1:] if cmd else []
+        except ValueError:
+            tokens = (cmd or "").split()[1:]
+        args = " ".join(shlex.quote(t) for t in tokens)
+        try:
+            from openagents_cli.openagentui_config_cmd import handle_openagentconfig_command
+
+            result = handle_openagentconfig_command(args)
+        except Exception as e:
+            self._console_print(f"OpenAgentConfig command failed: {e}")
+            return
+        self._console_print(result.text)
+
     def _handle_blueprint_command(self, cmd: str):
         """Handle /blueprint — set up an automation from a blueprint template.
 

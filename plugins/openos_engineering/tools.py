@@ -6,6 +6,7 @@ import os
 from typing import Any, Dict
 
 from plugins.openos_engineering.opencode_runner import run_opencode_headless, verify_opencode_binary
+from openagentui.codex_runner import run_codex_headless, verify_codex_binary
 from plugins.openos_engineering.rec_client import emit_rec_event
 from plugins.openos_engineering.ticket_client import (
     build_task_prompt,
@@ -116,3 +117,57 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
         f"Ticket in_review transition is handled by OpenCode session-complete webhook.\n\n"
         f"{result['summary']}{files_note}"
     )
+
+
+INVOKE_CODEX_SCHEMA: Dict[str, Any] = {
+    "name": "invoke_codex",
+    "description": (
+        "Delegate coding work to OpenAI Codex CLI (`codex exec`). "
+        "Use for headless implementation when OpenCode is not available."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "prompt": {"type": "string", "description": "Task instructions for Codex"},
+            "cwd": {"type": "string", "description": "Working directory"},
+            "full_auto": {
+                "type": "boolean",
+                "description": "Pass --full-auto to codex exec (default false)",
+            },
+            "sandbox": {
+                "type": "string",
+                "description": "Codex sandbox mode (default workspace-write)",
+            },
+        },
+        "required": ["prompt"],
+    },
+}
+
+
+def check_codex_available() -> bool:
+    return verify_codex_binary()
+
+
+def handle_invoke_codex(args: Dict[str, Any]) -> str:
+    prompt = str(args.get("prompt") or "").strip()
+    if not prompt:
+        return "Error: prompt is required"
+
+    cwd = args.get("cwd") or os.getcwd()
+    full_auto = bool(args.get("full_auto"))
+    sandbox = str(args.get("sandbox") or "workspace-write")
+
+    result = run_codex_headless(
+        prompt,
+        cwd=cwd,
+        sandbox=sandbox,
+        full_auto=full_auto,
+    )
+
+    if not result["ok"]:
+        return (
+            f"Codex failed (exit {result['exit_code']}):\n"
+            f"{result.get('stderr') or result.get('summary')}"
+        )
+
+    return f"Codex completed in {result['cwd']}.\n\n{result['summary']}"

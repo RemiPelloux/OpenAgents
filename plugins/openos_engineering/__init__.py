@@ -1,11 +1,14 @@
-"""OpenOS engineering plugin — W4 OpenTicket + OpenCode integration."""
+"""OpenOS engineering plugin — W4 OpenTicket + OpenCode + Codex integration."""
 
 from __future__ import annotations
 
 from plugins.openos_engineering.cli import openos_command, register_cli
 from plugins.openos_engineering.tools import (
+    INVOKE_CODEX_SCHEMA,
     INVOKE_OPENCODE_SCHEMA,
+    check_codex_available,
     check_openos_engineering_available,
+    handle_invoke_codex,
     handle_invoke_opencode,
 )
 
@@ -18,6 +21,14 @@ def register(ctx) -> None:
         handler=handle_invoke_opencode,
         check_fn=check_openos_engineering_available,
         emoji="⚡",
+    )
+    ctx.register_tool(
+        name="invoke_codex",
+        toolset="openos_engineering",
+        schema=INVOKE_CODEX_SCHEMA,
+        handler=handle_invoke_codex,
+        check_fn=check_codex_available,
+        emoji="🤖",
     )
 
     ctx.register_cli_command(
