@@ -10,6 +10,7 @@ from plugins.openpro_prospection.tools import (
     ENRICH_SCHEMA,
     PROVISION_SCHEMA,
     STATUS_SCHEMA,
+    UPSERT_CRM_SCHEMA,
     check_openpro_prospection_available,
     handle_check_company_duplicate,
     handle_create_job_post_with_media,
@@ -18,6 +19,7 @@ from plugins.openpro_prospection.tools import (
     handle_report_prospection_status,
     handle_send_prospect_email,
     handle_send_tiktok_dm,
+    handle_upsert_crm_from_lead,
 )
 
 
@@ -25,6 +27,7 @@ def register(ctx) -> None:
     tools = [
         (CHECK_DUPLICATE_SCHEMA, handle_check_company_duplicate, "🔍"),
         (ENRICH_SCHEMA, handle_enrich_tiktok_lead, "🧩"),
+        (UPSERT_CRM_SCHEMA, handle_upsert_crm_from_lead, "🗂️"),
         (PROVISION_SCHEMA, handle_provision_openpro_company, "🏢"),
         (CREATE_JOB_SCHEMA, handle_create_job_post_with_media, "📋"),
         (EMAIL_SCHEMA, handle_send_prospect_email, "✉️"),

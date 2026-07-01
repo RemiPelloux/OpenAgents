@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [OpenTeam, OpenPro, TikTok, Prospection, MCP]
-    related_skills: [open-ecosystem-hub]
+    related_skills: [open-ecosystem-hub, opencrm-sales-followup]
 ---
 
 # OpenPro TikTok Prospection
@@ -30,7 +30,8 @@ export PROSPECTION_CORRELATION_ID=optional-corr-id
 | Tool | Purpose |
 |------|---------|
 | `enrich_tiktok_lead` | Extract email + build provision brief |
-| `check_company_duplicate` | OpenPro name+city duplicate check |
+| `check_company_duplicate` | OpenPro + OpenCRM name+city duplicate check |
+| `upsert_crm_from_lead` | Upsert account + opportunity into OpenCRM (CC-W1-004) |
 | `provision_openpro_company` | Create recruiter account from brief |
 | `create_job_post_with_media` | Publish job with TikTok video |
 | `send_prospect_email` | Email outreach with job link |
@@ -41,13 +42,16 @@ export PROSPECTION_CORRELATION_ID=optional-corr-id
 
 1. `enrich_tiktok_lead` with lead object from `task_context.leads[]`
 2. Infer `company_name` + `city` from brief (LLM) — ask if unclear
-3. `check_company_duplicate` — if duplicate → `report_prospection_status` `skipped_duplicate`
+3. `check_company_duplicate` — also queries OpenCRM (CC-W1-006, degrades gracefully if
+   OpenCRM is unreachable); if duplicate on either side → `report_prospection_status` `skipped_duplicate`
 4. If no outreach email → `skipped_no_email`
-5. `provision_openpro_company` with brief
-6. `create_job_post_with_media` using returned `recruiter_id`
-7. `send_prospect_email` to scraped email
-8. `send_tiktok_dm` with French intro + job URL
-9. `report_prospection_status` → `provisioned` with IDs
+5. `upsert_crm_from_lead` — OpenCRM now holds the account (queryable via `search_accounts`
+   and Brain `search_observations app=opencrm`) even if OpenPro provisioning fails below
+6. `provision_openpro_company` with brief
+7. `create_job_post_with_media` using returned `recruiter_id`
+8. `send_prospect_email` to scraped email
+9. `send_tiktok_dm` with French intro + job URL
+10. `report_prospection_status` → `provisioned` with IDs
 
 ## Status values
 

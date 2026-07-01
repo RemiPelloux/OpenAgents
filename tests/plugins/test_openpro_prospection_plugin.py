@@ -48,6 +48,26 @@ def test_check_duplicate_calls_openpro():
         assert json.loads(out)["duplicate"] is False
 
 
+def test_upsert_crm_from_lead_requires_fields():
+    from plugins.openpro_prospection.tools import handle_upsert_crm_from_lead
+
+    assert "required" in handle_upsert_crm_from_lead({}).lower()
+
+
+def test_upsert_crm_from_lead_calls_opencrm():
+    from plugins.openpro_prospection.tools import handle_upsert_crm_from_lead
+
+    with patch(
+        "plugins.openpro_prospection.tools.upsert_from_prospection_lead",
+        return_value={"payload": {"account_id": "a1", "opportunity_id": "o1"}},
+    ) as mock:
+        out = handle_upsert_crm_from_lead(
+            {"video_url": "https://tiktok.com/v/1", "company_name": "Decathlon Nice", "city": "Nice"}
+        )
+        mock.assert_called_once()
+        assert json.loads(out)["payload"]["account_id"] == "a1"
+
+
 def test_availability_requires_api_key():
     from plugins.openpro_prospection.tools import check_openpro_prospection_available
 

@@ -26,3 +26,13 @@ Copy [infra/config/openagents.env.example](../../infra/config/openagents.env.exa
 ```
 
 **Cadence:** manual after doc changes; optional nightly CI dry-run. See [OpenBrain/docs/OPENOS-DOCS-RAG.md](../../OpenBrain/docs/OPENOS-DOCS-RAG.md).
+
+## OpenCRM — commercial source of truth (W1)
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENCRM_API_URL` | OpenCRM REST API base (default `http://localhost:3010`) |
+
+Plugin: `opencrm_sales` (`search_accounts`, `check_account_duplicate`, `get_account`,
+`propose_crm_update`). Also consumed by `openpro_prospection`'s `check_company_duplicate`
+and `upsert_crm_from_lead` tools (CC-W1-004, CC-W1-006). See skill **`opencrm-sales-followup`**.

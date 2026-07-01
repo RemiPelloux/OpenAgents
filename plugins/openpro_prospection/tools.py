@@ -15,6 +15,8 @@ from plugins.openpro_prospection.openpro_client import (
     send_tiktok_dm,
 )
 from plugins.openpro_prospection.openteam_client import report_prospection_status
+from plugins.opencrm_sales.opencrm_client import check_account_duplicate as check_crm_account_duplicate
+from plugins.opencrm_sales.opencrm_client import upsert_from_prospection_lead
 
 CORRELATION_ENV = "PROSPECTION_CORRELATION_ID"
 
@@ -28,11 +30,18 @@ def check_openpro_prospection_available() -> bool:
 
 
 def handle_check_company_duplicate(args: Dict[str, Any]) -> str:
+    """OpenPro duplicate check — also consults OpenCRM (CC-W1-006) so a lead already
+    tracked as a CRM account (e.g. from a prior meeting) is not re-provisioned on OpenPro.
+    """
     name = str(args.get("company_name") or "").strip()
     city = str(args.get("city") or "France").strip()
     if not name:
         return "Error: company_name is required"
     result = check_company_duplicate(name, city, _corr(args))
+    crm_result = check_crm_account_duplicate(name, city)
+    result["opencrm"] = crm_result
+    if crm_result.get("duplicate"):
+        result["duplicate"] = True
     return json.dumps(result, ensure_ascii=False)
 
 
@@ -110,6 +119,23 @@ def handle_report_prospection_status(args: Dict[str, Any]) -> str:
         "raw_outreach": args.get("raw_outreach"),
     }
     result = report_prospection_status(payload, _corr(args))
+    return json.dumps(result, ensure_ascii=False)
+
+
+def handle_upsert_crm_from_lead(args: Dict[str, Any]) -> str:
+    """CC-W1-004 — upsert the enriched lead into OpenCRM (account + opportunity, stage lead)."""
+    video_url = str(args.get("video_url") or "").strip()
+    company_name = str(args.get("company_name") or "").strip()
+    if not video_url or not company_name:
+        return "Error: video_url and company_name are required"
+    result = upsert_from_prospection_lead(
+        video_url=video_url,
+        company_name=company_name,
+        city=args.get("city"),
+        email=args.get("email"),
+        tiktok_account=args.get("tiktok_account"),
+        correlation_id=_corr(args),
+    )
     return json.dumps(result, ensure_ascii=False)
 
 
@@ -248,5 +274,25 @@ ENRICH_SCHEMA: Dict[str, Any] = {
         "type": "object",
         "properties": {"lead": {"type": "object"}},
         "required": ["lead"],
+    },
+}
+
+UPSERT_CRM_SCHEMA: Dict[str, Any] = {
+    "name": "upsert_crm_from_lead",
+    "description": (
+        "Upsert the enriched TikTok lead into OpenCRM as an account + opportunity "
+        "(CC-W1-004) so it becomes queryable via search_accounts / search_observations."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "video_url": {"type": "string"},
+            "company_name": {"type": "string"},
+            "city": {"type": "string"},
+            "email": {"type": "string"},
+            "tiktok_account": {"type": "string"},
+            "correlation_id": {"type": "string"},
+        },
+        "required": ["video_url", "company_name"],
     },
 }
