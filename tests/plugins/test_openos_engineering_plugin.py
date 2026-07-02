@@ -142,5 +142,14 @@ def test_init_profiles(tmp_path, monkeypatch):
     from plugins.openos_engineering.profiles import init_profiles
 
     names = init_profiles(tmp_path)
-    assert set(names) == {"product_owner", "developer", "qa"}
+    assert set(names) == {
+        "planner",
+        "skill_author",
+        "product_owner",
+        "developer",
+        "qa",
+    }
+    planner_cfg = (tmp_path / "profiles" / "planner" / "config.yaml").read_text()
+    assert "openorchestrator:" in planner_cfg
+    assert "openticket:" in planner_cfg
     assert (tmp_path / "profiles" / "developer" / "SOUL.md").is_file()
