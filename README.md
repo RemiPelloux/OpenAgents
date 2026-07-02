@@ -337,6 +337,22 @@ Primary distribution: [RemiPelloux/OpenAgents](https://github.com/RemiPelloux/Op
 
 ---
 
+## OpenContract (OpenOS mesh)
+
+OpenAgents is **producer** on W4/W1 hops (MCP tools, staging proposals). Wire signing when calling OpenTicket, OpenCRM, OpenCode.
+
+| Contract | Role | Transport |
+|----------|------|-----------|
+| CC-W4-001 | Producer | MCP `create_ticket` |
+| CC-W4-004 | Producer | `invoke_opencode` |
+| CC-W1-003 | Producer | `POST OpenCRM /v1/staging` |
+
+Env: `OPENCONTRACT_IDENTITY=OpenAgents`, `OPENCONTRACT_SIGNING_KEY` (or `OPENCONTRACT_DEV_KEYS=1` locally).
+
+Docs: [Implementation rules](../docs/opencontract/OPENCONTRACT-IMPLEMENTATION-RULES.md) · [Handbook](../docs/opencontract/OPENCONTRACT-HANDBOOK.md) · skill [open-brain](skills/open-ecosystem/open-brain/SKILL.md)
+
+---
+
 ## Company Brain (Axon)
 
 OpenOS mesh docs are indexed in **OpenBrain**. Query via MCP `search_knowledge` with `domain: openos`.
