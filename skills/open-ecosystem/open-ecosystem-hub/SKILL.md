@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [open, ecosystem, openagents, opencode, openticket, openpro, openbrain, openmemory, openwhistle, routing]
-    related_skills: [openagents, open-code, open-ticket, open-dev-workflow, open-pro, openpro-tiktok-prospection, open-brain, open-memory, open-whistle, open-app, open-agentui]
+    related_skills: [openagents, open-code, open-ticket, open-dev-workflow, open-pro, openpro-tiktok-prospection, open-brain, open-brain-orchestrator, open-memory, open-whistle, open-app, open-agentui]
 ---
 
 # Open Ecosystem Hub

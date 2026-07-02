@@ -9,7 +9,8 @@ start the dashboard itself.
 
 Subcommands::
 
-  /OpenAgentUI true|start   launch the builder UI and open a browser
+  /OpenAgentUI true|start   bring the builder online (no browser by default)
+  /OpenAgentUI true open    same, and open the URL in a browser
   /OpenAgentUI false|stop   stop the builder UI process
   /OpenAgentUI status       report whether it's running, and its URL
 """
@@ -35,7 +36,10 @@ from utils import TRUTHY_STRINGS
 logger = logging.getLogger(__name__)
 
 DEFAULT_PORT = 4173
+DEFAULT_DASHBOARD_HOST = "127.0.0.1"
+DEFAULT_DASHBOARD_PORT = 9119
 STARTUP_GRACE_SECONDS = 1.5
+DASHBOARD_START_TIMEOUT_SECONDS = 90
 _FALSY_STRINGS = frozenset({"0", "false", "no", "off"})
 
 
@@ -90,19 +94,88 @@ def _has_production_build(app_dir: Path) -> bool:
     return (app_dir / ".next" / "BUILD_ID").is_file()
 
 
-def start_openagentui(port: int = DEFAULT_PORT, open_browser: bool = True) -> OpenAgentUiCommandResult:
+def _dashboard_listening(host: str = DEFAULT_DASHBOARD_HOST, port: int = DEFAULT_DASHBOARD_PORT) -> bool:
+    import socket
+
+    try:
+        with socket.create_connection((host, port), timeout=1.5):
+            return True
+    except OSError:
+        return False
+
+
+def _ensure_dashboard_online(
+    host: str = DEFAULT_DASHBOARD_HOST,
+    port: int = DEFAULT_DASHBOARD_PORT,
+) -> str:
+    """Start the dashboard API in the background when absent."""
+    api_url = f"http://{host}:{port}"
+    if _dashboard_listening(host, port):
+        return f"Dashboard API online at {api_url}"
+
+    openagents_bin = shutil.which("openagents")
+    if openagents_bin is None:
+        return (
+            f"Dashboard API is not running at {api_url}. "
+            "Start it in another terminal: `openagents dashboard --no-open`"
+        )
+
+    cmd = [openagents_bin, "dashboard", "--no-open", "--host", host, "--port", str(port)]
+    web_dist = Path(__file__).resolve().parent / "web_dist" / "index.html"
+    if web_dist.is_file():
+        cmd.append("--skip-build")
+
+    log_file = _log_path().parent / "dashboard-autostart.log"
+    log_handle = log_file.open("a", encoding="utf-8")
+    log_handle.write(f"\n--- dashboard autostart {time.strftime('%Y-%m-%dT%H:%M:%SZ')} ---\n")
+    log_handle.flush()
+
+    kwargs: Dict[str, Any] = {
+        "stdout": log_handle,
+        "stderr": log_handle,
+        "start_new_session": True,
+    }
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
+    try:
+        subprocess.Popen(cmd, **kwargs)
+    except OSError as exc:
+        return f"Failed to start dashboard API at {api_url}: {exc}"
+
+    deadline = time.time() + DASHBOARD_START_TIMEOUT_SECONDS
+    while time.time() < deadline:
+        if _dashboard_listening(host, port):
+            return f"Dashboard API started at {api_url}"
+        time.sleep(0.5)
+
+    return (
+        f"Dashboard API did not become ready at {api_url} within "
+        f"{DASHBOARD_START_TIMEOUT_SECONDS}s — see {log_file}"
+    )
+
+
+def start_openagentui(
+    port: int = DEFAULT_PORT,
+    open_browser: bool = False,
+    *,
+    ensure_dashboard: bool = True,
+) -> OpenAgentUiCommandResult:
     app_dir = _app_dir()
     if not app_dir.is_dir():
         return OpenAgentUiCommandResult(
             text=f"OpenAgentUI frontend not found at {app_dir}. Expected apps/openagentui to be vendored."
         )
 
+    dashboard_note = _ensure_dashboard_online() if ensure_dashboard else ""
+
     state = _read_state()
     if state and _pid_alive(int(state.get("pid", -1))):
         url = f"http://127.0.0.1:{state.get('port', port)}"
         if open_browser:
             webbrowser.open(url)
-        return OpenAgentUiCommandResult(text=f"OpenAgentUI already running at {url}")
+        lines = [line for line in (dashboard_note, f"OpenAgentUI already running at {url}") if line]
+        return OpenAgentUiCommandResult(text="\n".join(lines))
 
     npm = _npm_command()
     if npm is None:
@@ -143,13 +216,17 @@ def start_openagentui(port: int = DEFAULT_PORT, open_browser: bool = True) -> Op
     url = f"http://127.0.0.1:{port}"
     if open_browser:
         webbrowser.open(url)
-    return OpenAgentUiCommandResult(
-        text=(
-            f"OpenAgentUI started ({script} mode) at {url} — pid {proc.pid}\n"
-            "Make sure `openagents dashboard` is also running so its API calls resolve.\n"
-            f"Logs: {log_file}"
+    lines = [
+        line
+        for line in (
+            dashboard_note,
+            f"OpenAgentUI online ({script} mode) at {url} — pid {proc.pid}",
+            f"Open in browser: {url}",
+            f"Logs: {log_file}",
         )
-    )
+        if line
+    ]
+    return OpenAgentUiCommandResult(text="\n".join(lines))
 
 
 def stop_openagentui() -> OpenAgentUiCommandResult:
@@ -181,21 +258,25 @@ def status_openagentui() -> OpenAgentUiCommandResult:
 def handle_openagentui_command(args: str) -> OpenAgentUiCommandResult:
     tokens = (args or "").strip().split()
     verb = tokens[0].lower() if tokens else "status"
+    extras = {token.lower() for token in tokens[1:]}
+    open_browser = "open" in extras
 
     if verb in {"true", "start", "up", "on"}:
-        return start_openagentui()
+        return start_openagentui(open_browser=open_browser)
     if verb in {"false", "stop", "down", "off"}:
         return stop_openagentui()
     if verb in {"status", ""}:
         return status_openagentui()
     if verb in TRUTHY_STRINGS:
-        return start_openagentui()
+        return start_openagentui(open_browser=open_browser)
     if verb in _FALSY_STRINGS:
         return stop_openagentui()
 
     return OpenAgentUiCommandResult(
         text=(
-            "Usage: /OpenAgentUI true|start | false|stop | status\n"
+            "Usage: /OpenAgentUI true|start [| open] | false|stop | status\n"
+            "  true/start — bring OpenAgentUI online (dashboard API auto-starts)\n"
+            "  true open  — same, and open the builder URL in a browser\n"
             f"Unknown argument: {verb!r}"
         )
     )
@@ -214,9 +295,18 @@ def build_parser(parent_subparsers):
     )
     sub = parser.add_subparsers(dest="openagentui_action")
 
-    start_p = sub.add_parser("start", help="Launch the builder UI")
+    start_p = sub.add_parser("start", help="Bring the builder UI online")
     start_p.add_argument("--port", type=int, default=DEFAULT_PORT)
-    start_p.add_argument("--no-open", action="store_true")
+    start_p.add_argument(
+        "--open",
+        action="store_true",
+        help="Open the builder URL in a browser after startup",
+    )
+    start_p.add_argument(
+        "--no-dashboard",
+        action="store_true",
+        help="Do not auto-start the dashboard API on port 9119",
+    )
 
     sub.add_parser("stop", help="Stop the builder UI")
     sub.add_parser("status", help="Report whether the builder UI is running")
@@ -228,7 +318,11 @@ def build_parser(parent_subparsers):
 def openagentui_command(args) -> int:
     action = getattr(args, "openagentui_action", None) or "status"
     if action == "start":
-        result = start_openagentui(port=getattr(args, "port", DEFAULT_PORT), open_browser=not getattr(args, "no_open", False))
+        result = start_openagentui(
+            port=getattr(args, "port", DEFAULT_PORT),
+            open_browser=getattr(args, "open", False),
+            ensure_dashboard=not getattr(args, "no_dashboard", False),
+        )
     elif action == "stop":
         result = stop_openagentui()
     else:

@@ -1,19 +1,16 @@
-"""OpenRec emit with retry — CC-W4-008."""
+"""OpenRec emit via durable outbox + drain — CC-W4-008."""
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-import time
 import uuid
-import urllib.error
-import urllib.request
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+from plugins.openos_engineering.rec_outbox import drain_rec_outbox, enqueue_rec_event
 
-MAX_ATTEMPTS = 3
+logger = logging.getLogger(__name__)
 
 
 def emit_rec_event(
@@ -28,14 +25,13 @@ def emit_rec_event(
     target_app: str = "openagents",
     severity: str = "info",
 ) -> None:
-    base_url = os.environ.get("OPENREC_URL", "").rstrip("/")
-    if not base_url:
+    if not os.environ.get("OPENREC_URL", "").strip():
         return
 
-    body = {
+    body: Dict[str, Any] = {
         "id": str(uuid.uuid4()),
         "type": event_type,
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "tenant": {
             "org_id": os.environ.get("OPENREC_ORG_ID", "default"),
             "environment": os.environ.get("OPENREC_ENV", "dev"),
@@ -58,21 +54,8 @@ def emit_rec_event(
     if agent_run_id:
         body["agent_run_id"] = agent_run_id
 
-    data = json.dumps(body).encode()
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        req = urllib.request.Request(
-            f"{base_url}/v1/events",
-            data=data,
-            method="POST",
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            urllib.request.urlopen(req, timeout=15)
-            return
-        except urllib.error.HTTPError as exc:
-            if exc.code in (200, 201, 202):
-                return
-            logger.warning("OpenRec emit HTTP %s attempt %s", exc.code, attempt)
-        except Exception as exc:
-            logger.warning("OpenRec emit failed attempt %s: %s", attempt, exc)
-        time.sleep(0.5 * attempt)
+    enqueue_rec_event(body)
+    try:
+        drain_rec_outbox(max_items=10)
+    except Exception as exc:
+        logger.warning("OpenRec outbox drain failed: %s", exc)

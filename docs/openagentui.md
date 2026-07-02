@@ -47,17 +47,24 @@ dashboard's existing loopback-token auth — no separate accounts.
 # One-time: install the frontend's dependencies
 cd apps/openagentui && npm install && cd ../..
 
-# Start the dashboard (serves the REST API OpenAgentUI calls)
-openagents dashboard
+# Start the dashboard (serves REST API — auto-started by /OpenAgentUI true)
+openagents dashboard --no-open
 
-# In another terminal/session, launch the builder UI
+# In OpenAgents CLI — bring builder online (no browser popup)
 /OpenAgentUI true
+
+# Optional: also open the browser
+/OpenAgentUI true open
+
+# Or check status / stop
+/OpenAgentUI status
+/OpenAgentUI stop
 ```
 
-`/OpenAgentUI true|start` launches the Next.js frontend as a background
-process (dev mode if no production build exists, otherwise `npm run start`)
-and opens it in your browser. `/OpenAgentUI stop` tears it down; `/OpenAgentUI
-status` reports whether it's running and its URL. State (PID, port) is
+`/OpenAgentUI true|start` brings the builder **online** in the background (and
+auto-starts the dashboard API if needed). It does **not** open a browser unless
+you pass `open`: `/OpenAgentUI true open`. `/OpenAgentUI stop` tears it down;
+`/OpenAgentUI status` reports whether it's running and its URL. State (PID, port) is
 tracked in `~/.openagents/openagentui/server.json`.
 
 Workflows/executions/approvals are plain JSON files under

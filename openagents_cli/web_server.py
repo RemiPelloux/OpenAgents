@@ -512,6 +512,14 @@ async def auth_middleware(request: Request, call_next):
     if getattr(request.app.state, "auth_required", False):
         return await call_next(request)
     path = request.url.path
+    # OpenAgentUI runs as a separate Next.js app (port 4173) that proxies
+    # /api/openagentui/* to this server. It cannot inherit the dashboard SPA's
+    # injected session token, so loopback binds allow the prefix without token.
+    if (
+        path.startswith("/api/openagentui/")
+        and not getattr(request.app.state, "auth_required", False)
+    ):
+        return await call_next(request)
     if path.startswith("/api/") and path not in _PUBLIC_API_PATHS:
         if not _has_valid_session_token(request) and not _has_valid_query_token(request, path):
             return JSONResponse(

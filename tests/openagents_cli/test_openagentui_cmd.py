@@ -52,6 +52,7 @@ def test_start_launches_subprocess_and_records_state(monkeypatch, tmp_path):
     app_dir = _make_app_dir(tmp_path)
     monkeypatch.setattr(cmd, "_app_dir", lambda: app_dir)
     monkeypatch.setattr(cmd, "_npm_command", lambda: "/usr/bin/npm")
+    monkeypatch.setattr(cmd, "_ensure_dashboard_online", lambda: "Dashboard API online")
     monkeypatch.setattr(cmd.time, "sleep", lambda *_a: None)
 
     fake_proc = _FakeProc(pid=1234)
@@ -67,7 +68,7 @@ def test_start_launches_subprocess_and_records_state(monkeypatch, tmp_path):
 
     result = cmd.start_openagentui(port=5555, open_browser=True)
 
-    assert "started" in result.text
+    assert "online" in result.text
     assert "1234" in result.text
     assert captured["opened_url"] == "http://127.0.0.1:5555"
     assert "-p" in captured["args"] and "5555" in captured["args"]
@@ -77,17 +78,46 @@ def test_start_launches_subprocess_and_records_state(monkeypatch, tmp_path):
     assert state["port"] == 5555
 
 
+def test_start_does_not_open_browser_by_default(monkeypatch, tmp_path):
+    app_dir = _make_app_dir(tmp_path)
+    monkeypatch.setattr(cmd, "_app_dir", lambda: app_dir)
+    monkeypatch.setattr(cmd, "_npm_command", lambda: "/usr/bin/npm")
+    monkeypatch.setattr(cmd, "_ensure_dashboard_online", lambda: "")
+    monkeypatch.setattr(cmd.time, "sleep", lambda *_a: None)
+    monkeypatch.setattr(cmd.subprocess, "Popen", lambda *a, **k: _FakeProc(pid=1234))
+    opened = {}
+    monkeypatch.setattr(cmd.webbrowser, "open", lambda url: opened.setdefault("url", url))
+
+    cmd.handle_openagentui_command("true")
+    assert "url" not in opened
+
+
+def test_start_open_flag_opens_browser(monkeypatch, tmp_path):
+    app_dir = _make_app_dir(tmp_path)
+    monkeypatch.setattr(cmd, "_app_dir", lambda: app_dir)
+    monkeypatch.setattr(cmd, "_npm_command", lambda: "/usr/bin/npm")
+    monkeypatch.setattr(cmd, "_ensure_dashboard_online", lambda: "")
+    monkeypatch.setattr(cmd.time, "sleep", lambda *_a: None)
+    monkeypatch.setattr(cmd.subprocess, "Popen", lambda *a, **k: _FakeProc(pid=1234))
+    opened = {}
+    monkeypatch.setattr(cmd.webbrowser, "open", lambda url: opened.setdefault("url", url))
+
+    cmd.handle_openagentui_command("true open")
+    assert opened["url"] == "http://127.0.0.1:4173"
+
+
 def test_start_reports_already_running(monkeypatch, tmp_path):
     app_dir = _make_app_dir(tmp_path)
     monkeypatch.setattr(cmd, "_app_dir", lambda: app_dir)
     monkeypatch.setattr(cmd, "_pid_alive", lambda pid: True)
     monkeypatch.setattr(cmd, "_read_state", lambda: {"pid": 999, "port": 4173})
+    monkeypatch.setattr(cmd, "_ensure_dashboard_online", lambda: "")
     opened = {}
     monkeypatch.setattr(cmd.webbrowser, "open", lambda url: opened.setdefault("url", url))
 
     result = cmd.start_openagentui()
     assert "already running" in result.text
-    assert opened["url"] == "http://127.0.0.1:4173"
+    assert "url" not in opened
 
 
 def test_start_reports_immediate_exit(monkeypatch, tmp_path):
@@ -139,14 +169,21 @@ def test_status_reports_running(monkeypatch):
 
 def test_handle_command_dispatches_verbs(monkeypatch):
     calls = []
-    monkeypatch.setattr(cmd, "start_openagentui", lambda: calls.append("start") or cmd.OpenAgentUiCommandResult("started"))
+    monkeypatch.setattr(
+        cmd,
+        "start_openagentui",
+        lambda **kwargs: calls.append(("start", kwargs)) or cmd.OpenAgentUiCommandResult("started"),
+    )
     monkeypatch.setattr(cmd, "stop_openagentui", lambda: calls.append("stop") or cmd.OpenAgentUiCommandResult("stopped"))
     monkeypatch.setattr(cmd, "status_openagentui", lambda: calls.append("status") or cmd.OpenAgentUiCommandResult("status"))
 
     assert cmd.handle_openagentui_command("true").text == "started"
+    assert cmd.handle_openagentui_command("true open").text == "started"
     assert cmd.handle_openagentui_command("false").text == "stopped"
     assert cmd.handle_openagentui_command("").text == "status"
-    assert calls == ["start", "stop", "status"]
+    assert calls[0] == ("start", {"open_browser": False})
+    assert calls[1] == ("start", {"open_browser": True})
+    assert calls[2:] == ["stop", "status"]
 
 
 def test_handle_command_unknown_argument():
