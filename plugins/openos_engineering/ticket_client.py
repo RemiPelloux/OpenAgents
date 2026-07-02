@@ -101,6 +101,12 @@ def apply_task_context_env(ctx: Dict[str, Any]) -> None:
     criteria = ctx.get("acceptance_criteria")
     if isinstance(criteria, list) and criteria:
         os.environ["OPENTICKET_ACCEPTANCE_CRITERIA"] = json.dumps(criteria)
+    schema_url = ctx.get("response_schema_url")
+    if isinstance(schema_url, str) and schema_url.strip():
+        os.environ["OPENORCHESTRATOR_RESPONSE_SCHEMA_URL"] = schema_url.strip()
+    schema_id = ctx.get("response_schema_id")
+    if isinstance(schema_id, str) and schema_id.strip():
+        os.environ["OPENORCHESTRATOR_RESPONSE_SCHEMA_ID"] = schema_id.strip()
 
 
 def format_orchestrator_context(ctx: Dict[str, Any]) -> str:

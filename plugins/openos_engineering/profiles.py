@@ -49,6 +49,16 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
             "steps with required_skills. Respond with JSON only when asked to decompose."
         ),
     },
+    "intent_classifier": {
+        "description": "Intent classifier — NL → NormalizedGoal JSON for orchestrator",
+        "toolsets": ["mcp"],
+        "skills": ["open-orchestrator-intent", "open-ecosystem-hub"],
+        "mcp_servers": ["openorchestrator"],
+        "soul": (
+            "You are the OpenOrchestrator intent classifier. Parse natural language "
+            "into strict NormalizedGoal JSON. Return JSON only — no markdown."
+        ),
+    },
     "skill_author": {
         "description": "Skill Author — drafts org skill patches when gaps are detected",
         "toolsets": ["skills", "mcp"],

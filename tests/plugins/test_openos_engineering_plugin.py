@@ -176,6 +176,7 @@ def test_init_profiles(tmp_path, monkeypatch):
     names = init_profiles(tmp_path)
     assert set(names) == {
         "planner",
+        "intent_classifier",
         "skill_author",
         "product_owner",
         "developer",
@@ -184,4 +185,6 @@ def test_init_profiles(tmp_path, monkeypatch):
     planner_cfg = (tmp_path / "profiles" / "planner" / "config.yaml").read_text()
     assert "openorchestrator:" in planner_cfg
     assert "openticket:" in planner_cfg
+    intent_cfg = (tmp_path / "profiles" / "intent_classifier" / "config.yaml").read_text()
+    assert "open-orchestrator-intent" in intent_cfg
     assert (tmp_path / "profiles" / "developer" / "SOUL.md").is_file()
