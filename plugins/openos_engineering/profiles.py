@@ -7,6 +7,24 @@ from pathlib import Path
 from typing import Any, Dict
 
 PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
+    "planner": {
+        "description": "Planner — decomposes objectives into orchestrated steps",
+        "toolsets": ["delegation", "mcp"],
+        "skills": ["open-orchestrator-plan", "open-ecosystem-hub"],
+        "soul": (
+            "You are the OpenOrchestrator planner. Break objectives into ordered "
+            "steps with required_skills. Respond with JSON only when asked to decompose."
+        ),
+    },
+    "skill_author": {
+        "description": "Skill Author — drafts org skill patches when gaps are detected",
+        "toolsets": ["skills", "mcp"],
+        "skills": ["open-orchestrator-plan", "open-brain"],
+        "soul": (
+            "You author or patch org-scoped skills when orchestrator reports a skill gap. "
+            "Never modify bundled OpenOS skills — org overlay only."
+        ),
+    },
     "product_owner": {
         "description": "Product Owner — writes tickets and acceptance criteria",
         "toolsets": ["delegation", "mcp"],
