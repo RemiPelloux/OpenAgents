@@ -3831,6 +3831,39 @@ class APIServerAdapter(BasePlatformAdapter):
     _RUN_STREAM_TTL = 300  # seconds before orphaned runs are swept
     _RUN_STATUS_TTL = 3600  # seconds to retain terminal run status for polling
 
+    def _notify_orchestrator_outcome(
+        self,
+        run_id: str,
+        *,
+        success: bool,
+        reason: str,
+        usage: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        status = self._run_statuses.get(run_id) or {}
+        task_id = status.get("orchestrator_task_id")
+        if not task_id:
+            return
+        try:
+            from plugins.openos_engineering.orchestrator_client import notify_task_outcome
+
+            created = float(status.get("created_at") or time.time())
+            latency_ms = int(max(0, (time.time() - created) * 1000))
+            cost_usd = None
+            if usage:
+                total = int(usage.get("total_tokens") or 0)
+                if total:
+                    cost_usd = round(total * 0.00001, 4)
+            notify_task_outcome(
+                task_id=str(task_id),
+                correlation_id=str(status.get("correlation_id") or ""),
+                success=success,
+                reason=reason,
+                cost_usd=cost_usd,
+                latency_ms=latency_ms,
+            )
+        except Exception:
+            logger.exception("[api_server] orchestrator outcome notify failed for %s", run_id)
+
     def _set_run_status(self, run_id: str, status: str, **fields: Any) -> Dict[str, Any]:
         """Update pollable run status without exposing private agent objects."""
         now = time.time()
@@ -3981,6 +4014,7 @@ class APIServerAdapter(BasePlatformAdapter):
         self._run_approval_sessions[run_id] = approval_session_key
 
         event_cb = self._make_run_event_callback(run_id, loop)
+        task_ctx = body.get("task_context") if isinstance(body.get("task_context"), dict) else {}
 
         # Also wire stream_delta_callback so message.delta events flow through.
         def _text_cb(delta: Optional[str]) -> None:
@@ -4002,6 +4036,9 @@ class APIServerAdapter(BasePlatformAdapter):
             created_at=created_at,
             session_id=session_id,
             model=body.get("model", self._model_name),
+            orchestrator_task_id=task_ctx.get("orchestrator_task_id"),
+            correlation_id=task_ctx.get("correlation_id") or body.get("session_id"),
+            agent_profile=body.get("agent_profile"),
         )
 
         async def _run_and_close():
@@ -4107,6 +4144,12 @@ class APIServerAdapter(BasePlatformAdapter):
                         error=error_msg,
                         last_event="run.failed",
                     )
+                    self._notify_orchestrator_outcome(
+                        run_id,
+                        success=False,
+                        reason=error_msg,
+                        usage=usage,
+                    )
                 else:
                     final_response = result.get("final_response", "") if isinstance(result, dict) else ""
                     q.put_nowait({
@@ -4122,6 +4165,12 @@ class APIServerAdapter(BasePlatformAdapter):
                         output=final_response,
                         usage=usage,
                         last_event="run.completed",
+                    )
+                    self._notify_orchestrator_outcome(
+                        run_id,
+                        success=True,
+                        reason=(final_response or "run completed")[:500],
+                        usage=usage,
                     )
             except asyncio.CancelledError:
                 self._set_run_status(
@@ -4140,18 +4189,24 @@ class APIServerAdapter(BasePlatformAdapter):
                 raise
             except Exception as exc:
                 logger.exception("[api_server] run %s failed", run_id)
+                err_text = _redact_api_error_text(exc)
                 self._set_run_status(
                     run_id,
                     "failed",
-                    error=_redact_api_error_text(exc),
+                    error=err_text,
                     last_event="run.failed",
+                )
+                self._notify_orchestrator_outcome(
+                    run_id,
+                    success=False,
+                    reason=err_text,
                 )
                 try:
                     q.put_nowait({
                         "event": "run.failed",
                         "run_id": run_id,
                         "timestamp": time.time(),
-                        "error": _redact_api_error_text(exc),
+                        "error": err_text,
                     })
                 except Exception:
                     pass
