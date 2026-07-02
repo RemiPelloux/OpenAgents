@@ -17,11 +17,15 @@ def test_register_wires_invoke_opencode():
         def register_tool(self, **kw):
             calls.append(kw["name"])
 
+        def register_hook(self, *args, **kwargs):
+            calls.append(args[0] if args else kwargs.get("name", "hook"))
+
         def register_cli_command(self, **kw):
             calls.append(kw["name"])
 
     plugin.register(_Ctx())
     assert "invoke_opencode" in calls
+    assert "create_subtask" in calls
     assert "openos" in calls
 
 

@@ -11,6 +11,7 @@ from plugins.openos_engineering.rec_client import emit_rec_event
 from plugins.openos_engineering.ticket_client import (
     add_ticket_comment,
     build_task_prompt,
+    create_subtask,
     get_ticket,
     patch_ticket,
     update_ticket_status,
@@ -221,6 +222,55 @@ def handle_submit_ticket_result(args: Dict[str, Any]) -> str:
 
     key = updated.get("ticket_key") or ticket.get("ticket_key") or tid
     return f"Submitted deliverable for ticket {key} ({len(deliverables)} item(s))."
+
+
+CREATE_SUBTASK_SCHEMA: Dict[str, Any] = {
+    "name": "create_subtask",
+    "description": (
+        "Create a child OpenTicket task under a parent ticket. "
+        "Inherits the parent correlation_id for mesh tracing."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "parent_ticket_id": {"type": "string", "description": "Parent ticket UUID or key"},
+            "title": {"type": "string", "description": "Subtask title"},
+            "description": {"type": "string"},
+            "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+            "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+            "assignee_agent_profile": {"type": "string"},
+            "execution_mode": {
+                "type": "string",
+                "enum": ["code", "research", "ops", "security"],
+            },
+            "labels": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["parent_ticket_id", "title"],
+    },
+}
+
+
+def handle_create_subtask(args: Dict[str, Any]) -> str:
+    parent_id = str(args.get("parent_ticket_id") or "").strip()
+    title = str(args.get("title") or "").strip()
+    if not parent_id or not title:
+        return "Error: parent_ticket_id and title are required"
+
+    parent = get_ticket(parent_id)
+    correlation_id = str(parent.get("correlation_id") or "") or None
+    subtask = create_subtask(
+        str(parent.get("id") or parent_id),
+        title,
+        description=str(args.get("description") or "").strip() or None,
+        acceptance_criteria=args.get("acceptance_criteria"),
+        priority=args.get("priority"),
+        assignee_agent_profile=args.get("assignee_agent_profile"),
+        execution_mode=args.get("execution_mode"),
+        labels=args.get("labels"),
+        correlation_id=correlation_id,
+    )
+    key = subtask.get("ticket_key") or subtask.get("id")
+    return f"Created subtask {key} under {parent.get('ticket_key', parent_id)}."
 
 
 INVOKE_CODEX_SCHEMA: Dict[str, Any] = {
