@@ -8,6 +8,7 @@ import sys
 from typing import Any, Dict
 
 from plugins.openos_engineering.profiles import init_profiles
+from plugins.openos_engineering.ticket_client import apply_task_context_env
 from plugins.openos_engineering.tools import handle_invoke_opencode
 
 
@@ -50,11 +51,7 @@ def _dispatch_run(payload: Dict[str, Any]) -> str:
     if not ticket_id:
         raise ValueError("task_context.ticket_id is required")
 
-    correlation_id = ctx.get("correlation_id")
-    if correlation_id:
-        import os
-
-        os.environ["OPENTICKET_CORRELATION_ID"] = str(correlation_id)
+    apply_task_context_env(ctx)
 
     if profile == "developer":
         mode = "implement"

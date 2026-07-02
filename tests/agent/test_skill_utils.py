@@ -34,6 +34,19 @@ def test_metadata_as_dict_with_hermes():
     assert result["requires_tools"] == ["tool_y"]
 
 
+def test_metadata_legacy_hermes_key():
+    """Legacy skills still using metadata.hermes continue to work."""
+    frontmatter = {
+        "metadata": {
+            "hermes": {
+                "requires_toolsets": ["legacy_toolset"],
+            }
+        }
+    }
+    result = extract_skill_conditions(frontmatter)
+    assert result["requires_toolsets"] == ["legacy_toolset"]
+
+
 def test_metadata_as_string_does_not_crash():
     """Bug case: metadata is a non-dict truthy value (e.g. a YAML string)."""
     frontmatter = {"metadata": "some text"}

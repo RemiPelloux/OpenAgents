@@ -51,7 +51,6 @@ import type {
   HooksResponse,
   HookEntry,
   SystemStats,
-  UpdateCheckResponse,
   CuratorStatus,
   PortalStatus,
   DebugShareResponse,
@@ -224,13 +223,6 @@ export default function SystemPage() {
   const [hookApprove, setHookApprove] = useState(true);
   const [creatingHook, setCreatingHook] = useState(false);
 
-  // ── Update check ───────────────────────────────────────────────────
-  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResponse | null>(
-    null,
-  );
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [updateConfirmOpen, setUpdateConfirmOpen] = useState(false);
-
   const loadAll = useCallback(() => {
     Promise.allSettled([
       api.getStatus(),
@@ -241,11 +233,8 @@ export default function SystemPage() {
       api.getHooks(),
       api.getCurator(),
       api.getPortal(),
-      // Cached (non-forced) check so the version row shows update status on
-      // load without a separate effect / a forced network round-trip.
-      api.checkHermesUpdate(false),
     ])
-      .then(([s, st, m, p, c, h, cur, prt, upd]) => {
+      .then(([s, st, m, p, c, h, cur, prt]) => {
         if (s.status === "fulfilled") setStatus(s.value);
         if (st.status === "fulfilled") setStats(st.value);
         if (m.status === "fulfilled") setMemory(m.value);
@@ -254,7 +243,6 @@ export default function SystemPage() {
         if (h.status === "fulfilled") setHooks(h.value);
         if (cur.status === "fulfilled") setCurator(cur.value);
         if (prt.status === "fulfilled") setPortal(prt.value);
-        if (upd.status === "fulfilled") setUpdateInfo(upd.value);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -487,66 +475,6 @@ export default function SystemPage() {
     }
   }, [shareRedact, showToast]);
 
-
-  // ── Update check / apply ───────────────────────────────────────────
-  const checkForUpdate = useCallback(
-    async (force = false) => {
-      if (status?.can_update_hermes === false) return;
-      setCheckingUpdate(true);
-      try {
-        const info = await api.checkHermesUpdate(force);
-        setUpdateInfo(info);
-        if (force) {
-          if (info.update_available) {
-            showToast(
-              info.behind && info.behind > 0
-                ? `Update available — ${info.behind} commit${info.behind === 1 ? "" : "s"} behind`
-                : "Update available",
-              "success",
-            );
-          } else if (info.behind === 0) {
-            showToast("You're on the latest version", "success");
-          } else if (info.message) {
-            showToast(info.message, "error");
-          }
-        }
-      } catch (e) {
-        showToast(`Update check failed: ${e}`, "error");
-      } finally {
-        setCheckingUpdate(false);
-      }
-    },
-    [showToast, status?.can_update_hermes],
-  );
-
-  // Auto-check (cached) runs inside loadAll on mount; this is the
-  // user-triggered forced re-check from the "Check for updates" button.
-  const applyUpdate = async () => {
-    setUpdateConfirmOpen(false);
-    if (status?.can_update_hermes === false) {
-      showToast(
-        "OpenAgents updates are managed outside this dashboard.",
-        "success",
-      );
-      return;
-    }
-    try {
-      const resp = await api.updateHermes();
-      if (!resp.ok) {
-        showToast(
-          resp.message ??
-            "Updates don't apply from this dashboard.",
-          "success",
-        );
-        return;
-      }
-      setActiveAction(resp.name ?? "hermes-update");
-      showToast("Update started", "success");
-    } catch (e) {
-      showToast(`Update failed: ${e}`, "error");
-    }
-  };
-
   const checkpointsPrune = useConfirmDelete({
     onDelete: useCallback(async () => {
       try {
@@ -616,7 +544,6 @@ export default function SystemPage() {
   }
 
   const gatewayRunning = status?.gateway_running;
-  const canUpdateHermes = status?.can_update_hermes !== false;
   const validEvents = hooks?.valid_events?.length
     ? hooks.valid_events
     : HOOK_EVENTS_FALLBACK;
@@ -632,19 +559,6 @@ export default function SystemPage() {
         onChange={(event) => {
           setImportFile(event.currentTarget.files?.[0] ?? null);
         }}
-      />
-
-      <ConfirmDialog
-        open={canUpdateHermes && updateConfirmOpen}
-        onCancel={() => setUpdateConfirmOpen(false)}
-        onConfirm={() => void applyUpdate()}
-        title="Update Hermes?"
-        description={
-          updateInfo && updateInfo.behind && updateInfo.behind > 0
-            ? `This will run 'hermes update' (${updateInfo.update_command}) and pull ${updateInfo.behind} new commit${updateInfo.behind === 1 ? "" : "s"}. The gateway restarts when the update finishes; the current session keeps its prompt cache until then.`
-            : `This will run 'hermes update' (${updateInfo?.update_command ?? "hermes update"}) and restart the gateway when it finishes.`
-        }
-        confirmLabel="Update now"
       />
 
       <DeleteConfirmDialog
@@ -812,21 +726,8 @@ export default function SystemPage() {
                 <div>{stats?.python_impl} {stats?.python_version}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">Hermes</div>
-                <div className="flex items-center gap-2">
-                  <span>v{stats?.hermes_version}</span>
-                  {canUpdateHermes &&
-                    updateInfo &&
-                    (updateInfo.update_available ? (
-                      <Badge tone="warning">
-                        {updateInfo.behind && updateInfo.behind > 0
-                          ? `${updateInfo.behind} behind`
-                          : "update available"}
-                      </Badge>
-                    ) : updateInfo.behind === 0 ? (
-                      <Badge tone="success">latest</Badge>
-                    ) : null)}
-                </div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">OpenAgents</div>
+                <div>v{stats?.hermes_version}</div>
               </div>
               <div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
@@ -875,47 +776,6 @@ export default function SystemPage() {
                 Install the <span className="font-mono">psutil</span> extra for
                 CPU / memory / disk metrics.
               </p>
-            )}
-            {canUpdateHermes && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-                <Button
-                  size="sm"
-                  ghost
-                  disabled={checkingUpdate}
-                  prefix={
-                    checkingUpdate ? (
-                      <Spinner className="h-3.5 w-3.5" />
-                    ) : (
-                      <RotateCw className="h-3.5 w-3.5" />
-                    )
-                  }
-                  onClick={() => void checkForUpdate(true)}
-                >
-                  Check for updates
-                </Button>
-                {updateInfo?.update_available && updateInfo.can_apply && (
-                  <Button
-                    size="sm"
-                    prefix={<Download className="h-3.5 w-3.5" />}
-                    onClick={() => setUpdateConfirmOpen(true)}
-                  >
-                    Update now
-                  </Button>
-                )}
-                {updateInfo &&
-                  !updateInfo.can_apply &&
-                  updateInfo.update_available && (
-                    <span className="text-xs text-muted-foreground">
-                      Update with{" "}
-                      <span className="font-mono">{updateInfo.update_command}</span>
-                    </span>
-                  )}
-                {updateInfo?.message && !updateInfo.update_available && (
-                  <span className="text-xs text-muted-foreground">
-                    {updateInfo.message}
-                  </span>
-                )}
-              </div>
             )}
           </CardContent>
         </Card>

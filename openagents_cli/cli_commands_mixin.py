@@ -2642,7 +2642,7 @@ class CLICommandsMixin:
         """Handle /update — update OpenAgents to the latest version.
 
         In the classic CLI this exits the session and relaunches as
-        ``hermes update`` so the user sees update output directly and gets
+        ``openagents update`` so the user sees update output directly and gets
         the new version on next launch.
 
         Returns ``True`` when the update was confirmed (caller should trigger
@@ -2666,7 +2666,7 @@ class CLICommandsMixin:
         ]
         raw = self._prompt_text_input_modal(
             title="⚕  Update OpenAgents",
-            detail="This will exit the current session and run `hermes update`.",
+            detail="This will exit the current session and run `openagents update`.",
             choices=choices,
         )
         if raw is None:

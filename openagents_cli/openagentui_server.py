@@ -33,6 +33,8 @@ router = APIRouter(prefix="/api/openagentui")
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "openagentui" / "templates"
 _STREAM_DONE = object()
+_TEMPLATE_INDEX: Optional[Dict[str, Dict[str, Any]]] = None
+_TEMPLATE_INDEX_MTIME: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -40,9 +42,42 @@ _STREAM_DONE = object()
 # ---------------------------------------------------------------------------
 
 
+def _template_index() -> Dict[str, Dict[str, Any]]:
+    """Load bundled templates once per directory mtime (avoids N+1 reads)."""
+    global _TEMPLATE_INDEX, _TEMPLATE_INDEX_MTIME
+    try:
+        mtime = max((p.stat().st_mtime for p in _TEMPLATES_DIR.glob("*.json")), default=0.0)
+    except OSError:
+        mtime = 0.0
+    if _TEMPLATE_INDEX is not None and mtime == _TEMPLATE_INDEX_MTIME:
+        return _TEMPLATE_INDEX
+
+    index: Dict[str, Dict[str, Any]] = {}
+    for path in sorted(_TEMPLATES_DIR.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            logger.warning("openagentui: failed to parse bundled template %s", path)
+            continue
+        template_id = str(data.get("id") or path.stem)
+        index[template_id] = data
+    _TEMPLATE_INDEX = index
+    _TEMPLATE_INDEX_MTIME = mtime
+    return index
+
+
 @router.get("/workflows")
 def list_workflows_route() -> Dict[str, Any]:
-    return {"workflows": [w.to_dict() for w in store.list_workflows()]}
+    return {"workflows": [w.to_summary_dict() for w in store.list_workflows()]}
+
+
+@router.get("/home")
+def home_bootstrap_route() -> Dict[str, Any]:
+    """Single round-trip payload for the workflow list landing page."""
+    return {
+        "workflows": [w.to_summary_dict() for w in store.list_workflows()],
+        "templates": list(_template_index().values()),
+    }
 
 
 @router.post("/workflows")
@@ -125,22 +160,15 @@ def upsert_workflow_from_yaml_route(workflow_id: str, body: Dict[str, Any]) -> D
 
 @router.get("/templates")
 def list_templates_route() -> Dict[str, Any]:
-    templates = []
-    for path in sorted(_TEMPLATES_DIR.glob("*.json")):
-        try:
-            templates.append(json.loads(path.read_text(encoding="utf-8")))
-        except (OSError, json.JSONDecodeError):
-            logger.warning("openagentui: failed to parse bundled template %s", path)
-    return {"templates": templates}
+    return {"templates": list(_template_index().values())}
 
 
 @router.post("/templates/{template_id}/install")
 def install_template_route(template_id: str) -> Dict[str, Any]:
-    path = _TEMPLATES_DIR / f"{template_id.replace('tpl_', '', 1)}.json"
-    matches = [p for p in _TEMPLATES_DIR.glob("*.json") if json.loads(p.read_text(encoding="utf-8")).get("id") == template_id]
-    if not matches:
+    data = _template_index().get(template_id)
+    if data is None:
         raise HTTPException(status_code=404, detail=f"unknown template: {template_id}")
-    data = json.loads(matches[0].read_text(encoding="utf-8"))
+    data = dict(data)
     data["id"] = store.new_id("wf")
     data["isTemplate"] = False
     workflow = store.save_workflow(Workflow.from_dict(data))

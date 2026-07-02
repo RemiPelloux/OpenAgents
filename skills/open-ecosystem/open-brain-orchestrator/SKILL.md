@@ -31,6 +31,8 @@ User → OpenBrain (ask_brain / start_mission)
 | `start_mission` | Dispatch goal to OpenOrchestrator `/v1/missions` or OpenAgents `/v1/runs` (PO profile) |
 | `get_ticket` | Live ticket JSON by key or UUID |
 | `list_tickets` | Filter by status, assignee, `correlation_id` |
+| `set_ticket_eta` | Set or clear ticket ETA (ISO); auto-default on create if omitted |
+| `get_ticket_eta` | ETA status + subtask rollup for a ticket |
 | `ask_brain` | RAG over docs + observations + **live ticket** + OpenRec trace |
 
 Optional: `run_openagentui_workflow` when dashboard workflow exists.
@@ -64,5 +66,6 @@ PO/Dev agents use `open-dev-workflow` + OpenTicket MCP for execution — Brain d
 ## Rules
 
 - Every mission gets a `correlation_id` — propagate to tickets and OpenRec.
-- Set `metadata.eta` on tickets for Brain ETA answers (PATCH or PO create).
+- Tickets get **auto ETA** by priority (critical 1d, high 3d, medium 7d, low 14d) unless you pass `eta` on create or `set_ticket_eta`.
+- Mission `eta` flows to new tickets via `OPENTICKET_MISSION_ETA` in OpenAgents task_context.
 - OpenNotes is optional — defer meeting→ticket until later.

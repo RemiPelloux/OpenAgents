@@ -1,4 +1,4 @@
-import type { Workflow, WorkflowExecution } from "./workflow/types";
+import type { Workflow, WorkflowExecution, WorkflowSummary } from "./workflow/types";
 
 const BASE = "/api/openagentui";
 
@@ -21,7 +21,10 @@ export interface ToolCatalog {
 }
 
 export const api = {
-  listWorkflows: () => request<{ workflows: Workflow[] }>("/workflows").then((r) => r.workflows),
+  home: () =>
+    request<{ workflows: WorkflowSummary[]; templates: Workflow[] }>("/home"),
+  listWorkflows: () =>
+    request<{ workflows: WorkflowSummary[] }>("/workflows").then((r) => r.workflows),
   getWorkflow: (id: string) => request<Workflow>(`/workflows/${id}`),
   createWorkflow: (workflow: Workflow) =>
     request<Workflow>("/workflows", { method: "POST", body: JSON.stringify(workflow) }),

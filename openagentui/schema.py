@@ -134,6 +134,21 @@ class Workflow:
             "isTemplate": self.is_template,
         }
 
+    def to_summary_dict(self) -> Dict[str, Any]:
+        """Lightweight list payload — omits node/edge graphs."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "category": self.category,
+            "tags": self.tags,
+            "nodeCount": len(self.nodes),
+            "edgeCount": len(self.edges),
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
+            "isTemplate": self.is_template,
+        }
+
     def node_by_id(self, node_id: str) -> Optional[WorkflowNode]:
         return next((n for n in self.nodes if n.id == node_id), None)
 

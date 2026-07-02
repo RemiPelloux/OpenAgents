@@ -347,7 +347,9 @@ OpenAgents is **producer** on W4/W1 hops (MCP tools, staging proposals). Wire si
 | CC-W4-004 | Producer | `invoke_opencode` |
 | CC-W1-003 | Producer | `POST OpenCRM /v1/staging` |
 
-Env: `OPENCONTRACT_IDENTITY=OpenAgents`, `OPENCONTRACT_SIGNING_KEY` (or `OPENCONTRACT_DEV_KEYS=1` locally).
+Env: `OPENCONTRACT_IDENTITY=OpenAgents`, `OPENCONTRACT_DEV_KEYS=1`, `OPENCONTRACT_URL=http://localhost:3070`.
+
+Signed hops: `plugins/opencrm_sales/opencrm_client.py` wraps CC-W1-003 staging and CC-W1-004 prospection (as OpenTeam).
 
 Docs: [Implementation rules](../docs/opencontract/OPENCONTRACT-IMPLEMENTATION-RULES.md) · [Handbook](../docs/opencontract/OPENCONTRACT-HANDBOOK.md) · skill [open-brain](skills/open-ecosystem/open-brain/SKILL.md)
 

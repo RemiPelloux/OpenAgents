@@ -6,9 +6,15 @@ import json
 import os
 import urllib.error
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from plugins.openos_mesh.contract_wrap import wrap_signed_hop
 
 _delegate_subtasks: Dict[str, str] = {}
+
+W4_PO_CREATE = "CC-W4-001"
+W4_PO_PRODUCER = "OpenAgents [product_owner]"
+W4_TICKET_CONSUMER = "OpenTicket"
 
 
 def register_delegate_subtask(session_id: str, ticket_id: str) -> None:
@@ -50,13 +56,109 @@ def _request_headers(correlation_id: Optional[str] = None) -> Dict[str, str]:
     token = os.environ.get("OPENTICKET_API_TOKEN", "").strip()
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    profile = os.environ.get("OPENTICKET_ACTOR_PROFILE", "").strip()
+    profile = os.environ.get("OPENTICKET_ACTOR_PROFILE", "product_owner").strip()
     if profile:
         headers["X-Actor-Profile"] = profile
     corr = correlation_id or os.environ.get("OPENTICKET_CORRELATION_ID", "").strip()
     if corr:
         headers["X-Correlation-Id"] = corr
     return headers
+
+
+def _post_json(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None) -> Dict[str, Any]:
+    url = f"{_api_url()}{path}"
+    payload = json.dumps(body).encode()
+    headers = _request_headers(correlation_id)
+    req = urllib.request.Request(url, data=payload, method="POST")
+    for key, value in headers.items():
+        req.add_header(key, value)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode()
+        raise RuntimeError(f"OpenTicket POST {path} failed ({exc.code}): {detail}") from exc
+
+
+def _remember_correlation(ticket: Dict[str, Any]) -> Dict[str, Any]:
+    corr = ticket.get("correlation_id")
+    if corr:
+        os.environ["OPENTICKET_CORRELATION_ID"] = str(corr)
+    return ticket
+
+
+def apply_task_context_env(ctx: Dict[str, Any]) -> None:
+    """Propagate mesh task_context into OpenTicket env for ticket tools."""
+    correlation_id = ctx.get("correlation_id")
+    if correlation_id:
+        os.environ["OPENTICKET_CORRELATION_ID"] = str(correlation_id)
+    eta = ctx.get("eta") or ctx.get("deadline")
+    if eta:
+        os.environ["OPENTICKET_MISSION_ETA"] = str(eta)
+
+
+def _mission_eta() -> Optional[str]:
+    return os.environ.get("OPENTICKET_MISSION_ETA", "").strip() or None
+
+
+def create_ticket(
+    project_id: str,
+    ticket_type: str,
+    title: str,
+    *,
+    description: Optional[str] = None,
+    acceptance_criteria: Optional[List[str]] = None,
+    priority: Optional[str] = None,
+    assignee_agent_profile: Optional[str] = None,
+    execution_mode: Optional[str] = None,
+    labels: Optional[List[str]] = None,
+    components: Optional[List[str]] = None,
+    epic_id: Optional[str] = None,
+    sprint_id: Optional[str] = None,
+    parent_ticket_id: Optional[str] = None,
+    correlation_id: Optional[str] = None,
+    eta: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create a ticket via CC-W4-001 signed ContractEnvelope."""
+    payload: Dict[str, Any] = {
+        "project_id": project_id,
+        "type": ticket_type,
+        "title": title,
+    }
+    if description:
+        payload["description"] = description
+    if acceptance_criteria:
+        payload["acceptance_criteria"] = acceptance_criteria
+    if priority:
+        payload["priority"] = priority
+    if assignee_agent_profile:
+        payload["assignee_agent_profile"] = assignee_agent_profile
+    if execution_mode:
+        payload["execution_mode"] = execution_mode
+    if labels:
+        payload["labels"] = labels
+    if components:
+        payload["components"] = components
+    if epic_id:
+        payload["epic_id"] = epic_id
+    if sprint_id:
+        payload["sprint_id"] = sprint_id
+    if parent_ticket_id:
+        payload["parent_ticket_id"] = parent_ticket_id
+    resolved_eta = eta or _mission_eta()
+    if resolved_eta:
+        payload["eta"] = resolved_eta
+
+    envelope = wrap_signed_hop(
+        contract_id=W4_PO_CREATE,
+        producer=W4_PO_PRODUCER,
+        consumer=W4_TICKET_CONSUMER,
+        payload=payload,
+        correlation_id=correlation_id,
+        signer_id="OpenAgents",
+    )
+    ticket = _post_json("/v1/tickets", envelope, correlation_id)
+    return _remember_correlation(ticket)
 
 
 def create_subtask(
@@ -70,6 +172,7 @@ def create_subtask(
     execution_mode: Optional[str] = None,
     labels: Optional[list[str]] = None,
     correlation_id: Optional[str] = None,
+    eta: Optional[str] = None,
 ) -> Dict[str, Any]:
     url = (
         f"{_api_url()}/v1/tickets/"
@@ -88,6 +191,9 @@ def create_subtask(
         body["execution_mode"] = execution_mode
     if labels:
         body["labels"] = labels
+    resolved_eta = eta or _mission_eta()
+    if resolved_eta:
+        body["eta"] = resolved_eta
 
     payload = json.dumps(body).encode()
     headers = _request_headers(correlation_id)
@@ -157,6 +263,22 @@ def build_task_prompt(ticket: Dict[str, Any], mode: str) -> str:
 def build_ticket_prompt(ticket: Dict[str, Any], mode: str) -> str:
     """Backward-compatible alias; prefer build_task_prompt for invoke_opencode."""
     return build_task_prompt(ticket, mode)
+
+
+def set_ticket_eta(
+    ticket_id: str,
+    eta: Optional[str],
+    *,
+    correlation_id: Optional[str] = None,
+    actor_profile: Optional[str] = None,
+) -> Dict[str, Any]:
+    fields: Dict[str, Any] = {"eta": eta}
+    return patch_ticket(
+        ticket_id,
+        fields,
+        correlation_id=correlation_id,
+        actor_profile=actor_profile,
+    )
 
 
 def patch_ticket(

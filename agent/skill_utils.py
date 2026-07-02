@@ -538,20 +538,24 @@ def is_external_skill_path(path) -> bool:
 # ── Condition extraction ──────────────────────────────────────────────────
 
 
+def _metadata_namespace(metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Return ``metadata.openagents`` (preferred) or legacy ``metadata.hermes``."""
+    block = metadata.get("openagents") or metadata.get("hermes") or {}
+    return block if isinstance(block, dict) else {}
+
+
 def extract_skill_conditions(frontmatter: Dict[str, Any]) -> Dict[str, List]:
     """Extract conditional activation fields from parsed frontmatter."""
     metadata = frontmatter.get("metadata")
     # Handle cases where metadata is not a dict (e.g., a string from malformed YAML)
     if not isinstance(metadata, dict):
         metadata = {}
-    openagents = metadata.get("openagents") or {}
-    if not isinstance(hermes, dict):
-        openagents = {}
+    openagents = _metadata_namespace(metadata)
     return {
-        "fallback_for_toolsets": hermes.get("fallback_for_toolsets", []),
-        "requires_toolsets": hermes.get("requires_toolsets", []),
-        "fallback_for_tools": hermes.get("fallback_for_tools", []),
-        "requires_tools": hermes.get("requires_tools", []),
+        "fallback_for_toolsets": openagents.get("fallback_for_toolsets", []),
+        "requires_toolsets": openagents.get("requires_toolsets", []),
+        "fallback_for_tools": openagents.get("fallback_for_tools", []),
+        "requires_tools": openagents.get("requires_tools", []),
     }
 
 
@@ -577,10 +581,8 @@ def extract_skill_config_vars(frontmatter: Dict[str, Any]) -> List[Dict[str, Any
     metadata = frontmatter.get("metadata")
     if not isinstance(metadata, dict):
         return []
-    openagents = metadata.get("openagents")
-    if not isinstance(hermes, dict):
-        return []
-    raw = hermes.get("config")
+    openagents = _metadata_namespace(metadata)
+    raw = openagents.get("config")
     if not raw:
         return []
     if isinstance(raw, dict):

@@ -94,6 +94,19 @@ export interface WorkflowEdge {
   label?: string;
 }
 
+export interface WorkflowSummary {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  nodeCount: number;
+  edgeCount: number;
+  createdAt: string;
+  updatedAt: string;
+  isTemplate: boolean;
+}
+
 export interface Workflow {
   id: string;
   name: string;

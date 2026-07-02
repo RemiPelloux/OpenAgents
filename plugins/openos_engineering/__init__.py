@@ -6,14 +6,18 @@ from plugins.openos_engineering.cli import openos_command, register_cli
 from plugins.openos_engineering.subtask_delegate import on_subagent_start
 from plugins.openos_engineering.tools import (
     CREATE_SUBTASK_SCHEMA,
+    CREATE_TICKET_SCHEMA,
     INVOKE_CODEX_SCHEMA,
     INVOKE_OPENCODE_SCHEMA,
+    SET_TICKET_ETA_SCHEMA,
     SUBMIT_TICKET_RESULT_SCHEMA,
     check_codex_available,
     check_openos_engineering_available,
     handle_create_subtask,
+    handle_create_ticket,
     handle_invoke_codex,
     handle_invoke_opencode,
+    handle_set_ticket_eta,
     handle_submit_ticket_result,
 )
 
@@ -48,6 +52,20 @@ def register(ctx) -> None:
         schema=CREATE_SUBTASK_SCHEMA,
         handler=handle_create_subtask,
         emoji="🧩",
+    )
+    ctx.register_tool(
+        name="create_ticket",
+        toolset="openos_engineering",
+        schema=CREATE_TICKET_SCHEMA,
+        handler=handle_create_ticket,
+        emoji="🎫",
+    )
+    ctx.register_tool(
+        name="set_ticket_eta",
+        toolset="openos_engineering",
+        schema=SET_TICKET_ETA_SCHEMA,
+        handler=handle_set_ticket_eta,
+        emoji="⏱",
     )
 
     ctx.register_hook("subagent_start", on_subagent_start)

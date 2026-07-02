@@ -7,6 +7,7 @@ import os
 from typing import Any, Dict, Optional
 
 from plugins.openos_engineering.ticket_client import (
+    apply_task_context_env,
     create_subtask,
     get_ticket,
     register_delegate_subtask,

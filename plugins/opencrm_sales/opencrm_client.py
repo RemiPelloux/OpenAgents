@@ -9,6 +9,12 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, Optional
 
+from plugins.openos_mesh.contract_wrap import wrap_signed_hop
+
+W1_MEETING_TO_CRM = "CC-W1-001"
+W1_AGENT_FOLLOWUP = "CC-W1-003"
+W1_PROSPECTION_TO_CRM = "CC-W1-004"
+
 
 def _api_url() -> str:
     return os.environ.get("OPENCRM_API_URL", "http://localhost:3010").rstrip("/")
@@ -41,6 +47,31 @@ def _post(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()
         raise RuntimeError(f"OpenCRM API failed ({exc.code}): {detail}") from exc
+
+
+def _post_signed_hop(
+    path: str,
+    *,
+    contract_id: str,
+    producer: str,
+    consumer: str,
+    payload: Dict[str, Any],
+    correlation_id: Optional[str] = None,
+    prerequisites: Optional[list[str]] = None,
+    goal_met: bool = True,
+    signer_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    envelope = wrap_signed_hop(
+        contract_id=contract_id,
+        producer=producer,
+        consumer=consumer,
+        payload=payload,
+        correlation_id=correlation_id,
+        prerequisites=prerequisites,
+        goal_met=goal_met,
+        signer_id=signer_id,
+    )
+    return _post(path, envelope, correlation_id)
 
 
 def search_accounts(company_name: str, city: Optional[str] = None) -> Dict[str, Any]:
@@ -77,11 +108,7 @@ def upsert_from_prospection_lead(
     tiktok_account: Optional[str] = None,
     correlation_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """CC-W1-004 — OpenTeam prospection lead → OpenCRM account/opportunity upsert.
-
-    Called by the agent right after `enrich_tiktok_lead`, so OpenCRM (source of truth for
-    commercial state) holds the account even before/in parallel with OpenPro provisioning.
-    """
+    """CC-W1-004 — OpenTeam prospection lead → OpenCRM account/opportunity upsert."""
     body: Dict[str, Any] = {"video_url": video_url, "company_name": company_name}
     if city:
         body["city"] = city
@@ -91,7 +118,15 @@ def upsert_from_prospection_lead(
         body["tiktok_account"] = tiktok_account
     if correlation_id:
         body["correlation_id"] = correlation_id
-    return _post("/v1/webhooks/openteam/prospection-lead", body, correlation_id)
+    return _post_signed_hop(
+        "/v1/webhooks/openteam/prospection-lead",
+        contract_id=W1_PROSPECTION_TO_CRM,
+        producer="OpenTeam",
+        consumer="OpenCRM",
+        payload=body,
+        correlation_id=correlation_id,
+        signer_id="OpenTeam",
+    )
 
 
 def propose_crm_update(
@@ -112,4 +147,14 @@ def propose_crm_update(
     }
     if correlation_id:
         body["correlation_id"] = correlation_id
-    return _post("/v1/staging", body, correlation_id)
+    return _post_signed_hop(
+        "/v1/staging",
+        contract_id=W1_AGENT_FOLLOWUP,
+        producer="OpenAgents",
+        consumer="OpenCRM",
+        payload=body,
+        correlation_id=correlation_id,
+        prerequisites=[W1_MEETING_TO_CRM],
+        goal_met=False,
+        signer_id="OpenAgents",
+    )

@@ -3,24 +3,23 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { Workflow } from "@/lib/workflow/types";
+import type { Workflow, WorkflowSummary } from "@/lib/workflow/types";
 import { emptyWorkflow } from "@/lib/workflow/types";
 
 export default function HomePage() {
   const router = useRouter();
-  const [workflows, setWorkflows] = useState<Workflow[] | null>(null);
+  const [workflows, setWorkflows] = useState<WorkflowSummary[] | null>(null);
   const [templates, setTemplates] = useState<Workflow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api
-      .listWorkflows()
-      .then(setWorkflows)
+      .home()
+      .then(({ workflows: wf, templates: tpl }) => {
+        setWorkflows(wf);
+        setTemplates(tpl);
+      })
       .catch((e) => setError(String(e)));
-    api
-      .listTemplates()
-      .then(setTemplates)
-      .catch(() => setTemplates([]));
   }, []);
 
   async function createBlank() {
@@ -59,7 +58,7 @@ export default function HomePage() {
         {workflows?.map((wf) => (
           <a key={wf.id} className="oaui-card oaui-card-link" href={`/workflows/${wf.id}`}>
             <span className="oaui-card-title">{wf.name}</span>
-            <span className="oaui-card-desc">{wf.description || `${wf.nodes.length} nodes`}</span>
+            <span className="oaui-card-desc">{wf.description || `${wf.nodeCount} nodes`}</span>
           </a>
         ))}
       </div>

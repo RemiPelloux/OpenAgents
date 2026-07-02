@@ -10,10 +10,13 @@ from openagentui.codex_runner import run_codex_headless, verify_codex_binary
 from plugins.openos_engineering.rec_client import emit_rec_event
 from plugins.openos_engineering.ticket_client import (
     add_ticket_comment,
+    apply_task_context_env,
     build_task_prompt,
     create_subtask,
+    create_ticket,
     get_ticket,
     patch_ticket,
+    set_ticket_eta,
     update_ticket_status,
 )
 
@@ -244,6 +247,7 @@ CREATE_SUBTASK_SCHEMA: Dict[str, Any] = {
                 "enum": ["code", "research", "ops", "security"],
             },
             "labels": {"type": "array", "items": {"type": "string"}},
+            "eta": {"type": "string", "description": "ISO deadline; auto-default by priority if omitted"},
         },
         "required": ["parent_ticket_id", "title"],
     },
@@ -268,9 +272,112 @@ def handle_create_subtask(args: Dict[str, Any]) -> str:
         execution_mode=args.get("execution_mode"),
         labels=args.get("labels"),
         correlation_id=correlation_id,
+        eta=args.get("eta"),
     )
     key = subtask.get("ticket_key") or subtask.get("id")
-    return f"Created subtask {key} under {parent.get('ticket_key', parent_id)}."
+    eta_line = subtask.get("eta") or (subtask.get("metadata") or {}).get("eta")
+    eta_note = f" eta={eta_line}" if eta_line else ""
+    return f"Created subtask {key} under {parent.get('ticket_key', parent_id)}.{eta_note}"
+
+
+CREATE_TICKET_SCHEMA: Dict[str, Any] = {
+    "name": "create_ticket",
+    "description": (
+        "Create a new OpenTicket story/bug/task (CC-W4-001 signed mesh hop). "
+        "Requires project_id and acceptance_criteria for PO workflows."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string", "description": "OpenTicket project UUID"},
+            "type": {
+                "type": "string",
+                "enum": ["story", "bug", "task", "epic", "spike"],
+            },
+            "title": {"type": "string"},
+            "description": {"type": "string"},
+            "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+            "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+            "assignee_agent_profile": {"type": "string"},
+            "execution_mode": {
+                "type": "string",
+                "enum": ["code", "research", "ops", "security"],
+            },
+            "labels": {"type": "array", "items": {"type": "string"}},
+            "components": {"type": "array", "items": {"type": "string"}},
+            "correlation_id": {"type": "string", "description": "Optional mesh correlation id"},
+            "eta": {"type": "string", "description": "ISO deadline; uses mission eta or auto-default"},
+        },
+        "required": ["project_id", "type", "title"],
+    },
+}
+
+
+def handle_create_ticket(args: Dict[str, Any]) -> str:
+    project_id = str(args.get("project_id") or "").strip()
+    ticket_type = str(args.get("type") or "").strip()
+    title = str(args.get("title") or "").strip()
+    if not project_id or not ticket_type or not title:
+        return "Error: project_id, type, and title are required"
+
+    correlation_id = str(args.get("correlation_id") or "").strip() or None
+    ticket = create_ticket(
+        project_id,
+        ticket_type,
+        title,
+        description=str(args.get("description") or "").strip() or None,
+        acceptance_criteria=args.get("acceptance_criteria"),
+        priority=args.get("priority"),
+        assignee_agent_profile=args.get("assignee_agent_profile"),
+        execution_mode=args.get("execution_mode"),
+        labels=args.get("labels"),
+        components=args.get("components"),
+        correlation_id=correlation_id,
+        eta=args.get("eta"),
+    )
+    key = ticket.get("ticket_key") or ticket.get("id")
+    corr = ticket.get("correlation_id") or correlation_id or ""
+    eta_line = ticket.get("eta") or (ticket.get("metadata") or {}).get("eta")
+    eta_note = f" eta={eta_line}" if eta_line else ""
+    return f"Created ticket {key} (correlation_id={corr}).{eta_note}"
+
+
+SET_TICKET_ETA_SCHEMA: Dict[str, Any] = {
+    "name": "set_ticket_eta",
+    "description": "Set or clear OpenTicket ETA (ISO datetime).",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticket_id": {"type": "string", "description": "Ticket UUID or key"},
+            "eta": {
+                "type": ["string", "null"],
+                "description": "ISO deadline, or null to clear",
+            },
+        },
+        "required": ["ticket_id", "eta"],
+    },
+}
+
+
+def handle_set_ticket_eta(args: Dict[str, Any]) -> str:
+    ticket_id = str(args.get("ticket_id") or "").strip()
+    if not ticket_id:
+        return "Error: ticket_id is required"
+    if "eta" not in args:
+        return "Error: eta is required (use null to clear)"
+
+    ticket = get_ticket(ticket_id)
+    tid = str(ticket.get("id") or ticket_id)
+    correlation_id = str(ticket.get("correlation_id") or "") or None
+    eta = args.get("eta")
+    updated = set_ticket_eta(
+        tid,
+        None if eta is None else str(eta),
+        correlation_id=correlation_id,
+    )
+    key = updated.get("ticket_key") or ticket.get("ticket_key") or tid
+    shown = updated.get("eta") or "cleared"
+    return f"Updated ETA for {key}: {shown}"
 
 
 INVOKE_CODEX_SCHEMA: Dict[str, Any] = {

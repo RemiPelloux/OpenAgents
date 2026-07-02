@@ -26,7 +26,6 @@ import {
   Code,
   Cpu,
   Database,
-  Download,
   Eye,
   FolderOpen,
   FileText,
@@ -903,7 +902,6 @@ function SidebarSystemActions({
   const navigate = useNavigate();
   const { activeAction, isBusy, isRunning, pendingAction, runAction } =
     useSystemActions();
-  const canUpdateHermes = status?.can_update_hermes === true;
 
   const items: SystemActionItem[] = [
     {
@@ -914,15 +912,6 @@ function SidebarSystemActions({
       spin: true,
     },
   ];
-  if (canUpdateHermes) {
-    items.push({
-      action: "update",
-      icon: Download,
-      label: t.status.updateHermes,
-      runningLabel: t.status.updatingHermes,
-      spin: false,
-    });
-  }
 
   const handleClick = (action: SystemAction) => {
     if (isBusy) return;
