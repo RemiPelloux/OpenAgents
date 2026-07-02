@@ -92,10 +92,62 @@ def apply_task_context_env(ctx: Dict[str, Any]) -> None:
     correlation_id = ctx.get("correlation_id")
     if correlation_id:
         os.environ["OPENTICKET_CORRELATION_ID"] = str(correlation_id)
+    ticket_id = ctx.get("ticket_id")
+    if ticket_id:
+        os.environ["OPENTICKET_TICKET_ID"] = str(ticket_id)
     eta = ctx.get("eta") or ctx.get("deadline")
     if eta:
         os.environ["OPENTICKET_MISSION_ETA"] = str(eta)
+    criteria = ctx.get("acceptance_criteria")
+    if isinstance(criteria, list) and criteria:
+        os.environ["OPENTICKET_ACCEPTANCE_CRITERIA"] = json.dumps(criteria)
 
+
+def format_orchestrator_context(ctx: Dict[str, Any]) -> str:
+    """Build mesh context block for agent system prompt."""
+    if not ctx:
+        return ""
+    parts: List[str] = []
+    brain = ctx.get("brain_summary")
+    if isinstance(brain, str) and brain.strip():
+        parts.append(f"Brain guidance:\n{brain.strip()[:1200]}")
+    criteria = ctx.get("acceptance_criteria")
+    if isinstance(criteria, list) and criteria:
+        parts.append("Acceptance criteria:\n- " + "\n- ".join(str(c) for c in criteria))
+    trace = ctx.get("openrec_trace")
+    if trace:
+        parts.append(f"Prior mesh trace:\n{json.dumps(trace)[:800]}")
+    plan_obj = ctx.get("plan_objective")
+    if isinstance(plan_obj, str) and plan_obj.strip():
+        parts.append(f"Plan objective: {plan_obj.strip()}")
+    goal_class = ctx.get("goal_class")
+    if isinstance(goal_class, str) and goal_class.strip():
+        parts.append(f"Goal class: {goal_class.strip()}")
+    playbooks = ctx.get("playbooks")
+    if isinstance(playbooks, list) and playbooks:
+        names = []
+        for book in playbooks[:5]:
+            if isinstance(book, dict) and book.get("profile"):
+                names.append(str(book["profile"]))
+        if names:
+            parts.append(f"Playbooks: {', '.join(names)}")
+    return "\n\n".join(parts)
+
+
+def merge_orchestrator_instructions(
+    instructions: Optional[str],
+    ctx: Dict[str, Any],
+) -> Optional[str]:
+    """Append task_context when instructions lack OpenOrchestrator context."""
+    block = format_orchestrator_context(ctx)
+    if not block:
+        return instructions
+    marker = "--- OpenOrchestrator context ---"
+    if instructions and marker in instructions:
+        return instructions
+    if instructions:
+        return f"{instructions}\n\n{marker}\n{block}"
+    return block
 
 def _mission_eta() -> Optional[str]:
     return os.environ.get("OPENTICKET_MISSION_ETA", "").strip() or None

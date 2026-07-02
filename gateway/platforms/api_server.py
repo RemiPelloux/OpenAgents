@@ -4005,6 +4005,15 @@ class APIServerAdapter(BasePlatformAdapter):
         run_id = f"run_{uuid.uuid4().hex}"
         session_id = body.get("session_id") or stored_session_id or run_id
         approval_session_key = gateway_session_key or session_id or run_id
+
+        task_ctx = body.get("task_context") if isinstance(body.get("task_context"), dict) else {}
+        from plugins.openos_engineering.ticket_client import (
+            apply_task_context_env,
+            merge_orchestrator_instructions,
+        )
+
+        apply_task_context_env(task_ctx)
+        instructions = merge_orchestrator_instructions(instructions, task_ctx)
         ephemeral_system_prompt = instructions
         loop = asyncio.get_running_loop()
         q: "asyncio.Queue[Optional[Dict]]" = asyncio.Queue()
@@ -4014,7 +4023,6 @@ class APIServerAdapter(BasePlatformAdapter):
         self._run_approval_sessions[run_id] = approval_session_key
 
         event_cb = self._make_run_event_callback(run_id, loop)
-        task_ctx = body.get("task_context") if isinstance(body.get("task_context"), dict) else {}
 
         # Also wire stream_delta_callback so message.delta events flow through.
         def _text_cb(delta: Optional[str]) -> None:

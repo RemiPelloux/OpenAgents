@@ -29,6 +29,38 @@ def test_register_wires_invoke_opencode():
     assert "openos" in calls
 
 
+def test_merge_orchestrator_instructions_appends_context():
+    from plugins.openos_engineering.ticket_client import merge_orchestrator_instructions
+
+    ctx = {
+        "brain_summary": "Use OAuth playbook",
+        "acceptance_criteria": ["Tests pass"],
+        "plan_objective": "Ship OAuth",
+    }
+    merged = merge_orchestrator_instructions("Base instructions", ctx)
+    assert "OpenOrchestrator context" in merged
+    assert "OAuth playbook" in merged
+    assert merge_orchestrator_instructions(merged, ctx) == merged
+
+
+def test_apply_task_context_env_sets_ticket_and_criteria(monkeypatch):
+    from plugins.openos_engineering.ticket_client import apply_task_context_env
+
+    monkeypatch.delenv("OPENTICKET_TICKET_ID", raising=False)
+    monkeypatch.delenv("OPENTICKET_ACCEPTANCE_CRITERIA", raising=False)
+    apply_task_context_env(
+        {
+            "ticket_id": "t-99",
+            "acceptance_criteria": ["Done"],
+            "correlation_id": "corr-x",
+        }
+    )
+    import os
+
+    assert os.environ["OPENTICKET_TICKET_ID"] == "t-99"
+    assert "Done" in os.environ["OPENTICKET_ACCEPTANCE_CRITERIA"]
+
+
 def test_build_task_prompt_minimal():
     from plugins.openos_engineering.ticket_client import build_task_prompt
 
