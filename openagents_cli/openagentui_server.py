@@ -66,17 +66,21 @@ def _template_index() -> Dict[str, Dict[str, Any]]:
     return index
 
 
+def _template_cards() -> List[Dict[str, Any]]:
+    return [Workflow.template_card_from_raw(data) for data in _template_index().values()]
+
+
 @router.get("/workflows")
 def list_workflows_route() -> Dict[str, Any]:
-    return {"workflows": [w.to_summary_dict() for w in store.list_workflows()]}
+    return {"workflows": store.list_workflow_summaries()}
 
 
 @router.get("/home")
 def home_bootstrap_route() -> Dict[str, Any]:
     """Single round-trip payload for the workflow list landing page."""
     return {
-        "workflows": [w.to_summary_dict() for w in store.list_workflows()],
-        "templates": list(_template_index().values()),
+        "workflows": store.list_workflow_summaries(),
+        "templates": _template_cards(),
     }
 
 
@@ -93,6 +97,15 @@ def get_workflow_route(workflow_id: str) -> Dict[str, Any]:
     if workflow is None:
         raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
     return workflow.to_dict()
+
+
+@router.get("/workflows/{workflow_id}/editor")
+def editor_bootstrap_route(workflow_id: str) -> Dict[str, Any]:
+    """Workflow + tool catalog in one call for the visual editor."""
+    workflow = store.get_workflow(workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
+    return {"workflow": workflow.to_dict(), "catalog": catalog_snapshot()}
 
 
 @router.put("/workflows/{workflow_id}")

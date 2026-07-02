@@ -68,12 +68,15 @@ def _read_json(path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _list_records(table: str) -> List[Dict[str, Any]]:
+def _list_records(table: str, *, predicate=None) -> List[Dict[str, Any]]:
     records = []
     for path in sorted(_table_dir(table).glob("*.json")):
         data = _read_json(path)
-        if data is not None:
-            records.append(data)
+        if data is None:
+            continue
+        if predicate is not None and not predicate(data):
+            continue
+        records.append(data)
     return records
 
 
@@ -110,12 +113,19 @@ def list_workflows() -> List[Workflow]:
     return [Workflow.from_dict(r) for r in _list_records("workflows")]
 
 
+def list_workflow_summaries() -> List[Dict[str, Any]]:
+    """List workflows without parsing node/edge graphs (list/home hot path)."""
+    return [Workflow.summary_from_raw(r) for r in _list_records("workflows")]
+
+
 def find_workflow_by_name(name: str) -> Optional[Workflow]:
     """Case-insensitive exact-name lookup, used by ``/OpenAgentConfig <name>``."""
     needle = name.strip().lower()
-    for wf in list_workflows():
-        if wf.name.strip().lower() == needle or wf.id == name:
-            return wf
+    for raw in _list_records("workflows"):
+        wf_id = str(raw.get("id") or "")
+        wf_name = str(raw.get("name") or "").strip().lower()
+        if wf_name == needle or wf_id == name:
+            return Workflow.from_dict(raw)
     return None
 
 
@@ -137,9 +147,13 @@ def get_execution(execution_id: str) -> Optional[WorkflowExecution]:
 
 
 def list_executions(workflow_id: Optional[str] = None) -> List[WorkflowExecution]:
-    executions = [WorkflowExecution.from_dict(r) for r in _list_records("executions")]
     if workflow_id:
-        executions = [e for e in executions if e.workflow_id == workflow_id]
+        _validate_id(workflow_id)
+        predicate = lambda raw, wid=workflow_id: raw.get("workflowId") == wid
+        records = _list_records("executions", predicate=predicate)
+    else:
+        records = _list_records("executions")
+    executions = [WorkflowExecution.from_dict(r) for r in records]
     return sorted(executions, key=lambda e: e.started_at, reverse=True)
 
 

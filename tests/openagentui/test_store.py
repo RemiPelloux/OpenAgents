@@ -35,6 +35,10 @@ def test_list_and_delete_workflow():
     ids = {w.id for w in store.list_workflows()}
     assert {"wf_a", "wf_b"} <= ids
 
+    summary_ids = {s["id"] for s in store.list_workflow_summaries()}
+    assert {"wf_a", "wf_b"} <= summary_ids
+    assert all("nodes" not in s for s in store.list_workflow_summaries())
+
     assert store.delete_workflow("wf_a") is True
     assert store.delete_workflow("wf_a") is False
     assert "wf_a" not in {w.id for w in store.list_workflows()}

@@ -136,17 +136,36 @@ class Workflow:
 
     def to_summary_dict(self) -> Dict[str, Any]:
         """Lightweight list payload — omits node/edge graphs."""
+        return self.summary_from_raw(self.to_dict())
+
+    @classmethod
+    def summary_from_raw(cls, raw: Dict[str, Any]) -> Dict[str, Any]:
+        """Build a list-card payload from parsed JSON without node/edge objects."""
+        nodes = raw.get("nodes")
+        edges = raw.get("edges")
         return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "category": self.category,
-            "tags": self.tags,
-            "nodeCount": len(self.nodes),
-            "edgeCount": len(self.edges),
-            "createdAt": self.created_at,
-            "updatedAt": self.updated_at,
-            "isTemplate": self.is_template,
+            "id": str(raw["id"]),
+            "name": str(raw.get("name", "Untitled workflow")),
+            "description": str(raw.get("description", "")),
+            "category": str(raw.get("category", "")),
+            "tags": list(raw.get("tags") or []),
+            "nodeCount": len(nodes) if isinstance(nodes, list) else 0,
+            "edgeCount": len(edges) if isinstance(edges, list) else 0,
+            "createdAt": str(raw.get("createdAt", "")),
+            "updatedAt": str(raw.get("updatedAt", "")),
+            "isTemplate": bool(raw.get("isTemplate", False)),
+        }
+
+    @classmethod
+    def template_card_from_raw(cls, raw: Dict[str, Any]) -> Dict[str, Any]:
+        """Bundled-scenario card for the home page — no full graph."""
+        summary = cls.summary_from_raw(raw)
+        return {
+            "id": summary["id"],
+            "name": summary["name"],
+            "description": summary["description"],
+            "tags": summary["tags"],
+            "nodeCount": summary["nodeCount"],
         }
 
     def node_by_id(self, node_id: str) -> Optional[WorkflowNode]:

@@ -107,6 +107,14 @@ export interface WorkflowSummary {
   isTemplate: boolean;
 }
 
+export interface TemplateCard {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  nodeCount: number;
+}
+
 export interface Workflow {
   id: string;
   name: string;

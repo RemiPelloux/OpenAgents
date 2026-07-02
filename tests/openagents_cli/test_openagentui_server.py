@@ -34,6 +34,40 @@ def test_list_workflows_empty():
     assert resp.json() == {"workflows": []}
 
 
+def test_list_workflows_returns_summaries_not_full_graph():
+    client = _client()
+    client.post("/api/openagentui/workflows", json=_linear_workflow_body("wf_summary"))
+    resp = client.get("/api/openagentui/workflows")
+    assert resp.status_code == 200
+    row = next(w for w in resp.json()["workflows"] if w["id"] == "wf_summary")
+    assert row["nodeCount"] == 2
+    assert "nodes" not in row
+
+
+def test_home_bootstrap_single_payload():
+    client = _client()
+    client.post("/api/openagentui/workflows", json=_linear_workflow_body("wf_home"))
+    resp = client.get("/api/openagentui/home")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert any(w["id"] == "wf_home" for w in body["workflows"])
+    assert isinstance(body["templates"], list)
+    if body["templates"]:
+        card = body["templates"][0]
+        assert "nodeCount" in card
+        assert "nodes" not in card
+
+
+def test_editor_bootstrap_includes_workflow_and_catalog():
+    client = _client()
+    client.post("/api/openagentui/workflows", json=_linear_workflow_body("wf_editor"))
+    resp = client.get("/api/openagentui/workflows/wf_editor/editor")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["workflow"]["id"] == "wf_editor"
+    assert set(body["catalog"].keys()) == {"toolsets", "tools", "mcpServers"}
+
+
 def test_create_and_get_workflow():
     client = _client()
     created = client.post("/api/openagentui/workflows", json=_linear_workflow_body())

@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { Workflow, WorkflowSummary } from "@/lib/workflow/types";
+import type { Workflow, WorkflowSummary, TemplateCard } from "@/lib/workflow/types";
 import { emptyWorkflow } from "@/lib/workflow/types";
 
 export default function HomePage() {
   const router = useRouter();
   const [workflows, setWorkflows] = useState<WorkflowSummary[] | null>(null);
-  const [templates, setTemplates] = useState<Workflow[] | null>(null);
+  const [templates, setTemplates] = useState<TemplateCard[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

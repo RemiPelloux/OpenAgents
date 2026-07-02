@@ -44,6 +44,19 @@ def test_workflow_roundtrip():
     assert workflow.to_dict() == raw
 
 
+def test_workflow_summary_from_raw_omits_graph():
+    raw = {
+        "id": "wf1",
+        "name": "Test",
+        "nodes": [{"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}}],
+        "edges": [{"id": "e1", "source": "start", "target": "end"}],
+    }
+    summary = Workflow.summary_from_raw(raw)
+    assert summary["nodeCount"] == 1
+    assert summary["edgeCount"] == 1
+    assert "nodes" not in summary
+
+
 def test_workflow_helpers():
     workflow = Workflow.from_dict(
         {

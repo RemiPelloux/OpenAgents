@@ -69,12 +69,17 @@ export default function WorkflowEditorPage() {
   const stopStreamRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    api.getWorkflow(params.workflowId).then((wf) => {
-      setWorkflow(wf);
-      setRfNodes(wf.nodes.map(toRFNode));
-      setRfEdges(wf.edges.map(toRFEdge));
-    });
-    api.catalog().then(setCatalog).catch(() => setCatalog(null));
+    api
+      .editorBootstrap(params.workflowId)
+      .then(({ workflow: wf, catalog: cat }) => {
+        setWorkflow(wf);
+        setRfNodes(wf.nodes.map(toRFNode));
+        setRfEdges(wf.edges.map(toRFEdge));
+        setCatalog(cat);
+      })
+      .catch(() => {
+        setCatalog(null);
+      });
     return () => stopStreamRef.current?.();
   }, [params.workflowId]);
 
