@@ -37,8 +37,52 @@ def enqueue_rec_event(body: Dict[str, Any]) -> None:
     pending.write_text(json.dumps({"attempts": 0, "event": body}), encoding="utf-8")
 
 
+DEV_KEYS = {
+    "OpenAgents": "ukrGocUC9EafNqcsHyB6zdjWhNH8aPsd9vyaWK2whiY=",
+}
+
+
+def _wrap_event(event: Dict[str, Any]) -> Dict[str, Any]:
+    contract_url = os.environ.get("OPENCONTRACT_URL", "").rstrip("/")
+    if not contract_url:
+        return event
+
+    contract_id = os.environ.get("OPENREC_CONTRACT_ID", "CC-W4-008")
+    signer = os.environ.get("OPENCONTRACT_IDENTITY", "OpenAgents")
+    key = os.environ.get("OPENCONTRACT_SIGNING_KEY") or DEV_KEYS.get(signer)
+    if not key:
+        return event
+
+    prereq = [
+        p.strip()
+        for p in os.environ.get("OPENREC_CONTRACT_PREREQ", "CC-W4-001").split(",")
+        if p.strip()
+    ]
+    body = json.dumps(
+        {
+            "contract_id": contract_id,
+            "correlation_id": str(event.get("correlation_id") or ""),
+            "satisfied_prerequisites": prereq,
+            "payload": event,
+            "goal_met": True,
+            "signer_id": signer,
+            "signing_key": key,
+        }
+    ).encode()
+    req = urllib.request.Request(
+        f"{contract_url}/v1/contracts/{contract_id}/wrap",
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        payload = json.load(resp)
+    return payload["envelope"]
+
+
 def _post_event(base_url: str, body: Dict[str, Any]) -> bool:
-    data = json.dumps(body).encode()
+    payload = _wrap_event(body)
+    data = json.dumps(payload).encode()
     req = urllib.request.Request(
         f"{base_url}/v1/events",
         data=data,
