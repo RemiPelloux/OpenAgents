@@ -18,6 +18,9 @@ def _request_headers(correlation_id: Optional[str] = None) -> Dict[str, str]:
     token = os.environ.get("OPENTICKET_API_TOKEN", "").strip()
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    profile = os.environ.get("OPENTICKET_ACTOR_PROFILE", "").strip()
+    if profile:
+        headers["X-Actor-Profile"] = profile
     corr = correlation_id or os.environ.get("OPENTICKET_CORRELATION_ID", "").strip()
     if corr:
         headers["X-Correlation-Id"] = corr
@@ -73,3 +76,45 @@ def build_task_prompt(ticket: Dict[str, Any], mode: str) -> str:
 def build_ticket_prompt(ticket: Dict[str, Any], mode: str) -> str:
     """Backward-compatible alias; prefer build_task_prompt for invoke_opencode."""
     return build_task_prompt(ticket, mode)
+
+
+def patch_ticket(
+    ticket_id: str,
+    fields: Dict[str, Any],
+    *,
+    correlation_id: Optional[str] = None,
+    actor_profile: Optional[str] = None,
+) -> Dict[str, Any]:
+    url = f"{_api_url()}/v1/tickets/{urllib.request.quote(ticket_id, safe='')}"
+    headers = _request_headers(correlation_id)
+    if actor_profile:
+        headers["X-Actor-Profile"] = actor_profile
+    body = json.dumps(fields).encode()
+    req = urllib.request.Request(url, data=body, method="PATCH")
+    for key, value in headers.items():
+        req.add_header(key, value)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode()
+        raise RuntimeError(f"OpenTicket patch failed ({exc.code}): {detail}") from exc
+
+
+def add_ticket_comment(
+    ticket_id: str,
+    body: str,
+    *,
+    correlation_id: Optional[str] = None,
+    actor_profile: Optional[str] = None,
+) -> Dict[str, Any]:
+    url = f"{_api_url()}/v1/tickets/{urllib.request.quote(ticket_id, safe='')}/comments"
+    headers = _request_headers(correlation_id)
+    if actor_profile:
+        headers["X-Actor-Profile"] = actor_profile
+    payload = json.dumps({"body": body}).encode()
+    req = urllib.request.Request(url, data=payload, method="POST")
+    for key, value in headers.items():
+        req.add_header(key, value)
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode())

@@ -30,7 +30,12 @@ Ensure API is running: `OPENTICKET_API_URL=http://localhost:3020`
 | `create_ticket` | product_owner, security | New story/bug with acceptance criteria |
 | `get_ticket` | all | Read by UUID or key (`OP-42`) |
 | `update_ticket_status` | developer, qa | Workflow transitions |
-| `list_tickets` | all | Filter by status, profile, project |
+| `update_ticket` | PO, dev, researcher | PATCH fields + deliverables |
+| `search_tickets` | all | Full-text search |
+| `add_ticket_comment` | assigned agents | Post result summaries |
+| `list_tickets` | all | Filter by status, profile, project, labels |
+
+Plugin tool (OpenAgents, not MCP): `submit_ticket_result` — deliverables + optional `in_review`.
 
 ## Status transition matrix
 
@@ -43,6 +48,14 @@ Ensure API is running: `OPENTICKET_API_URL=http://localhost:3020`
 | qa | done | qa only |
 
 Invalid transitions return `409 INVALID_TRANSITION`.
+
+## Research / ops workflow (non-code)
+
+1. PO creates `type: task`, `execution_mode: research`, measurable AC
+2. Accept → `todo`, assign `researcher`
+3. Execute via OpenTeam / web tools (not `invoke_opencode`)
+4. `submit_ticket_result` or `update_ticket` + comment
+5. QA → `done`
 
 ## PO workflow
 

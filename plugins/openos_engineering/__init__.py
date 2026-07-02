@@ -6,10 +6,12 @@ from plugins.openos_engineering.cli import openos_command, register_cli
 from plugins.openos_engineering.tools import (
     INVOKE_CODEX_SCHEMA,
     INVOKE_OPENCODE_SCHEMA,
+    SUBMIT_TICKET_RESULT_SCHEMA,
     check_codex_available,
     check_openos_engineering_available,
     handle_invoke_codex,
     handle_invoke_opencode,
+    handle_submit_ticket_result,
 )
 
 
@@ -29,6 +31,13 @@ def register(ctx) -> None:
         handler=handle_invoke_codex,
         check_fn=check_codex_available,
         emoji="🤖",
+    )
+    ctx.register_tool(
+        name="submit_ticket_result",
+        toolset="openos_engineering",
+        schema=SUBMIT_TICKET_RESULT_SCHEMA,
+        handler=handle_submit_ticket_result,
+        emoji="📦",
     )
 
     ctx.register_cli_command(
