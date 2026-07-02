@@ -188,3 +188,16 @@ def test_init_profiles(tmp_path, monkeypatch):
     intent_cfg = (tmp_path / "profiles" / "intent_classifier" / "config.yaml").read_text()
     assert "open-orchestrator-intent" in intent_cfg
     assert (tmp_path / "profiles" / "developer" / "SOUL.md").is_file()
+
+
+def test_unwrap_orchestrator_run_envelope():
+    from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
+
+    plain = {"agent_profile": "developer", "input": "hello", "task_context": {}}
+    assert unwrap_orchestrator_run_body(plain) == plain
+
+    wrapped = {
+        "contract_id": "CC-ORCH-004",
+        "payload": {"agent_profile": "developer", "input": "hello", "task_context": {}},
+    }
+    assert unwrap_orchestrator_run_body(wrapped)["agent_profile"] == "developer"

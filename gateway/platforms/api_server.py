@@ -3947,6 +3947,13 @@ class APIServerAdapter(BasePlatformAdapter):
         except Exception:
             return web.json_response(_openai_error("Invalid JSON"), status=400)
 
+        from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
+
+        try:
+            body = unwrap_orchestrator_run_body(body)
+        except ValueError as exc:
+            return web.json_response(_openai_error(str(exc)), status=400)
+
         raw_input = body.get("input")
         if not raw_input:
             return web.json_response(_openai_error("Missing 'input' field"), status=400)
