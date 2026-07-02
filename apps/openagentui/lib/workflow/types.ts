@@ -15,6 +15,8 @@ export type NodeType =
   | "http"
   | "note"
   | "end"
+  | "codex"
+  | "workflow"
   | "arcade"
   | "guardrails";
 
@@ -22,6 +24,8 @@ export const NODE_TYPES: NodeType[] = [
   "start",
   "agent",
   "mcp",
+  "codex",
+  "workflow",
   "transform",
   "if-else",
   "while",
@@ -72,6 +76,15 @@ export interface NodeData {
   stateValue?: string;
   // user-approval
   approvalMessage?: string;
+  // codex
+  prompt?: string;
+  sandbox?: string;
+  fullAuto?: boolean;
+  timeoutSeconds?: number;
+  cwd?: string;
+  // sub-workflow
+  subWorkflowId?: string;
+  inputs?: Record<string, unknown>;
   // start
   inputVariables?: InputVariableSpec[];
   // end

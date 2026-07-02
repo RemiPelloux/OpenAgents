@@ -26,6 +26,8 @@ from fastapi.responses import StreamingResponse
 from openagentui import approvals, engine, store
 from openagentui.schema import Workflow
 from openagentui.tool_catalog import catalog_snapshot
+from openagentui.validation import validate_workflow
+from openagentui.yaml_io import workflow_from_yaml, workflow_to_yaml_text
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +103,36 @@ def get_workflow_route(workflow_id: str) -> Dict[str, Any]:
 
 @router.get("/workflows/{workflow_id}/editor")
 def editor_bootstrap_route(workflow_id: str) -> Dict[str, Any]:
-    """Workflow + tool catalog in one call for the visual editor."""
+    """Workflow + tool catalog + workflow picker list in one call."""
     workflow = store.get_workflow(workflow_id)
     if workflow is None:
         raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
-    return {"workflow": workflow.to_dict(), "catalog": catalog_snapshot()}
+    return {
+        "workflow": workflow.to_dict(),
+        "catalog": catalog_snapshot(),
+        "workflows": store.list_workflow_summaries(),
+    }
+
+
+@router.post("/workflows/{workflow_id}/duplicate")
+def duplicate_workflow_route(workflow_id: str) -> Dict[str, Any]:
+    workflow = store.get_workflow(workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
+    data = workflow.to_dict()
+    data["id"] = store.new_id("wf")
+    data["name"] = f"{workflow.name} (copy)"
+    saved = store.save_workflow(Workflow.from_dict(data))
+    return saved.to_dict()
+
+
+@router.post("/workflows/{workflow_id}/validate")
+def validate_workflow_route(workflow_id: str) -> Dict[str, Any]:
+    workflow = store.get_workflow(workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
+    errors = validate_workflow(workflow)
+    return {"ok": not errors, "errors": errors}
 
 
 @router.put("/workflows/{workflow_id}")
@@ -128,8 +155,6 @@ def delete_workflow_route(workflow_id: str) -> Dict[str, Any]:
 
 @router.get("/workflows/{workflow_id}/yaml")
 def export_workflow_yaml_route(workflow_id: str) -> Dict[str, Any]:
-    from openagentui.yaml_io import workflow_to_yaml_text
-
     workflow = store.get_workflow(workflow_id)
     if workflow is None:
         raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
@@ -138,8 +163,6 @@ def export_workflow_yaml_route(workflow_id: str) -> Dict[str, Any]:
 
 @router.post("/workflows/from-yaml")
 def create_workflow_from_yaml_route(body: Dict[str, Any]) -> Dict[str, Any]:
-    from openagentui.yaml_io import workflow_from_yaml
-
     yaml_text = str(body.get("yaml") or body.get("content") or "").strip()
     if not yaml_text:
         raise HTTPException(status_code=400, detail="'yaml' text is required")
@@ -154,8 +177,6 @@ def create_workflow_from_yaml_route(body: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.put("/workflows/{workflow_id}/from-yaml")
 def upsert_workflow_from_yaml_route(workflow_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    from openagentui.yaml_io import workflow_from_yaml
-
     yaml_text = str(body.get("yaml") or body.get("content") or "").strip()
     if not yaml_text:
         raise HTTPException(status_code=400, detail="'yaml' text is required")
@@ -210,6 +231,10 @@ def run_workflow_route(workflow_id: str, body: Optional[Dict[str, Any]] = None) 
         raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
     inputs = (body or {}).get("inputs") or {}
     execution = engine.run_workflow(workflow, inputs=inputs)
+    try:
+        store.prune_executions()
+    except Exception:
+        pass
     return execution.to_dict()
 
 
@@ -251,7 +276,14 @@ def execute_stream_route(workflow_id: str, body: Optional[Dict[str, Any]] = None
 
 @router.get("/workflows/{workflow_id}/executions")
 def list_executions_route(workflow_id: str) -> Dict[str, Any]:
-    return {"executions": [e.to_dict() for e in store.list_executions(workflow_id)]}
+    return {"executions": store.list_execution_summaries(workflow_id)}
+
+
+@router.post("/executions/prune")
+def prune_executions_route(body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    keep = int((body or {}).get("keepPerWorkflow") or 20)
+    removed = store.prune_executions(keep_per_workflow=keep)
+    return {"removed": removed}
 
 
 @router.get("/executions/{execution_id}")

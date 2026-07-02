@@ -18,8 +18,10 @@ from typing import Any, Callable, Dict, Optional
 
 from openagentui import store
 from openagentui.nodes import NODE_EXECUTORS, NodeContext
+from openagentui.rec_events import emit_execution_rec_event
 from openagentui.schema import NodeExecutionResult, Workflow, WorkflowExecution
 from openagentui.tool_catalog import ensure_tools_loaded
+from openagentui.validation import validate_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +102,8 @@ class WorkflowEngine:
                 break
 
             execution.current_node_id = node.id
+            if on_node:
+                on_node(NodeExecutionResult(node_id=node.id, status="running"))
             try:
                 result = executor(NodeContext(node=node, execution=execution))
             except Exception as exc:  # defensive: a node executor must never crash the run
@@ -130,6 +134,7 @@ class WorkflowEngine:
                 break
 
         store.save_execution(execution)
+        emit_execution_rec_event(execution, self.workflow)
         return execution
 
 
@@ -139,6 +144,14 @@ def run_workflow(
     on_node: Optional[NodeCallback] = None,
 ) -> WorkflowExecution:
     """Start a brand-new execution of ``workflow`` and run it to completion/pause."""
+    errors = validate_workflow(workflow)
+    if errors:
+        execution = new_execution(workflow, inputs)
+        execution.status = "failed"
+        execution.error = "; ".join(errors)
+        store.save_execution(execution)
+        emit_execution_rec_event(execution, workflow)
+        return execution
     execution = new_execution(workflow, inputs)
     store.save_execution(execution)
     return WorkflowEngine(workflow, execution).run(on_node=on_node)

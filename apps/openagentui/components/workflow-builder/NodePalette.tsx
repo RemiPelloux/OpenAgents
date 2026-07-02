@@ -14,6 +14,8 @@ const LABELS: Record<NodeType, string> = {
   http: "HTTP request",
   note: "Note",
   end: "End",
+  codex: "Codex CLI",
+  workflow: "Sub-workflow",
   arcade: "Arcade (unsupported)",
   guardrails: "Guardrails (unsupported)",
 };

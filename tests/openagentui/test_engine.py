@@ -137,10 +137,21 @@ def test_run_workflow_missing_start_node_fails():
     workflow = Workflow.from_dict({"id": "wf_empty", "name": "Empty", "nodes": [], "edges": []})
     execution = run_workflow(workflow)
     assert execution.status == "failed"
-    assert "no start node" in execution.error
+    assert "no nodes" in execution.error or "start" in execution.error
 
 
 def test_on_node_callback_invoked_for_every_step():
     seen = []
-    run_workflow(_linear_workflow(), inputs={"name": "x"}, on_node=lambda r: seen.append(r.node_id))
-    assert seen == ["start", "set1", "end"]
+    run_workflow(
+        _linear_workflow(),
+        inputs={"name": "x"},
+        on_node=lambda r: seen.append((r.node_id, r.status)),
+    )
+    assert seen == [
+        ("start", "running"),
+        ("start", "completed"),
+        ("set1", "running"),
+        ("set1", "completed"),
+        ("end", "running"),
+        ("end", "completed"),
+    ]

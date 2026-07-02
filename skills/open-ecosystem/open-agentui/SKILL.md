@@ -6,7 +6,7 @@ author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
-  hermes:
+  openagents:
     tags: [OpenAgentUI, Workflow, YAML, Mistral, OpenBrain, MCP, SelfAuthoring]
     related_skills: [open-dev-workflow, open-code, open-brain, open-ecosystem-hub]
 ---

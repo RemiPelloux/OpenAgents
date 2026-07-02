@@ -32,6 +32,8 @@ NODE_TYPES = (
     "end",
     "arcade",
     "guardrails",
+    "codex",
+    "workflow",
 )
 
 EXECUTION_STATUSES = ("running", "completed", "failed", "paused", "waiting-approval")

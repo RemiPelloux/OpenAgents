@@ -168,6 +168,27 @@ button {
   min-height: 0;
 }
 
+.oaui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.oaui-modal {
+  background: var(--oaui-bg-elevated);
+  border: 1px solid var(--oaui-border);
+  border-radius: var(--oaui-radius);
+  padding: 1rem 1.25rem;
+  min-width: 320px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: auto;
+}
+
 .oaui-panel {
   background: var(--oaui-bg-elevated);
   border-right: 1px solid var(--oaui-border);

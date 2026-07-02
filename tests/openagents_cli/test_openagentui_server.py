@@ -66,6 +66,24 @@ def test_editor_bootstrap_includes_workflow_and_catalog():
     body = resp.json()
     assert body["workflow"]["id"] == "wf_editor"
     assert set(body["catalog"].keys()) == {"toolsets", "tools", "mcpServers"}
+    assert isinstance(body["workflows"], list)
+
+
+def test_validate_workflow_route():
+    client = _client()
+    client.post("/api/openagentui/workflows", json=_linear_workflow_body("wf_val"))
+    resp = client.post("/api/openagentui/workflows/wf_val/validate")
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+
+def test_duplicate_workflow_route():
+    client = _client()
+    client.post("/api/openagentui/workflows", json=_linear_workflow_body("wf_dup"))
+    resp = client.post("/api/openagentui/workflows/wf_dup/duplicate")
+    assert resp.status_code == 200
+    assert resp.json()["id"] != "wf_dup"
+    assert "copy" in resp.json()["name"].lower()
 
 
 def test_create_and_get_workflow():

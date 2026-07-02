@@ -157,6 +157,60 @@ def list_executions(workflow_id: Optional[str] = None) -> List[WorkflowExecution
     return sorted(executions, key=lambda e: e.started_at, reverse=True)
 
 
+def execution_summary_from_raw(raw: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": str(raw["id"]),
+        "workflowId": str(raw.get("workflowId", "")),
+        "status": str(raw.get("status", "")),
+        "startedAt": str(raw.get("startedAt", "")),
+        "completedAt": raw.get("completedAt"),
+        "error": raw.get("error"),
+    }
+
+
+def list_execution_summaries(workflow_id: Optional[str] = None, *, limit: int = 50) -> List[Dict[str, Any]]:
+    if workflow_id:
+        _validate_id(workflow_id)
+        predicate = lambda raw, wid=workflow_id: raw.get("workflowId") == wid
+        records = _list_records("executions", predicate=predicate)
+    else:
+        records = _list_records("executions")
+    summaries = [execution_summary_from_raw(r) for r in records]
+    summaries.sort(key=lambda row: row.get("startedAt") or "", reverse=True)
+    return summaries[: max(1, int(limit))]
+
+
+def prune_executions(*, keep_per_workflow: int = 20) -> int:
+    """Delete oldest execution files beyond keep_per_workflow per workflow id."""
+    if keep_per_workflow < 1:
+        return 0
+    by_workflow: Dict[str, List[Path]] = {}
+    table = _table_dir("executions")
+    for path in table.glob("*.json"):
+        raw = _read_json(path)
+        if raw is None:
+            continue
+        wid = str(raw.get("workflowId") or "")
+        by_workflow.setdefault(wid, []).append(path)
+
+    removed = 0
+    for paths in by_workflow.values():
+        rows = []
+        for path in paths:
+            raw = _read_json(path)
+            if raw is None:
+                continue
+            rows.append((str(raw.get("startedAt") or ""), path))
+        rows.sort(key=lambda item: item[0], reverse=True)
+        for _, path in rows[keep_per_workflow:]:
+            try:
+                path.unlink()
+                removed += 1
+            except OSError:
+                pass
+    return removed
+
+
 # ---------------------------------------------------------------------------
 # Approvals (human-in-the-loop pause/resume)
 # ---------------------------------------------------------------------------

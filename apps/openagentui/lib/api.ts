@@ -1,4 +1,5 @@
 import type { Workflow, WorkflowExecution, WorkflowSummary, TemplateCard } from "./workflow/types";
+import type { ExecutionSummary } from "@/components/workflow-builder/ExecutionHistoryPanel";
 
 const BASE = "/api/openagentui";
 
@@ -27,7 +28,19 @@ export const api = {
     request<{ workflows: WorkflowSummary[] }>("/workflows").then((r) => r.workflows),
   getWorkflow: (id: string) => request<Workflow>(`/workflows/${id}`),
   editorBootstrap: (id: string) =>
-    request<{ workflow: Workflow; catalog: ToolCatalog }>(`/workflows/${id}/editor`),
+    request<{ workflow: Workflow; catalog: ToolCatalog; workflows: WorkflowSummary[] }>(
+      `/workflows/${id}/editor`
+    ),
+  duplicateWorkflow: (id: string) =>
+    request<Workflow>(`/workflows/${id}/duplicate`, { method: "POST" }),
+  validateWorkflow: (id: string) =>
+    request<{ ok: boolean; errors: string[] }>(`/workflows/${id}/validate`, { method: "POST" }),
+  exportYaml: (id: string) => request<{ id: string; yaml: string }>(`/workflows/${id}/yaml`),
+  importYaml: (id: string, yaml: string) =>
+    request<Workflow>(`/workflows/${id}/from-yaml`, {
+      method: "PUT",
+      body: JSON.stringify({ yaml }),
+    }),
   createWorkflow: (workflow: Workflow) =>
     request<Workflow>("/workflows", { method: "POST", body: JSON.stringify(workflow) }),
   saveWorkflow: (workflow: Workflow) =>
@@ -39,15 +52,16 @@ export const api = {
   catalog: () => request<ToolCatalog>("/catalog"),
   runWorkflow: (id: string, inputs: Record<string, unknown>) =>
     request<WorkflowExecution>(`/workflows/${id}/run`, { method: "POST", body: JSON.stringify({ inputs }) }),
-  listExecutions: (workflowId: string) =>
-    request<{ executions: WorkflowExecution[] }>(`/workflows/${workflowId}/executions`).then((r) => r.executions),
+  listExecutionSummaries: (workflowId: string) =>
+    request<{ executions: ExecutionSummary[] }>(`/workflows/${workflowId}/executions`).then(
+      (r) => r.executions
+    ),
   getExecution: (id: string) => request<WorkflowExecution>(`/executions/${id}`),
   approve: (executionId: string) =>
     request<WorkflowExecution>(`/executions/${executionId}/approve`, { method: "POST" }),
   reject: (executionId: string) =>
     request<WorkflowExecution>(`/executions/${executionId}/reject`, { method: "POST" }),
 
-  /** Streams SSE `node`/`done`/`error` events; returns an unsubscribe function. */
   streamExecution(
     workflowId: string,
     inputs: Record<string, unknown>,

@@ -16,6 +16,8 @@ const NODE_ICONS: Record<NodeType, string> = {
   http: "🌐",
   note: "📝",
   end: "■",
+  codex: "⌘",
+  workflow: "⎇",
   arcade: "🎮",
   guardrails: "🛡",
 };

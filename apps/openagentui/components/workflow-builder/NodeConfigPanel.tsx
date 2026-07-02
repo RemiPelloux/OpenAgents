@@ -9,15 +9,33 @@ interface NodeConfigPanelProps {
   nodeType: NodeType;
   data: NodeData;
   catalog: ToolCatalog | null;
+  workflowOptions: { id: string; name: string }[];
   onChange: (data: NodeData) => void;
   onDelete: () => void;
 }
 
-function TextField({ label, value, onChange, mono = true }: { label: string; value: string; onChange: (v: string) => void; mono?: boolean }) {
+function TextField({
+  label,
+  value,
+  onChange,
+  mono = true,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  mono?: boolean;
+  placeholder?: string;
+}) {
   return (
     <div className="oaui-field">
       <label>{label}</label>
-      <input value={value} onChange={(e) => onChange(e.target.value)} style={mono ? undefined : { fontFamily: "var(--oaui-font)" }} />
+      <input
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        style={mono ? undefined : { fontFamily: "var(--oaui-font)" }}
+      />
     </div>
   );
 }
@@ -52,7 +70,15 @@ function JsonField({ label, value, onChange }: { label: string; value: unknown; 
   );
 }
 
-export function NodeConfigPanel({ nodeId, nodeType, data, catalog, onChange, onDelete }: NodeConfigPanelProps) {
+export function NodeConfigPanel({
+  nodeId,
+  nodeType,
+  data,
+  catalog,
+  workflowOptions,
+  onChange,
+  onDelete,
+}: NodeConfigPanelProps) {
   const set = (patch: Partial<NodeData>) => onChange({ ...data, ...patch });
 
   return (
@@ -122,6 +148,36 @@ export function NodeConfigPanel({ nodeId, nodeType, data, catalog, onChange, onD
         <>
           <TextField label="Variable name" value={data.stateKey || ""} onChange={(v) => set({ stateKey: v })} />
           <TextField label="Value" value={data.stateValue || ""} onChange={(v) => set({ stateValue: v })} />
+        </>
+      )}
+
+      {nodeType === "codex" && (
+        <>
+          <TextAreaField label="Prompt" value={data.prompt || data.instructions || ""} onChange={(v) => set({ prompt: v })} />
+          <TextField label="Working directory (optional)" value={data.cwd || ""} onChange={(v) => set({ cwd: v })} />
+          <TextField label="Output field (variable name)" value={data.outputField || ""} onChange={(v) => set({ outputField: v })} />
+        </>
+      )}
+
+      {nodeType === "workflow" && (
+        <>
+          <div className="oaui-field">
+            <label>Sub-workflow</label>
+            <input
+              list="oaui-workflow-options"
+              value={data.subWorkflowId || ""}
+              onChange={(e) => set({ subWorkflowId: e.target.value })}
+            />
+            <datalist id="oaui-workflow-options">
+              {workflowOptions.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </datalist>
+          </div>
+          <JsonField label="Inputs" value={data.inputs || {}} onChange={(v) => set({ inputs: v as Record<string, unknown> })} />
+          <TextField label="Output field (variable name)" value={data.outputField || ""} onChange={(v) => set({ outputField: v })} />
         </>
       )}
 

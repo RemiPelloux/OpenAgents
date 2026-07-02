@@ -8,11 +8,15 @@ capabilities instead of the upstream Arcade/Firecrawl-specific catalogs.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+import time
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 _loaded = False
+_catalog_cache: Optional[Dict[str, Any]] = None
+_catalog_cached_at: float = 0.0
+_CATALOG_TTL_SECONDS = 300.0
 
 
 def ensure_tools_loaded() -> None:
@@ -89,10 +93,23 @@ def list_mcp_servers() -> List[Dict[str, Any]]:
         return []
 
 
-def catalog_snapshot() -> Dict[str, Any]:
-    """Everything the frontend's node pickers need in one call."""
-    return {
+def catalog_snapshot(*, force: bool = False) -> Dict[str, Any]:
+    """Everything the frontend's node pickers need in one call (cached 5 min)."""
+    global _catalog_cache, _catalog_cached_at
+    now = time.time()
+    if not force and _catalog_cache is not None and (now - _catalog_cached_at) < _CATALOG_TTL_SECONDS:
+        return _catalog_cache
+    snapshot = {
         "toolsets": list_toolsets(),
         "tools": list_tools(),
         "mcpServers": list_mcp_servers(),
     }
+    _catalog_cache = snapshot
+    _catalog_cached_at = now
+    return snapshot
+
+
+def invalidate_catalog_cache() -> None:
+    global _catalog_cache, _catalog_cached_at
+    _catalog_cache = None
+    _catalog_cached_at = 0.0

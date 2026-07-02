@@ -22,6 +22,8 @@ from openagentui.nodes.simple_nodes import (
 )
 from openagentui.nodes.tool_node import execute as execute_tool
 from openagentui.nodes.transform_node import execute as execute_transform
+from openagentui.nodes.codex_node import execute as execute_codex
+from openagentui.nodes.workflow_node import execute as execute_workflow
 from openagentui.nodes.unsupported_node import execute as execute_unsupported
 from openagentui.schema import NodeExecutionResult
 
@@ -37,6 +39,8 @@ NODE_EXECUTORS: Dict[str, Callable[[NodeContext], NodeExecutionResult]] = {
     "http": execute_http,
     "note": execute_note,
     "end": execute_end,
+    "codex": execute_codex,
+    "workflow": execute_workflow,
     "arcade": execute_unsupported,
     "guardrails": execute_unsupported,
 }
