@@ -14,6 +14,7 @@ __pycache__/
 .env.production.local
 .env.development
 .env.test
+.env.openos
 .hermes-docker/
 .notebooklm-home/
 .notebooklm-cli-venv/
