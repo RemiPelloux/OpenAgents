@@ -46,6 +46,18 @@ def pg_outbox_enabled() -> bool:
     return True
 
 
+def file_outbox_allowed() -> bool:
+    return os.environ.get("OPENOS_DEV_OUTBOX_FILE", "").strip() == "1"
+
+
+def require_mesh_outbox_configured() -> None:
+    if pg_outbox_enabled() or file_outbox_allowed():
+        return
+    raise RuntimeError(
+        "MESH_OUTBOX_DATABASE_URL required; set OPENOS_DEV_OUTBOX_FILE=1 for local file fallback only"
+    )
+
+
 def wrap_rec_event(event: Dict[str, Any]) -> Dict[str, Any]:
     contract_url = os.environ.get("OPENCONTRACT_URL", "").rstrip("/")
     if not contract_url:
