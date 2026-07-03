@@ -179,23 +179,34 @@ def test_handle_run_dispatch_developer():
 
 def test_init_profiles(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    from plugins.openos_engineering.profiles import init_profiles
+    from plugins.openos_engineering.profiles import init_profiles, list_profile_ids
 
     names = init_profiles(tmp_path)
-    assert set(names) == {
-        "planner",
-        "intent_classifier",
-        "skill_author",
-        "product_owner",
-        "developer",
-        "qa",
-    }
+    assert len(names) == 18
+    assert set(names) == set(list_profile_ids())
+    assert "mesh_engineer" in names
+    assert "sales" in names
     planner_cfg = (tmp_path / "profiles" / "planner" / "config.yaml").read_text()
     assert "openorchestrator:" in planner_cfg
     assert "openticket:" in planner_cfg
+    sales_cfg = (tmp_path / "profiles" / "sales" / "config.yaml").read_text()
+    assert "opencrm:" in sales_cfg
     intent_cfg = (tmp_path / "profiles" / "intent_classifier" / "config.yaml").read_text()
     assert "open-orchestrator-intent" in intent_cfg
     assert (tmp_path / "profiles" / "developer" / "SOUL.md").is_file()
+
+
+def test_ensure_profiles_idempotent(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
+    from plugins.openos_engineering.profiles import ensure_profile, ensure_profiles
+
+    first = ensure_profiles(["developer", "qa"], home=tmp_path)
+    assert first["developer"] == "created"
+    assert first["qa"] == "created"
+    second = ensure_profiles(["developer"], home=tmp_path)
+    assert second["developer"] == "exists"
+    with pytest.raises(ValueError, match="unknown profile"):
+        ensure_profile("not_a_profile", home=tmp_path)
 
 
 def test_unwrap_orchestrator_run_envelope():

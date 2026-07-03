@@ -2,7 +2,7 @@
 
 Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profiles and orchestrator `required_skills`.
 
-## Skill index (25)
+## Skill index (30)
 
 | Skill | Description |
 |-------|-------------|
@@ -11,6 +11,11 @@ Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profil
 | `open-dev-workflow` | W4 end-to-end |
 | `openprotocol-coder` | Developer branch/push/handoff |
 | `openprotocol-integrator` | QA verify/merge |
+| `open-qa` | QA sign-off: AC, tests, regression |
+| `open-ticket-optimize` | Ticket grooming, AC, sizing |
+| `open-mesh-wiring` | Wire mesh hops: CC-*, env, compose |
+| `open-generic` | Default loop when no skill fits |
+| `open-orchestrator-ops` | Industrial orchestrator gates |
 | `open-code` | `invoke_opencode` |
 | `open-ticket` | OpenTicket MCP |
 | `open-rec` | RecEvent audit |
@@ -46,18 +51,33 @@ Every skill includes:
 
 `description` frontmatter ≤ 60 characters.
 
-## W4 profile skills
+## W4 profile skills (18 domain roles)
 
 ```bash
-openagents openos init-profiles
+openagents openos init-profiles          # scaffold all 18
+openagents openos ensure-profiles --profiles sales,security
+openagents openos list-profiles
 ```
 
-| Profile | Skills |
-|---------|--------|
-| `developer` | open-code, open-ticket, open-dev-workflow, openprotocol-coder |
-| `qa` | open-code, open-ticket, open-dev-workflow, openprotocol-integrator |
-| `product_owner` | open-ticket, open-dev-workflow |
-| `planner` | open-orchestrator-plan, open-ecosystem-hub |
+Orchestrator auto-provisions missing profiles before dispatch (`POST /v1/profiles/ensure`).
+
+| Domain | Profiles |
+|--------|----------|
+| Orchestrator | planner, intent_classifier, skill_author |
+| Engineering W4 | product_owner, developer, qa, mobile_engineer |
+| Platform | mesh_engineer, contract_officer |
+| Knowledge | brain_researcher, recorder_analyst |
+| Commercial | sales, crm_analyst, creative, content_ops |
+| Compliance | security, compliance_officer |
+| Notes | notes_analyst |
+
+| Profile | Key skills |
+|---------|------------|
+| `developer` | open-code, openprotocol-coder, open-mesh-wiring |
+| `qa` | open-qa, openprotocol-integrator |
+| `sales` | opencrm-sales-followup |
+| `mesh_engineer` | open-mesh-wiring, open-contract |
+| `skill_author` | can provision org profiles on orchestrator request |
 
 ## Related
 

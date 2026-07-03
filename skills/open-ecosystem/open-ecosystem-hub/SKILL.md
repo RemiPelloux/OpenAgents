@@ -50,12 +50,17 @@ OpenContract (step 0) → producers (Ticket, CRM, Notes, Team, Sec)
 | Need | Skill |
 |------|-------|
 | CC-* / envelopes | `open-contract` |
-| W4 ticket → code → merge | `open-dev-workflow` + `openprotocol-coder` + `openprotocol-integrator` |
+| W4 ticket → code → merge | `open-dev-workflow` + `openprotocol-coder` + `open-qa` + `openprotocol-integrator` |
 | Tickets / backlog | `open-ticket` |
+| Ticket grooming / AC | `open-ticket-optimize` |
 | Headless coding | `open-code` |
+| Mesh integration (new hop) | `open-mesh-wiring` |
+| No matching skill | `open-generic` |
 | Audit / correlation trace | `open-rec` |
 | Doc RAG / missions | `open-brain` / `open-brain-orchestrator` |
 | Plans / dispatch | `open-orchestrator-plan` / `open-orchestrator-intent` |
+| Industrial orchestration | `open-orchestrator-ops` |
+| QA sign-off (before merge) | `open-qa` |
 | CRM sales | `opencrm-sales-followup` |
 | TikTok prospection | `openpro-tiktok-prospection` |
 | OpenTeam harvest | `open-team` |
@@ -72,7 +77,12 @@ OpenContract (step 0) → producers (Ticket, CRM, Notes, Team, Sec)
 
 | If user wants… | Then load… |
 |----------------|------------|
-| Code on a ticket | `open-dev-workflow` → `open-code` |
+| Code on a ticket | `open-dev-workflow` → `open-code` → `openprotocol-coder` |
+| Groom backlog / AC | `open-ticket-optimize` |
+| Wire new mesh edge | `open-mesh-wiring` → `open-contract` |
+| Orchestrator gates / DLQ | `open-orchestrator-ops` |
+| Verify before merge | `open-qa` → `openprotocol-integrator` |
+| Unsure which skill | `open-generic` (then hub again) |
 | "What is CC-W4-005?" | `open-brain` (`domain: openos`) |
 | New API tool in OpenCRM | `open-contract` → `open-mcp-scaffold` |
 | Merge agent branch | `openprotocol-integrator` (QA) |

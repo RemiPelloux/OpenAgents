@@ -1,4 +1,4 @@
-"""Scaffold PO / Dev / QA profiles for OpenOS W4 workflow."""
+"""Scaffold and ensure OpenOS agent profiles for the mesh."""
 
 from __future__ import annotations
 
@@ -6,17 +6,12 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
-MCP_SERVER_DEFS: Dict[str, Dict[str, Any]] = {
-    "openticket": {
-        "cwd": "${OPENOS_ROOT}/OpenTicket",
-        "args": ["exec", "tsx", "apps/mcp-server/src/index.ts"],
-    },
-    "openorchestrator": {
-        "cwd": "${OPENOS_ROOT}/OpenOrchestrator",
-        "args": ["exec", "tsx", "apps/mcp-server/src/index.ts"],
-        "env": {"ORCHESTRATOR_URL": "http://localhost:3050"},
-    },
-}
+from plugins.openos_engineering.profile_catalog import (
+    MCP_SERVER_DEFS,
+    PROFILE_SPECS,
+    get_profile_spec,
+    list_profile_ids,
+)
 
 
 def _render_mcp_servers(names: List[str]) -> str:
@@ -38,102 +33,67 @@ def _render_mcp_servers(names: List[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
-    "planner": {
-        "description": "Planner — decomposes objectives into orchestrated steps",
-        "toolsets": ["delegation", "mcp"],
-        "skills": ["open-orchestrator-plan", "open-ecosystem-hub"],
-        "mcp_servers": ["openorchestrator", "openticket"],
-        "soul": (
-            "You are the OpenOrchestrator planner. Break objectives into ordered "
-            "steps with required_skills. Respond with JSON only when asked to decompose."
-        ),
-    },
-    "intent_classifier": {
-        "description": "Intent classifier — NL → NormalizedGoal JSON for orchestrator",
-        "toolsets": ["mcp"],
-        "skills": ["open-orchestrator-intent", "open-ecosystem-hub"],
-        "mcp_servers": ["openorchestrator"],
-        "soul": (
-            "You are the OpenOrchestrator intent classifier. Parse natural language "
-            "into strict NormalizedGoal JSON. Return JSON only — no markdown."
-        ),
-    },
-    "skill_author": {
-        "description": "Skill Author — drafts org skill patches when gaps are detected",
-        "toolsets": ["skills", "mcp"],
-        "skills": ["open-orchestrator-plan", "open-brain"],
-        "mcp_servers": ["openorchestrator"],
-        "soul": (
-            "You author or patch org-scoped skills when orchestrator reports a skill gap. "
-            "Never modify bundled OpenOS skills — org overlay only."
-        ),
-    },
-    "product_owner": {
-        "description": "Product Owner — writes tickets and acceptance criteria",
-        "toolsets": ["delegation", "mcp"],
-        "skills": ["open-ticket", "open-dev-workflow", "open-contract", "open-ecosystem-hub"],
-        "mcp_servers": ["openticket", "openorchestrator"],
-        "soul": (
-            "You are the Product Owner. Create and refine OpenTicket stories "
-            "with clear acceptance criteria. Do not write code — delegate to developer."
-        ),
-    },
-    "developer": {
-        "description": "Developer — implements tickets via OpenCode",
-        "toolsets": ["delegation", "terminal", "mcp", "openos_engineering"],
-        "skills": ["open-code", "open-ticket", "open-dev-workflow", "openprotocol-coder"],
-        "mcp_servers": ["openticket"],
-        "soul": (
-            "You are the Developer. Load openprotocol-coder. Read assigned "
-            "tickets, invoke_opencode for all code changes, push agent branch, "
-            "hand off to QA integrator."
-        ),
-    },
-    "qa": {
-        "description": "QA integrator — verifies agent branches and merges to main",
-        "toolsets": ["terminal", "mcp", "openos_engineering"],
-        "skills": [
-            "open-code",
-            "open-ticket",
-            "open-dev-workflow",
-            "openprotocol-integrator",
-        ],
-        "mcp_servers": ["openticket"],
-        "soul": (
-            "You are QA / OpenProtocol integrator. After in_review, run "
-            "openprotocol-integrator: verify the agent branch, squash merge "
-            "to main, delete branch. Only you may transition tickets to done."
-        ),
-    },
-}
+def _write_profile_config(profile_dir: Path, name: str, spec: Dict[str, Any]) -> None:
+    config_path = profile_dir / "config.yaml"
+    config_path.write_text(
+        f"# OpenOS profile: {name}\n"
+        f"description: \"{spec['description']}\"\n"
+        f"toolsets:\n"
+        + "".join(f"  - {t}\n" for t in spec["toolsets"])
+        + "skills:\n"
+        + "".join(f"  - {s}\n" for s in spec["skills"])
+        + _render_mcp_servers(spec.get("mcp_servers", [])),
+        encoding="utf-8",
+    )
+
+
+def profile_exists(home: Path, profile_id: str) -> bool:
+    return (home / "profiles" / profile_id / "config.yaml").is_file()
+
+
+def ensure_profile(profile_id: str, home: Path | None = None) -> bool:
+    """Create one profile directory when missing. Returns True if created."""
+    spec = get_profile_spec(profile_id)
+    if not spec:
+        raise ValueError(f"unknown profile {profile_id!r}")
+
+    base = home or Path(os.environ.get("OPENAGENTS_HOME", Path.home() / ".openagents"))
+    profile_dir = base / "profiles" / profile_id
+    profile_dir.mkdir(parents=True, exist_ok=True)
+
+    config_path = profile_dir / "config.yaml"
+    created = not config_path.exists()
+    if created:
+        _write_profile_config(profile_dir, profile_id, spec)
+
+    soul_path = profile_dir / "SOUL.md"
+    if not soul_path.exists():
+        soul_path.write_text(spec["soul"] + "\n", encoding="utf-8")
+        created = True
+
+    return created
+
+
+def ensure_profiles(
+    profile_ids: List[str] | None = None,
+    home: Path | None = None,
+) -> Dict[str, str]:
+    """Ensure profiles exist. Returns {profile_id: created|exists}."""
+    base = home or Path(os.environ.get("OPENAGENTS_HOME", Path.home() / ".openagents"))
+    targets = profile_ids or list_profile_ids()
+    results: Dict[str, str] = {}
+
+    for profile_id in targets:
+        if not get_profile_spec(profile_id):
+            results[profile_id] = "unknown"
+            continue
+        created = ensure_profile(profile_id, home=base)
+        results[profile_id] = "created" if created else "exists"
+
+    return results
 
 
 def init_profiles(home: Path | None = None) -> list[str]:
-    base = home or Path(os.environ.get("OPENAGENTS_HOME", Path.home() / ".openagents"))
-    profiles_dir = base / "profiles"
-    created: list[str] = []
-
-    for name, spec in PROFILE_SPECS.items():
-        profile_dir = profiles_dir / name
-        profile_dir.mkdir(parents=True, exist_ok=True)
-        config_path = profile_dir / "config.yaml"
-        if not config_path.exists():
-            toolsets_yaml = ", ".join(spec["toolsets"])
-            skills_yaml = ", ".join(spec["skills"])
-            config_path.write_text(
-                f"# OpenOS W4 profile: {name}\n"
-                f"description: \"{spec['description']}\"\n"
-                f"toolsets:\n"
-                + "".join(f"  - {t}\n" for t in spec["toolsets"])
-                + f"skills:\n"
-                + "".join(f"  - {s}\n" for s in spec["skills"])
-                + _render_mcp_servers(spec.get("mcp_servers", ["openticket"])),
-                encoding="utf-8",
-            )
-        soul_path = profile_dir / "SOUL.md"
-        if not soul_path.exists():
-            soul_path.write_text(spec["soul"] + "\n", encoding="utf-8")
-        created.append(name)
-
-    return created
+    """Scaffold every catalog profile (non-destructive)."""
+    ensure_profiles(list_profile_ids(), home=home)
+    return list_profile_ids()

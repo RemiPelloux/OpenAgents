@@ -10,6 +10,8 @@ W4 integration: **OpenAgents Dev/QA → OpenCode headless → OpenTicket webhook
 
 ```bash
 openagents openos init-profiles
+openagents openos ensure-profiles --profiles sales,mesh_engineer
+openagents openos list-profiles
 openagents openos handle-run --payload '{"agent_profile":"developer","task_context":{"ticket_id":"..."}}'
 ```
 

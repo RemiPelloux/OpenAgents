@@ -7,7 +7,7 @@ import json
 import sys
 from typing import Any, Dict
 
-from plugins.openos_engineering.profiles import init_profiles
+from plugins.openos_engineering.profiles import ensure_profiles, init_profiles, list_profile_ids
 from plugins.openos_engineering.ticket_client import apply_task_context_env
 from plugins.openos_engineering.tools import handle_invoke_opencode
 
@@ -17,8 +17,20 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
 
     subs.add_parser(
         "init-profiles",
-        help="Scaffold product_owner, developer, and qa profiles for W4",
+        help="Scaffold all OpenOS domain profiles (18 roles)",
     )
+
+    ensure_p = subs.add_parser(
+        "ensure-profiles",
+        help="Create missing OpenOS profiles without overwriting existing",
+    )
+    ensure_p.add_argument(
+        "--profiles",
+        help="Comma-separated profile ids (default: all catalog profiles)",
+        default="",
+    )
+    list_p = subs.add_parser("list-profiles", help="List catalog profile ids")
+    list_p.add_argument("--json", action="store_true", help="Emit JSON array")
 
     run_p = subs.add_parser(
         "handle-run",
@@ -67,7 +79,20 @@ def openos_command(args: argparse.Namespace) -> int:
     action = getattr(args, "openos_action", None)
     if action == "init-profiles":
         names = init_profiles()
-        print("Created OpenOS profiles: " + ", ".join(names))
+        print("OpenOS profiles ready: " + ", ".join(names))
+        return 0
+    if action == "ensure-profiles":
+        raw = str(getattr(args, "profiles", "") or "").strip()
+        targets = [p.strip() for p in raw.split(",") if p.strip()] or None
+        results = ensure_profiles(targets)
+        print(json.dumps(results, indent=2))
+        return 0
+    if action == "list-profiles":
+        ids = list_profile_ids()
+        if getattr(args, "json", False):
+            print(json.dumps(ids))
+        else:
+            print("\n".join(ids))
         return 0
     if action == "handle-run":
         try:
@@ -78,7 +103,7 @@ def openos_command(args: argparse.Namespace) -> int:
             print(f"handle-run failed: {exc}", file=sys.stderr)
             return 1
 
-    print("Usage: openagents openos {init-profiles|handle-run}")
+    print("Usage: openagents openos {init-profiles|ensure-profiles|list-profiles|handle-run}")
     return 2
 
 

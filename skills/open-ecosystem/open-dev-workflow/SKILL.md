@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [W4, workflow, OpenTicket, OpenCode]
     category: open-ecosystem
-    related_skills: [open-ticket, open-code, openprotocol-coder, openprotocol-integrator, open-rec, open-contract]
+    related_skills: [open-ticket, open-code, openprotocol-coder, open-qa, openprotocol-integrator, open-rec, open-contract, open-ticket-optimize, open-orchestrator-ops]
 ---
 
 # Open Dev Workflow (W4)
@@ -37,12 +37,12 @@ openagents openos init-profiles
 
 ## Procedure
 
-1. **PO** — `create_ticket` + AC → `todo` → `assignee_agent_profile: developer`
+1. **PO** — `open-ticket-optimize` → `create_ticket` + AC → `todo` → `assignee_agent_profile: developer`
 2. **Webhook** — OpenTicket → OpenOrchestrator → `POST /v1/runs` (Dev)
 3. **Dev** — load `openprotocol-coder` → `invoke_opencode(mode=implement)`
 4. **OpenCode** — branch `agent/<ticket>/…` → push → handoff → `in_review`
-5. **Orchestrator** — assign QA
-6. **QA** — load `openprotocol-integrator` → verify → squash merge `main` → `done`
+5. **Orchestrator** — assign QA (`open-orchestrator-ops` gates if multi-step plan)
+6. **QA** — load `open-qa` → AC + tests → `openprotocol-integrator` → squash merge `main` → `done`
 7. **Audit** — OpenRec receives `ticket.*`, `code.*`, `agent.run.*` (see `open-rec`)
 
 ## Decision rules
@@ -50,7 +50,7 @@ openagents openos init-profiles
 | Role | May | Must not |
 |------|-----|----------|
 | Developer | push feature branch | merge `main` |
-| QA | squash merge after verify | skip tests |
+| QA | squash merge after `open-qa` sign-off | skip tests |
 | Orchestrator | dispatch OpenAgents | call OpenCode directly |
 | OpenCode | implement on branch | enable `/openagents true` |
 
