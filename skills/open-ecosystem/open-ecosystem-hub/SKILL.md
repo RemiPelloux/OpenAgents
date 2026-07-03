@@ -24,6 +24,18 @@ Router for the **OpenOS mesh**. Load this when the user names "Open" products wi
 
 Do **not** stop at this hub — always load the **specific** skill next.
 
+## Prerequisites
+
+- Know which OpenOS app owns the request (use routing table below)
+- For mesh hops: `open-contract` before any new integration
+
+## Procedure
+
+1. Read user intent — code, ticket, audit, CRM, compliance, or UI?
+2. Pick skill from routing table
+3. Load that skill fully before acting
+4. If cross-app: plan `correlation_id` + contract IDs via `open-brain`
+
 ## Structural overview
 
 ```
