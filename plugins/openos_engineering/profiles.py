@@ -72,7 +72,7 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "product_owner": {
         "description": "Product Owner — writes tickets and acceptance criteria",
         "toolsets": ["delegation", "mcp"],
-        "skills": ["open-ticket", "open-dev-workflow"],
+        "skills": ["open-ticket", "open-dev-workflow", "open-contract", "open-ecosystem-hub"],
         "mcp_servers": ["openticket", "openorchestrator"],
         "soul": (
             "You are the Product Owner. Create and refine OpenTicket stories "

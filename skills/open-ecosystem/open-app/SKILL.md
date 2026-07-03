@@ -24,7 +24,12 @@ Client shells for **OpenAgents** — not OpenCenter (Phase 2 product GUI).
 
 For cross-module human GUI later → `open-center`.
 
-## Surface map
+## Prerequisites
+
+- At least one OpenAgents profile configured (`openagents setup`)
+- For dashboard/OpenAgentUI MCP: `openagents dashboard` running
+
+## Procedure
 
 | Surface | Command |
 |---------|---------|
