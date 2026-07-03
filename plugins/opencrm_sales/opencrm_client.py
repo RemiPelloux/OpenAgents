@@ -99,6 +99,45 @@ def get_account(account_id: str) -> Dict[str, Any]:
     return _get(f"/v1/accounts/{urllib.parse.quote(account_id, safe='')}")
 
 
+def get_customer_context(
+    *,
+    account_id: Optional[str] = None,
+    company_name: Optional[str] = None,
+    org_id: Optional[str] = None,
+    city: Optional[str] = None,
+    contact_id: Optional[str] = None,
+    email: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Agent read — full commercial snapshot (MCP get_customer_context parity)."""
+    params: Dict[str, str] = {}
+    if account_id:
+        params["account_id"] = account_id
+    if company_name:
+        params["company_name"] = company_name
+    if org_id:
+        params["org_id"] = org_id
+    if city:
+        params["city"] = city
+    if contact_id:
+        params["contact_id"] = contact_id
+    if email:
+        params["email"] = email
+    return _get(f"/v1/query/customer?{urllib.parse.urlencode(params)}")
+
+
+def list_hot_leads(
+    *,
+    org_id: Optional[str] = None,
+    limit: int = 5,
+    min_score: int = 50,
+) -> Dict[str, Any]:
+    """Agent read — ranked hot leads (MCP list_hot_leads parity)."""
+    params: Dict[str, str] = {"limit": str(limit), "min_score": str(min_score)}
+    if org_id:
+        params["org_id"] = org_id
+    return _get(f"/v1/leads/hot?{urllib.parse.urlencode(params)}")
+
+
 def upsert_from_prospection_lead(
     *,
     video_url: str,
