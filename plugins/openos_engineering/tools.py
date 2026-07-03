@@ -20,6 +20,10 @@ from plugins.openos_engineering.ticket_client import (
     set_ticket_eta,
     update_ticket_status,
 )
+from plugins.openos_engineering.ticket_dod_loop import (
+    format_dod_loop_result,
+    run_ticket_dod_loop,
+)
 
 INVOKE_OPENCODE_SCHEMA: Dict[str, Any] = {
     "name": "invoke_opencode",
@@ -61,20 +65,21 @@ def check_openos_engineering_available() -> bool:
     return verify_opencode_binary()
 
 
-def handle_invoke_opencode(args: Dict[str, Any]) -> str:
-    ticket_id = str(args.get("ticket_id", "")).strip()
-    if not ticket_id:
-        return "Error: ticket_id is required"
-
-    mode = str(args.get("mode") or "implement")
-    cwd = args.get("cwd") or os.getcwd()
-    max_turns = int(args.get("max_turns") or 50)
-    resume = args.get("resume_session_id")
-
+def invoke_opencode_once(
+    *,
+    ticket_id: str,
+    mode: str = "implement",
+    cwd: str | None = None,
+    max_turns: int = 50,
+    resume_session_id: str | None = None,
+    run_id: str | None = None,
+) -> Dict[str, Any]:
+    """Single traced OpenCode session for a ticket."""
     ticket = get_ticket(ticket_id)
     tid = str(ticket.get("id") or ticket_id)
     correlation_id = str(ticket.get("correlation_id") or "") or None
     prompt = build_task_prompt(ticket, mode)
+    workdir = cwd or os.getcwd()
 
     if mode == "implement" and ticket.get("status") == "todo":
         update_ticket_status(
@@ -85,7 +90,7 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
         )
 
     profile = "qa" if mode in {"review", "test"} else "developer"
-    agent_run_id = str(args.get("run_id") or tid)
+    agent_run_id = str(run_id or tid)
 
     emit_rec_event(
         "agent.run.started",
@@ -107,14 +112,12 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
 
     result = run_opencode_headless(
         prompt,
-        cwd=cwd,
+        cwd=workdir,
         ticket_id=tid,
         correlation_id=correlation_id,
         max_turns=max_turns,
-        resume_session_id=resume,
+        resume_session_id=resume_session_id,
     )
-
-    profile = "qa" if mode in {"review", "test"} else "developer"
 
     if result["ok"]:
         emit_rec_event(
@@ -165,9 +168,37 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
             exit_code=result.get("exit_code"),
         )
 
+    return {
+        "ok": result["ok"],
+        "ticket_id": tid,
+        "ticket_key": ticket.get("ticket_key"),
+        "mode": mode,
+        "summary": result.get("summary") or "",
+        "stderr": result.get("stderr") or "",
+        "exit_code": result.get("exit_code"),
+        "files_edited": result.get("files_edited") or [],
+        "resume_session_id": resume_session_id,
+        "error": None if result["ok"] else "opencode_failed",
+    }
+
+
+def handle_invoke_opencode(args: Dict[str, Any]) -> str:
+    ticket_id = str(args.get("ticket_id", "")).strip()
+    if not ticket_id:
+        return "Error: ticket_id is required"
+
+    result = invoke_opencode_once(
+        ticket_id=ticket_id,
+        mode=str(args.get("mode") or "implement"),
+        cwd=args.get("cwd") or os.getcwd(),
+        max_turns=int(args.get("max_turns") or 50),
+        resume_session_id=args.get("resume_session_id"),
+        run_id=str(args.get("run_id") or "") or None,
+    )
+
     if not result["ok"]:
         return (
-            f"OpenCode failed (exit {result['exit_code']}):\n"
+            f"OpenCode failed (exit {result.get('exit_code')}):\n"
             f"{result.get('stderr') or result.get('summary')}"
         )
 
@@ -175,11 +206,65 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
     if result.get("files_edited"):
         files_note = f"\nFiles edited: {', '.join(result['files_edited'][:10])}"
 
+    key = result.get("ticket_key") or result["ticket_id"]
     return (
-        f"OpenCode completed for ticket {ticket.get('ticket_key', tid)}.\n"
+        f"OpenCode completed for ticket {key}.\n"
         f"Ticket in_review transition is handled by OpenCode session-complete webhook.\n\n"
         f"{result['summary']}{files_note}"
     )
+
+
+RUN_TICKET_DOD_LOOP_SCHEMA: Dict[str, Any] = {
+    "name": "run_ticket_dod_loop",
+    "description": (
+        "Loop OpenCode sessions on a ticket until mesh DoD: developer until in_review, "
+        "QA until done. Requires OpenTicket task trace."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticket_id": {"type": "string", "description": "Ticket UUID or key"},
+            "agent_profile": {
+                "type": "string",
+                "enum": ["developer", "qa"],
+                "description": "Which W4 phase to loop",
+            },
+            "cwd": {"type": "string", "description": "Working directory for OpenCode"},
+            "max_iterations": {
+                "type": "integer",
+                "description": "Max OpenCode sessions (default OPENTICKET_DOD_MAX_ITERATIONS)",
+            },
+        },
+        "required": ["ticket_id", "agent_profile"],
+    },
+}
+
+
+def handle_run_ticket_dod_loop(args: Dict[str, Any]) -> str:
+    ticket_id = str(args.get("ticket_id", "")).strip()
+    profile = str(args.get("agent_profile") or "").strip()
+    if not ticket_id:
+        return "Error: ticket_id is required"
+    if profile not in {"developer", "qa"}:
+        return "Error: agent_profile must be developer or qa"
+
+    def _once(**kwargs: Any) -> Dict[str, Any]:
+        return invoke_opencode_once(
+            ticket_id=kwargs["ticket_id"],
+            mode=kwargs["mode"],
+            cwd=kwargs.get("cwd"),
+            resume_session_id=kwargs.get("resume_session_id"),
+        )
+
+    loop = run_ticket_dod_loop(
+        ticket_id,
+        profile=profile,
+        invoke_once=_once,
+        cwd=args.get("cwd") or os.getcwd(),
+        max_iterations=args.get("max_iterations"),
+    )
+    key = get_ticket(ticket_id).get("ticket_key") or ticket_id
+    return format_dod_loop_result(loop, str(key))
 
 
 SUBMIT_TICKET_RESULT_SCHEMA: Dict[str, Any] = {

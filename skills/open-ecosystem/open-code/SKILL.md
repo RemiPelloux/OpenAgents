@@ -35,6 +35,8 @@ Load **`openprotocol-coder`** before implement; QA merge uses **`openprotocol-in
 
 ```
 invoke_opencode(ticket_id="OP-42", mode="implement", cwd="/path/to/app/repo")
+# Or loop until DoD:
+run_ticket_dod_loop(ticket_id="OP-42", agent_profile="developer", cwd="/path/to/app/repo")
 ```
 
 | Mode | Actor | Purpose |

@@ -38,10 +38,10 @@ openagents openos init-profiles
 ## Procedure
 
 1. **PO** — `open-ticket-optimize` → `create_ticket` + AC → `todo` → `assignee_agent_profile: developer`
-2. **Webhook** — OpenTicket → OpenOrchestrator → `POST /v1/runs` (Dev)
-3. **Dev** — load `openprotocol-coder` → `invoke_opencode(mode=implement)`
-4. **OpenCode** — branch `agent/<ticket>/…` → push → handoff → `in_review`
-5. **Orchestrator** — assign QA (`open-orchestrator-ops` gates if multi-step plan)
+2. **Webhook** — OpenTicket → OpenOrchestrator → `POST /v1/runs` (Dev) with `loop_until_dod: true`
+3. **Dev** — load `openprotocol-coder` → `run_ticket_dod_loop` or `invoke_opencode` until `in_review`
+4. **OpenCode** — branch `agent/<ticket>/…` → push → handoff → `in_review` (may take multiple sessions)
+5. **Orchestrator** — assign QA; QA loops review/test until ticket `done`
 6. **QA** — load `open-qa` → AC + tests → `openprotocol-integrator` → squash merge `main` → `done`
 7. **Audit** — OpenRec receives `ticket.*`, `code.*`, `agent.run.*` (see `open-rec`)
 

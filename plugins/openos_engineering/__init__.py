@@ -9,6 +9,7 @@ from plugins.openos_engineering.tools import (
     CREATE_TICKET_SCHEMA,
     INVOKE_CODEX_SCHEMA,
     INVOKE_OPENCODE_SCHEMA,
+    RUN_TICKET_DOD_LOOP_SCHEMA,
     SET_TICKET_ETA_SCHEMA,
     SUBMIT_TICKET_RESULT_SCHEMA,
     check_codex_available,
@@ -17,6 +18,7 @@ from plugins.openos_engineering.tools import (
     handle_create_ticket,
     handle_invoke_codex,
     handle_invoke_opencode,
+    handle_run_ticket_dod_loop,
     handle_set_ticket_eta,
     handle_submit_ticket_result,
 )
@@ -30,6 +32,14 @@ def register(ctx) -> None:
         handler=handle_invoke_opencode,
         check_fn=check_openos_engineering_available,
         emoji="⚡",
+    )
+    ctx.register_tool(
+        name="run_ticket_dod_loop",
+        toolset="openos_engineering",
+        schema=RUN_TICKET_DOD_LOOP_SCHEMA,
+        handler=handle_run_ticket_dod_loop,
+        check_fn=check_openos_engineering_available,
+        emoji="🔁",
     )
     ctx.register_tool(
         name="invoke_codex",
