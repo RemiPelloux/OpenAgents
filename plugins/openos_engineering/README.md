@@ -22,6 +22,8 @@ openagents openos handle-run --payload '{"agent_profile":"developer","task_conte
 | `OPENTICKET_API_TOKEN` | Optional Bearer auth |
 | `OPENTICKET_CORRELATION_ID` | Set automatically from ticket; propagated to OpenCode |
 | `OPENREC_URL` | RecEvent ingest after invoke |
+| `OPENBRAIN_URL` / `OPENBRAIN_API_URL` | OpenBrain observations API (CC-BRAIN-001) |
+| `OPENBRAIN_API_KEY` / `AXON_AGENT_API_KEY` | Bearer auth for Brain ingest |
 | `OPENOS_ROOT` | Fallback path to OpenCode when binary not installed |
 
 ## W4 flow
@@ -31,6 +33,7 @@ openagents openos handle-run --payload '{"agent_profile":"developer","task_conte
 3. OpenCode session-complete webhook → ticket `in_review` (not plugin)
 4. Orchestrator assigns QA → `openagents openos handle-run`
 5. OpenRec receives `agent.run.completed` and `code.implementation.completed`
+6. OpenBrain receives `agent.run.*` observations (CC-BRAIN-001) when `OPENBRAIN_URL` is set
 
 ## Kanban lane
 

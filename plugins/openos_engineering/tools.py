@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from plugins.openos_engineering.opencode_runner import run_opencode_headless, verify_opencode_binary
 from openagentui.codex_runner import run_codex_headless, verify_codex_binary
+from plugins.openos_engineering.brain_client import emit_agent_run_observation
 from plugins.openos_engineering.rec_client import emit_rec_event
 from plugins.openos_engineering.ticket_client import (
     add_ticket_comment,
@@ -94,6 +95,15 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
         agent_run_id=agent_run_id,
         target_id=tid,
     )
+    emit_agent_run_observation(
+        "agent.run.started",
+        ticket_id=tid,
+        ticket_key=ticket.get("ticket_key"),
+        mode=mode,
+        agent_profile=profile,
+        agent_run_id=agent_run_id,
+        correlation_id=correlation_id,
+    )
 
     result = run_opencode_headless(
         prompt,
@@ -120,6 +130,16 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
             agent_run_id=agent_run_id,
             target_id=tid,
         )
+        emit_agent_run_observation(
+            "agent.run.completed",
+            ticket_id=tid,
+            ticket_key=ticket.get("ticket_key"),
+            mode=mode,
+            agent_profile=profile,
+            agent_run_id=agent_run_id,
+            correlation_id=correlation_id,
+            summary=result["summary"],
+        )
     else:
         emit_rec_event(
             "agent.run.failed",
@@ -133,6 +153,16 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
             agent_run_id=agent_run_id,
             target_id=tid,
             severity="error",
+        )
+        emit_agent_run_observation(
+            "agent.run.failed",
+            ticket_id=tid,
+            ticket_key=ticket.get("ticket_key"),
+            mode=mode,
+            agent_profile=profile,
+            agent_run_id=agent_run_id,
+            correlation_id=correlation_id,
+            exit_code=result.get("exit_code"),
         )
 
     if not result["ok"]:

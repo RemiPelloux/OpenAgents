@@ -11,8 +11,12 @@ Copy [infra/config/openagents.env.example](../../infra/config/openagents.env.exa
 | Variable | Purpose |
 |----------|---------|
 | `OPENBRAIN_API_URL` | OpenBrain API base (default `http://localhost:3001`) |
-| `AXON_AGENT_API_KEY` | Agent key for MCP Knowledge + bulk doc sync |
+| `OPENBRAIN_URL` | Alias for observation ingest base URL |
+| `AXON_AGENT_API_KEY` | Agent key for MCP Knowledge + bulk doc sync + observations |
+| `OPENBRAIN_API_KEY` | Alias for observation ingest Bearer auth |
 | `OPENBRAIN_AGENT_API_KEY` | Alias accepted by OpenOS `brain-sync-docs.sh` |
+
+**Observations (CC-BRAIN-001):** `invoke_opencode` emits `agent.run.started|completed|failed` to `POST /api/v1/brain/observations` when `OPENBRAIN_URL` + API key are set. Non-blocking.
 
 **MCP Knowledge endpoint:** `$OPENBRAIN_API_URL/api/v1/mcp/knowledge`
 

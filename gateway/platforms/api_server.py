@@ -1078,6 +1078,7 @@ class APIServerAdapter(BasePlatformAdapter):
         tool_start_callback=None,
         tool_complete_callback=None,
         gateway_session_key: Optional[str] = None,
+        model: Optional[str] = None,
     ) -> Any:
         """
         Create an AIAgent instance using the gateway's runtime config.
@@ -1106,7 +1107,7 @@ class APIServerAdapter(BasePlatformAdapter):
 
         runtime_kwargs = _resolve_runtime_agent_kwargs()
         reasoning_config = GatewayRunner._load_reasoning_config()
-        model = _resolve_gateway_model()
+        resolved_model = (model or "").strip() or _resolve_gateway_model()
 
         user_config = _load_gateway_config()
         enabled_toolsets = sorted(_get_platform_tools(user_config, "api_server"))
@@ -1118,7 +1119,7 @@ class APIServerAdapter(BasePlatformAdapter):
         fallback_model = GatewayRunner._load_fallback_model()
 
         agent = AIAgent(
-            model=model,
+            model=resolved_model,
             **runtime_kwargs,
             max_iterations=max_iterations,
             quiet_mode=True,
@@ -4065,6 +4066,7 @@ class APIServerAdapter(BasePlatformAdapter):
                     stream_delta_callback=_text_cb,
                     tool_progress_callback=event_cb,
                     gateway_session_key=gateway_session_key,
+                    model=body.get("model") if isinstance(body.get("model"), str) else None,
                 )
                 self._active_run_agents[run_id] = agent
 

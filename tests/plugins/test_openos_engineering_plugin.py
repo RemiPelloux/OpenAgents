@@ -201,3 +201,17 @@ def test_unwrap_orchestrator_run_envelope():
         "payload": {"agent_profile": "developer", "input": "hello", "task_context": {}},
     }
     assert unwrap_orchestrator_run_body(wrapped)["agent_profile"] == "developer"
+
+
+def test_unwrap_orchestrator_requires_envelope_when_strict(monkeypatch):
+    from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
+
+    monkeypatch.setenv("OPENCONTRACT_REQUIRE_SIGNATURE", "1")
+    plain = {"agent_profile": "developer", "input": "hello", "task_context": {}}
+    try:
+        unwrap_orchestrator_run_body(plain)
+        assert False, "expected CONTRACT_ENVELOPE_REQUIRED"
+    except ValueError as exc:
+        assert "CONTRACT_ENVELOPE_REQUIRED" in str(exc)
+    finally:
+        monkeypatch.delenv("OPENCONTRACT_REQUIRE_SIGNATURE", raising=False)
