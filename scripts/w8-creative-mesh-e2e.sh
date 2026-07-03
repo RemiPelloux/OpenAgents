@@ -5,8 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # shellcheck source=mesh-orch-api.sh
 source "$ROOT/scripts/mesh-orch-api.sh"
-# shellcheck source=w8-e2e-common.sh
-source "$ROOT/OpenBrain/scripts/w8-e2e-common.sh"
+# shellcheck source=e2e/lib/w8-common.sh
+source "$ROOT/OpenBrain/scripts/e2e/lib/w8-common.sh"
 
 ORCH="${ORCHESTRATOR_URL:-http://localhost:3050}"
 AGENTS="${OPENAGENTS_API_URL:-http://localhost:8080}"
