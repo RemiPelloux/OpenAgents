@@ -1,54 +1,66 @@
 ---
 name: open-orchestrator-intent
-description: "Classify natural-language goals into NormalizedGoal JSON for OpenOrchestrator."
-version: 1.0.0
+description: "NL goals to NormalizedGoal JSON for orchestrator."
+version: 1.1.0
 author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [openorchestrator, intent, classifier, W4]
-    related_skills: [open-orchestrator-plan, open-ecosystem-hub]
+    tags: [openorchestrator, intent, classifier]
+    category: open-ecosystem
+    related_skills: [open-orchestrator-plan, open-dev-workflow]
 ---
 
-# Open Orchestrator Intent Classifier
+# Open Orchestrator Intent
 
-Turns a user sentence into strict **NormalizedGoal** JSON for the control plane.
+Classifies free text into **NormalizedGoal** JSON — no planning here.
 
 ## When to Use
 
-- OpenOrchestrator `POST /v1/goals` with **natural language only** (no hand JSON)
-- Ticket webhook follow-up when objective text must be normalized before planning
-- MCP `orch_submit_goal` when caller sends free-form text
+- `POST /v1/goals` with natural language only
+- `intent_classifier` profile invoked
+- Pre-plan normalization when objective is unstructured
 
 ## Prerequisites
 
-- OpenOrchestrator API on `:3050` — schema at `GET /v1/schemas/openorchestrator.normalized-goal.v1`
-- Profile: `intent_classifier` via `openagents openos init-profiles`
-- Env on orchestrator: `INTENT_CLASSIFIER_AGENT_PROFILE=intent_classifier`
-
-## Response contract
-
-Return **JSON only** matching `openorchestrator.normalized-goal.v1`:
-
-| Field | Purpose |
-|-------|---------|
-| `intent` | Routing intent slug (`ticket_fix`, `mission`, …) |
-| `goal_class` | `engineering` \| `mission` \| `qa` \| `sales` \| `security` |
-| `objective` | One imperative sentence |
-| `risk_level` | 1–4; ≥3 when prod deploy, external email, merge, delete |
-| `approval_required` | true when risk ≥ 3 |
-| `ticket_key` | Extract `OP-42` style keys from the sentence |
+- Orchestrator `:3050` — schema `GET /v1/schemas/openorchestrator.normalized-goal.v1`
+- Profile `intent_classifier` from `openagents openos init-profiles`
+- `INTENT_CLASSIFIER_AGENT_PROFILE=intent_classifier` on orchestrator
 
 ## Procedure
 
-1. Read `task_context.response_schema_url` when present
-2. Parse the user sentence + optional brain/playbook context
-3. Emit JSON only — no markdown fences
-4. OpenOrchestrator validates with Zod + policy engine before planning
+1. Read `task_context.response_schema_url` if present
+2. Parse user sentence + optional brain context
+3. Emit **JSON only** (no markdown fences)
+4. Orchestrator validates with Zod + policy before plan step
 
-## Rules
+## Response fields
 
-- Never invent ticket IDs — only keys explicitly mentioned
-- Do not decompose steps here — that is the **planner** profile (`open-orchestrator-plan`)
-- Propagate `correlation_id` on every hop
+| Field | Notes |
+|-------|-------|
+| `intent` | Slug e.g. `ticket_fix`, `mission` |
+| `goal_class` | `engineering` \| `mission` \| `qa` \| `sales` \| `security` |
+| `objective` | One imperative sentence |
+| `risk_level` | 1–4; ≥3 → `approval_required` |
+| `ticket_key` | Only if explicitly in input (`OP-42`) |
+
+## Decision rules
+
+| Input mentions | Set |
+|----------------|-----|
+| Deploy prod / delete / external email | `risk_level` ≥ 3 |
+| Ticket key in text | `ticket_key` field |
+| Multi-step work | Stop here — planner decomposes (`open-orchestrator-plan`) |
+
+## Pitfalls
+
+- Inventing ticket IDs not in the sentence
+- Decomposing steps (planner's job)
+- Markdown-wrapped JSON
+
+## Verification
+
+- [ ] Output parses as `openorchestrator.normalized-goal.v1`
+- [ ] `approval_required` true when risk ≥ 3
+- [ ] `correlation_id` propagated on next hop

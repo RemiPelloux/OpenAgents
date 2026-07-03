@@ -1,108 +1,74 @@
 ---
 name: open-whistle
-description: "Use when deploying or integrating OpenWhistle — self-hosted HinSchG/EU whistleblower reporting and RemiPelloux SDKs."
-version: 1.0.0
-author: Remi Pelloux
+description: "HinSchG whistleblower deploy and SDK integration."
+version: 1.1.0
+author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [openwhistle, compliance, hinschg, whistleblower, gdpr, fastapi, sdk]
-    homepage: https://github.com/openwhistle/OpenWhistle
-    related_skills: [open-ecosystem-hub, openagents]
+    tags: [openwhistle, compliance, hinschg, sdk]
+    category: open-ecosystem
+    related_skills: [open-ecosystem-hub, open-contract]
 ---
 
 # Open Whistle
 
-**Open Whistle** is a self-hosted whistleblower reporting platform compliant with **HinSchG** (Germany) and **EU Directive 2019/1937**. Organizations with 50+ employees often need an internal reporting channel — OpenWhistle provides anonymity, bidirectional case messaging, and SLA tracking.
+Self-hosted whistleblower channel (HinSchG / EU 2019/1937). SDKs: `openwhistle-sdks`.
 
-**SDKs:** [RemiPelloux/openwhistle-sdks](https://github.com/RemiPelloux/openwhistle-sdks) — JavaScript, Python, PHP, Rust, Go.
+## When to Use
 
-## When to use
+- Deploy/harden OpenWhistle instance
+- Integrate case APIs via official SDKs
+- SLA/legal workflow (7-day ack, 3-month feedback)
 
-- Deploying or hardening an OpenWhistle instance
-- Integrating case management via official SDKs
-- Automating admin workflows (with strict PII/anonymity rules)
-- Legal/compliance questions about HinSchG deadlines (7-day ack, 3-month feedback)
+**Never** store case content in general agent memory.
 
-Do **not** store whistleblower case content in general OpenAgents memory — see data boundaries below.
+## Prerequisites
 
-## Stack (upstream OpenWhistle)
+- PostgreSQL + Redis for upstream app
+- `SECRET_KEY`, `DATABASE_URL`, TLS
+- nginx with **IP logging disabled**
 
-| Component | Technology |
-|-----------|------------|
-| API | FastAPI + Python 3.14 |
-| DB | PostgreSQL 18 (SQLAlchemy async) |
-| Cache | Redis 8 |
-| Auth | TOTP MFA (admins), case number + UUID PIN (reporters) |
-| Proxy | nginx (IP logging disabled) |
+## Structural overview
 
-## Key features
+| Actor | Auth |
+|-------|------|
+| Reporter | Case ID + UUID PIN |
+| Admin | TOTP MFA (+ optional OIDC) |
 
-- **Full anonymity** — no application-level IP logging
-- **Two-factor reporter access** — case ID + secret PIN, bruteforce protected
-- **Bidirectional messaging** — HinSchG §17 compliant replies
-- **SLA tracking** — 7-day acknowledgement, 3-month feedback deadlines
-- **Attachments** — PDF, images, Office docs (size/count limits)
-- **OIDC** — optional admin SSO
-- **Setup wizard** — first-run admin + TOTP enrollment
+Stack: FastAPI, async SQLAlchemy, Redis.
 
-## Deployment checklist
+## Procedure — deploy
 
-1. PostgreSQL + Redis provisioned (self-hosted)
-2. `SECRET_KEY`, `DATABASE_URL`, Redis URL configured
-3. nginx reverse proxy — **disable IP logging**; verify no upstream `X-Forwarded-For` leakage (`IP leakage detection` in app)
-4. Admin MFA enforced (TOTP)
-5. TLS everywhere; no external CDN for UI assets (DSGVO)
-6. Backup strategy with encryption at rest
+1. Provision DB + Redis
+2. Configure secrets; enforce admin MFA
+3. nginx: no IP leakage; verify app leakage detection
+4. TLS end-to-end; backups encrypted
+5. Integrate via SDK only — not scraped HTML
 
-Use Docker images from ghcr.io / Docker Hub / quay.io per upstream docs.
+## Procedure — agent assist (triage)
 
-## SDK usage (Python example)
+1. Redact all reporter identity from agent context
+2. Use SDK read APIs for case metadata only
+3. Never `ingest_observation` with raw report body
 
-Install from [openwhistle-sdks](https://github.com/RemiPelloux/openwhistle-sdks):
+## Decision rules
 
-```python
-# Pattern: use official client — do not hand-roll auth
-from openwhistle_sdk import Client  # package name per SDK repo
+| Task | Path |
+|------|------|
+| Legal intake | OpenWhistle app |
+| General agent memory | Forbidden for case bodies |
+| Automation | SDK + explicit human gate |
 
-client = Client(base_url="https://reports.example.com", api_token=os.environ["OPENWHISTLE_ADMIN_TOKEN"])
-# Admin-only operations require MFA session — follow SDK auth flow
-```
+## Pitfalls
 
-Always use SDK methods for case access — avoids auth mistakes and API drift.
+- IP logging at proxy
+- Case PII in Brain/OpenAgents memory
+- Skipping MFA on admin accounts
 
-## OpenAgents integration (guarded)
+## Verification
 
-Agents may **assist admins** with non-identifying summaries only if explicitly requested:
-
-| Allowed | Forbidden |
-|---------|-----------|
-| SLA deadline reminders (counts, dates) | Storing reporter PINs or case UUIDs in memory |
-| Drafting generic acknowledgement templates | Pasting full report text into Slack/Telegram |
-| SDK boilerplate for integrations | Logging attachment contents to trajectories |
-
-Run gateway agents with `--yolo` **disabled** for any whistleblower-related host.
-
-## Compliance reminders
-
-- Mandatory internal channel for qualifying employers (DE/EU context)
-- Hard deletion support for DSGVO erasure requests
-- Document data processing agreement for your organization
-- Legal review before customizing retention policies
-
-## Common pitfalls
-
-1. **IP leakage via proxy** — misconfigured nginx or CDN breaks anonymity promise
-2. **Agent memory contamination** — never `/memory` store case details
-3. **Skipping MFA** — admin accounts must use TOTP
-4. **Custom API without SDK** — breaks when API versioning changes
-
-## Verification checklist
-
-- [ ] Reporter flow works without IP capture (inspect logs)
-- [ ] Admin login requires TOTP
-- [ ] SLA timers visible for open cases
-- [ ] Attachments upload within configured limits
-- [ ] SDK integration uses env-based secrets, not committed tokens
-- [ ] OpenAgents (if used) has no whistleblower content in `~/.openagents/memory/`
+- [ ] Reporter path works without identity collection
+- [ ] SLA timers visible in admin UI
+- [ ] SDK integration uses official package versions

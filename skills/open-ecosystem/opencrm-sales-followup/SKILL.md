@@ -1,67 +1,68 @@
 ---
 name: opencrm-sales-followup
-description: "OpenCRM sales follow-up agent — read account state, cross-reference Axon knowledge, and stage a follow-up (CC-W1-003) for OpenOrchestrator approval."
-version: 1.0.0
+description: "CRM read + staged follow-up via orchestrator approval."
+version: 1.1.0
 author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [OpenCRM, OpenBrain, Axon, W1, MCP, Sales]
-    related_skills: [open-brain, open-ecosystem-hub, openpro-tiktok-prospection]
+    tags: [OpenCRM, sales, W1, staging]
+    category: open-ecosystem
+    related_skills: [open-brain, open-team, openpro-tiktok-prospection]
 ---
 
 # OpenCRM Sales Follow-up
 
-Drafts the **next commercial action** for an account by combining CRM state (source of
-truth) with Axon knowledge (validated context) — never sends anything itself; every write
-is staged and requires human approval via OpenOrchestrator.
+Read CRM truth + Axon context → **stage** next action (`CC-W1-003`) — never send directly.
 
-## Setup
+## When to Use
+
+- "What's the state of {Account}?"
+- Draft next commercial step after meeting/prospection
+- Agent must not email customer without approval
+
+## Prerequisites
 
 ```bash
 export OPENCRM_API_URL=http://localhost:3010
 ```
 
-Ensure the OpenCRM API is running (`apps/api` in `OpenCRM/`, default port `3010`).
+Plugin `opencrm_sales` + Brain MCP (`open-brain`).
 
-## Plugin tools (`opencrm_sales`)
+## Plugin tools
 
 | Tool | Purpose |
 |------|---------|
-| `search_accounts` | Fuzzy company name + city lookup (crm:read) |
-| `check_account_duplicate` | Confirm an account already exists before creating one (CC-W1-006) |
-| `get_account` | Read full account + contacts by id (crm:read) |
-| `propose_crm_update` | Stage an account/opportunity change — pending until OpenOrchestrator approves (CC-W1-003) |
+| `search_accounts` | Fuzzy company + city |
+| `get_account` | Full account + contacts |
+| `check_account_duplicate` | Before create (`CC-W1-006`) |
+| `propose_crm_update` | Stage change — pending approval |
 
-Combine with `search_knowledge` (`domain: openos`) and `search_observations` (`app: opencrm`)
-from the **open-brain** skill for validated meeting history and prospection context.
+## Procedure
 
-## Workflow
+1. `search_accounts` or `get_account`
+2. `search_observations(app=opencrm, query=…)`
+3. `search_knowledge(domain=openos, query=…)`
+4. Draft follow-up from combined context
+5. `propose_crm_update` — report staged id; **do not** send email
 
-1. `search_accounts` (or `get_account` if the id is already known) to resolve the company
-2. `search_observations(app="opencrm", query="<company> <city>")` — meeting/prospection history
-3. `search_knowledge(domain="openos", query="<company> commercial")` — validated facts
-4. Draft the follow-up (next step, objections to address) from the combined context
-5. `propose_crm_update` with `entity_type: "opportunity"`, `payload: { next_step, objections }`
-6. Report the staged update id — do **not** send email or notify the customer directly
+## Decision rules
 
-## Answering "What's the state of {Account}?"
+| If | Then |
+|----|------|
+| `get_account.next_action` already set | Do not duplicate `propose_crm_update` |
+| `goal_met: false` | Expected — apply via Orchestrator staging only |
+| TikTok lead | `openpro-tiktok-prospection` may have upserted CRM first |
 
-```
-search_accounts(company_name="Decathlon", city="Nice")
-  → get_account(id)
-  → search_observations(app="opencrm", query="Decathlon Nice")
-  → search_knowledge(domain="openos", query="Decathlon commercial")
-```
+## Pitfalls
 
-`get_account` is authoritative for current pipeline stage and owner; observations and
-knowledge fill in meeting history and prospection provenance.
+- PII in Brain observations
+- Calling customer APIs directly
+- Duplicate staged updates for same next step
 
-## Rules
+## Verification
 
-- Never call `propose_crm_update` twice for the same next step — check `get_account.next_action`
-  first to avoid duplicate staged updates.
-- `propose_crm_update` always returns `goal_met: false` — it is staged, not applied. Applying
-  happens only via OpenOrchestrator's `/internal/staging/:id/apply` callback.
-- No PII (email/phone) in follow-up drafts placed into `search_knowledge`/observations.
+- [ ] Staged update id returned from `propose_crm_update`
+- [ ] `get_account` reflects read-only truth before write
+- [ ] No outbound email tool invoked

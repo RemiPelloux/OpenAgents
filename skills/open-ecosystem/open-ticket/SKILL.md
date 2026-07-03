@@ -1,76 +1,84 @@
 ---
 name: open-ticket
-description: "OpenTicket MCP operations for PO, Dev, and QA — create, read, transition tickets."
-version: 1.0.0
+description: "OpenTicket MCP: create, read, transition tickets."
+version: 2.0.0
 author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [OpenTicket, Jira, W4, MCP]
-    related_skills: [open-code, open-dev-workflow]
+    category: open-ecosystem
+    related_skills: [open-dev-workflow, open-code, openprotocol-coder, openprotocol-integrator]
 ---
 
 # OpenTicket
 
-OpenTicket is the issue source of truth for the OpenOS W4 workflow.
+Issue tracker — **source of truth** for agent work and W4 status.
 
-## Setup
+## When to Use
+
+- PO creates backlog; Dev/QA transition tickets
+- Any `OP-*` key or ticket UUID in context
+- Webhook fired OpenOrchestrator dispatch
+
+## Prerequisites
 
 ```bash
 openagents mcp install openticket
+export OPENTICKET_API_URL=http://localhost:3020
 ```
 
-Ensure API is running: `OPENTICKET_API_URL=http://localhost:3020`
+Profiles: `product_owner`, `developer`, `qa` via `openagents openos init-profiles`.
 
 ## MCP tools
 
 | Tool | Profiles | Purpose |
 |------|----------|---------|
-| `create_ticket` | product_owner, security | New story/bug with acceptance criteria |
-| `get_ticket` | all | Read by UUID or key (`OP-42`) |
+| `create_ticket` | product_owner, security | Story/bug + AC |
+| `get_ticket` | all | Read by UUID or `OP-42` |
 | `update_ticket_status` | developer, qa | Workflow transitions |
-| `update_ticket` | PO, dev, researcher | PATCH fields + deliverables |
-| `search_tickets` | all | Full-text search |
-| `add_ticket_comment` | assigned agents | Post result summaries |
-| `list_tickets` | all | Filter by status, profile, project, labels |
+| `update_ticket` | PO, dev | PATCH fields |
+| `add_ticket_comment` | assigned | Handoff + summaries |
+| `search_tickets` / `list_tickets` | all | Discovery |
 
-Plugin tool (OpenAgents, not MCP): `submit_ticket_result` — deliverables + optional `in_review`.
+Plugin only: `submit_ticket_result` — deliverables + optional `in_review`.
 
-## Status transition matrix
+## Procedure — W4 coding ticket
+
+1. PO: `create_ticket` with `acceptance_criteria[]`
+2. PO: `update_ticket_status` → `todo`, assign `developer`
+3. Dev: `get_ticket` → `in_progress` → `invoke_opencode` (see `open-code`)
+4. Dev: handoff comment + `in_review` (via webhook or `submit_ticket_result`)
+5. QA: `openprotocol-integrator` → `done`
+
+## Status matrix (OpenProtocol)
 
 | From | To | Actor |
 |------|-----|-------|
 | backlog | todo | product_owner |
 | todo | in_progress | developer |
-| in_progress | in_review | developer, opencode callback |
-| in_review | qa | developer |
-| qa | done | qa only |
+| in_progress | in_review | developer / OpenCode webhook |
+| in_review | done | qa only (after integrator merge) |
 
-Invalid transitions return `409 INVALID_TRANSITION`.
+Invalid → `409 INVALID_TRANSITION`. Skip `qa` intermediate status when using integrator squash-merge path.
 
-## Research / ops workflow (non-code)
+## Decision rules
 
-1. PO creates `type: task`, `execution_mode: research`, measurable AC
-2. Accept → `todo`, assign `researcher`
-3. Execute via OpenTeam / web tools (not `invoke_opencode`)
-4. `submit_ticket_result` or `update_ticket` + comment
-5. QA → `done`
+| Ticket type | Path |
+|-------------|------|
+| `execution_mode: research` | OpenTeam/tools — not `invoke_opencode` |
+| Code feature | W4 + OpenProtocol branches |
+| Security | `open-sec` → ticket → W4 |
 
-## PO workflow
+## Pitfalls
 
-1. `create_ticket` with `acceptance_criteria` array
-2. `update_ticket_status` → `todo` with `assignee_agent_profile: developer`
-3. Orchestrator dispatches Dev agent automatically
+- Dev transitioning to `done`
+- Missing handoff comment (QA cannot find branch)
+- AC empty on code tickets
 
-## Dev workflow
+## Verification
 
-1. `get_ticket` for context
-2. `update_ticket_status` → `in_progress`
-3. `invoke_opencode` (see `open-code` skill) — not an OpenTicket MCP tool
-
-## QA workflow
-
-1. `get_ticket` after OpenCode session-complete (`in_review`)
-2. `invoke_opencode` mode=`test` or `review`
-3. `update_ticket_status` → `done` (QA only)
+- [ ] `get_ticket` returns `correlation_id` + AC
+- [ ] Status path matches matrix for W4
+- [ ] Comment contains `OpenProtocol handoff` after implement

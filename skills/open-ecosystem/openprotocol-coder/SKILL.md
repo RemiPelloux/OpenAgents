@@ -1,109 +1,69 @@
 ---
 name: openprotocol-coder
-description: "OpenProtocol coder: branch, verify, commit, push, handoff."
-version: 1.0.0
+description: "Branch, code via OpenCode, push, handoff to QA."
+version: 1.1.0
 author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [OpenProtocol, Git, OpenCode, OpenAgents, W4]
+    tags: [OpenProtocol, Git, OpenCode, developer]
     category: open-ecosystem
-    related_skills: [open-code, open-dev-workflow, openprotocol-integrator]
+    related_skills: [open-code, open-ticket, openprotocol-integrator, open-dev-workflow]
 ---
 
-# OpenProtocol — Coder (OpenAgents → OpenCode)
+# OpenProtocol — Coder
 
-You are the **Coder** role in OpenProtocol. OpenAgents spawns **OpenCode**
-(`invoke_opencode`) to edit the repo. You never merge to `main`.
+**Developer** role: OpenAgents spawns OpenCode; you own the feature branch until handoff.
 
 ## When to Use
 
-- `developer` profile implements a ticket
-- `invoke_opencode(mode=implement)` is about to run
-- Any delegated coding task that must land on a feature branch
+- `developer` profile on a code ticket
+- Before `invoke_opencode(mode=implement)`
+- Any git write except merge to `main`
 
 ## Prerequisites
 
-- Git repo with `origin` pointing at GitHub
-- **Machine auth** — one of:
-  - `GITHUB_TOKEN` in `~/.openagents/.env` (AWS/headless — preferred in prod)
-  - `~/.git-credentials` with `x-access-token` (deploy PAT)
-  - SSH deploy key in `~/.ssh/` + `git@github.com:` remote
-- OpenCode binary: `OPENOS_OPENCODE_PATH` or `opencode` on PATH
-- **Do not** use interactive GitHub CLI login — not available on headless hosts
-
-### Verify auth (before push)
-
-```bash
-terminal(command="test -n \"$GITHUB_TOKEN\" && curl -sf -H \"Authorization: token $GITHUB_TOKEN\" https://api.github.com/user | head -c 200 || git ls-remote origin HEAD")
-```
+- `GITHUB_TOKEN` in `~/.openagents/.env` (SSM on AWS) or `~/.git-credentials`
+- Git `user.name` / `user.email` configured on host
+- Target repo cloned with `origin` remote
 
 ## Procedure
 
-### 1. Branch (never work on `main`)
+1. `git fetch && git checkout main && git pull --ff-only`
+2. `git checkout -b agent/<ticket-key>/<short-slug>`
+3. `invoke_opencode(ticket_id, mode=implement, cwd=<app-repo>)`
+4. Verify: project test + typecheck + build
+5. Commit if needed: `<type>(<scope>): <subject>`
+6. `git push -u origin HEAD`
+7. `add_ticket_comment` handoff block → `in_review`
 
-```bash
-terminal(command="git fetch origin && git checkout main && git pull --ff-only origin main")
-terminal(command="git checkout -b agent/<ticket-key>/<short-slug>")
-```
-
-Examples: `agent/OP-42/session-artifacts`, `agent/W4-012/fix-webhook`
-
-OpenOS submodules: `cd` into the **app repo** that owns the change before branching.
-
-### 2. Delegate coding to OpenCode
-
-```
-invoke_opencode(ticket_id="OP-42", mode="implement", cwd="/path/to/app/repo")
-```
-
-OpenCode must: locate → make (Pelloux: surgical, file ≤400 LOC) → run tests/typecheck/build.
-
-### 3. After OpenCode returns — verify locally if needed
-
-Run the app’s DoD commands (OpenCode repo: `bun test`, `bunx tsc --noEmit`).
-
-### 4. Commit (if OpenCode did not commit)
-
-```
-<type>(<scope>): <imperative subject ≤ 72 chars>
-```
-
-Types: `feat|fix|refactor|test|docs|chore|ci|perf` — one logical change per commit.
-
-### 5. Push branch only
-
-```bash
-terminal(command="git push -u origin HEAD")
-```
-
-Never push `main`. Never `--force` on shared branches.
-
-### 6. Handoff (mandatory — ticket comment)
-
-Post via `add_ticket_comment` or `submit_ticket_result`:
+## Handoff template
 
 ```
 OpenProtocol handoff
-- Branch: agent/<ticket-key>/<slug>
-- Repo: <path or owner/repo>
+- Branch: agent/<key>/<slug>
+- Repo: <path>
 - Checks: test ✓ | typecheck ✓ | build ✓
-- Risk: low|medium|high — <one line>
-- Integrator: openprotocol-integrator on this branch
+- Risk: low|medium|high — <line>
 ```
 
-Transition ticket to `in_review`. **Stop** — do not merge.
+## Decision rules
+
+| Situation | Action |
+|-----------|--------|
+| OpenOS submodule | Branch inside app repo |
+| Push fails | Report error — do not merge locally to main |
+| User says don't push | Skip push; still run tests |
 
 ## Pitfalls
 
-- Merging to `main` from the coder session
-- Skipping handoff — integrator agent cannot find the branch
-- Using personal interactive GitHub CLI login on AWS/EC2 (fails headless)
-- Cross-app changes in one commit — one repo per commit; contract first
+- Merging to `main` from coder session
+- Missing handoff (QA blocked)
+- Wrong repo `cwd` for submodule work
 
 ## Verification
 
-- `git branch --show-current` starts with `agent/`
-- `git log origin/main..HEAD` shows only scoped commits
-- Remote branch exists: `git ls-remote origin agent/...`
+- [ ] Branch prefix `agent/`
+- [ ] Remote branch exists after push
+- [ ] Ticket comment contains handoff block

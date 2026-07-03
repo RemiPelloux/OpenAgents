@@ -1,108 +1,60 @@
 ---
 name: openprotocol-integrator
-description: "OpenProtocol integrator: verify branch, test, squash merge."
-version: 1.0.0
+description: "Verify agent branch, squash merge main, cleanup."
+version: 1.1.0
 author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [OpenProtocol, Git, QA, OpenAgents, W4]
+    tags: [OpenProtocol, Git, QA, integrator]
     category: open-ecosystem
-    related_skills: [openprotocol-coder, open-dev-workflow, open-ticket]
+    related_skills: [openprotocol-coder, open-ticket, open-dev-workflow, open-rec]
 ---
 
-# OpenProtocol — Integrator (OpenAgents QA)
+# OpenProtocol — Integrator
 
-You are the **Integrator** role. A coder agent (OpenCode via `invoke_opencode`)
-pushed an `agent/…` branch. You verify, merge to `main`, clean up.
-
-**Never** rewrite coder commits. **Never** merge with failing tests.
+**QA** role: verify coder branch, merge to `main`, delete branch, close ticket.
 
 ## When to Use
 
-- `qa` profile after ticket is `in_review`
-- Handoff comment contains `OpenProtocol handoff` + branch name
-- OpenOrchestrator assigned integration / sign-off step
+- Ticket `in_review` with `OpenProtocol handoff` comment
+- QA profile assigned by orchestrator
+- After coder pushed `agent/…` branch
 
 ## Prerequisites
 
-- Same git auth as coder: `GITHUB_TOKEN` in `~/.openagents/.env` or git-credentials
-- Branch name from ticket comment or handoff block
-- **Do not** use interactive GitHub CLI login
+- Same `GITHUB_TOKEN` / git auth as coder host
+- Branch name from ticket comment
+- Full test suite commands for target app
 
 ## Procedure
 
-### 1. Read handoff
+1. `get_ticket` — parse branch from handoff
+2. `git fetch && git checkout <branch> && git pull --ff-only`
+3. Run full DoD (test, typecheck, build)
+4. `git diff origin/main...HEAD` — reject if scope creep or secrets
+5. `git checkout main && git pull --ff-only`
+6. `git merge --squash <branch>` → commit → `git push origin main`
+7. `git push origin --delete <branch>`
+8. `update_ticket_status` → `done` + merge SHA comment
 
-`get_ticket` → find branch in comments (`Branch: agent/...`).
+## Decision rules
 
-### 2. Fetch and checkout
-
-```bash
-terminal(command="git fetch origin && git checkout <branch> && git pull --ff-only origin <branch>")
-```
-
-### 3. Full verify (do not trust handoff alone)
-
-Run project DoD — example OpenCode app:
-
-```bash
-terminal(command="bun test && bunx tsc --noEmit && bun run install:local-bin", workdir="<app-repo>")
-```
-
-Review diff:
-
-```bash
-terminal(command="git log origin/main..HEAD --oneline && git diff origin/main...HEAD --stat")
-```
-
-**Reject** if: failing tests, secrets in diff, scope creep, bad commit format.
-Comment on ticket; send back to developer on the **same branch**.
-
-### 4. Squash merge to `main`
-
-```bash
-terminal(command="git checkout main && git pull --ff-only origin main")
-terminal(command="git merge --squash <branch>")
-terminal(command="git commit -m \"<type>(<scope>): <subject>
-
-Integrates agent/<key>/<slug>. Verified: test, typecheck, build.\"")
-terminal(command="git push origin main")
-```
-
-Never `git push --force` to `main`.
-
-### 5. Cleanup
-
-```bash
-terminal(command="git push origin --delete <branch> && git branch -d <branch>")
-```
-
-OpenOS meta repo: if submodule changed, bump pointer at OpenOS root in a
-separate commit (`chore: bump <App> submodule`).
-
-### 6. Close ticket
-
-`update_ticket_status` → `done` (QA only). `add_ticket_comment` with merge SHA.
-
-Optional: `invoke_opencode(mode=test)` before merge if extra validation needed.
-
-## OpenOS submodule matrix
-
-| Change in | Integrate in | Then |
-|-----------|----------------|------|
-| `OpenCode/` only | OpenCode repo | done |
-| App + OpenOS pointer | app repo first | bump submodule at OpenOS root |
+| Check fails | Action |
+|-------------|--------|
+| Tests red | Comment on ticket; same branch fix by Dev |
+| Secrets in diff | Reject; never merge |
+| Submodule + meta | Merge app first; bump OpenOS pointer separately |
 
 ## Pitfalls
 
-- Merging without re-running tests
+- Trusting handoff without re-running tests
 - Force-push to `main`
-- Deleting branch before merge confirmed on remote
+- `done` before remote merge confirmed
 
 ## Verification
 
-- `main` on origin contains squash commit
-- Feature branch deleted on origin
-- Ticket status `done` with merge note
+- [ ] Squash commit on `origin/main`
+- [ ] Feature branch deleted on origin
+- [ ] Ticket `done` with merge note

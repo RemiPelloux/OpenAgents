@@ -1,67 +1,67 @@
 ---
 name: open-code
-description: "Delegate coding to OpenOS OpenCode fork via invoke_opencode plugin tool (W4 ticket workflow)."
-version: 1.0.0
+description: "Spawn OpenOS OpenCode via invoke_opencode tool."
+version: 2.0.0
 author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [OpenCode, OpenOS, Coding, W4, OpenTicket]
-    related_skills: [open-ticket, open-dev-workflow, openprotocol-coder, openprotocol-integrator]
+    tags: [OpenCode, W4, invoke_opencode]
+    category: open-ecosystem
+    related_skills: [openprotocol-coder, open-ticket, open-dev-workflow, open-contract]
 ---
 
-# OpenOS OpenCode (Engineering Co-pilot)
+# OpenOS OpenCode
 
-Use the **OpenOS OpenCode fork** (not npm `opencode-ai`) for ticket-backed coding via the `invoke_opencode` plugin tool.
-
-OpenAgents owns git workflow — load **`openprotocol-coder`** (developer) and **`openprotocol-integrator`** (qa) before any push/merge.
+OpenAgents delegates all code edits to the **OpenOS OpenCode fork** — not npm `opencode-ai`.
 
 ## When to Use
 
-- Developer or QA profile working on an OpenTicket issue
-- User asks to implement, review, or test a ticket with OpenCode
-- W4 workflow: Dev delegates all code changes to OpenCode
+- `developer` or `qa` profile needs implement / review / test on a ticket
+- `invoke_opencode` plugin tool is available
+- W4 coding step after `get_ticket`
+
+Load **`openprotocol-coder`** before implement; QA merge uses **`openprotocol-integrator`** (git on host, not inside OpenCode).
 
 ## Prerequisites
 
-- `openos-engineering` plugin enabled (bundled)
-- OpenCode binary: set `OPENOS_OPENCODE_PATH` or build from `OpenCode/`
-- OpenTicket API at `OPENTICKET_API_URL` (default `http://localhost:3020`)
+- Plugin `openos_engineering` enabled
+- `OPENOS_OPENCODE_PATH` or `opencode` on PATH
+- `OPENTICKET_API_URL` + ticket id
+- `OPENCODE_INVOKED_BY=openagents` set by plugin (do not override)
 
-## Primary path: invoke_opencode tool
+## Procedure
 
 ```
-invoke_opencode(ticket_id="OP-42", mode="implement", cwd="/path/to/repo")
+invoke_opencode(ticket_id="OP-42", mode="implement", cwd="/path/to/app/repo")
 ```
 
-Modes:
-- `implement` — Dev implements acceptance criteria
-- `review` — QA reviews diff against AC
-- `test` — QA runs tests
+| Mode | Actor | Purpose |
+|------|-------|---------|
+| `implement` | developer | Build to AC on `agent/…` branch |
+| `review` | qa | Diff vs AC |
+| `test` | qa | Run test suite |
 
-The tool automatically:
-1. Fetches ticket + acceptance criteria from OpenTicket
-2. Sets `OPENTICKET_TICKET_ID` and `OPENCODE_INVOKED_BY=openagents`
-3. Runs OpenCode headless (`-p --bare`)
-4. OpenCode emits session-complete webhook → ticket moves to `in_review`
+Plugin flow: fetch ticket → set env → headless `-p --bare` → session-complete webhook (`CC-W4-005`).
 
-## Do NOT enable OpenAgents inside OpenCode
+## Decision rules
 
-When OpenAgents invokes OpenCode, **do not** run `/openagents true` in OpenCode — that reverses the flow and causes loops.
+| Situation | Action |
+|-----------|--------|
+| Plugin missing | Fallback CLI with `OPENTICKET_TICKET_ID` env |
+| Inside OpenCode session | Never `/openagents true` |
+| Submodule change | `cwd` = app repo, not OpenOS root only |
 
-## Fallback: manual headless CLI
+## Pitfalls
 
-If the plugin tool is unavailable:
+- Using bundled `opencode` skill (generic CLI) instead of this OpenOS fork
+- Wrong `cwd` (OpenOS root vs `OpenCode/` submodule)
+- Expecting OpenCode to merge `main` (integrator does that)
 
-```bash
-export OPENCODE_INVOKED_BY=openagents
-export OPENTICKET_TICKET_ID=<uuid>
-opencode -p --bare --max-turns 50 "Implement OP-42: ..."
-```
+## Verification
 
-## Binary resolution order
-
-1. `$OPENOS_OPENCODE_PATH`
-2. `which opencode` (compiled OpenOS binary)
-3. `bun $OPENOS_ROOT/OpenCode/entrypoints/cli.tsx`
+- [ ] `verify_opencode_binary()` or `opencode --version` succeeds
+- [ ] Session sets `OPENCODE_INVOKED_BY=openagents`
+- [ ] Ticket reaches `in_review` after implement (webhook or manual comment)
+- [ ] `CC-W4-005` envelope on session-complete when strict signing on

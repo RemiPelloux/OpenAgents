@@ -1,60 +1,68 @@
 ---
 name: open-orchestrator-plan
-description: "Auto-plan goals and dispatch OpenAgents via Orchestrator."
-version: 1.0.0
+description: "Submit goals, auto-plan, dispatch OpenAgents runs."
+version: 1.1.0
 author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [openorchestrator, planner, auto-plan, W4]
-    related_skills: [open-dev-workflow, open-ecosystem-hub]
+    tags: [openorchestrator, planner, dispatch]
+    category: open-ecosystem
+    related_skills: [open-orchestrator-intent, open-dev-workflow, open-ecosystem-hub]
 ---
 
 # Open Orchestrator Plan
 
-Agent-first control plane: submit goals, auto-decompose, dispatch profiles.
+Control plane: goals → plans → tasks → **OpenAgents** runs (never OpenCode direct).
 
 ## When to Use
 
-- Ticket webhook already fired but you need a **new multi-step plan**
-- PO or agent submits a **natural-language objective**
-- Manual routing override via MCP
+- Multi-step objective needs decomposition + dispatch
+- Manual override when ticket webhook already fired
+- Polling plan/task status
 
 ## Prerequisites
 
-- OpenOrchestrator API on `:3050` (or `ORCHESTRATOR_URL`)
-- MCP server: `@openorchestrator/mcp-server` stdio
-- Profiles: `openagents openos init-profiles` (includes `planner`)
+- `ORCHESTRATOR_URL` (default `http://localhost:3050`)
+- MCP `@openorchestrator/mcp-server` stdio
+- Profiles: `planner`, `developer`, `qa` initialized
 
 ## MCP tools
 
 | Tool | Purpose |
 |------|---------|
-| `orch_submit_goal` | Auto-plan + dispatch (default) |
+| `orch_submit_goal` | Auto-plan + dispatch |
 | `orch_get_plan_status` | Poll plan/tasks |
-| `orch_list_tasks` | List in-memory tasks |
-| `orch_override_route` | Manual assign (audit logged) |
+| `orch_list_tasks` | List tasks |
+| `orch_override_route` | Manual assign (audited) |
 
-## REST parity
-
-| Method | Path |
-|--------|------|
-| POST | `/v1/goals` |
-| GET | `/v1/plans/:id/status` |
-| POST | `/v1/tasks/:id/assign` |
-
-Set header `X-OpenOS-Plan-Mode: manual` to skip auto planner dispatch.
+REST: `POST /v1/goals`, `GET /v1/plans/:id/status`, `POST /v1/tasks/:id/assign`.
 
 ## Procedure
 
-1. `orch_submit_goal` with `objective` (+ optional `ticket_id`)
-2. Read `plan_id` and `dispatched_task_ids` from response
-3. `orch_get_plan_status` until tasks complete or blocked
-4. Use `orch_override_route` only when auto routing fails
+1. `orch_submit_goal(objective=…, ticket_id=optional)`
+2. Note `plan_id` + `dispatched_task_ids`
+3. `orch_get_plan_status` until complete or `blocked`
+4. If blocked → `orch_override_route` or fix upstream skill gap (`open-mcp-scaffold`)
 
-## Rules
+## Decision rules
 
-- OpenOrchestrator never calls OpenCode — OpenAgents only
-- Default plan mode is **auto**; manual is override
-- Propagate `correlation_id` on every hop
+| Header / mode | Behavior |
+|---------------|----------|
+| Default | Auto planner + dispatch |
+| `X-OpenOS-Plan-Mode: manual` | Skip auto dispatch |
+| Engineering ticket | Dispatch `developer` → W4 |
+| `blocked` + capability_gap | `open-mcp-scaffold` |
+
+## Pitfalls
+
+- Calling OpenCode from orchestrator (forbidden)
+- Missing `correlation_id` on dispatch
+- Ignoring `blocked` without reading task error
+
+## Verification
+
+- [ ] `orch_get_plan_status` shows tasks `completed` or explicit `blocked` reason
+- [ ] Dispatched profile matches goal class
+- [ ] Ticket webhook path still has matching `correlation_id`

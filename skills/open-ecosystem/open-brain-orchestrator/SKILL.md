@@ -1,71 +1,70 @@
 ---
 name: open-brain-orchestrator
-description: "OpenBrain mission control — start_mission, ask_brain ticket/ETA/DoD, live OpenTicket read."
-version: 1.0.0
+description: "Brain missions, ticket ETA, ask_brain status queries."
+version: 1.1.0
 author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [OpenBrain, OpenTicket, OpenAgents, W4, orchestrator, mission]
-    related_skills: [open-brain, open-dev-workflow, open-ticket, open-ecosystem-hub]
+    tags: [openbrain, mission, orchestrator, W4]
+    category: open-ecosystem
+    related_skills: [open-brain, open-dev-workflow, open-ticket, open-rec]
 ---
 
 # OpenBrain Orchestrator
 
-OpenBrain is the **command + visibility layer**. OpenAgents executes. OpenTicket is the trace spine.
+Command + visibility layer: missions, live tickets, RAG answers. **Execution** stays in OpenAgents W4.
 
-## Flow
+## When to Use
 
-```
-User → OpenBrain (ask_brain / start_mission)
-  → OpenAgents PO profile (creates tickets, delegates team)
-  → OpenTicket (correlation_id, AC/DoD, metadata.eta)
-  → OpenRec trace → ask_brain answers
-```
+- User starts a mission from Brain UI or `start_mission`
+- Status questions: "What is OP-42 ETA and DoD?"
+- Correlating mission → tickets → audit
 
-## MCP tools (OpenBrain Knowledge server)
-
-| Tool | Use |
-|------|-----|
-| `start_mission` | Dispatch goal to OpenOrchestrator `/v1/missions` or OpenAgents `/v1/runs` (PO profile) |
-| `get_ticket` | Live ticket JSON by key or UUID |
-| `list_tickets` | Filter by status, assignee, `correlation_id` |
-| `set_ticket_eta` | Set or clear ticket ETA (ISO); auto-default on create if omitted |
-| `get_ticket_eta` | ETA status + subtask rollup for a ticket |
-| `ask_brain` | RAG over docs + observations + **live ticket** + OpenRec trace |
-
-Optional: `run_openagentui_workflow` when dashboard workflow exists.
-
-## Env (OpenBrain API)
+## Prerequisites
 
 ```bash
 OPENTICKET_API_URL=http://localhost:3020
-OPENTICKET_API_TOKEN=...
 OPENORCHESTRATOR_API_URL=http://localhost:3050
 OPENAGENTS_API_URL=http://localhost:8080
 OPENREC_API_URL=http://localhost:3030
 ```
 
-## Examples
+Brain Knowledge MCP with agent key.
 
-**Start work**
+## MCP tools
 
-```
-start_mission(goal="Implement OAuth login", eta="2026-07-15T18:00:00Z")
-```
+| Tool | Purpose |
+|------|---------|
+| `start_mission` | Dispatch to Orchestrator or OpenAgents PO |
+| `get_ticket` / `list_tickets` | Live ticket JSON |
+| `set_ticket_eta` / `get_ticket_eta` | ETA + rollup |
+| `ask_brain` | RAG + live ticket + Rec trace |
 
-**Ask status**
+## Procedure
 
-```
-ask_brain(question="What is OP-42? ETA and definition of done?")
-```
+1. `start_mission(goal, eta=optional)` → captures `correlation_id`
+2. PO path creates tickets (see `open-ticket`)
+3. `ask_brain("OP-42 status?")` for operators
+4. Execution: `open-dev-workflow` — Brain does not replace Dev/OpenCode
 
-PO/Dev agents use `open-dev-workflow` + OpenTicket MCP for execution — Brain does not replace W4.
+## Decision rules
 
-## Rules
+| User asks | Route |
+|-----------|-------|
+| Start work | `start_mission` |
+| Implement code | W4 via OpenAgents (not Brain direct) |
+| Meeting notes | `open-notes` |
 
-- Every mission gets a `correlation_id` — propagate to tickets and OpenRec.
-- Tickets get **auto ETA** by priority (critical 1d, high 3d, medium 7d, low 14d) unless you pass `eta` on create or `set_ticket_eta`.
-- Mission `eta` flows to new tickets via `OPENTICKET_MISSION_ETA` in OpenAgents task_context.
-- OpenNotes is optional — defer meeting→ticket until later.
+## Pitfalls
+
+- Brain agent writing code without ticket + W4
+- Missing ETA on mission (auto-default by priority if omitted)
+- OpenNotes deferred paths confused with W4
+
+## Verification
+
+- [ ] Mission returns `correlation_id`
+- [ ] `get_ticket` matches live OpenTicket API
+- [ ] `ask_brain` cites doc paths for spec questions

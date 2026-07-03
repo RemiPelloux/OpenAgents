@@ -1,104 +1,69 @@
 ---
 name: open-pro
-description: "Use when developing Open Pro (OpenPro-Mobile) — Flutter hiring app for candidates and recruiters."
-version: 1.0.0
-author: Remi Pelloux
+description: "Flutter OpenPro-Mobile hiring app development."
+version: 1.1.0
+author: OpenPro
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [openpro, flutter, mobile, hiring, recruiter, candidate, dart]
-    related_skills: [open-ecosystem-hub, openagents, open-app]
+    tags: [openpro, flutter, mobile, hiring]
+    category: open-ecosystem
+    related_skills: [open-ecosystem-hub, open-app, openpro-tiktok-prospection]
 ---
 
-# Open Pro
+# Open Pro (Flutter mobile)
 
-**Open Pro** is the Flutter mobile application for professional hiring — dual roles (candidate and recruiter), chat (Sendbird), API-driven workflows, and localized EN/FR UI.
+**OpenPro-Mobile** — candidate + recruiter hiring app. Outside OpenOS umbrella; integrates via APIs.
 
-## When to use
+## When to Use
 
-- Adding or fixing screens in `OpenPro-Mobile/`
-- Providers, repositories, services, navigation, or i18n
-- API integration, auth, or Sendbird chat
-- Build, test, or release (APK/iOS)
+- Screens, providers, repos in `OpenPro-Mobile/`
+- API, auth, Sendbird chat, i18n EN/FR
+- Build APK/iOS
 
-Do **not** use for OpenAgents agent logic — see `openagents`.
+Not for OpenAgents agent logic — use `openagents` skill.
 
-## Project layout
+## Structural overview
 
 ```
-OpenPro-Mobile/
-├── lib/
-│   ├── main.dart              # Entry + MultiProvider
-│   ├── config/barrier.dart    # Barrel import (use this everywhere)
-│   ├── mvc/screens/{common,candidate,recruiter}/
-│   ├── mvc/controllers/       # ChangeNotifier per screen
-│   ├── data/repositories/     # API repositories
-│   ├── core/services/         # DI services
-│   ├── core/constants/        # api_constants.dart
-│   └── config/l10n/           # app_en.arb, app_fr.arb
-└── docs/                      # architecture, features, api, testing
+lib/mvc/screens/{common,candidate,recruiter}/
+lib/data/repositories/     # API
+lib/core/services/         # DI
+lib/store/                 # MobX global state
 ```
 
-## Architecture rules
+Import via `lib/config/barrier.dart`.
 
-| Layer | Technology | Scope |
-|-------|------------|--------|
-| Global state | MobX (`lib/store/`) | Auth, theme, language — run `build_runner` after edits |
-| Screen state | Provider / ChangeNotifier | Loading, lists, forms per screen |
-| HTTP | `ApiClient` | Auto-injects Firebase token |
-| Errors | `Either<Failure, T>` | Always fold; no silent catches |
-| DI | `service_locator.dart` | Register lazy singletons |
+## Prerequisites
 
-**Never** mix MobX for screen state or Provider for global state.
+- Flutter SDK matching project `pubspec`
+- Firebase/auth configured per env docs
+- `openpro-mobile` Cursor skill for deep Flutter patterns
 
-## Add a new screen
+## Procedure
 
-1. Create `lib/mvc/screens/<role>/my_screen.dart` — import `package:open_pro/config/barrier.dart`
-2. Create matching provider in `lib/mvc/controllers/<role>/`
-3. Register `ChangeNotifierProvider` in `main.dart`
-4. Export from `barrier.dart`
-5. Add keys to `app_en.arb` and `app_fr.arb`
+1. Identify screen layer (candidate vs recruiter)
+2. Repository → service → controller → screen
+3. `Either<Failure, T>` for API errors — no silent catch
+4. Run `flutter test` + analyzer before handoff
 
-## Add an API endpoint
+## Decision rules
 
-1. Constant in `lib/core/constants/api_constants.dart`
-2. Method on repository (`lib/data/repositories/user_api_repositories.dart` or domain repo)
-3. Call from provider with `result.fold((failure) => ..., (data) => ...)`
+| Change | Layer |
+|--------|-------|
+| API shape | repository + `api_constants.dart` |
+| UI state | ChangeNotifier controller |
+| Global auth/theme | MobX store + `build_runner` |
 
-## Commands
+## Pitfalls
 
-```bash
-cd OpenPro-Mobile
-flutter pub get
-dart run build_runner build --delete-conflicting-outputs
-flutter run
-flutter test
-flutter analyze
-flutter build apk --release
-flutter build ios --release
-```
+- Bypassing `ApiClient` token injection
+- Hardcoded strings — use `app_en.arb` / `app_fr.arb`
+- Agent automation inside Flutter UI (belongs in OpenAgents/OpenPro backend)
 
-## Deep docs
+## Verification
 
-Read when implementing non-trivial features:
-
-- `OpenPro-Mobile/docs/architecture.md` — layers, DI, data flow
-- `OpenPro-Mobile/docs/features.md` — screens and user flows
-- `OpenPro-Mobile/docs/api-services.md` — endpoints and integrations
-- `OpenPro-Mobile/docs/testing.md` — mocks and coverage
-
-## Common pitfalls
-
-1. **Magic strings** — use `KApi.*` and l10n keys, not hardcoded labels
-2. **Missing build_runner** — MobX store changes require codegen
-3. **Wrong role folder** — candidate vs recruiter paths are strict
-4. **Bypassing ApiClient** — breaks auth and error handling
-
-## Verification checklist
-
-- [ ] Imports use `barrier.dart`
-- [ ] New strings in both EN and FR ARB files
-- [ ] Provider registered in `main.dart`
-- [ ] `flutter analyze` clean
-- [ ] Tests updated for new repository/provider behavior
+- [ ] `flutter analyze` clean on touched files
+- [ ] Widget test for changed screen if logic non-trivial
+- [ ] EN + FR keys added in pairs
