@@ -66,8 +66,16 @@ def test_build_task_prompt_minimal():
 
     prompt = build_task_prompt({"ticket_key": "OP-1"}, "implement")
     assert "OP-1" in prompt
-    assert "Implement" in prompt
-    assert "Acceptance criteria" not in prompt
+    assert "OpenProtocol CODER" in prompt
+    assert "agent/OP-1/" in prompt
+    assert "GITHUB_TOKEN" in prompt
+
+
+def test_build_task_prompt_review_omits_openprotocol():
+    from plugins.openos_engineering.ticket_client import build_task_prompt
+
+    prompt = build_task_prompt({"ticket_key": "OP-1"}, "review")
+    assert "OpenProtocol" not in prompt
 
 
 def test_build_ticket_prompt_alias():

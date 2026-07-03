@@ -8,12 +8,14 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [OpenCode, OpenOS, Coding, W4, OpenTicket]
-    related_skills: [open-ticket, open-dev-workflow, opencode]
+    related_skills: [open-ticket, open-dev-workflow, openprotocol-coder, openprotocol-integrator]
 ---
 
 # OpenOS OpenCode (Engineering Co-pilot)
 
 Use the **OpenOS OpenCode fork** (not npm `opencode-ai`) for ticket-backed coding via the `invoke_opencode` plugin tool.
+
+OpenAgents owns git workflow — load **`openprotocol-coder`** (developer) and **`openprotocol-integrator`** (qa) before any push/merge.
 
 ## When to Use
 

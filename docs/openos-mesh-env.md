@@ -6,6 +6,14 @@ Copy [infra/config/openagents.env.example](../../infra/config/openagents.env.exa
 
 `OPENAGENTS_API_KEY` is **inbound auth for the gateway** (set on OpenTeam, not in OpenAgents). Outbound keys: `OPENPRO_AGENT_API_KEY`, `PROSPECTION_API_KEY`.
 
+## OpenProtocol git (coder → integrator)
+
+| Variable | Purpose |
+|----------|---------|
+| `GITHUB_TOKEN` | Machine PAT for `openprotocol-coder` push + `openprotocol-integrator` merge |
+
+Skills: `openprotocol-coder` (developer), `openprotocol-integrator` (qa). On AWS, store token in SSM and sync to `~/.openagents/.env` — machine PAT only, no interactive CLI login.
+
 ## OpenBrain (Axon) — doc RAG + knowledge MCP
 
 | Variable | Purpose |

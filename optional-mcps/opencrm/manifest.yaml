@@ -1,0 +1,22 @@
+manifest_version: 1
+
+name: opencrm
+description: OpenCRM commercial intelligence — hot leads, accounts, staged writes.
+source: OpenOS OpenCRM
+
+transport:
+  type: stdio
+  command: pnpm
+  args:
+    - exec
+    - tsx
+    - apps/mcp-server/src/index.ts
+  cwd: "${OPENOS_ROOT}/OpenCRM"
+
+post_install: |
+  Ensure OpenCRM API is running on port 3010:
+    cd OpenCRM && docker compose up -d postgres api
+
+  Set OPENCRM_API_URL=http://localhost:3010 in ~/.openagents/.env
+
+  Tools: list_hot_leads, get_customer_context, propose_crm_update, enrich_contact, linkedin_invite_draft

@@ -82,21 +82,28 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "developer": {
         "description": "Developer — implements tickets via OpenCode",
         "toolsets": ["delegation", "terminal", "mcp", "openos_engineering"],
-        "skills": ["open-code", "open-ticket", "open-dev-workflow"],
+        "skills": ["open-code", "open-ticket", "open-dev-workflow", "openprotocol-coder"],
         "mcp_servers": ["openticket"],
         "soul": (
-            "You are the Developer. Read assigned tickets, invoke_opencode for "
-            "all code changes, and move tickets through dev workflow."
+            "You are the Developer. Load openprotocol-coder. Read assigned "
+            "tickets, invoke_opencode for all code changes, push agent branch, "
+            "hand off to QA integrator."
         ),
     },
     "qa": {
-        "description": "QA — validates tickets via OpenCode review/test",
+        "description": "QA integrator — verifies agent branches and merges to main",
         "toolsets": ["terminal", "mcp", "openos_engineering"],
-        "skills": ["open-code", "open-ticket", "open-dev-workflow"],
+        "skills": [
+            "open-code",
+            "open-ticket",
+            "open-dev-workflow",
+            "openprotocol-integrator",
+        ],
         "mcp_servers": ["openticket"],
         "soul": (
-            "You are QA. Verify acceptance criteria using invoke_opencode in "
-            "review/test mode. Only you may transition tickets to done."
+            "You are QA / OpenProtocol integrator. After in_review, run "
+            "openprotocol-integrator: verify the agent branch, squash merge "
+            "to main, delete branch. Only you may transition tickets to done."
         ),
     },
 }

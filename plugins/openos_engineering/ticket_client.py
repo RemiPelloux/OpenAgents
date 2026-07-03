@@ -308,14 +308,28 @@ def update_ticket_status(
 
 
 def build_task_prompt(ticket: Dict[str, Any], mode: str) -> str:
-    """Minimal task prompt — full ticket body is loaded by OpenCode via OPENTICKET_TICKET_ID."""
+    """Task prompt for invoke_opencode — includes OpenProtocol when implementing."""
     key = ticket.get("ticket_key") or ticket.get("key", "")
+    ticket_ref = key or str(ticket.get("id") or "task")
     mode_line = {
         "implement": "Implement the ticket requirements and run tests.",
         "review": "Review the code changes for this ticket against acceptance criteria.",
         "test": "Run tests and verify acceptance criteria for this ticket.",
     }.get(mode, "Complete the requested work for this ticket.")
-    return f"Ticket {key}: {mode_line}"
+    base = f"Ticket {ticket_ref}: {mode_line}"
+    if mode != "implement":
+        return base
+    return (
+        f"{base}\n\n"
+        "OpenProtocol CODER (mandatory — you are spawned by OpenAgents):\n"
+        f"1. git fetch && git checkout main && git pull --ff-only origin main\n"
+        f"2. git checkout -b agent/{ticket_ref}/<short-slug>\n"
+        "3. Surgical changes only; run project test + typecheck + build\n"
+        "4. Commit: <type>(<scope>): <subject ≤72 chars> — one logical change\n"
+        "5. git push -u origin HEAD (feature branch only — never push main)\n"
+        "6. End with OpenProtocol handoff (branch, checks, risk) for integrator\n"
+        "Git auth: GITHUB_TOKEN or git-credentials only."
+    )
 
 
 def build_ticket_prompt(ticket: Dict[str, Any], mode: str) -> str:
