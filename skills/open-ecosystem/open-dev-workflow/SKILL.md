@@ -40,16 +40,18 @@ openagents openos init-profiles
 1. **PO** — `open-ticket-optimize` → `create_ticket` + AC → `todo` → `assignee_agent_profile: developer`
 2. **Webhook** — OpenTicket → OpenOrchestrator → `POST /v1/runs` (Dev) with `loop_until_dod: true`
 3. **Dev** — load `openprotocol-coder` → `run_ticket_dod_loop` or `invoke_opencode` until `in_review`
-4. **OpenCode** — branch `agent/<ticket>/…` → push → handoff → `in_review` (may take multiple sessions)
+4. **OpenCode** — branch `agent/<ticket>/…` → commit → push → handoff → `in_review`
+   - **Pre-commit:** OpenSec staged secret scan + CVE gate on every code commit (`.husky/pre-commit`)
+   - **Pre-push:** branch CVE audit before remote push
 5. **Orchestrator** — assign QA; QA loops review/test until ticket `done`
-6. **QA** — load `open-qa` → AC + tests → `openprotocol-integrator` → squash merge `main` → `done`
+6. **QA** — load `open-qa` → AC + tests + **OpenSec CVE gate** → `openprotocol-integrator` → squash merge `main` → `done`
 7. **Audit** — OpenRec receives `ticket.*`, `code.*`, `agent.run.*` (see `open-rec`)
 
 ## Decision rules
 
 | Role | May | Must not |
 |------|-----|----------|
-| Developer | push feature branch | merge `main` |
+| Developer | push feature branch | merge `main` or push with high+ CVEs |
 | QA | squash merge after `open-qa` sign-off | skip tests |
 | Orchestrator | dispatch OpenAgents | call OpenCode directly |
 | OpenCode | implement on branch | enable `/openagents true` |
@@ -65,5 +67,6 @@ openagents openos init-profiles
 
 - [ ] Ticket path: `todo` → `in_progress` → `in_review` → `done`
 - [ ] Branch `agent/*` exists on remote before QA merge
+- [ ] OpenSec pre-push audit green on agent branch (`OPENSEC_SKIP_PRE_PUSH` not used)
 - [ ] W4 E2E: `OpenTicket/scripts/w4-e2e.sh` green (or outbox drained)
 - [ ] `CC-W4-003`..`005` envelopes verified in registry
