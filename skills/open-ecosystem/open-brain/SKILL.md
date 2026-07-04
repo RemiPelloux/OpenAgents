@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [openbrain, axon, mcp, rag, openos]
     category: open-ecosystem
-    related_skills: [open-contract, open-ecosystem-hub, open-memory, open-brain-orchestrator]
+    related_skills: [open-contract, open-ecosystem-hub, open-memory, open-brain-orchestrator, openbrain-chat-mermaid]
 ---
 
 # Open Brain (Axon)
