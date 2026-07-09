@@ -36,6 +36,8 @@ Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profil
 | `open-app` | CLI/TUI/desktop |
 | `open-whistle` | Compliance intake |
 | `open-pro` | Flutter mobile |
+| `open-browser` | Browser automation via Playwright MCP |
+| `open-toolbox` | Autonomous tool discovery and integration |
 
 ## Authoring standard
 
