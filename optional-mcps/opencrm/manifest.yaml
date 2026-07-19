@@ -1,7 +1,7 @@
 manifest_version: 1
 
 name: opencrm
-description: OpenCRM commercial intelligence — hot leads, accounts, staged writes.
+description: OpenCRM commercial intelligence — hot leads, contact enrichment, staged writes.
 source: OpenOS OpenCRM
 
 transport:
@@ -19,4 +19,8 @@ post_install: |
 
   Set OPENCRM_API_URL=http://localhost:3010 in ~/.openagents/.env
 
-  Tools: list_hot_leads, get_customer_context, propose_crm_update, enrich_contact, linkedin_invite_draft
+  Core tools: get_customer_context, list_hot_leads, search_contacts, create_contact,
+  enrich_contact, list_decision_makers, list_contacts_needing_enrichment,
+  propose_crm_update, create_account, update_account, …
+
+  Skills: opencrm-sales-followup, opencrm-contact-enrichment

@@ -8,7 +8,9 @@ from typing import Any, Dict
 
 from plugins.opencrm_sales.opencrm_client import (
     check_account_duplicate,
+    enrich_contact,
     get_account,
+    list_decision_makers,
     propose_crm_update,
     search_accounts,
 )
@@ -115,5 +117,73 @@ PROPOSE_UPDATE_SCHEMA: Dict[str, Any] = {
             "correlation_id": {"type": "string"},
         },
         "required": ["org_id", "entity_type", "entity_id", "payload"],
+    },
+}
+
+
+def handle_enrich_contact(args: Dict[str, Any]) -> str:
+    contact_id = str(args.get("contact_id") or "").strip()
+    if not contact_id:
+        return "Error: contact_id is required"
+    fields = {
+        key: value
+        for key, value in args.items()
+        if key not in {"contact_id", "org_id", "mark_complete"} and value is not None
+    }
+    result = enrich_contact(
+        contact_id,
+        fields,
+        org_id=str(args["org_id"]).strip() if args.get("org_id") else None,
+        mark_complete=bool(args.get("mark_complete")),
+    )
+    return json.dumps(result, ensure_ascii=False)
+
+
+def handle_list_decision_makers(args: Dict[str, Any]) -> str:
+    result = list_decision_makers(
+        org_id=str(args["org_id"]).strip() if args.get("org_id") else None,
+        account_id=str(args["account_id"]).strip() if args.get("account_id") else None,
+        limit=int(args.get("limit") or 50),
+    )
+    return json.dumps(result, ensure_ascii=False)
+
+
+ENRICH_CONTACT_SCHEMA: Dict[str, Any] = {
+    "name": "enrich_contact",
+    "description": (
+        "Enrich an OpenCRM contact/lead (LinkedIn, décideur, phones, scores). "
+        "Prefer for enrichment workflows (crm:write)."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "contact_id": {"type": "string"},
+            "org_id": {"type": "string"},
+            "mark_complete": {"type": "boolean"},
+            "email": {"type": "string"},
+            "mobile": {"type": "string"},
+            "linkedin_url": {"type": "string"},
+            "is_decision_maker": {"type": "boolean"},
+            "buying_role": {"type": "string"},
+            "role": {"type": "string"},
+            "lead_status": {"type": "string"},
+            "enrichment_status": {"type": "string"},
+            "confidence_score": {"type": "integer"},
+            "notes": {"type": "string"},
+        },
+        "required": ["contact_id"],
+    },
+}
+
+LIST_DECISION_MAKERS_SCHEMA: Dict[str, Any] = {
+    "name": "list_decision_makers",
+    "description": "List OpenCRM contacts flagged as decision makers (décideurs) (crm:read).",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "org_id": {"type": "string"},
+            "account_id": {"type": "string"},
+            "limit": {"type": "integer"},
+        },
     },
 }

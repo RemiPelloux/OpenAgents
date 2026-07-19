@@ -46,5 +46,8 @@ Skills: `openprotocol-coder` (developer), `openprotocol-integrator` (qa). On AWS
 | `OPENCRM_API_URL` | OpenCRM REST API base (default `http://localhost:3010`) |
 
 Plugin: `opencrm_sales` (`search_accounts`, `check_account_duplicate`, `get_account`,
-`propose_crm_update`). Also consumed by `openpro_prospection`'s `check_company_duplicate`
-and `upsert_crm_from_lead` tools (CC-W1-004, CC-W1-006). See skill **`opencrm-sales-followup`**.
+`propose_crm_update`). MCP (stdio `optional-mcps/opencrm`): `enrich_contact`,
+`list_decision_makers`, `list_contacts_needing_enrichment`, plus full CRUD.
+Also consumed by `openpro_prospection`'s `check_company_duplicate` and
+`upsert_crm_from_lead` (CC-W1-004, CC-W1-006). Skills: **`opencrm-sales-followup`**,
+**`opencrm-contact-enrichment`**.

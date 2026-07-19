@@ -62,6 +62,7 @@ OpenContract (step 0) → producers (Ticket, CRM, Notes, Team, Sec)
 | Industrial orchestration | `open-orchestrator-ops` |
 | QA sign-off (before merge) | `open-qa` |
 | CRM sales | `opencrm-sales-followup` |
+| CRM lead enrichment | `opencrm-contact-enrichment` |
 | TikTok prospection | `openpro-tiktok-prospection` |
 | OpenTeam harvest | `open-team` |
 | Meetings | `open-notes` |

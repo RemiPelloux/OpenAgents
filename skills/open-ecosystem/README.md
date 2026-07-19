@@ -2,7 +2,7 @@
 
 Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profiles and orchestrator `required_skills`.
 
-## Skill index (30)
+## Skill index (31)
 
 | Skill | Description |
 |-------|-------------|
@@ -29,6 +29,7 @@ Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profil
 | `open-sec` | Security findings → tickets |
 | `open-center` | Human GUI Phase 2 |
 | `opencrm-sales-followup` | CRM staged updates |
+| `opencrm-contact-enrichment` | LinkedIn / décideur / lead enrichment |
 | `openpro-tiktok-prospection` | TikTok vertical |
 | `open-creative` | Image deliverables |
 | `open-agentui` | YAML workflows |
@@ -77,7 +78,8 @@ Orchestrator auto-provisions missing profiles before dispatch (`POST /v1/profile
 |---------|------------|
 | `developer` | open-code, openprotocol-coder, open-mesh-wiring |
 | `qa` | open-qa, openprotocol-integrator |
-| `sales` | opencrm-sales-followup |
+| `sales` | opencrm-sales-followup, opencrm-contact-enrichment |
+| `crm_analyst` | opencrm-sales-followup, opencrm-contact-enrichment |
 | `mesh_engineer` | open-mesh-wiring, open-contract |
 | `skill_author` | can provision org profiles on orchestrator request |
 

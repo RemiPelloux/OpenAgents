@@ -19,6 +19,8 @@ def test_plugin_registers_tools():
     assert "search_accounts" in registered
     assert "check_account_duplicate" in registered
     assert "get_account" in registered
+    assert "enrich_contact" in registered
+    assert "list_decision_makers" in registered
     assert "propose_crm_update" in registered
 
 
@@ -62,6 +64,31 @@ def test_handle_propose_crm_update_requires_fields():
     from plugins.opencrm_sales.tools import handle_propose_crm_update
 
     assert "required" in handle_propose_crm_update({"entity_type": "account"}).lower()
+
+
+def test_handle_enrich_contact_calls_opencrm():
+    from plugins.opencrm_sales.tools import handle_enrich_contact
+
+    with patch(
+        "plugins.opencrm_sales.tools.enrich_contact",
+        return_value={"id": "c1", "linkedin_url": "https://linkedin.com/in/jane"},
+    ) as mock:
+        out = handle_enrich_contact(
+            {
+                "contact_id": "c1",
+                "linkedin_url": "https://linkedin.com/in/jane",
+                "is_decision_maker": True,
+                "mark_complete": True,
+            }
+        )
+        mock.assert_called_once()
+        assert json.loads(out)["id"] == "c1"
+
+
+def test_handle_enrich_contact_requires_id():
+    from plugins.opencrm_sales.tools import handle_enrich_contact
+
+    assert "required" in handle_enrich_contact({}).lower()
 
 
 def test_handle_propose_crm_update_calls_opencrm():

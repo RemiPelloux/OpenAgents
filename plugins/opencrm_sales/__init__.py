@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from plugins.opencrm_sales.tools import (
     CHECK_DUPLICATE_SCHEMA,
+    ENRICH_CONTACT_SCHEMA,
     GET_ACCOUNT_SCHEMA,
+    LIST_DECISION_MAKERS_SCHEMA,
     PROPOSE_UPDATE_SCHEMA,
     SEARCH_ACCOUNTS_SCHEMA,
     check_opencrm_available,
     handle_check_account_duplicate,
+    handle_enrich_contact,
     handle_get_account,
+    handle_list_decision_makers,
     handle_propose_crm_update,
     handle_search_accounts,
 )
@@ -20,6 +24,8 @@ def register(ctx) -> None:
         (SEARCH_ACCOUNTS_SCHEMA, handle_search_accounts, "🔍"),
         (CHECK_DUPLICATE_SCHEMA, handle_check_account_duplicate, "🔁"),
         (GET_ACCOUNT_SCHEMA, handle_get_account, "🏢"),
+        (ENRICH_CONTACT_SCHEMA, handle_enrich_contact, "✨"),
+        (LIST_DECISION_MAKERS_SCHEMA, handle_list_decision_makers, "🎯"),
         (PROPOSE_UPDATE_SCHEMA, handle_propose_crm_update, "📝"),
     ]
     for schema, handler, emoji in tools:

@@ -74,19 +74,25 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "crm_analyst": {
         "description": "CRM analyst \u2014 accounts, leads, context",
         "toolsets": ["mcp"],
-        "skills": ["opencrm-sales-followup", "open-brain", "open-generic"],
+        "skills": [
+            "opencrm-sales-followup",
+            "opencrm-contact-enrichment",
+            "open-brain",
+            "open-generic",
+        ],
         "mcp_servers": ["opencrm"],
         "soul": (
-            "You analyze CRM data and propose staged updates \u2014 never direct client email without approval."
+            "You analyze CRM data, enrich contacts (LinkedIn/d\u00e9cideur), and propose staged updates "
+            "\u2014 never direct client email without approval."
         ),
     },
     "developer": {
         "description": "Developer \u2014 implements tickets via OpenCode",
-        "toolsets": ["delegation", "terminal", "mcp", "openos_engineering"],
+        "toolsets": ["skills", "openos_engineering"],
         "skills": ["open-code", "open-ticket", "open-dev-workflow", "open-mesh-wiring", "openprotocol-coder", "open-generic"],
-        "mcp_servers": ["openticket"],
+        "mcp_servers": [],
         "soul": (
-            "You are the Developer. Load openprotocol-coder, invoke_opencode for all code, push agent branch, hand off to QA."
+            "You are the Developer. Load openprotocol-coder, create the correlated OpenTicket record, then invoke_opencode for all repository inspection, edits, tests, and commits. Never use terminal, execute_code, or direct file tools for engineering work. Return the ticket ID, OpenCode session, test evidence, agent branch, and commit SHA."
         ),
     },
     "intent_classifier": {
@@ -127,34 +133,29 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     },
     "planner": {
         "description": "Planner \u2014 decomposes objectives into orchestrated steps",
-        "toolsets": ["delegation", "mcp"],
+        "toolsets": ["delegation", "mcp", "openos_engineering"],
         "skills": ["open-orchestrator-plan", "open-orchestrator-ops", "open-ecosystem-hub", "open-ticket-optimize"],
         "mcp_servers": ["openorchestrator", "openticket"],
         "soul": (
-            "You are the OpenOrchestrator planner. Decompose with open-orchestrator-ops "
-            "gates. Before any create_ticket, load open-ticket-optimize (Ticket Prompt "
-            "Optimizer). Return JSON only when decomposing."
+            "You are the OpenOrchestrator planner. Decompose with open-orchestrator-ops gates. Before any create_ticket, load open-ticket-optimize (Ticket Prompt Optimizer). Return JSON only when decomposing."
         ),
     },
     "product_owner": {
         "description": "Product Owner \u2014 tickets and acceptance criteria",
-        "toolsets": ["delegation", "mcp"],
+        "toolsets": ["delegation", "mcp", "openos_engineering"],
         "skills": ["open-ticket", "open-ticket-optimize", "open-dev-workflow", "open-contract", "open-ecosystem-hub"],
         "mcp_servers": ["openticket", "openorchestrator"],
         "soul": (
-            "You are the Product Owner. Always load open-ticket-optimize (Ticket Prompt "
-            "Optimizer) before create_ticket \u2014 rewrite rough asks into structured "
-            "Task/Context/Complexity/Outcome/Keywords/Verification stories with testable "
-            "AC. Do not write code \u2014 delegate to the right assignee profile."
+            "You are the Product Owner. Always load open-ticket-optimize (Ticket Prompt Optimizer) before create_ticket \u2014 rewrite rough asks into structured Task/Context/Complexity/Outcome/Keywords/Verification stories with testable AC. Do not write code \u2014 delegate to the right assignee profile."
         ),
     },
     "qa": {
         "description": "QA integrator \u2014 verify and squash merge",
-        "toolsets": ["terminal", "mcp", "openos_engineering"],
+        "toolsets": ["skills", "openos_engineering"],
         "skills": ["open-code", "open-ticket", "open-dev-workflow", "open-qa", "openprotocol-integrator", "open-generic"],
         "mcp_servers": ["openticket"],
         "soul": (
-            "You are QA. Load open-qa for AC sign-off, then openprotocol-integrator to squash merge main. Only you may set tickets to done."
+            "You are QA. Load open-qa for AC sign-off, then invoke_opencode with the correlated ticket in review mode for all repository inspection and tests. Never inspect or test the source checkout directly. Only set the ticket to done after OpenCode returns passing evidence; merge only when the task explicitly requests integration."
         ),
     },
     "recorder_analyst": {
@@ -169,10 +170,16 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "sales": {
         "description": "Sales \u2014 CRM follow-up and outreach",
         "toolsets": ["delegation", "mcp"],
-        "skills": ["opencrm-sales-followup", "open-creative", "open-generic", "open-ecosystem-hub"],
+        "skills": [
+            "opencrm-sales-followup",
+            "opencrm-contact-enrichment",
+            "open-creative",
+            "open-generic",
+            "open-ecosystem-hub",
+        ],
         "mcp_servers": ["opencrm"],
         "soul": (
-            "You run staged CRM updates and outreach drafts. External sends need approval."
+            "You enrich leads, run staged CRM updates, and draft outreach. External sends need approval."
         ),
     },
     "security": {

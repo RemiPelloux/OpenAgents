@@ -35,18 +35,35 @@ def _get(path: str) -> Dict[str, Any]:
         return json.loads(resp.read().decode())
 
 
-def _post(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None) -> Dict[str, Any]:
+def _request(
+    method: str,
+    path: str,
+    body: Optional[Dict[str, Any]] = None,
+    correlation_id: Optional[str] = None,
+) -> Dict[str, Any]:
     url = f"{_api_url()}{path}"
-    data = json.dumps(body).encode()
-    req = urllib.request.Request(url, data=data, method="POST")
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method)
     for key, value in _headers(correlation_id).items():
+        if body is None and key == "Content-Type":
+            continue
         req.add_header(key, value)
+    if body is not None:
+        req.add_header("Content-Type", "application/json")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()
         raise RuntimeError(f"OpenCRM API failed ({exc.code}): {detail}") from exc
+
+
+def _post(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None) -> Dict[str, Any]:
+    return _request("POST", path, body, correlation_id)
+
+
+def _patch(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None) -> Dict[str, Any]:
+    return _request("PATCH", path, body, correlation_id)
 
 
 def _post_signed_hop(
@@ -97,6 +114,40 @@ def check_account_duplicate(company_name: str, city: Optional[str] = None) -> Di
 
 def get_account(account_id: str) -> Dict[str, Any]:
     return _get(f"/v1/accounts/{urllib.parse.quote(account_id, safe='')}")
+
+
+def enrich_contact(
+    contact_id: str,
+    fields: Dict[str, Any],
+    *,
+    org_id: Optional[str] = None,
+    mark_complete: bool = False,
+) -> Dict[str, Any]:
+    """PATCH lead enrichment fields (MCP enrich_contact parity)."""
+    body = dict(fields)
+    if mark_complete:
+        body["enrichment_status"] = "complete"
+        body.setdefault("lead_status", "enriched")
+    elif "enrichment_status" not in body:
+        body["enrichment_status"] = "partial"
+    path = f"/v1/contacts/{urllib.parse.quote(contact_id, safe='')}"
+    if org_id:
+        path = f"{path}?{urllib.parse.urlencode({'org_id': org_id})}"
+    return _patch(path, body)
+
+
+def list_decision_makers(
+    *,
+    org_id: Optional[str] = None,
+    account_id: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    params: Dict[str, str] = {"is_decision_maker": "true", "limit": str(limit)}
+    if org_id:
+        params["org_id"] = org_id
+    if account_id:
+        params["account_id"] = account_id
+    return _get(f"/v1/contacts?{urllib.parse.urlencode(params)}")
 
 
 def get_customer_context(
