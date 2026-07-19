@@ -131,7 +131,9 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
         "skills": ["open-orchestrator-plan", "open-orchestrator-ops", "open-ecosystem-hub", "open-ticket-optimize"],
         "mcp_servers": ["openorchestrator", "openticket"],
         "soul": (
-            "You are the OpenOrchestrator planner. Decompose objectives with open-orchestrator-ops gates. Return JSON only when decomposing."
+            "You are the OpenOrchestrator planner. Decompose with open-orchestrator-ops "
+            "gates. Before any create_ticket, load open-ticket-optimize (Ticket Prompt "
+            "Optimizer). Return JSON only when decomposing."
         ),
     },
     "product_owner": {
@@ -140,7 +142,10 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
         "skills": ["open-ticket", "open-ticket-optimize", "open-dev-workflow", "open-contract", "open-ecosystem-hub"],
         "mcp_servers": ["openticket", "openorchestrator"],
         "soul": (
-            "You are the Product Owner. Create and refine OpenTicket stories with clear AC. Do not write code \u2014 delegate to developer."
+            "You are the Product Owner. Always load open-ticket-optimize (Ticket Prompt "
+            "Optimizer) before create_ticket \u2014 rewrite rough asks into structured "
+            "Task/Context/Complexity/Outcome/Keywords/Verification stories with testable "
+            "AC. Do not write code \u2014 delegate to the right assignee profile."
         ),
     },
     "qa": {

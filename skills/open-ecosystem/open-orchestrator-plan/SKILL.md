@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [openorchestrator, planner, dispatch]
     category: open-ecosystem
-    related_skills: [open-orchestrator-intent, open-dev-workflow, open-ecosystem-hub]
+    related_skills: [open-orchestrator-intent, open-dev-workflow, open-ecosystem-hub, open-ticket-optimize]
 ---
 
 # Open Orchestrator Plan
@@ -41,10 +41,12 @@ REST: `POST /v1/goals`, `GET /v1/plans/:id/status`, `POST /v1/tasks/:id/assign`.
 
 ## Procedure
 
-1. `orch_submit_goal(objective=…, ticket_id=optional)`
-2. Note `plan_id` + `dispatched_task_ids`
-3. `orch_get_plan_status` until complete or `blocked`
-4. If blocked → `orch_override_route` or fix upstream skill gap (`open-mcp-scaffold`)
+1. If the goal authors tickets: load `open-ticket-optimize` first (Ticket Prompt
+   Optimizer) so PO steps receive structured stories, not raw text
+2. `orch_submit_goal(objective=…, ticket_id=optional)`
+3. Note `plan_id` + `dispatched_task_ids`
+4. `orch_get_plan_status` until complete or `blocked`
+5. If blocked → `orch_override_route` or fix upstream skill gap (`open-mcp-scaffold`)
 
 ## Decision rules
 

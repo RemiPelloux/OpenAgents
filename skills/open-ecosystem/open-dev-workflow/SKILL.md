@@ -37,7 +37,8 @@ openagents openos init-profiles
 
 ## Procedure
 
-1. **PO** — `open-ticket-optimize` → `create_ticket` + AC → `todo` → `assignee_agent_profile: developer`
+1. **PO** — `open-ticket-optimize` (Ticket Prompt Optimizer) → structured
+   description + AC → `create_ticket` → `todo` → `assignee_agent_profile: developer`
 2. **Webhook** — OpenTicket → OpenOrchestrator → `POST /v1/runs` (Dev) with `loop_until_dod: true`
 3. **Dev** — load `openprotocol-coder` → `run_ticket_dod_loop` or `invoke_opencode` until `in_review`
 4. **OpenCode** — branch `agent/<ticket>/…` → commit → push → handoff → `in_review`

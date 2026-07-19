@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [OpenTicket, Jira, W4, MCP]
     category: open-ecosystem
-    related_skills: [open-dev-workflow, open-code, openprotocol-coder, openprotocol-integrator]
+    related_skills: [open-ticket-optimize, open-dev-workflow, open-code, openprotocol-coder, openprotocol-integrator]
 ---
 
 # OpenTicket
@@ -44,10 +44,18 @@ Profiles: `product_owner`, `developer`, `qa` via `openagents openos init-profile
 
 Plugin only: `submit_ticket_result` — deliverables + optional `in_review`.
 
+## Procedure — create any ticket
+
+1. PO/planner: load `open-ticket-optimize` (Ticket Prompt Optimizer) — **mandatory**
+2. Rewrite rough input into Task/Context/Complexity/Outcome/Keywords/Verification
+3. `create_ticket` with optimized `title`, `description`, `acceptance_criteria[]`,
+   `priority`, `execution_mode`, `assignee_agent_profile`
+4. `update_ticket_status` → `todo` when ready to dispatch
+
 ## Procedure — W4 coding ticket
 
-1. PO: `create_ticket` with `acceptance_criteria[]`
-2. PO: `update_ticket_status` → `todo`, assign `developer`
+1. Follow **create any ticket** with `execution_mode: code`, assignee `developer`
+2. Webhook → OpenOrchestrator → Dev run
 3. Dev: `get_ticket` → `in_progress` → `invoke_opencode` (see `open-code`)
 4. Dev: handoff comment + `in_review` (via webhook or `submit_ticket_result`)
 5. QA: `openprotocol-integrator` → `done`
@@ -73,6 +81,7 @@ Invalid → `409 INVALID_TRANSITION`. Skip `qa` intermediate status when using i
 
 ## Pitfalls
 
+- Creating from raw text without `open-ticket-optimize`
 - Dev transitioning to `done`
 - Missing handoff comment (QA cannot find branch)
 - AC empty on code tickets

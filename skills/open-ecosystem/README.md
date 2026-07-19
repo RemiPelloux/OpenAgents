@@ -12,7 +12,7 @@ Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profil
 | `openprotocol-coder` | Developer branch/push/handoff |
 | `openprotocol-integrator` | QA verify/merge |
 | `open-qa` | QA sign-off: AC, tests, regression |
-| `open-ticket-optimize` | Ticket grooming, AC, sizing |
+| `open-ticket-optimize` | Ticket Prompt Optimizer (ready stories) |
 | `open-mesh-wiring` | Wire mesh hops: CC-*, env, compose |
 | `open-generic` | Default loop when no skill fits |
 | `open-orchestrator-ops` | Industrial orchestrator gates |

@@ -52,7 +52,7 @@ OpenContract (step 0) → producers (Ticket, CRM, Notes, Team, Sec)
 | CC-* / envelopes | `open-contract` |
 | W4 ticket → code → merge | `open-dev-workflow` + `openprotocol-coder` + `open-qa` + `openprotocol-integrator` |
 | Tickets / backlog | `open-ticket` |
-| Ticket grooming / AC | `open-ticket-optimize` |
+| Ticket Prompt Optimizer / AC | `open-ticket-optimize` |
 | Headless coding | `open-code` |
 | Mesh integration (new hop) | `open-mesh-wiring` |
 | No matching skill | `open-generic` |
@@ -78,7 +78,7 @@ OpenContract (step 0) → producers (Ticket, CRM, Notes, Team, Sec)
 | If user wants… | Then load… |
 |----------------|------------|
 | Code on a ticket | `open-dev-workflow` → `open-code` → `openprotocol-coder` |
-| Groom backlog / AC | `open-ticket-optimize` |
+| Optimize / create tickets | `open-ticket-optimize` → `open-ticket` |
 | Wire new mesh edge | `open-mesh-wiring` → `open-contract` |
 | Orchestrator gates / DLQ | `open-orchestrator-ops` |
 | Verify before merge | `open-qa` → `openprotocol-integrator` |
