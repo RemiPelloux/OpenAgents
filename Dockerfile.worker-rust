@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1.7
+FROM oven/bun:1.3.14-debian AS opencode-builder
+WORKDIR /src/OpenCode
+COPY --from=opencode . .
+COPY --from=opencontract packages/envelope /src/OpenContract/packages/envelope
+RUN bun install --frozen-lockfile && \
+    ln -s /src/OpenCode/node_modules /src/OpenContract/node_modules && \
+    version="$(bun -e 'const p = require("./package.json"); console.log(p.version)')" && \
+    bun build main.tsx --outfile /tmp/opencode --compile \
+      --define "process.env.NODE_ENV='production'" \
+      --define "MACRO.VERSION='${version}'" \
+      --define "MACRO='{}'"
+
+FROM rust:1.90-bookworm AS worker-builder
+WORKDIR /src
+COPY --from=opencontract . /src/OpenContract
+COPY Cargo.toml Cargo.lock ./OpenAgents/
+COPY crates ./OpenAgents/crates
+WORKDIR /src/OpenAgents
+RUN --mount=type=cache,id=openagents-rust-cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=openagents-rust-cargo-target,target=/src/OpenAgents/target \
+    cargo build --locked --release -p openagents-worker && \
+    cp target/release/openagents-worker /tmp/openagents-worker
+
+FROM debian:bookworm-slim
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl git python3 python-is-python3 && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=worker-builder /tmp/openagents-worker /usr/local/bin/openagents-worker
+COPY --from=opencode-builder /tmp/opencode /usr/local/bin/opencode
+COPY --from=opencontract registry /etc/opencontract/registry
+RUN useradd --system --uid 10000 --create-home openagents && \
+    mkdir -p /worktrees /workspace && chown -R openagents:openagents /worktrees /workspace
+USER openagents
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/openagents-worker"]

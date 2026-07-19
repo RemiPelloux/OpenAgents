@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/openagents-worker"]
+resolver = "2"
