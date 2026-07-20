@@ -42,6 +42,8 @@ import re
 import sqlite3
 import time
 import uuid
+from urllib.parse import urlparse
+from urllib.request import Request as UrlRequest, urlopen
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -61,6 +63,55 @@ from gateway.platforms.base import (
 from agent.redact import redact_sensitive_text
 
 logger = logging.getLogger(__name__)
+
+
+def _local_llm_override() -> Dict[str, Any]:
+    """Resolve the local mesh provider without mutating the user's profile."""
+    provider = os.getenv("LLM_PROVIDER", "").strip().lower()
+    if not provider:
+        return {}
+    if provider != "openai-compatible":
+        raise RuntimeError(f"Unsupported local mesh LLM_PROVIDER={provider!r}")
+    base_url = os.getenv("LLM_BASE_URL", "").strip().rstrip("/")
+    model = os.getenv("LLM_MODEL", "").strip()
+    if not base_url or not model:
+        raise RuntimeError("LLM_BASE_URL and LLM_MODEL are required for the local LLM")
+    parsed = urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise RuntimeError("LLM_BASE_URL must be an absolute http(s) URL")
+    return {
+        "provider": "custom",
+        "base_url": base_url,
+        "api_key": os.getenv("LLM_API_KEY", "").strip() or None,
+        "model": model,
+    }
+
+
+def _verify_local_llm_model() -> None:
+    """Fail startup when the explicitly configured model is unavailable."""
+    override = _local_llm_override()
+    if not override:
+        return
+    url = f"{override['base_url']}/models"
+    headers = {"Accept": "application/json"}
+    if override.get("api_key"):
+        headers["Authorization"] = f"Bearer {override['api_key']}"
+    try:
+        request = UrlRequest(url, headers=headers)
+        with urlopen(request, timeout=8) as response:  # noqa: S310 - configured local provider
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"Configured LLM is unavailable at {url}: {exc}") from exc
+    ids = {
+        str(row.get("id"))
+        for row in (payload.get("data", []) if isinstance(payload, dict) else [])
+        if isinstance(row, dict) and row.get("id")
+    }
+    if override["model"] not in ids:
+        raise RuntimeError(
+            f"Configured LLM model {override['model']!r} is not exposed by {url}; "
+            "refusing model fallback"
+        )
 
 
 def _hermes_version() -> str:
@@ -783,12 +834,19 @@ class APIServerAdapter(BasePlatformAdapter):
         self._model_name: str = self._resolve_model_name(
             extra.get("model_name", os.getenv("API_SERVER_MODEL_NAME", "")),
         )
+        local_llm = _local_llm_override()
+        self._llm_provider: str = str(local_llm.get("provider") or "")
+        self._llm_base_url: str = str(local_llm.get("base_url") or "")
+        self._llm_model: str = str(local_llm.get("model") or "")
         self._app: Optional["web.Application"] = None
         self._runner: Optional["web.AppRunner"] = None
         self._site: Optional["web.TCPSite"] = None
         self._response_store = ResponseStore()
         # Active run streams: run_id -> asyncio.Queue of SSE event dicts
         self._run_streams: Dict[str, "asyncio.Queue[Optional[Dict]]"] = {}
+        # Bounded history keeps terminal runs observable after a live SSE
+        # consumer (such as OpenOrchestrator) has drained their queue.
+        self._run_event_history: Dict[str, List[Dict[str, Any]]] = {}
         # Creation timestamps for orphaned-run TTL sweep
         self._run_streams_created: Dict[str, float] = {}
         # Active run agent/task references for stop support
@@ -1079,6 +1137,7 @@ class APIServerAdapter(BasePlatformAdapter):
         tool_complete_callback=None,
         gateway_session_key: Optional[str] = None,
         model: Optional[str] = None,
+        agent_profile: Optional[str] = None,
     ) -> Any:
         """
         Create an AIAgent instance using the gateway's runtime config.
@@ -1105,18 +1164,40 @@ class APIServerAdapter(BasePlatformAdapter):
         )
         from openagents_cli.tools_config import _get_platform_tools
 
-        runtime_kwargs = _resolve_runtime_agent_kwargs()
+        local_llm = _local_llm_override()
+        if local_llm:
+            runtime_kwargs = {
+                "provider": local_llm["provider"],
+                "base_url": local_llm["base_url"],
+                "api_key": local_llm.get("api_key"),
+                "api_mode": "chat_completions",
+            }
+        else:
+            runtime_kwargs = _resolve_runtime_agent_kwargs()
         reasoning_config = GatewayRunner._load_reasoning_config()
-        resolved_model = (model or "").strip() or _resolve_gateway_model()
+        resolved_model = (
+            (model or "").strip()
+            or str(local_llm.get("model") or "")
+            or _resolve_gateway_model()
+        )
 
         user_config = _load_gateway_config()
         enabled_toolsets = sorted(_get_platform_tools(user_config, "api_server"))
+        if agent_profile:
+            from plugins.openos_engineering.profile_catalog import get_profile_spec
+
+            profile_spec = get_profile_spec(agent_profile)
+            if profile_spec is not None:
+                # Signed OpenOS dispatches use the managed profile's explicit
+                # tool surface. This prevents a developer run from inheriting
+                # generic API-server terminal/file/code-execution tools.
+                enabled_toolsets = sorted(set(profile_spec.get("toolsets", [])))
 
         max_iterations = _current_max_iterations()
 
         # Load fallback provider chain so the API server platform has the
         # same fallback behaviour as Telegram/Discord/Slack (fixes #4954).
-        fallback_model = GatewayRunner._load_fallback_model()
+        fallback_model = None if local_llm else GatewayRunner._load_fallback_model()
 
         agent = AIAgent(
             model=resolved_model,
@@ -1222,10 +1303,61 @@ class APIServerAdapter(BasePlatformAdapter):
         if auth_err:
             return auth_err
 
+        tools: List[str] = []
+        profiles: Dict[str, List[str]] = {"catalog": [], "available": []}
+        try:
+            from pathlib import Path
+
+            from plugins.openos_engineering.profile_catalog import list_profile_ids
+            from plugins.openos_engineering.profiles import profile_exists
+            from plugins.openos_engineering.tools import (
+                check_codex_available,
+                check_openos_engineering_available,
+            )
+            from tools.registry import registry
+
+            profile_catalog = list_profile_ids()
+            profile_home = Path(os.environ.get("OPENAGENTS_HOME", Path.home() / ".openagents"))
+            profiles = {
+                "catalog": profile_catalog,
+                "available": [
+                    profile_id
+                    for profile_id in profile_catalog
+                    if profile_exists(profile_home, profile_id)
+                ],
+            }
+            registered = set(registry.get_all_tool_names())
+            if check_openos_engineering_available():
+                tools.extend(
+                    name
+                    for name in (
+                        "create_ticket",
+                        "invoke_opencode",
+                        "run_ticket_dod_loop",
+                    )
+                    if name in registered
+                )
+            if check_codex_available():
+                if "invoke_codex" in registered:
+                    tools.append("invoke_codex")
+        except Exception as exc:
+            logger.debug("OpenOS engineering capabilities unavailable: %s", exc)
+
         return web.json_response({
+            "protocol": "openos.capabilities/v1",
+            "app": "OpenAgents",
+            "version": _hermes_version(),
+            "tools": tools,
+            "profiles": profiles,
             "object": "hermes.api_server.capabilities",
             "platform": "openagents",
             "model": self._model_name,
+            "llm": {
+                "provider": "openai-compatible" if self._llm_provider == "custom" else self._llm_provider,
+                "base_url": self._llm_base_url,
+                "model": self._llm_model,
+                "fallback": False,
+            },
             "auth": {
                 "type": "bearer",
                 "required": bool(self._api_key),
@@ -3726,6 +3858,7 @@ class APIServerAdapter(BasePlatformAdapter):
         chat_id: str = "",
         session_key: str = "",
         session_id: str = "",
+        cwd: str = "",
     ) -> list:
         """Bind session contextvars for an API-server agent run.
 
@@ -3749,6 +3882,7 @@ class APIServerAdapter(BasePlatformAdapter):
             chat_id=chat_id,
             session_key=session_key,
             session_id=session_id,
+            cwd=cwd,
             async_delivery=False,
         )
 
@@ -3831,6 +3965,7 @@ class APIServerAdapter(BasePlatformAdapter):
 
     _RUN_STREAM_TTL = 300  # seconds before orphaned runs are swept
     _RUN_STATUS_TTL = 3600  # seconds to retain terminal run status for polling
+    _RUN_EVENT_HISTORY_LIMIT = 10000
 
     def _notify_orchestrator_outcome(
         self,
@@ -3880,19 +4015,46 @@ class APIServerAdapter(BasePlatformAdapter):
         self._run_statuses[run_id] = current
         return current
 
+    def _publish_run_event(self, run_id: str, event: Dict[str, Any]) -> None:
+        """Record an event and deliver it to the live SSE queue when present."""
+        history = self._run_event_history.setdefault(run_id, [])
+        history.append(event)
+        if len(history) > self._RUN_EVENT_HISTORY_LIMIT:
+            del history[: len(history) - self._RUN_EVENT_HISTORY_LIMIT]
+
+        q = self._run_streams.get(run_id)
+        if q is not None:
+            q.put_nowait(event)
+
     def _make_run_event_callback(self, run_id: str, loop: "asyncio.AbstractEventLoop"):
         """Return a tool_progress_callback that pushes structured events to the run's SSE queue."""
         def _push(event: Dict[str, Any]) -> None:
-            self._set_run_status(
-                run_id,
-                self._run_statuses.get(run_id, {}).get("status", "running"),
-                last_event=event.get("event"),
-            )
-            q = self._run_streams.get(run_id)
-            if q is None:
-                return
+            def _record_and_publish() -> None:
+                fields: Dict[str, Any] = {"last_event": event.get("event")}
+                if event.get("opencode"):
+                    current = dict(event["opencode"])
+                    previous = self._run_statuses.get(run_id, {}).get("opencode")
+                    if isinstance(previous, dict):
+                        current_files = current.get("files_edited") or []
+                        previous_files = previous.get("files_edited") or []
+                        current["files_edited"] = list(dict.fromkeys([*previous_files, *current_files]))
+                    session_ids = list(
+                        self._run_statuses.get(run_id, {}).get("opencode_session_ids") or []
+                    )
+                    session_id = current.get("session_id")
+                    if session_id and session_id not in session_ids:
+                        session_ids.append(session_id)
+                    fields["opencode"] = current
+                    fields["opencode_session_ids"] = session_ids
+                self._set_run_status(
+                    run_id,
+                    self._run_statuses.get(run_id, {}).get("status", "running"),
+                    **fields,
+                )
+                self._publish_run_event(run_id, event)
+
             try:
-                loop.call_soon_threadsafe(q.put_nowait, event)
+                loop.call_soon_threadsafe(_record_and_publish)
             except Exception:
                 pass
 
@@ -3907,14 +4069,24 @@ class APIServerAdapter(BasePlatformAdapter):
                     "preview": preview,
                 })
             elif event_type == "tool.completed":
-                _push({
+                event = {
                     "event": "tool.completed",
                     "run_id": run_id,
                     "timestamp": ts,
                     "tool": tool_name,
                     "duration": round(kwargs.get("duration", 0), 3),
                     "error": kwargs.get("is_error", False),
-                })
+                }
+                if tool_name == "invoke_opencode":
+                    result = kwargs.get("result")
+                    if isinstance(result, str) and "Evidence: " in result:
+                        try:
+                            evidence = json.loads(result.rsplit("Evidence: ", 1)[1].strip())
+                            if isinstance(evidence, dict):
+                                event["opencode"] = evidence
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                _push(event)
             elif event_type == "reasoning.available":
                 _push({
                     "event": "reasoning.available",
@@ -4015,6 +4187,12 @@ class APIServerAdapter(BasePlatformAdapter):
         approval_session_key = gateway_session_key or session_id or run_id
 
         task_ctx = body.get("task_context") if isinstance(body.get("task_context"), dict) else {}
+        task_cwd = task_ctx.get("repo_path") or task_ctx.get("cwd") or ""
+        brief = task_ctx.get("brief")
+        if not task_cwd and isinstance(brief, dict):
+            paths = brief.get("paths")
+            if isinstance(paths, list) and paths and isinstance(paths[0], str):
+                task_cwd = paths[0]
         from plugins.openos_engineering.ticket_client import (
             apply_task_context_env,
             merge_orchestrator_instructions,
@@ -4027,6 +4205,7 @@ class APIServerAdapter(BasePlatformAdapter):
         q: "asyncio.Queue[Optional[Dict]]" = asyncio.Queue()
         created_at = time.time()
         self._run_streams[run_id] = q
+        self._run_event_history[run_id] = []
         self._run_streams_created[run_id] = created_at
         self._run_approval_sessions[run_id] = approval_session_key
 
@@ -4037,7 +4216,7 @@ class APIServerAdapter(BasePlatformAdapter):
             if delta is None:
                 return
             try:
-                loop.call_soon_threadsafe(q.put_nowait, {
+                loop.call_soon_threadsafe(self._publish_run_event, run_id, {
                     "event": "message.delta",
                     "run_id": run_id,
                     "timestamp": time.time(),
@@ -4067,6 +4246,7 @@ class APIServerAdapter(BasePlatformAdapter):
                     tool_progress_callback=event_cb,
                     gateway_session_key=gateway_session_key,
                     model=body.get("model") if isinstance(body.get("model"), str) else None,
+                    agent_profile=body.get("agent_profile") if isinstance(body.get("agent_profile"), str) else None,
                 )
                 self._active_run_agents[run_id] = agent
 
@@ -4092,7 +4272,7 @@ class APIServerAdapter(BasePlatformAdapter):
                         last_event="approval.request",
                     )
                     try:
-                        loop.call_soon_threadsafe(q.put_nowait, event)
+                        loop.call_soon_threadsafe(self._publish_run_event, run_id, event)
                     except Exception:
                         pass
 
@@ -4115,6 +4295,8 @@ class APIServerAdapter(BasePlatformAdapter):
                         approval_token = set_current_session_key(approval_session_key)
                         session_tokens = self._bind_api_server_session(
                             session_key=approval_session_key,
+                            session_id=session_id,
+                            cwd=str(task_cwd),
                         )
                         register_gateway_notify(approval_session_key, _approval_notify)
                         r = agent.run_conversation(
@@ -4149,7 +4331,7 @@ class APIServerAdapter(BasePlatformAdapter):
                 # block below never fires — issue #15561).
                 if isinstance(result, dict) and result.get("failed"):
                     error_msg = _redact_api_error_text(result.get("error") or "agent run failed")
-                    q.put_nowait({
+                    self._publish_run_event(run_id, {
                         "event": "run.failed",
                         "run_id": run_id,
                         "timestamp": time.time(),
@@ -4169,7 +4351,7 @@ class APIServerAdapter(BasePlatformAdapter):
                     )
                 else:
                     final_response = result.get("final_response", "") if isinstance(result, dict) else ""
-                    q.put_nowait({
+                    self._publish_run_event(run_id, {
                         "event": "run.completed",
                         "run_id": run_id,
                         "timestamp": time.time(),
@@ -4196,7 +4378,7 @@ class APIServerAdapter(BasePlatformAdapter):
                     last_event="run.cancelled",
                 )
                 try:
-                    q.put_nowait({
+                    self._publish_run_event(run_id, {
                         "event": "run.cancelled",
                         "run_id": run_id,
                         "timestamp": time.time(),
@@ -4219,7 +4401,7 @@ class APIServerAdapter(BasePlatformAdapter):
                     reason=err_text,
                 )
                 try:
-                    q.put_nowait({
+                    self._publish_run_event(run_id, {
                         "event": "run.failed",
                         "run_id": run_id,
                         "timestamp": time.time(),
@@ -4288,6 +4470,23 @@ class APIServerAdapter(BasePlatformAdapter):
             return auth_err
 
         run_id = request.match_info["run_id"]
+
+        status = self._run_statuses.get(run_id)
+        if status and status.get("status") in {"completed", "failed", "cancelled"}:
+            response = web.StreamResponse(
+                status=200,
+                headers={
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+            await response.prepare(request)
+            for event in self._run_event_history.get(run_id, []):
+                payload = f"data: {json.dumps(event)}\n\n"
+                await response.write(payload.encode())
+            await response.write(b": stream replayed\n\n")
+            return response
 
         # Allow subscribing slightly before the run is registered (race condition window)
         for _ in range(20):
@@ -4399,18 +4598,16 @@ class APIServerAdapter(BasePlatformAdapter):
             )
 
         self._set_run_status(run_id, "running", last_event="approval.responded")
-        q = self._run_streams.get(run_id)
-        if q is not None:
-            try:
-                q.put_nowait({
-                    "event": "approval.responded",
-                    "run_id": run_id,
-                    "timestamp": time.time(),
-                    "choice": choice,
-                    "resolved": resolved,
-                })
-            except Exception:
-                pass
+        try:
+            self._publish_run_event(run_id, {
+                "event": "approval.responded",
+                "run_id": run_id,
+                "timestamp": time.time(),
+                "choice": choice,
+                "resolved": resolved,
+            })
+        except Exception:
+            pass
 
         return web.json_response({
             "object": "hermes.run.approval_response",
@@ -4574,6 +4771,7 @@ class APIServerAdapter(BasePlatformAdapter):
             ]
             for run_id in stale_statuses:
                 self._run_statuses.pop(run_id, None)
+                self._run_event_history.pop(run_id, None)
 
     # ------------------------------------------------------------------
     # BasePlatformAdapter interface
@@ -4586,6 +4784,7 @@ class APIServerAdapter(BasePlatformAdapter):
             return False
 
         try:
+            await asyncio.to_thread(_verify_local_llm_model)
             mws = [mw for mw in (cors_middleware, body_limit_middleware, security_headers_middleware) if mw is not None]
             self._app = web.Application(middlewares=mws, client_max_size=MAX_REQUEST_BYTES)
             assert self._app is not None

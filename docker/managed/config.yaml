@@ -1,0 +1,5 @@
+# OpenOS local mesh policy. This image-owned layer does not modify the mounted
+# user's ~/.openagents/config.yaml.
+plugins:
+  enabled:
+    - openos-engineering

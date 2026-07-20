@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from typing import Any, Dict
 
 from plugins.openos_engineering.opencode_runner import run_opencode_headless, verify_opencode_binary
@@ -81,11 +82,30 @@ def invoke_opencode_once(
     prompt = build_task_prompt(ticket, mode)
     workdir = cwd or os.getcwd()
 
-    if mode == "implement" and ticket.get("status") == "todo":
-        update_ticket_status(
+    status = str(ticket.get("status") or "")
+    if mode == "implement" and status == "backlog":
+        ticket = update_ticket_status(
+            tid,
+            "todo",
+            reason="OpenOrchestrator implementation task accepted",
+            actor_profile="product_owner",
+            correlation_id=correlation_id,
+        )
+        status = str(ticket.get("status") or "todo")
+    if mode == "implement" and status == "todo":
+        ticket = update_ticket_status(
             tid,
             "in_progress",
+            reason="OpenCode implementation started",
             actor_profile="developer",
+            correlation_id=correlation_id,
+        )
+    elif mode in {"review", "test"} and status == "in_review":
+        ticket = update_ticket_status(
+            tid,
+            "qa",
+            reason="OpenCode verification started",
+            actor_profile="qa",
             correlation_id=correlation_id,
         )
 
@@ -117,7 +137,19 @@ def invoke_opencode_once(
         correlation_id=correlation_id,
         max_turns=max_turns,
         resume_session_id=resume_session_id,
+        run_id=agent_run_id,
     )
+
+    if result["ok"] and mode in {"review", "test"}:
+        latest = get_ticket(tid)
+        if latest.get("status") == "qa":
+            update_ticket_status(
+                tid,
+                "done",
+                reason="OpenCode verification passed",
+                actor_profile="qa",
+                correlation_id=correlation_id,
+            )
 
     if result["ok"]:
         emit_rec_event(
@@ -178,11 +210,16 @@ def invoke_opencode_once(
         "exit_code": result.get("exit_code"),
         "files_edited": result.get("files_edited") or [],
         "resume_session_id": resume_session_id,
+        "session_id": result.get("session_id"),
+        "workdir": result.get("workdir"),
+        "branch": result.get("branch"),
+        "commit_sha": result.get("commit_sha"),
+        "git_clean": result.get("git_clean"),
         "error": None if result["ok"] else "opencode_failed",
     }
 
 
-def handle_invoke_opencode(args: Dict[str, Any]) -> str:
+def handle_invoke_opencode(args: Dict[str, Any], **_: Any) -> str:
     ticket_id = str(args.get("ticket_id", "")).strip()
     if not ticket_id:
         return "Error: ticket_id is required"
@@ -207,10 +244,23 @@ def handle_invoke_opencode(args: Dict[str, Any]) -> str:
         files_note = f"\nFiles edited: {', '.join(result['files_edited'][:10])}"
 
     key = result.get("ticket_key") or result["ticket_id"]
+    evidence = json.dumps({
+        "ticket_id": result.get("ticket_id"),
+        "ticket_key": result.get("ticket_key"),
+        "session_id": result.get("session_id"),
+        "workdir": result.get("workdir"),
+        "branch": result.get("branch"),
+        "commit_sha": result.get("commit_sha"),
+        "git_clean": result.get("git_clean"),
+        "files_edited": result.get("files_edited") or [],
+        "exit_code": result.get("exit_code"),
+        "stderr": result.get("stderr") or "",
+        "summary": result.get("summary") or "",
+    }, sort_keys=True)
     return (
         f"OpenCode completed for ticket {key}.\n"
         f"Ticket in_review transition is handled by OpenCode session-complete webhook.\n\n"
-        f"{result['summary']}{files_note}"
+        f"{result['summary']}{files_note}\nEvidence: {evidence}"
     )
 
 
@@ -240,7 +290,7 @@ RUN_TICKET_DOD_LOOP_SCHEMA: Dict[str, Any] = {
 }
 
 
-def handle_run_ticket_dod_loop(args: Dict[str, Any]) -> str:
+def handle_run_ticket_dod_loop(args: Dict[str, Any], **_: Any) -> str:
     ticket_id = str(args.get("ticket_id", "")).strip()
     profile = str(args.get("agent_profile") or "").strip()
     if not ticket_id:
@@ -302,7 +352,7 @@ SUBMIT_TICKET_RESULT_SCHEMA: Dict[str, Any] = {
 }
 
 
-def handle_submit_ticket_result(args: Dict[str, Any]) -> str:
+def handle_submit_ticket_result(args: Dict[str, Any], **_: Any) -> str:
     ticket_id = str(args.get("ticket_id", "")).strip()
     if not ticket_id:
         return "Error: ticket_id is required"
@@ -369,7 +419,7 @@ CREATE_SUBTASK_SCHEMA: Dict[str, Any] = {
 }
 
 
-def handle_create_subtask(args: Dict[str, Any]) -> str:
+def handle_create_subtask(args: Dict[str, Any], **_: Any) -> str:
     parent_id = str(args.get("parent_ticket_id") or "").strip()
     title = str(args.get("title") or "").strip()
     if not parent_id or not title:
@@ -428,7 +478,7 @@ CREATE_TICKET_SCHEMA: Dict[str, Any] = {
 }
 
 
-def handle_create_ticket(args: Dict[str, Any]) -> str:
+def handle_create_ticket(args: Dict[str, Any], **_: Any) -> str:
     project_id = str(args.get("project_id") or "").strip()
     ticket_type = str(args.get("type") or "").strip()
     title = str(args.get("title") or "").strip()
@@ -474,7 +524,7 @@ SET_TICKET_ETA_SCHEMA: Dict[str, Any] = {
 }
 
 
-def handle_set_ticket_eta(args: Dict[str, Any]) -> str:
+def handle_set_ticket_eta(args: Dict[str, Any], **_: Any) -> str:
     ticket_id = str(args.get("ticket_id") or "").strip()
     if not ticket_id:
         return "Error: ticket_id is required"
@@ -524,7 +574,7 @@ def check_codex_available() -> bool:
     return verify_codex_binary()
 
 
-def handle_invoke_codex(args: Dict[str, Any]) -> str:
+def handle_invoke_codex(args: Dict[str, Any], **_: Any) -> str:
     prompt = str(args.get("prompt") or "").strip()
     if not prompt:
         return "Error: prompt is required"

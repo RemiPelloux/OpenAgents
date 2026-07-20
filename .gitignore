@@ -150,3 +150,6 @@ apps/desktop/demo/
 # PR body is the archive. See the openagents-dev skill's
 # pr-infographic-workflow reference (storage rule + lapse #8 / #COMMIT-1).
 infographic/
+
+# Machine-local AI provider credentials and permissions
+.claude/

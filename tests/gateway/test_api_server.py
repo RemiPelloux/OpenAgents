@@ -794,6 +794,7 @@ class TestCapabilitiesEndpoint:
             assert data["runtime"]["mode"] == "server_agent"
             assert data["runtime"]["tool_execution"] == "server"
             assert data["runtime"]["split_runtime"] is False
+            assert set(data["profiles"]) == {"catalog", "available"}
             assert "API-server host" in data["runtime"]["description"]
             assert data["features"]["chat_completions"] is True
             assert data["features"]["run_status"] is True

@@ -390,6 +390,25 @@ seed_one ".env" ".env.example"
 seed_one "config.yaml" "cli-config.yaml.example"
 seed_one "SOUL.md" "docker/SOUL.md"
 
+# In managed server mode the persistent .env must mirror the canonical
+# container LLM configuration. OpenAgents intentionally loads this file with
+# override semantics, so an empty first-boot template would otherwise erase
+# Docker-provided values before the supervised gateways start.
+if [ -n "${HERMES_MANAGED_DIR:-}" ] && [ -f "$OPENAGENTS_HOME/.env" ]; then
+    "$INSTALL_DIR/.venv/bin/python" - "$OPENAGENTS_HOME/.env" <<'PY'
+import os
+import sys
+
+from dotenv import set_key
+
+path = sys.argv[1]
+for key in ("LLM_PROVIDER", "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL"):
+    value = os.environ.get(key, "").strip()
+    if value:
+        set_key(path, key, value, quote_mode="always")
+PY
+fi
+
 # .env holds API keys and secrets — restrict to owner-only access. Applied
 # unconditionally (not only on first-seed) so a host-mounted .env that was
 # created with a permissive umask gets tightened on every container start.

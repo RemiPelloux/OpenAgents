@@ -20,7 +20,16 @@
     "audit:tui": "npm audit --workspace ui-tui",
     "audit:fix:root": "npm audit fix --workspaces=false",
     "audit:fix:web": "npm audit fix --workspace web",
-    "audit:fix:tui": "npm audit fix --workspace ui-tui"
+    "audit:fix:tui": "npm audit fix --workspace ui-tui",
+    "ai-config": "node ../scripts/ai-config.ts",
+    "ai-config:global": "node ../scripts/ai-config.ts global",
+    "ai-config:set-global": "node ../scripts/ai-config.ts set-global",
+    "ai-config:app": "node ../scripts/ai-config.ts app",
+    "ai-config:set-app": "node ../scripts/ai-config.ts set-app",
+    "ai-config:providers": "node ../scripts/ai-config.ts providers",
+    "ai-config:set-provider": "node ../scripts/ai-config.ts set-provider",
+    "ai-config:all": "node ../scripts/ai-config.ts all",
+    "ai-config:resolved": "node ../scripts/ai-config.ts resolved"
   },
   "repository": {
     "type": "git",

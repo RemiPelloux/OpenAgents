@@ -45,7 +45,9 @@ def _envelope_signing_bytes(envelope: Mapping[str, Any]) -> bytes:
     unsigned: MutableMapping[str, Any] = dict(envelope)
     unsigned.pop("signature", None)
     canonical = _canonicalize_json(unsigned)
-    return json.dumps(canonical, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    # Match TypeScript JSON.stringify: emit Unicode characters directly rather
+    # than escaping them as ASCII, otherwise signed prompts fail verification.
+    return json.dumps(canonical, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8")
 
 
 def _dev_keys_relaxed() -> bool:

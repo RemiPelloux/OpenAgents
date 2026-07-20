@@ -319,6 +319,17 @@ def build_task_prompt(ticket: Dict[str, Any], mode: str) -> str:
     base = f"Ticket {ticket_ref}: {mode_line}"
     if mode != "implement":
         return base
+    if os.environ.get("OPENOS_WORKSPACE_ROOT", "").strip():
+        return (
+            f"{base}\n\n"
+            "OpenProtocol CODER (managed OpenOS worktree):\n"
+            "1. The runtime already created and checked out an isolated agent/ branch; "
+            "do not fetch, pull, switch branches, create another worktree, or push\n"
+            "2. Inspect the current worktree and implement only the ticket requirements\n"
+            "3. Run the ticket test command and any relevant typecheck/build checks\n"
+            "4. Stage only the files you changed and commit one logical conventional commit\n"
+            "5. End with the current branch, commit SHA, touched files, checks, and risks"
+        )
     return (
         f"{base}\n\n"
         "OpenProtocol CODER (mandatory — you are spawned by OpenAgents):\n"

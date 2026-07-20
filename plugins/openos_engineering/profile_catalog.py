@@ -74,16 +74,10 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "crm_analyst": {
         "description": "CRM analyst \u2014 accounts, leads, context",
         "toolsets": ["mcp"],
-        "skills": [
-            "opencrm-sales-followup",
-            "opencrm-contact-enrichment",
-            "open-brain",
-            "open-generic",
-        ],
+        "skills": ["opencrm-sales-followup", "open-brain", "open-generic"],
         "mcp_servers": ["opencrm"],
         "soul": (
-            "You analyze CRM data, enrich contacts (LinkedIn/d\u00e9cideur), and propose staged updates "
-            "\u2014 never direct client email without approval."
+            "You analyze CRM data and propose staged updates \u2014 never direct client email without approval."
         ),
     },
     "developer": {
@@ -170,16 +164,10 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "sales": {
         "description": "Sales \u2014 CRM follow-up and outreach",
         "toolsets": ["delegation", "mcp"],
-        "skills": [
-            "opencrm-sales-followup",
-            "opencrm-contact-enrichment",
-            "open-creative",
-            "open-generic",
-            "open-ecosystem-hub",
-        ],
+        "skills": ["opencrm-sales-followup", "open-creative", "open-generic", "open-ecosystem-hub"],
         "mcp_servers": ["opencrm"],
         "soul": (
-            "You enrich leads, run staged CRM updates, and draft outreach. External sends need approval."
+            "You run staged CRM updates and outreach drafts. External sends need approval."
         ),
     },
     "security": {

@@ -33,16 +33,21 @@ def _render_mcp_servers(names: List[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _write_profile_config(profile_dir: Path, name: str, spec: Dict[str, Any]) -> None:
-    config_path = profile_dir / "config.yaml"
-    config_path.write_text(
+def _render_profile_config(name: str, spec: Dict[str, Any]) -> str:
+    return (
         f"# OpenOS profile: {name}\n"
         f"description: \"{spec['description']}\"\n"
         f"toolsets:\n"
         + "".join(f"  - {t}\n" for t in spec["toolsets"])
         + "skills:\n"
         + "".join(f"  - {s}\n" for s in spec["skills"])
-        + _render_mcp_servers(spec.get("mcp_servers", [])),
+        + _render_mcp_servers(spec.get("mcp_servers", []))
+    )
+
+
+def _write_profile_config(profile_dir: Path, name: str, spec: Dict[str, Any]) -> None:
+    (profile_dir / "config.yaml").write_text(
+        _render_profile_config(name, spec),
         encoding="utf-8",
     )
 
@@ -62,9 +67,13 @@ def ensure_profile(profile_id: str, home: Path | None = None) -> bool:
     profile_dir.mkdir(parents=True, exist_ok=True)
 
     config_path = profile_dir / "config.yaml"
+    desired_config = _render_profile_config(profile_id, spec)
     created = not config_path.exists()
-    if created:
-        _write_profile_config(profile_dir, profile_id, spec)
+    current_config = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+    managed = current_config.startswith("# OpenOS")
+    if created or (managed and current_config != desired_config):
+        config_path.write_text(desired_config, encoding="utf-8")
+        created = True
 
     soul_path = profile_dir / "SOUL.md"
     if not soul_path.exists():

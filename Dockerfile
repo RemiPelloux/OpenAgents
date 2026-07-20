@@ -1,3 +1,15 @@
+FROM oven/bun:1.3.14-debian AS opencode_builder
+WORKDIR /src/OpenCode
+COPY --from=opencode . .
+COPY --from=opencontract packages/envelope /src/OpenContract/packages/envelope
+RUN bun install --frozen-lockfile && \
+    ln -s /src/OpenCode/node_modules /src/OpenContract/node_modules && \
+    version="$(bun -e 'const p = require("./package.json"); console.log(p.version)')" && \
+    bun build main.tsx --outfile /tmp/opencode --compile \
+      --define "process.env.NODE_ENV='production'" \
+      --define "MACRO.VERSION='${version}'" \
+      --define "MACRO='{}'"
+
 FROM ghcr.io/astral-sh/uv:0.11.6-python3.13-trixie@sha256:b3c543b6c4f23a5f2df22866bd7857e5d304b67a564f4feab6ac22044dde719b AS uv_source
 # Node 22 LTS source stage. Debian trixie's bundled nodejs is pinned to 20.x
 # which reached EOL in April 2026 — we copy node + npm + corepack from the
@@ -150,7 +162,7 @@ RUN npm install --prefer-offline --no-audit && \
 # frontend stats the readme path during dep resolution, so we `touch` an
 # empty placeholder — the real README is restored by `COPY . .` below.
 #
-# `uv sync --frozen --no-install-project --extra all --extra messaging`
+# `uv sync --frozen --no-install-project --extra all --extra messaging --extra mesh`
 # installs the deps reachable through the composite `[all]` extra
 # (handpicked set intended for the production image — excludes `[dev]`),
 # plus gateway messaging adapters that should work in the published image
@@ -180,7 +192,7 @@ RUN npm install --prefer-offline --no-audit && \
 # The editable link is created after the source copy below.
 COPY pyproject.toml uv.lock ./
 RUN touch ./README.md
-RUN uv sync --frozen --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
+RUN uv sync --frozen --no-install-project --extra all --extra messaging --extra mesh --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
 
 # ---------- Frontend build (cached independently from Python source) ----------
 # Copy only the frontend source trees first so that Python-only changes don't
@@ -200,6 +212,14 @@ RUN cd web && npm run build && \
 # gives the non-root hermes user read + traverse but no write; root retains
 # write so the build steps below don't need chmod u+w dances.
 COPY --link --chmod=a+rX,go-w . .
+
+# The local mesh owns this managed overlay. It enables the OpenOS engineering
+# plugin without changing the personal OpenAgents config mounted at /opt/data.
+COPY --chmod=0444 docker/managed/config.yaml /etc/hermes/config.yaml
+RUN chmod 0555 /etc/hermes
+
+# OpenCode is an embedded OpenAgents worker, not a separate service.
+COPY --from=opencode_builder --chmod=0755 /tmp/opencode /usr/local/bin/opencode
 
 # ---------- Permissions ----------
 # Link openagents itself (editable). Deps are already installed in the

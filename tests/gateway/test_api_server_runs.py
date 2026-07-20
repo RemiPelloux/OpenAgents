@@ -9,6 +9,7 @@ Covers:
 """
 
 import asyncio
+import json
 import threading
 from unittest.mock import MagicMock, patch
 
@@ -303,6 +304,95 @@ class TestRunEvents:
                 # Should contain run.completed
                 assert "run.completed" in body
                 assert "Hello!" in body
+
+    @pytest.mark.asyncio
+    async def test_completed_events_replay_after_live_stream_is_consumed(self, adapter):
+        app = _create_runs_app(adapter)
+        run_id = "run_replay"
+        adapter._run_streams[run_id] = asyncio.Queue()
+        adapter._run_streams_created[run_id] = 0
+        adapter._run_event_history[run_id] = []
+        adapter._set_run_status(run_id, "running")
+
+        async with TestClient(TestServer(app)) as cli:
+            live_response_task = asyncio.create_task(cli.get(f"/v1/runs/{run_id}/events"))
+            await asyncio.sleep(0)
+            adapter._publish_run_event(run_id, {
+                "event": "tool.started",
+                "run_id": run_id,
+                "tool": "invoke_opencode",
+            })
+            adapter._publish_run_event(run_id, {
+                "event": "run.completed",
+                "run_id": run_id,
+                "output": "done",
+            })
+            adapter._run_streams[run_id].put_nowait(None)
+
+            live_response = await live_response_task
+            live_body = await live_response.text()
+            assert "invoke_opencode" in live_body
+            assert run_id not in adapter._run_streams
+
+            adapter._set_run_status(run_id, "completed")
+            replay_response = await cli.get(f"/v1/runs/{run_id}/events")
+            replay_body = await replay_response.text()
+
+        assert replay_response.status == 200
+        assert "invoke_opencode" in replay_body
+        assert "run.completed" in replay_body
+
+    @pytest.mark.asyncio
+    async def test_opencode_evidence_is_preserved_in_run_status_and_sse(self, adapter):
+        run_id = "run_opencode_evidence"
+        adapter._run_streams[run_id] = asyncio.Queue()
+        adapter._run_event_history[run_id] = []
+        adapter._set_run_status(run_id, "running")
+        callback = adapter._make_run_event_callback(run_id, asyncio.get_running_loop())
+        evidence = {
+            "ticket_id": "ticket-1",
+            "session_id": "session-1",
+            "branch": "agent/ticket-1",
+            "commit_sha": "a" * 40,
+            "git_clean": True,
+            "files_edited": ["hello.py", "test_hello.py"],
+            "exit_code": 0,
+            "stderr": "",
+            "summary": "python -m unittest passed",
+        }
+
+        callback(
+            "tool.completed",
+            "invoke_opencode",
+            duration=1.25,
+            is_error=False,
+            result=f"OpenCode completed.\nEvidence: {json.dumps(evidence)}",
+        )
+        await asyncio.sleep(0)
+
+        event = await adapter._run_streams[run_id].get()
+        assert event["opencode"] == evidence
+        assert adapter._run_statuses[run_id]["opencode"] == evidence
+        assert adapter._run_statuses[run_id]["opencode_session_ids"] == ["session-1"]
+
+        second = {**evidence, "session_id": "session-2", "files_edited": []}
+        callback(
+            "tool.completed",
+            "invoke_opencode",
+            duration=0.5,
+            is_error=False,
+            result=f"OpenCode completed.\nEvidence: {json.dumps(second)}",
+        )
+        await asyncio.sleep(0)
+
+        assert adapter._run_statuses[run_id]["opencode"]["files_edited"] == [
+            "hello.py",
+            "test_hello.py",
+        ]
+        assert adapter._run_statuses[run_id]["opencode_session_ids"] == [
+            "session-1",
+            "session-2",
+        ]
 
 
 

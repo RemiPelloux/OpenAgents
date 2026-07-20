@@ -87,6 +87,10 @@ infographic/
 # Plugin-level docs (hermes-achievements ships docs/ but the runtime doesn't read them)
 plugins/hermes-achievements/docs/
 
+# OpenBrain's named corpus context copies the public documentation only.
+!docs/
+!docs/**
+
 # Nix / Homebrew / AUR packaging metadata — irrelevant to Docker
 nix/
 flake.nix
