@@ -1,10 +1,15 @@
 use std::{
+    net::{IpAddr, SocketAddr},
     path::{Component, Path, PathBuf},
     process::Stdio,
+    time::Duration,
 };
 
 use anyhow::Context;
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use contract_core::{GitEvidence, TestEvidence, WorkerArtifact, WorkerJob, WorkerResult};
+use reqwest::{header::LOCATION, redirect::Policy};
+use scraper::{Html, Selector};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use tokio::{
@@ -19,6 +24,10 @@ use crate::{
     config::Config,
     model::{RunStatus, RunStore},
 };
+
+const SKILL_AUTHOR_LLM_TIMEOUT: Duration = Duration::from_secs(120);
+const SKILL_AUTHOR_WORKFLOW_TIMEOUT: Duration = Duration::from_secs(285);
+const MAX_RESEARCH_BODY_BYTES: usize = 2_000_000;
 
 pub async fn runtime_healthy(config: &Config) -> bool {
     command_ok(Command::new("git").arg("--version")).await
@@ -42,6 +51,14 @@ pub async fn execute(
     store: &RunStore,
 ) -> anyhow::Result<WorkerResult> {
     validate_job(job)?;
+    if job.job_type == "agent.skill_author" {
+        return timeout(
+            SKILL_AUTHOR_WORKFLOW_TIMEOUT,
+            author_skill(job, run_id, config, store),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("SKILL_AUTHOR_WORKFLOW_TIMEOUT"))?;
+    }
     let inputs = job.inputs.get("inputs").unwrap_or(&job.inputs);
     let repository = canonical_repository(inputs, &config.allowed_repositories).await?;
     let base_ref = string(inputs, "base_ref")?;
@@ -96,12 +113,20 @@ pub async fn execute(
 }
 
 fn validate_job(job: &WorkerJob) -> anyhow::Result<()> {
-    if job.job_type != "engineering.opencode"
-        || !job
+    let supported = (job.job_type == "engineering.opencode"
+        && job
             .required_capabilities
             .iter()
-            .any(|value| value == "invoke_opencode")
-    {
+            .any(|value| value == "invoke_opencode"))
+        || (job.job_type == "agent.skill_author"
+            && ["skill_author", "web_search", "web_extract"]
+                .iter()
+                .all(|required| {
+                    job.required_capabilities
+                        .iter()
+                        .any(|value| value == required)
+                }));
+    if !supported {
         anyhow::bail!("UNSUPPORTED_JOB_TYPE_OR_CAPABILITY");
     }
     if job
@@ -111,6 +136,771 @@ fn validate_job(job: &WorkerJob) -> anyhow::Result<()> {
         anyhow::bail!("JOB_DEADLINE_EXPIRED");
     }
     Ok(())
+}
+
+#[derive(Debug)]
+struct ResearchSource {
+    url: String,
+    title: String,
+    text: String,
+}
+
+struct ValidatedResearchUrl {
+    url: url::Url,
+    host: String,
+    addresses: Vec<SocketAddr>,
+    pin_dns: bool,
+}
+
+async fn author_skill(
+    job: &WorkerJob,
+    run_id: Uuid,
+    config: &Config,
+    store: &RunStore,
+) -> anyhow::Result<WorkerResult> {
+    let input = job.inputs.get("inputs").unwrap_or(&job.inputs);
+    let slug = string(input, "proposed_skill_id")?;
+    let query = string(input, "research_query")?;
+    let criteria = string_array(input, "success_criteria")?;
+    let authoring_criteria = authoring_success_criteria(&criteria);
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "research.search.started",
+            json!({"query":query,"tool":"web_search"}),
+        )
+        .await;
+    let search_http = reqwest::Client::builder()
+        .user_agent("OpenAgents skill_author/0.1")
+        .timeout(config.request_timeout)
+        .build()?;
+    let mut candidates = web_search(&search_http, &query).await?;
+    rank_search_candidates(&mut candidates, &query);
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "research.search.completed",
+            json!({"tool":"web_search","result_count":candidates.len()}),
+        )
+        .await;
+    let mut sources: Vec<ResearchSource> = Vec::new();
+    let mut rejected_sources = Vec::new();
+    extract_research_candidates(
+        config.request_timeout,
+        candidates,
+        &mut sources,
+        &mut rejected_sources,
+    )
+    .await;
+    let mut hosts = research_hosts(&sources);
+    if hosts.len() < 2 {
+        let diversified_query = diversify_research_query(&query, &hosts);
+        let mut diversified_candidates = web_search(&search_http, &diversified_query)
+            .await
+            .unwrap_or_default();
+        rank_search_candidates(&mut diversified_candidates, &query);
+        store
+            .update(
+                run_id,
+                RunStatus::Running,
+                "research.search.diversified",
+                json!({
+                    "tool":"web_search",
+                    "query":diversified_query,
+                    "excluded_hosts":hosts,
+                    "result_count":diversified_candidates.len(),
+                }),
+            )
+            .await;
+        extract_research_candidates(
+            config.request_timeout,
+            diversified_candidates,
+            &mut sources,
+            &mut rejected_sources,
+        )
+        .await;
+        hosts = research_hosts(&sources);
+    }
+    if sources.len() < 2 || hosts.len() < 2 {
+        store
+            .update(
+                run_id,
+                RunStatus::Running,
+                "research.extract.insufficient",
+                json!({
+                    "tool":"web_extract",
+                    "source_count":sources.len(),
+                    "independent_hosts":hosts.len(),
+                    "rejected":rejected_sources.into_iter().take(8).collect::<Vec<_>>(),
+                }),
+            )
+            .await;
+        anyhow::bail!("AUTHORITATIVE_RESEARCH_INSUFFICIENT: fewer than two independent documents were extracted");
+    }
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "research.extract.completed",
+            json!({
+                "tool":"web_extract",
+                "source_count":sources.len(),
+                "source_hosts":sources.iter().filter_map(|source| url::Url::parse(&source.url).ok()).filter_map(|value| value.host_str().map(str::to_owned)).collect::<std::collections::HashSet<_>>(),
+            }),
+        )
+        .await;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "authoring.started",
+            json!({"profile":"skill_author","source_count":sources.len()}),
+        )
+        .await;
+    let authored = author_with_llm(config, &slug, &query, &authoring_criteria, &sources).await?;
+    let description = authored
+        .get("description")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim();
+    let body = authored
+        .get("skill_md")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim();
+    if description.len() < 20 || body.len() < 120 || body.len() > 18_000 {
+        anyhow::bail!("SKILL_AUTHOR_OUTPUT_INVALID");
+    }
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "authoring.completed",
+            json!({"profile":"skill_author","body_length":body.len()}),
+        )
+        .await;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "validation.started",
+            json!({"criteria_count":authoring_criteria.len(),"workflow_criteria_count":criteria.len()-authoring_criteria.len()}),
+        )
+        .await;
+    let source_meta = select_authoritative_sources(&authored, &sources)?;
+    let validation =
+        validate_authored_skill(&authored, &authoring_criteria, body, &source_meta, &sources)?;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "validation.completed",
+            json!({"passed":true,"criteria_count":authoring_criteria.len()}),
+        )
+        .await;
+    let skill = json!({
+        "slug":slug,"description":description,"skill_md":body,"sources":source_meta,
+        "validation":validation,
+        "provenance":{"research_tools":["web_search","web_extract"],"research_query":query,"provider":"openai-compatible","model":config.llm_model,"source_count":source_meta.len()}
+    });
+    let serialized = serde_json::to_vec(&skill)?;
+    let sha256 = format!("{:x}", Sha256::digest(&serialized));
+    Ok(WorkerResult {
+        run_id,
+        artifacts: vec![WorkerArtifact {
+            kind: "organization_skill".into(),
+            name: format!("{slug}.json"),
+            uri: format!("openagents://runs/{run_id}/skills/{slug}"),
+            sha256: Some(sha256),
+            metadata: json!({"skill":skill}),
+        }],
+        stderr: None,
+        exit_status: 0,
+        tests: vec![TestEvidence {
+            command: "skill_author_validation".into(),
+            exit_status: 0,
+            passed: authoring_criteria.len() as u32 + 6,
+            failed: 0,
+            output_uri: None,
+        }],
+        git: None,
+        engine_session_id: Some(format!("skill_author:{run_id}")),
+    })
+}
+
+async fn extract_research_candidates(
+    request_timeout: Duration,
+    candidates: Vec<(String, String)>,
+    sources: &mut Vec<ResearchSource>,
+    rejected_sources: &mut Vec<Value>,
+) {
+    for (url, title) in candidates.into_iter().take(24) {
+        let (resolved_url, text) = match web_extract(request_timeout, &url).await {
+            Ok(value) => value,
+            Err(error) => {
+                rejected_sources.push(json!({
+                    "host":url::Url::parse(&url).ok().and_then(|value| value.host_str().map(str::to_owned)),
+                    "error":error.to_string().chars().take(240).collect::<String>(),
+                }));
+                continue;
+            }
+        };
+        if sources.iter().any(|source| source.url == resolved_url) {
+            continue;
+        }
+        let resolved_host = url::Url::parse(&resolved_url)
+            .ok()
+            .and_then(|value| value.host_str().map(str::to_owned));
+        let same_host_count = resolved_host.as_ref().map_or(0, |host| {
+            sources
+                .iter()
+                .filter(|source| source_host(source).as_ref() == Some(host))
+                .count()
+        });
+        if same_host_count >= 2 {
+            continue;
+        }
+        sources.push(ResearchSource {
+            url: resolved_url,
+            title,
+            text,
+        });
+        if sources.len() >= 5 {
+            break;
+        }
+    }
+}
+
+fn source_host(source: &ResearchSource) -> Option<String> {
+    url::Url::parse(&source.url)
+        .ok()
+        .and_then(|value| value.host_str().map(str::to_owned))
+}
+
+fn research_hosts(sources: &[ResearchSource]) -> std::collections::HashSet<String> {
+    sources.iter().filter_map(source_host).collect()
+}
+
+fn authoring_success_criteria(criteria: &[String]) -> Vec<String> {
+    criteria
+        .iter()
+        .filter(|criterion| {
+            let lower = criterion.to_ascii_lowercase();
+            !lower.contains("activated privately")
+                && !(lower.contains("activate")
+                    && lower.contains("skill")
+                    && lower.contains("privately"))
+                && !lower.contains("after explicit user confirmation")
+                && !lower.contains("retries the originating")
+                && !lower.contains("after successful activation")
+        })
+        .cloned()
+        .collect()
+}
+
+fn diversify_research_query(query: &str, hosts: &std::collections::HashSet<String>) -> String {
+    let exclusions = hosts
+        .iter()
+        .take(3)
+        .map(|host| format!("-site:{host}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!("{query} official primary source {exclusions}")
+}
+
+async fn web_search(http: &reqwest::Client, query: &str) -> anyhow::Result<Vec<(String, String)>> {
+    let mut results = Vec::new();
+    for search_query in search_query_variants(query) {
+        let encoded = urlencoding::encode(&search_query);
+        for (endpoint, selector) in [
+            (
+                format!("https://search.brave.com/search?q={encoded}&source=web"),
+                "div.snippet[data-type=\"web\"] a[href]",
+            ),
+            (
+                format!("https://html.duckduckgo.com/html/?q={encoded}"),
+                "a.result__a",
+            ),
+            (
+                format!("https://lite.duckduckgo.com/lite/?q={encoded}"),
+                "a.result-link",
+            ),
+            (
+                format!("https://www.bing.com/search?q={encoded}"),
+                "li.b_algo h2 a",
+            ),
+        ] {
+            let Ok(response) = http.get(endpoint).send().await else {
+                continue;
+            };
+            let Ok(response) = response.error_for_status() else {
+                continue;
+            };
+            let Ok(body) = response.text().await else {
+                continue;
+            };
+            append_search_results(&body, selector, &mut results)?;
+        }
+    }
+    if results.len() < 2 {
+        anyhow::bail!("WEB_SEARCH_RETURNED_INSUFFICIENT_RESULTS");
+    }
+    Ok(results)
+}
+
+fn search_query_variants(query: &str) -> Vec<String> {
+    const STOP_WORDS: &[&str] = &[
+        "using",
+        "only",
+        "research",
+        "current",
+        "from",
+        "with",
+        "into",
+        "including",
+        "include",
+        "applicable",
+        "least",
+        "sources",
+        "source",
+        "capture",
+        "record",
+        "identify",
+        "reconcile",
+        "such",
+        "that",
+        "this",
+        "then",
+        "than",
+        "their",
+    ];
+    let mut seen = std::collections::HashSet::new();
+    let concise = query
+        .split_whitespace()
+        .map(|word| {
+            word.trim_matches(|character: char| {
+                !character.is_ascii_alphanumeric() && character != '.' && character != '-'
+            })
+        })
+        .filter(|word| word.len() >= 3)
+        .filter(|word| !STOP_WORDS.contains(&word.to_ascii_lowercase().as_str()))
+        .filter(|word| seen.insert(word.to_ascii_lowercase()))
+        .take(20)
+        .collect::<Vec<_>>()
+        .join(" ");
+    if concise.is_empty() || concise == query {
+        vec![query.to_string()]
+    } else {
+        vec![concise, query.to_string()]
+    }
+}
+
+fn rank_search_candidates(candidates: &mut [(String, String)], query: &str) {
+    candidates.sort_by_cached_key(|(url, title)| {
+        std::cmp::Reverse(search_candidate_score(url, title, query))
+    });
+}
+
+fn search_candidate_score(url: &str, title: &str, query: &str) -> usize {
+    let searchable = format!("{url} {title}").to_ascii_lowercase();
+    let query_terms = search_query_variants(query)
+        .into_iter()
+        .next()
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(str::to_ascii_lowercase)
+        .filter(|term| term.len() >= 4)
+        .collect::<std::collections::HashSet<_>>();
+    let term_score = query_terms
+        .iter()
+        .filter(|term| searchable.contains(term.as_str()))
+        .count()
+        * 4;
+    let authority_score = [
+        ("docs.", 10),
+        ("github.com/", 7),
+        ("official", 6),
+        ("standard", 5),
+        ("specification", 5),
+        ("schematron", 5),
+        ("/rules", 4),
+        ("/schema", 4),
+        (".gov/", 8),
+        (".eu/", 6),
+        (".org/", 4),
+    ]
+    .iter()
+    .filter_map(|(needle, score)| searchable.contains(needle).then_some(score))
+    .sum::<usize>();
+    term_score + authority_score
+}
+
+fn append_search_results(
+    body: &str,
+    selector: &str,
+    results: &mut Vec<(String, String)>,
+) -> anyhow::Result<()> {
+    let document = Html::parse_document(body);
+    let selector = Selector::parse(selector).map_err(|error| anyhow::anyhow!(error.to_string()))?;
+    for link in document.select(&selector) {
+        let Some(raw) = link.value().attr("href") else {
+            continue;
+        };
+        let Some(url) = normalize_search_result_url(raw) else {
+            continue;
+        };
+        let title = link.text().collect::<Vec<_>>().join(" ").trim().to_string();
+        if !results.iter().any(|(existing, _)| existing == &url) {
+            results.push((url, title));
+        }
+    }
+    Ok(())
+}
+
+fn normalize_search_result_url(raw: &str) -> Option<String> {
+    let absolute = if raw.starts_with("//") {
+        format!("https:{raw}")
+    } else if raw.starts_with('/') {
+        format!("https://duckduckgo.com{raw}")
+    } else {
+        raw.to_string()
+    };
+    let parsed = url::Url::parse(&absolute).ok()?;
+    let host = parsed.host_str()?.to_ascii_lowercase();
+    let target = if let Some((_, value)) = parsed.query_pairs().find(|(key, _)| key == "uddg") {
+        value.into_owned()
+    } else if (host == "bing.com" || host.ends_with(".bing.com"))
+        && parsed.path().starts_with("/ck/a")
+    {
+        let encoded = parsed
+            .query_pairs()
+            .find(|(key, _)| key == "u")?
+            .1
+            .into_owned();
+        let encoded = encoded.strip_prefix("a1").unwrap_or(&encoded);
+        String::from_utf8(URL_SAFE_NO_PAD.decode(encoded).ok()?).ok()?
+    } else {
+        absolute
+    };
+    let target = url::Url::parse(&target).ok()?;
+    let target_host = target.host_str()?.to_ascii_lowercase();
+    if target.scheme() != "https" || is_search_engine_host(&target_host) {
+        return None;
+    }
+    Some(target.to_string())
+}
+
+fn is_search_engine_host(host: &str) -> bool {
+    ["bing.com", "duckduckgo.com", "search.brave.com"]
+        .iter()
+        .any(|search_host| host == *search_host || host.ends_with(&format!(".{search_host}")))
+}
+
+async fn web_extract(request_timeout: Duration, url: &str) -> anyhow::Result<(String, String)> {
+    let mut current = validate_public_https_url(url).await?;
+    let mut redirects = 0;
+    let response = loop {
+        let mut builder = reqwest::Client::builder()
+            .user_agent("OpenAgents skill_author/0.1")
+            .timeout(request_timeout)
+            .redirect(Policy::none());
+        if current.pin_dns {
+            builder = builder.resolve_to_addrs(&current.host, &current.addresses);
+        }
+        let response = builder.build()?.get(current.url.clone()).send().await?;
+        if !response.status().is_redirection() {
+            break response.error_for_status()?;
+        }
+        redirects += 1;
+        if redirects > 5 {
+            anyhow::bail!("too many research source redirects");
+        }
+        let location = response
+            .headers()
+            .get(LOCATION)
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| anyhow::anyhow!("redirect missing location"))?;
+        current = validate_public_https_url(current.url.join(location)?.as_str()).await?;
+    };
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_RESEARCH_BODY_BYTES as u64)
+    {
+        anyhow::bail!("research document exceeds size limit");
+    }
+    let mut response = response;
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        if bytes.len() + chunk.len() > MAX_RESEARCH_BODY_BYTES {
+            anyhow::bail!("research document exceeds size limit");
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    if bytes.len() < 200 {
+        anyhow::bail!("document too short");
+    }
+    let raw = String::from_utf8_lossy(&bytes);
+    let document = Html::parse_document(&raw);
+    let selector = Selector::parse("body").map_err(|error| anyhow::anyhow!(error.to_string()))?;
+    let text = document
+        .select(&selector)
+        .flat_map(|node| node.text())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let normalized = if text.trim().len() >= 200 {
+        text
+    } else {
+        raw.into_owned()
+    };
+    Ok((
+        current.url.to_string(),
+        normalized.chars().take(12_000).collect(),
+    ))
+}
+
+async fn validate_public_https_url(raw: &str) -> anyhow::Result<ValidatedResearchUrl> {
+    let parsed = url::Url::parse(raw)?;
+    if parsed.scheme() != "https"
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+        || parsed.port_or_known_default() != Some(443)
+    {
+        anyhow::bail!("research source must be credential-free HTTPS on port 443");
+    }
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| anyhow::anyhow!("research source has no host"))?
+        .trim_end_matches('.')
+        .to_ascii_lowercase();
+    if host == "localhost"
+        || host.ends_with(".localhost")
+        || host.ends_with(".local")
+        || host.ends_with(".internal")
+    {
+        anyhow::bail!("research source host is not public");
+    }
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        if !is_public_ip(ip) {
+            anyhow::bail!("research source address is not public");
+        }
+        return Ok(ValidatedResearchUrl {
+            url: parsed,
+            host,
+            addresses: vec![SocketAddr::new(ip, 443)],
+            pin_dns: false,
+        });
+    }
+    let resolved = tokio::net::lookup_host((host.as_str(), 443))
+        .await?
+        .collect::<Vec<_>>();
+    if resolved.is_empty() || resolved.iter().any(|address| !is_public_ip(address.ip())) {
+        anyhow::bail!("research source resolved to a non-public address");
+    }
+    let addresses = resolved
+        .into_iter()
+        .map(|address| SocketAddr::new(address.ip(), 443))
+        .collect::<Vec<_>>();
+    Ok(ValidatedResearchUrl {
+        url: parsed,
+        host,
+        addresses,
+        pin_dns: true,
+    })
+}
+
+fn is_public_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(value) => {
+            !(value.is_private()
+                || value.is_loopback()
+                || value.is_link_local()
+                || value.is_broadcast()
+                || value.is_documentation()
+                || value.is_unspecified()
+                || value.is_multicast())
+        }
+        IpAddr::V6(value) => {
+            let segments = value.segments();
+            !(value.is_loopback()
+                || value.is_unspecified()
+                || value.is_multicast()
+                || segments[0] & 0xfe00 == 0xfc00
+                || segments[0] & 0xffc0 == 0xfe80
+                || (segments[0] == 0x2001 && segments[1] == 0x0db8))
+        }
+    }
+}
+
+fn select_authoritative_sources(
+    authored: &Value,
+    extracted: &[ResearchSource],
+) -> anyhow::Result<Vec<Value>> {
+    let selected = authored
+        .get("sources")
+        .and_then(Value::as_array)
+        .ok_or_else(|| {
+            anyhow::anyhow!("skill_author returned no authoritative source selection")
+        })?;
+    let mut hosts = std::collections::HashSet::new();
+    let mut result = Vec::new();
+    for source in selected {
+        let url = source
+            .get("url")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let authority = source
+            .get("authority")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .trim();
+        let Some(extracted_source) = extracted.iter().find(|candidate| candidate.url == url) else {
+            anyhow::bail!("skill_author selected a source that was not extracted");
+        };
+        if authority.len() < 12 {
+            anyhow::bail!("skill_author did not justify source authority");
+        }
+        let host = url::Url::parse(url)?
+            .host_str()
+            .ok_or_else(|| anyhow::anyhow!("selected source has no host"))?
+            .to_ascii_lowercase();
+        if hosts.insert(host) {
+            result.push(json!({
+                "url":extracted_source.url,
+                "title":extracted_source.title,
+                "authority":authority,
+            }));
+        }
+    }
+    if result.len() < 2 {
+        anyhow::bail!("AUTHORITATIVE_RESEARCH_INSUFFICIENT: fewer than two independently selected primary sources");
+    }
+    Ok(result)
+}
+
+fn validate_authored_skill(
+    authored: &Value,
+    success_criteria: &[String],
+    body: &str,
+    sources: &[Value],
+    extracted_sources: &[ResearchSource],
+) -> anyhow::Result<Value> {
+    let validation = authored
+        .get("validation")
+        .ok_or_else(|| anyhow::anyhow!("skill_author returned no validation evidence"))?;
+    let evidence = validation
+        .get("criteria")
+        .and_then(Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("skill_author returned no criterion evidence"))?;
+    if validation.get("passed").and_then(Value::as_bool) != Some(true) {
+        let failed = evidence
+            .iter()
+            .filter(|item| item.get("passed").and_then(Value::as_bool) != Some(true))
+            .filter_map(|item| item.get("criterion").and_then(Value::as_str))
+            .take(3)
+            .collect::<Vec<_>>()
+            .join("; ");
+        anyhow::bail!("skill_author validation did not pass: {failed}");
+    }
+    let normalized_body = normalize_evidence(body);
+    for criterion in success_criteria {
+        let item = evidence
+            .iter()
+            .find(|item| item.get("criterion").and_then(Value::as_str) == Some(criterion.as_str()));
+        let Some(item) = item else {
+            anyhow::bail!("skill_author omitted an approved success criterion");
+        };
+        let evidence = item
+            .get("evidence")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| value.len() >= 20)
+            .ok_or_else(|| anyhow::anyhow!("skill_author supplied weak criterion evidence"))?;
+        let normalized_evidence = normalize_evidence(evidence);
+        let grounded_in_body = normalized_body.contains(&normalized_evidence);
+        let grounded_in_selected_source = extracted_sources.iter().any(|source| {
+            sources.iter().any(|selected| {
+                selected.get("url").and_then(Value::as_str) == Some(source.url.as_str())
+            }) && normalize_evidence(&source.text).contains(&normalized_evidence)
+        });
+        if item.get("passed").and_then(Value::as_bool) != Some(true)
+            || (!grounded_in_body && !grounded_in_selected_source)
+        {
+            anyhow::bail!("skill_author supplied weak criterion evidence");
+        }
+    }
+    for source in sources {
+        let url = source
+            .get("url")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if url.is_empty() || !body.contains(url) {
+            anyhow::bail!("SKILL.md does not cite every selected authoritative source");
+        }
+    }
+    Ok(json!({
+        "passed":true,
+        "checks":[
+            "structured_output","source_count","independent_hosts",
+            "authority_rationales","extracted_source_membership","body_bounds",
+            "approved_success_criteria","grounded_criterion_evidence","source_citations"
+        ],
+        "criteria":evidence,
+    }))
+}
+
+fn normalize_evidence(value: &str) -> String {
+    value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase()
+}
+
+async fn author_with_llm(
+    config: &Config,
+    slug: &str,
+    query: &str,
+    criteria: &[String],
+    sources: &[ResearchSource],
+) -> anyhow::Result<Value> {
+    let source_context = sources
+        .iter()
+        .map(|source| json!({
+            "url":source.url,
+            "host":url::Url::parse(&source.url).ok().and_then(|value| value.host_str().map(str::to_owned)),
+            "title":source.title,
+            "extract":source.text,
+        }))
+        .collect::<Vec<_>>();
+    let base = config.llm_base_url.trim_end_matches('/');
+    let url = if base.ends_with("/v1") {
+        format!("{base}/chat/completions")
+    } else {
+        format!("{base}/v1/chat/completions")
+    };
+    let llm = reqwest::Client::builder()
+        .timeout(SKILL_AUTHOR_LLM_TIMEOUT)
+        .redirect(Policy::none())
+        .build()?;
+    let response = llm.post(url).bearer_auth(&config.llm_api_key).json(&json!({
+        "model":config.llm_model,"temperature":0,
+        "messages":[
+            {"role":"system","content":"You are the approved OpenAgents skill_author. Write concise reusable procedural instructions grounded only in the supplied extracted sources. Select at least two primary or official sources from different supplied hosts, explain each source's authority, and cite every selected exact URL in skill_md. Evaluate every supplied success criterion verbatim. For each criterion, evidence must be an exact contiguous quotation of at least 20 characters copied from skill_md or from one of the selected supplied extracts; paraphrases are invalid. Only set validation.passed=true when every criterion is satisfied. The sources array must contain exact supplied URLs from at least two distinct hosts. If the supplied sources are not authoritative enough, do not submit a skill. Do not claim activation."},
+            {"role":"user","content":serde_json::to_string(&json!({"approved_slug":slug,"research_query":query,"success_criteria":criteria,"sources":source_context}))?}
+        ],
+        "tools":[{"type":"function","function":{"name":"submit_skill","description":"Submit the authored skill.","parameters":{
+            "type":"object","additionalProperties":false,"required":["description","skill_md","sources","validation"],
+            "properties":{"description":{"type":"string","minLength":20},"skill_md":{"type":"string","minLength":120,"maxLength":18000},"sources":{"type":"array","minItems":2,"maxItems":8,"items":{"type":"object","additionalProperties":false,"required":["url","authority"],"properties":{"url":{"type":"string"},"authority":{"type":"string","minLength":12}}}},"validation":{"type":"object","additionalProperties":false,"required":["passed","criteria"],"properties":{"passed":{"type":"boolean"},"criteria":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"object","additionalProperties":false,"required":["criterion","passed","evidence"],"properties":{"criterion":{"type":"string"},"passed":{"type":"boolean"},"evidence":{"type":"string","minLength":20}}}}}}}
+        }}}],
+        "tool_choice":{"type":"function","function":{"name":"submit_skill"}}
+    })).send().await?.error_for_status()?.json::<Value>().await?;
+    let arguments = response
+        .pointer("/choices/0/message/tool_calls/0/function/arguments")
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow::anyhow!("skill_author LLM returned no submit_skill call"))?;
+    Ok(serde_json::from_str(arguments)?)
 }
 
 async fn canonical_repository(inputs: &Value, allowed: &[PathBuf]) -> anyhow::Result<PathBuf> {
@@ -529,5 +1319,192 @@ mod tests {
             sanitize("ok\nAuthorization: Bearer abc\nsk-secret"),
             "ok\n[redacted]\n[redacted]"
         );
+    }
+
+    #[tokio::test]
+    async fn rejects_private_research_source_addresses() {
+        assert!(validate_public_https_url("https://127.0.0.1/private")
+            .await
+            .is_err());
+        assert!(validate_public_https_url("https://[::1]/private")
+            .await
+            .is_err());
+    }
+
+    #[test]
+    fn requires_authoritative_selection_from_extracted_sources() {
+        let extracted = vec![
+            ResearchSource {
+                url: "https://docs.example.org/spec".into(),
+                title: "Specification".into(),
+                text: "x".repeat(200),
+            },
+            ResearchSource {
+                url: "https://standards.example.net/rules".into(),
+                title: "Rules".into(),
+                text: "y".repeat(200),
+            },
+        ];
+        let authored = json!({"sources":[
+            {"url":extracted[0].url,"authority":"Official specification publisher"},
+            {"url":extracted[1].url,"authority":"Independent standards authority"}
+        ]});
+        assert_eq!(
+            select_authoritative_sources(&authored, &extracted)
+                .unwrap()
+                .len(),
+            2
+        );
+
+        let fabricated = json!({"sources":[
+            {"url":"https://unseen.example.com","authority":"Official specification publisher"},
+            {"url":extracted[1].url,"authority":"Independent standards authority"}
+        ]});
+        assert!(select_authoritative_sources(&fabricated, &extracted).is_err());
+    }
+
+    #[test]
+    fn diversification_excludes_hosts_already_extracted() {
+        let hosts = ["docs.example.org".to_string()]
+            .into_iter()
+            .collect::<std::collections::HashSet<_>>();
+        let query = diversify_research_query("invoice validation", &hosts);
+
+        assert!(query.contains("invoice validation official primary source"));
+        assert!(query.contains("-site:docs.example.org"));
+    }
+
+    #[test]
+    fn concise_search_variant_preserves_domain_terms() {
+        let variants = search_query_variants(
+            "Using authoritative documentation only, research the current Peppol BIS Billing 3.0 validation procedure, prioritizing OpenPeppol Schematron artifacts.",
+        );
+        assert!(variants[0].contains("Peppol BIS Billing 3.0 validation"));
+        assert!(variants[0].contains("OpenPeppol Schematron"));
+        assert_eq!(variants.len(), 2);
+    }
+
+    #[test]
+    fn ranks_query_matching_official_sources_before_commercial_explainers() {
+        let mut candidates = vec![
+            (
+                "https://vendor.example.com/blog/validator".into(),
+                "Invoice validator".into(),
+            ),
+            (
+                "https://github.com/OpenPEPPOL/peppol-bis-invoice-3/tree/master/rules".into(),
+                "Official rules".into(),
+            ),
+            (
+                "https://docs.peppol.eu/poacc/billing/3.0/".into(),
+                "Peppol BIS Billing specification".into(),
+            ),
+        ];
+        rank_search_candidates(
+            &mut candidates,
+            "Peppol BIS Billing OpenPeppol official rules",
+        );
+        assert!(
+            candidates[0].0.contains("OpenPEPPOL") || candidates[0].0.contains("docs.peppol.eu")
+        );
+        assert!(!candidates[0].0.contains("vendor.example.com"));
+    }
+
+    #[test]
+    fn authoring_validation_excludes_control_plane_lifecycle_criteria() {
+        let criteria = vec![
+            "Defines repeatable invoice checks.".to_string(),
+            "Is activated privately only after explicit user confirmation.".to_string(),
+            "Retries the originating request exactly once after successful activation.".to_string(),
+        ];
+        assert_eq!(
+            authoring_success_criteria(&criteria),
+            vec!["Defines repeatable invoice checks."]
+        );
+    }
+
+    #[test]
+    fn requires_grounded_evidence_for_every_approved_criterion() {
+        let criteria = vec!["Validate syntax before business rules".to_string()];
+        let sources = vec![
+            json!({"url":"https://docs.example.org/spec"}),
+            json!({"url":"https://standards.example.net/rules"}),
+        ];
+        let authored = json!({"validation":{"passed":true,"criteria":[{
+            "criterion":criteria[0],"passed":true,
+            "evidence":"The procedure explicitly orders syntax validation before rules."
+        }]}});
+        let body = "The procedure explicitly orders syntax validation before rules. Use https://docs.example.org/spec before applying https://standards.example.net/rules.";
+        let extracted = vec![
+            ResearchSource {
+                url: "https://docs.example.org/spec".into(),
+                title: "Specification".into(),
+                text: "Official syntax requirements.".into(),
+            },
+            ResearchSource {
+                url: "https://standards.example.net/rules".into(),
+                title: "Rules".into(),
+                text: "Official business rules.".into(),
+            },
+        ];
+        assert!(validate_authored_skill(&authored, &criteria, body, &sources, &extracted).is_ok());
+
+        let missing = json!({"validation":{"passed":true,"criteria":[]}});
+        assert!(validate_authored_skill(&missing, &criteria, body, &sources, &extracted).is_err());
+
+        let unsupported = json!({"validation":{"passed":true,"criteria":[{
+            "criterion":criteria[0],"passed":true,
+            "evidence":"This assertion appears in neither the skill nor its selected sources."
+        }]}});
+        assert!(
+            validate_authored_skill(&unsupported, &criteria, body, &sources, &extracted).is_err()
+        );
+    }
+
+    #[test]
+    fn parses_primary_and_lite_search_result_shapes() {
+        let mut results = Vec::new();
+        append_search_results(
+            r#"<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdocs.example.org%2Fspec">Specification</a>"#,
+            "a.result__a",
+            &mut results,
+        )
+        .unwrap();
+        append_search_results(
+            r#"<a href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fstandards.example.net%2Frules" class="result-link">Rules</a>"#,
+            "a.result-link",
+            &mut results,
+        )
+        .unwrap();
+        append_search_results(
+            r#"<li class="b_algo"><h2><a href="https://primary.example.com/guide">Guide</a></h2></li>"#,
+            "li.b_algo h2 a",
+            &mut results,
+        )
+        .unwrap();
+        append_search_results(
+            r#"<div class="snippet" data-type="web"><a href="https://authority.example.edu/standard">Standard</a></div>"#,
+            "div.snippet[data-type=\"web\"] a[href]",
+            &mut results,
+        )
+        .unwrap();
+        assert_eq!(results.len(), 4);
+        assert_eq!(results[0].0, "https://docs.example.org/spec");
+        assert_eq!(results[1].0, "https://standards.example.net/rules");
+        assert_eq!(results[2].0, "https://primary.example.com/guide");
+        assert_eq!(results[3].0, "https://authority.example.edu/standard");
+    }
+
+    #[test]
+    fn decodes_bing_tracking_urls_and_rejects_search_pages() {
+        let target = "https://docs.example.org/spec";
+        let encoded = URL_SAFE_NO_PAD.encode(target);
+        let tracked = format!("https://www.bing.com/ck/a?u=a1{encoded}&ntb=1");
+
+        assert_eq!(
+            normalize_search_result_url(&tracked).as_deref(),
+            Some(target)
+        );
+        assert!(normalize_search_result_url("https://www.bing.com/search?q=spec").is_none());
     }
 }

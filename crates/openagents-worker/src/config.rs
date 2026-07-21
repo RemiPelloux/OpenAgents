@@ -17,6 +17,10 @@ pub struct Config {
     pub opencode_timeout: Duration,
     pub request_timeout: Duration,
     pub capacity: u32,
+    pub llm_base_url: String,
+    pub llm_api_key: String,
+    pub llm_model: String,
+    pub internal_service_key: String,
 }
 
 impl Config {
@@ -49,6 +53,10 @@ impl Config {
             )?),
             request_timeout: Duration::from_secs(parse("OPENOS_REQUEST_TIMEOUT_SECONDS", 30u64)?),
             capacity: parse("OPENAGENTS_WORKER_CAPACITY", 2u32)?,
+            llm_base_url: required("LLM_BASE_URL")?.trim_end_matches('/').to_string(),
+            llm_api_key: required("LLM_API_KEY")?,
+            llm_model: required("LLM_MODEL")?,
+            internal_service_key: required("INTERNAL_SERVICE_KEY")?,
         })
     }
 }

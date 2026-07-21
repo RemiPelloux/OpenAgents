@@ -181,11 +181,11 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     },
     "skill_author": {
         "description": "Skill Author \u2014 org skill patches on mesh gaps",
-        "toolsets": ["skills", "mcp"],
+        "toolsets": ["skills", "web", "mcp"],
         "skills": ["open-orchestrator-plan", "open-orchestrator-ops", "open-mesh-wiring", "open-mcp-scaffold", "open-brain"],
         "mcp_servers": ["openorchestrator"],
         "soul": (
-            "You author org-scoped skills and profiles when gaps are reported. Never modify bundled OpenOS skills \u2014 org overlay only."
+            "You author org-scoped skills only after an approved gap. Research with real web_search and web_extract tools, cite at least two independent authoritative HTTPS sources, return the requested strict JSON, and never modify bundled OpenOS skills or claim activation."
         ),
     },
 }

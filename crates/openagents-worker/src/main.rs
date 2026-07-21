@@ -100,6 +100,7 @@ fn spawn_poller(state: AppState) {
                                 job.job_id,
                                 job.ticket_id,
                                 job.correlation_id,
+                                job.idempotency_key.clone(),
                             ))
                             .await;
                         spawn_job(state.clone(), job, run_id);
@@ -117,7 +118,8 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
             Ok(value) => value,
             Err(_) => return,
         };
-        state.runs.update(run_id, RunStatus::Running, "run.started", serde_json::json!({"job_id":job.job_id,"ticket_id":job.ticket_id,"adapter":"invoke_opencode"})).await;
+        let direct_skill_author = job.job_type == "agent.skill_author";
+        state.runs.update(run_id, RunStatus::Running, "run.started", serde_json::json!({"job_id":job.job_id,"ticket_id":job.ticket_id,"adapter":if direct_skill_author { "skill_author" } else { "invoke_opencode" }})).await;
         let heartbeat_state = state.clone();
         let heartbeat_job = job.clone();
         let heartbeat = tokio::spawn(async move {
@@ -135,6 +137,22 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
             }
         });
         match runtime::execute(&job, run_id, &state.config, &state.runs).await {
+            Ok(result) if direct_skill_author => {
+                let value = serde_json::to_value(&result).unwrap_or_default();
+                state
+                    .runs
+                    .update(
+                        run_id,
+                        RunStatus::Completed,
+                        "run.completed",
+                        serde_json::json!({"evidence_validated_by":"OpenAgents.skill_author"}),
+                    )
+                    .await;
+                state
+                    .runs
+                    .terminal(run_id, RunStatus::Completed, Some(value), None)
+                    .await;
+            }
             Ok(result) => match state.client.complete(&job, result.clone()).await {
                 Ok(_) => {
                     let value = serde_json::to_value(&result).unwrap_or_default();

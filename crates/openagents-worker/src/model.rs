@@ -31,6 +31,7 @@ pub struct RunRecord {
     pub job_id: Uuid,
     pub ticket_id: Uuid,
     pub correlation_id: Uuid,
+    pub idempotency_key: String,
     pub status: RunStatus,
     pub events: Vec<RunEvent>,
     pub result: Option<Value>,
@@ -38,12 +39,19 @@ pub struct RunRecord {
 }
 
 impl RunRecord {
-    pub fn new(run_id: Uuid, job_id: Uuid, ticket_id: Uuid, correlation_id: Uuid) -> Self {
+    pub fn new(
+        run_id: Uuid,
+        job_id: Uuid,
+        ticket_id: Uuid,
+        correlation_id: Uuid,
+        idempotency_key: String,
+    ) -> Self {
         Self {
             run_id,
             job_id,
             ticket_id,
             correlation_id,
+            idempotency_key,
             status: RunStatus::Queued,
             events: Vec::new(),
             result: None,
@@ -69,6 +77,19 @@ impl RunStore {
 
     pub async fn insert(&self, record: RunRecord) {
         self.records.write().await.insert(record.run_id, record);
+    }
+
+    pub async fn insert_idempotent(&self, record: RunRecord) -> (RunRecord, bool) {
+        let mut records = self.records.write().await;
+        if let Some(existing) = records
+            .values()
+            .find(|existing| existing.idempotency_key == record.idempotency_key)
+            .cloned()
+        {
+            return (existing, false);
+        }
+        records.insert(record.run_id, record.clone());
+        (record, true)
     }
 
     pub async fn get(&self, id: Uuid) -> Option<RunRecord> {
@@ -126,6 +147,38 @@ impl RunStore {
 
     pub fn subscribe(&self) -> broadcast::Receiver<RunEvent> {
         self.events.subscribe()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn returns_the_existing_run_for_an_idempotency_key() {
+        let store = RunStore::new();
+        let correlation_id = Uuid::new_v4();
+        let first = RunRecord::new(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            correlation_id,
+            "skill-author:org:correlation".into(),
+        );
+        let duplicate = RunRecord::new(
+            Uuid::new_v4(),
+            first.job_id,
+            first.ticket_id,
+            correlation_id,
+            first.idempotency_key.clone(),
+        );
+
+        let (_, inserted) = store.insert_idempotent(first.clone()).await;
+        let (existing, duplicate_inserted) = store.insert_idempotent(duplicate).await;
+
+        assert!(inserted);
+        assert!(!duplicate_inserted);
+        assert_eq!(existing.run_id, first.run_id);
     }
 }
 

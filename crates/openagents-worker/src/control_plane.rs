@@ -58,12 +58,15 @@ impl ControlPlaneClient {
                     "invoke_opencode".into(),
                     "git_worktree".into(),
                     "test_execution".into(),
+                    "skill_author".into(),
+                    "web_search".into(),
+                    "web_extract".into(),
                 ]
             } else {
                 vec![]
             },
             job_types: if healthy {
-                vec!["engineering.opencode".into()]
+                vec!["engineering.opencode".into(), "agent.skill_author".into()]
             } else {
                 vec![]
             },
@@ -95,8 +98,11 @@ impl ControlPlaneClient {
                 "invoke_opencode".into(),
                 "git_worktree".into(),
                 "test_execution".into(),
+                "skill_author".into(),
+                "web_search".into(),
+                "web_extract".into(),
             ],
-            job_types: vec!["engineering.opencode".into()],
+            job_types: vec!["engineering.opencode".into(), "agent.skill_author".into()],
             limit: capacity,
             lease_seconds: 60,
         };
