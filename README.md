@@ -337,6 +337,21 @@ Primary distribution: [RemiPelloux/OpenAgents](https://github.com/RemiPelloux/Op
 
 ---
 
+## OpenOS Rust worker
+
+The `openagents-worker` crate executes typed OpenOS engineering and skill-author
+jobs. Engineering results include the exact changed-file set, base SHA, commit
+SHA, and a SHA-256 digest as a persisted artifact. Skill authoring uses up to
+eight extracted sources, makes at most two provider attempts (one transient
+retry), and makes at most three model-backed candidate attempts (two repairs)
+before failing explicitly. Strict source, criterion, and activation validation
+remains authoritative.
+
+The OpenOS worker gate runs `cargo test -p openagents-worker` on Linux, macOS,
+and Windows with no skipped fallback path.
+
+---
+
 ## OpenContract (OpenOS mesh)
 
 OpenAgents is **producer** on W4/W1 hops (MCP tools, staging proposals). Wire signing when calling OpenTicket, OpenCRM, OpenCode.
@@ -368,4 +383,3 @@ OpenOS mesh docs are indexed in **OpenBrain**. Query via MCP `search_knowledge` 
 ## License
 
 [MIT](LICENSE) — original work © [Nous Research](https://nousresearch.com) (Hermes Agent); OpenAgents fork © Remi Pelloux (2026). Both notices must be retained in copies and derivative works.
-

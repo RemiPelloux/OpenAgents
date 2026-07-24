@@ -16,7 +16,7 @@ use tokio::{
     fs,
     io::{AsyncBufReadExt, BufReader},
     process::Command,
-    time::timeout,
+    time::{sleep, timeout},
 };
 use uuid::Uuid;
 
@@ -28,6 +28,9 @@ use crate::{
 const SKILL_AUTHOR_LLM_TIMEOUT: Duration = Duration::from_secs(120);
 const SKILL_AUTHOR_WORKFLOW_TIMEOUT: Duration = Duration::from_secs(285);
 const MAX_RESEARCH_BODY_BYTES: usize = 2_000_000;
+const SKILL_AUTHOR_TRANSPORT_ATTEMPTS: usize = 2;
+const SKILL_AUTHOR_CANDIDATE_ATTEMPTS: usize = 3;
+const MAX_RESEARCH_SOURCES: usize = 8;
 
 pub async fn runtime_healthy(config: &Config) -> bool {
     command_ok(Command::new("git").arg("--version")).await
@@ -100,15 +103,45 @@ pub async fn execute(
         anyhow::bail!("engine or declared tests failed");
     }
     let git = commit_changes(&workspace, &repository, &base_sha, job.ticket_id, run_id).await?;
+    let changed_files = changed_files_artifact(&workspace, &base_sha, &git.commit_sha)?;
     let artifact = persist_events(&config.managed_root, run_id, &engine.stdout).await?;
     Ok(WorkerResult {
         run_id,
-        artifacts: vec![artifact],
+        artifacts: vec![artifact, changed_files],
         stderr: nonempty(sanitize(&engine.stderr)),
         exit_status: engine.exit_status,
         tests: test_evidence,
         git: Some(git),
         engine_session_id: engine.session_id,
+    })
+}
+
+fn changed_files_artifact(
+    workspace: &Path,
+    base_sha: &str,
+    commit_sha: &str,
+) -> anyhow::Result<WorkerArtifact> {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["diff", "--name-only", base_sha, commit_sha])
+        .output()?;
+    if !output.status.success() {
+        anyhow::bail!("CHANGED_FILES_EVIDENCE_FAILED");
+    }
+    let files: Vec<&str> = std::str::from_utf8(&output.stdout)?
+        .lines()
+        .filter(|value| !value.trim().is_empty())
+        .collect();
+    if files.is_empty() {
+        anyhow::bail!("CHANGED_FILES_EVIDENCE_EMPTY");
+    }
+    Ok(WorkerArtifact {
+        kind: "changed_files".into(),
+        name: "Changed files".into(),
+        uri: format!("git://{commit_sha}/changed-files"),
+        sha256: Some(format!("{:x}", Sha256::digest(&output.stdout))),
+        metadata: json!({"base_sha":base_sha,"commit_sha":commit_sha,"files":files}),
     })
 }
 
@@ -259,20 +292,16 @@ async fn author_skill(
             json!({"profile":"skill_author","source_count":sources.len()}),
         )
         .await;
-    let authored = author_with_llm(config, &slug, &query, &authoring_criteria, &sources).await?;
-    let description = authored
-        .get("description")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .trim();
-    let body = authored
-        .get("skill_md")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .trim();
-    if description.len() < 20 || body.len() < 120 || body.len() > 18_000 {
-        anyhow::bail!("SKILL_AUTHOR_OUTPUT_INVALID");
-    }
+    let (_authored, description, body, source_meta, validation) = author_validated_skill(
+        config,
+        &slug,
+        &query,
+        &authoring_criteria,
+        &sources,
+        run_id,
+        store,
+    )
+    .await?;
     store
         .update(
             run_id,
@@ -289,9 +318,6 @@ async fn author_skill(
             json!({"criteria_count":authoring_criteria.len(),"workflow_criteria_count":criteria.len()-authoring_criteria.len()}),
         )
         .await;
-    let source_meta = select_authoritative_sources(&authored, &sources)?;
-    let validation =
-        validate_authored_skill(&authored, &authoring_criteria, body, &source_meta, &sources)?;
     store
         .update(
             run_id,
@@ -328,6 +354,62 @@ async fn author_skill(
         git: None,
         engine_session_id: Some(format!("skill_author:{run_id}")),
     })
+}
+
+async fn author_validated_skill(
+    config: &Config,
+    slug: &str,
+    query: &str,
+    criteria: &[String],
+    sources: &[ResearchSource],
+    run_id: Uuid,
+    store: &RunStore,
+) -> anyhow::Result<(Value, String, String, Vec<Value>, Value)> {
+    let mut feedback: Option<String> = None;
+    for attempt in 0..SKILL_AUTHOR_CANDIDATE_ATTEMPTS {
+        let authored =
+            author_with_llm(config, slug, query, criteria, sources, feedback.as_deref()).await?;
+        let description = authored
+            .get("description")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+        let body = authored
+            .get("skill_md")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+        let result = if description.len() < 20 || body.len() < 120 || body.len() > 18_000 {
+            Err(anyhow::anyhow!("SKILL_AUTHOR_OUTPUT_INVALID"))
+        } else {
+            select_authoritative_sources(&authored, sources).and_then(|source_meta| {
+                validate_authored_skill(&authored, criteria, &body, &source_meta, sources).map(
+                    |validation| {
+                        (
+                            authored.clone(),
+                            description.clone(),
+                            body.clone(),
+                            source_meta,
+                            validation,
+                        )
+                    },
+                )
+            })
+        };
+        match result {
+            Ok(candidate) => return Ok(candidate),
+            Err(error) if attempt + 1 < SKILL_AUTHOR_CANDIDATE_ATTEMPTS => {
+                feedback = Some(error.to_string());
+                store.update(run_id, RunStatus::Running, "authoring.repairing", json!({
+                    "profile":"skill_author","attempt":attempt + 2,"validation_error":error.to_string()
+                })).await;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    unreachable!("bounded authoring attempts always return")
 }
 
 async fn extract_research_candidates(
@@ -367,7 +449,7 @@ async fn extract_research_candidates(
             title,
             text,
         });
-        if sources.len() >= 5 {
+        if sources.len() >= MAX_RESEARCH_SOURCES {
             break;
         }
     }
@@ -393,6 +475,8 @@ fn authoring_success_criteria(criteria: &[String]) -> Vec<String> {
                     && lower.contains("skill")
                     && lower.contains("privately"))
                 && !lower.contains("after explicit user confirmation")
+                && !(lower.contains("confirmation")
+                    && (lower.contains("author") || lower.contains("activat")))
                 && !lower.contains("retries the originating")
                 && !lower.contains("after successful activation")
         })
@@ -864,6 +948,7 @@ async fn author_with_llm(
     query: &str,
     criteria: &[String],
     sources: &[ResearchSource],
+    validation_feedback: Option<&str>,
 ) -> anyhow::Result<Value> {
     let source_context = sources
         .iter()
@@ -884,23 +969,66 @@ async fn author_with_llm(
         .timeout(SKILL_AUTHOR_LLM_TIMEOUT)
         .redirect(Policy::none())
         .build()?;
-    let response = llm.post(url).bearer_auth(&config.llm_api_key).json(&json!({
+    let mut messages = vec![
+        json!({"role":"system","content":"You are the approved OpenAgents skill_author. Write concise reusable procedural instructions grounded only in the supplied extracted sources. Select at least two primary or official sources from different supplied hosts, explain each source's authority, and cite every selected exact URL in skill_md. Evaluate every supplied success criterion verbatim. For each criterion, evidence must be an exact contiguous quotation of at least 20 characters copied from skill_md or from one of the selected supplied extracts; paraphrases are invalid. Only set validation.passed=true when every criterion is satisfied. The sources array must contain exact supplied URLs from at least two distinct hosts. If the supplied sources are not authoritative enough, do not submit a skill. Do not claim activation."}),
+        json!({"role":"user","content":serde_json::to_string(&json!({"approved_slug":slug,"research_query":query,"success_criteria":criteria,"sources":source_context}))?}),
+    ];
+    if let Some(feedback) = validation_feedback {
+        messages.push(json!({"role":"user","content":format!("The previous candidate failed strict validation: {feedback}. Repair only the candidate. Criterion evidence must be copied verbatim from skill_md or one selected extract; never cite this request as evidence.")}));
+    }
+    let payload = json!({
         "model":config.llm_model,"temperature":0,
-        "messages":[
-            {"role":"system","content":"You are the approved OpenAgents skill_author. Write concise reusable procedural instructions grounded only in the supplied extracted sources. Select at least two primary or official sources from different supplied hosts, explain each source's authority, and cite every selected exact URL in skill_md. Evaluate every supplied success criterion verbatim. For each criterion, evidence must be an exact contiguous quotation of at least 20 characters copied from skill_md or from one of the selected supplied extracts; paraphrases are invalid. Only set validation.passed=true when every criterion is satisfied. The sources array must contain exact supplied URLs from at least two distinct hosts. If the supplied sources are not authoritative enough, do not submit a skill. Do not claim activation."},
-            {"role":"user","content":serde_json::to_string(&json!({"approved_slug":slug,"research_query":query,"success_criteria":criteria,"sources":source_context}))?}
-        ],
+        "messages":messages,
         "tools":[{"type":"function","function":{"name":"submit_skill","description":"Submit the authored skill.","parameters":{
             "type":"object","additionalProperties":false,"required":["description","skill_md","sources","validation"],
             "properties":{"description":{"type":"string","minLength":20},"skill_md":{"type":"string","minLength":120,"maxLength":18000},"sources":{"type":"array","minItems":2,"maxItems":8,"items":{"type":"object","additionalProperties":false,"required":["url","authority"],"properties":{"url":{"type":"string"},"authority":{"type":"string","minLength":12}}}},"validation":{"type":"object","additionalProperties":false,"required":["passed","criteria"],"properties":{"passed":{"type":"boolean"},"criteria":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"object","additionalProperties":false,"required":["criterion","passed","evidence"],"properties":{"criterion":{"type":"string"},"passed":{"type":"boolean"},"evidence":{"type":"string","minLength":20}}}}}}}
         }}}],
         "tool_choice":{"type":"function","function":{"name":"submit_skill"}}
-    })).send().await?.error_for_status()?.json::<Value>().await?;
+    });
+    let mut response = None;
+    for attempt in 0..SKILL_AUTHOR_TRANSPORT_ATTEMPTS {
+        match llm
+            .post(&url)
+            .bearer_auth(&config.llm_api_key)
+            .json(&payload)
+            .send()
+            .await
+        {
+            Ok(value) if value.status().is_success() => {
+                response = Some(value.json::<Value>().await?);
+                break;
+            }
+            Ok(value)
+                if attempt + 1 < SKILL_AUTHOR_TRANSPORT_ATTEMPTS
+                    && retryable_author_status(value.status().as_u16()) =>
+            {
+                sleep(Duration::from_millis(250 * (1 << attempt))).await;
+            }
+            Ok(value) => {
+                return Err(value
+                    .error_for_status()
+                    .expect_err("non-success response")
+                    .into());
+            }
+            Err(error)
+                if attempt + 1 < SKILL_AUTHOR_TRANSPORT_ATTEMPTS
+                    && (error.is_timeout() || error.is_connect()) =>
+            {
+                sleep(Duration::from_millis(250 * (1 << attempt))).await;
+            }
+            Err(error) => return Err(error.into()),
+        }
+    }
+    let response = response.ok_or_else(|| anyhow::anyhow!("SKILL_AUTHOR_TRANSPORT_EXHAUSTED"))?;
     let arguments = response
         .pointer("/choices/0/message/tool_calls/0/function/arguments")
         .and_then(Value::as_str)
         .ok_or_else(|| anyhow::anyhow!("skill_author LLM returned no submit_skill call"))?;
     Ok(serde_json::from_str(arguments)?)
+}
+
+fn retryable_author_status(status: u16) -> bool {
+    status == 429 || (500..=599).contains(&status)
 }
 
 async fn canonical_repository(inputs: &Value, allowed: &[PathBuf]) -> anyhow::Result<PathBuf> {
@@ -1321,6 +1449,53 @@ mod tests {
         );
     }
 
+    #[test]
+    fn changed_file_artifact_contains_exact_files_and_digest() {
+        let temp = tempfile::tempdir().unwrap();
+        let repository = temp.path();
+        let git = |args: &[&str]| {
+            let output = std::process::Command::new("git")
+                .arg("-C")
+                .arg(repository)
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(output.status.success(), "git {:?} failed", args);
+            String::from_utf8(output.stdout).unwrap().trim().to_string()
+        };
+        git(&["init", "--quiet"]);
+        git(&["config", "user.email", "worker-test@openos.local"]);
+        git(&["config", "user.name", "OpenAgents Worker Test"]);
+        std::fs::write(repository.join("README.md"), "base\n").unwrap();
+        git(&["add", "README.md"]);
+        git(&["commit", "--quiet", "-m", "base"]);
+        let base_sha = git(&["rev-parse", "HEAD"]);
+
+        std::fs::write(repository.join("README.md"), "changed\n").unwrap();
+        std::fs::create_dir(repository.join("src")).unwrap();
+        std::fs::write(repository.join("src/lib.rs"), "pub fn changed() {}\n").unwrap();
+        git(&["add", "README.md", "src/lib.rs"]);
+        git(&["commit", "--quiet", "-m", "change"]);
+        let commit_sha = git(&["rev-parse", "HEAD"]);
+
+        let artifact = changed_files_artifact(repository, &base_sha, &commit_sha).unwrap();
+        let expected_output = b"README.md\nsrc/lib.rs\n";
+        assert_eq!(artifact.kind, "changed_files");
+        assert_eq!(artifact.uri, format!("git://{commit_sha}/changed-files"));
+        assert_eq!(
+            artifact.sha256.as_deref(),
+            Some(format!("{:x}", Sha256::digest(expected_output)).as_str())
+        );
+        assert_eq!(
+            artifact.metadata,
+            json!({
+                "base_sha":base_sha,
+                "commit_sha":commit_sha,
+                "files":["README.md", "src/lib.rs"],
+            })
+        );
+    }
+
     #[tokio::test]
     async fn rejects_private_research_source_addresses() {
         assert!(validate_public_https_url("https://127.0.0.1/private")
@@ -1415,12 +1590,21 @@ mod tests {
         let criteria = vec![
             "Defines repeatable invoice checks.".to_string(),
             "Is activated privately only after explicit user confirmation.".to_string(),
+            "Authoring occurs only after confirmation.".to_string(),
             "Retries the originating request exactly once after successful activation.".to_string(),
         ];
         assert_eq!(
             authoring_success_criteria(&criteria),
             vec!["Defines repeatable invoice checks."]
         );
+    }
+
+    #[test]
+    fn retries_only_transient_author_transport_statuses() {
+        assert!(retryable_author_status(429));
+        assert!(retryable_author_status(502));
+        assert!(!retryable_author_status(400));
+        assert!(!retryable_author_status(401));
     }
 
     #[test]

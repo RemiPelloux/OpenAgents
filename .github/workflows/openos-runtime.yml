@@ -1,0 +1,27 @@
+name: OpenOS Runtime Matrix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust-worker:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: OpenAgents
+      - uses: actions/checkout@v4
+        with:
+          repository: RemiPelloux/OpenContract
+          path: OpenContract
+      - uses: dtolnay/rust-toolchain@stable
+      - name: OpenOS worker tests (zero skips)
+        working-directory: OpenAgents
+        run: cargo test -p openagents-worker
