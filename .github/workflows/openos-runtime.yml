@@ -19,7 +19,7 @@ jobs:
           path: OpenAgents
       - uses: actions/checkout@v4
         with:
-          repository: RemiPelloux/OpenContract
+          repository: RemiPelloux/OpenOS
           path: OpenContract
       - uses: dtolnay/rust-toolchain@stable
       - name: OpenOS worker tests (zero skips)
