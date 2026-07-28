@@ -347,6 +347,14 @@ retry), and makes at most three model-backed candidate attempts (two repairs)
 before failing explicitly. Strict source, criterion, and activation validation
 remains authoritative.
 
+Skill-author jobs also require an approved generalization contract. The worker
+checks runtime parameters, discovery branches, invariants, distinct validation
+instances, and the generated `SKILL.md` parameter surface. It rejects instance
+URLs embedded as required procedure constants. Engineering jobs receive the
+same bounded rule: parameterize facts that vary, discover missing evidence,
+test a materially different instance, and avoid abstractions without a concrete
+second use case.
+
 The OpenOS worker gate runs `cargo test -p openagents-worker` on Linux, macOS,
 and Windows with no skipped fallback path.
 

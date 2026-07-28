@@ -73,6 +73,7 @@ pub async fn execute(
             .unwrap_or_default()
             .to_string()
     });
+    let prompt = engineering_prompt(&prompt);
     if contains_secret(&serde_json::to_string(inputs)?) {
         anyhow::bail!("INPUT_SECRET_REJECTED");
     }
@@ -114,6 +115,17 @@ pub async fn execute(
         git: Some(git),
         engine_session_id: engine.session_id,
     })
+}
+
+fn engineering_prompt(task: &str) -> String {
+    format!(
+        "{task}\n\nOpenOS generalization contract:\n\
+         - Identify facts that vary between valid instances and expose them through existing configuration, function arguments, typed schemas, or discovery outputs.\n\
+         - Keep the triggering app name, owner, repository, URL, credential reference, and destination as instance data, not reusable control flow.\n\
+         - When a value is unknown, discover it from available evidence and registered tools; fail explicitly when evidence, authorization, or a required real tool is unavailable.\n\
+         - Implement the smallest reusable boundary justified by at least two concrete instances; avoid speculative abstractions.\n\
+         - Add behavior tests for the triggering instance and a materially different instance whenever the changed behavior is reusable."
+    )
 }
 
 fn changed_files_artifact(
@@ -195,6 +207,11 @@ async fn author_skill(
     let slug = string(input, "proposed_skill_id")?;
     let query = string(input, "research_query")?;
     let criteria = string_array(input, "success_criteria")?;
+    let generalization = input
+        .get("generalization")
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_REQUIRED"))?;
+    validate_generalization_contract(&generalization)?;
     let authoring_criteria = authoring_success_criteria(&criteria);
     store
         .update(
@@ -297,6 +314,7 @@ async fn author_skill(
         &slug,
         &query,
         &authoring_criteria,
+        &generalization,
         &sources,
         run_id,
         store,
@@ -328,6 +346,7 @@ async fn author_skill(
         .await;
     let skill = json!({
         "slug":slug,"description":description,"skill_md":body,"sources":source_meta,
+        "generalization":generalization,
         "validation":validation,
         "provenance":{"research_tools":["web_search","web_extract"],"research_query":query,"provider":"openai-compatible","model":config.llm_model,"source_count":source_meta.len()}
     });
@@ -361,14 +380,23 @@ async fn author_validated_skill(
     slug: &str,
     query: &str,
     criteria: &[String],
+    generalization: &Value,
     sources: &[ResearchSource],
     run_id: Uuid,
     store: &RunStore,
 ) -> anyhow::Result<(Value, String, String, Vec<Value>, Value)> {
     let mut feedback: Option<String> = None;
     for attempt in 0..SKILL_AUTHOR_CANDIDATE_ATTEMPTS {
-        let authored =
-            author_with_llm(config, slug, query, criteria, sources, feedback.as_deref()).await?;
+        let authored = author_with_llm(
+            config,
+            slug,
+            query,
+            criteria,
+            generalization,
+            sources,
+            feedback.as_deref(),
+        )
+        .await?;
         let description = authored
             .get("description")
             .and_then(Value::as_str)
@@ -385,17 +413,23 @@ async fn author_validated_skill(
             Err(anyhow::anyhow!("SKILL_AUTHOR_OUTPUT_INVALID"))
         } else {
             select_authoritative_sources(&authored, sources).and_then(|source_meta| {
-                validate_authored_skill(&authored, criteria, &body, &source_meta, sources).map(
-                    |validation| {
-                        (
-                            authored.clone(),
-                            description.clone(),
-                            body.clone(),
-                            source_meta,
-                            validation,
-                        )
-                    },
+                validate_authored_skill(
+                    &authored,
+                    criteria,
+                    generalization,
+                    &body,
+                    &source_meta,
+                    sources,
                 )
+                .map(|validation| {
+                    (
+                        authored.clone(),
+                        description.clone(),
+                        body.clone(),
+                        source_meta,
+                        validation,
+                    )
+                })
             })
         };
         match result {
@@ -863,9 +897,161 @@ fn select_authoritative_sources(
     Ok(result)
 }
 
+fn generalization_field<'a>(
+    generalization: &'a Value,
+    snake: &str,
+    camel: &str,
+) -> Option<&'a Value> {
+    generalization
+        .get(snake)
+        .or_else(|| generalization.get(camel))
+}
+
+fn generalization_scenarios(generalization: &Value) -> anyhow::Result<&Vec<Value>> {
+    generalization_field(
+        generalization,
+        "validation_scenarios",
+        "validationScenarios",
+    )
+    .and_then(Value::as_array)
+    .filter(|scenarios| scenarios.len() >= 2)
+    .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_REQUIRES_TWO_SCENARIOS"))
+}
+
+fn validate_generalization_contract(generalization: &Value) -> anyhow::Result<()> {
+    let capability = generalization
+        .get("capability")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| value.len() >= 12)
+        .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_CAPABILITY_INVALID"))?;
+    let parameters = generalization
+        .get("parameters")
+        .and_then(Value::as_array)
+        .filter(|values| !values.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_PARAMETERS_REQUIRED"))?;
+    let mut names = std::collections::HashSet::new();
+    let mut required = Vec::new();
+    for parameter in parameters {
+        let name = parameter
+            .get("name")
+            .and_then(Value::as_str)
+            .filter(|name| {
+                let mut chars = name.chars();
+                chars.next().is_some_and(|value| value.is_ascii_lowercase())
+                    && chars.all(|value| {
+                        value.is_ascii_lowercase() || value.is_ascii_digit() || value == '_'
+                    })
+            })
+            .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_PARAMETER_NAME_INVALID"))?;
+        if !names.insert(name) {
+            anyhow::bail!("SKILL_GENERALIZATION_PARAMETER_DUPLICATE");
+        }
+        if parameter
+            .get("schema")
+            .and_then(|schema| schema.get("type"))
+            .and_then(Value::as_str)
+            .is_none()
+        {
+            anyhow::bail!("SKILL_GENERALIZATION_PARAMETER_SCHEMA_REQUIRED");
+        }
+        if parameter.get("required").and_then(Value::as_bool) == Some(true) {
+            required.push(name);
+        }
+    }
+    let discovery = generalization_field(generalization, "discovery_strategy", "discoveryStrategy")
+        .and_then(Value::as_array)
+        .filter(|values| values.len() >= 2)
+        .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_DISCOVERY_STRATEGY_REQUIRED"))?;
+    if capability.is_empty()
+        || discovery
+            .iter()
+            .any(|value| value.as_str().is_none_or(|step| step.trim().is_empty()))
+    {
+        anyhow::bail!("SKILL_GENERALIZATION_DISCOVERY_STRATEGY_INVALID");
+    }
+    let invariants = generalization
+        .get("invariants")
+        .and_then(Value::as_array)
+        .filter(|values| !values.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_INVARIANTS_REQUIRED"))?;
+    if invariants
+        .iter()
+        .any(|value| value.as_str().is_none_or(|item| item.trim().is_empty()))
+    {
+        anyhow::bail!("SKILL_GENERALIZATION_INVARIANTS_INVALID");
+    }
+    let mut scenario_bindings = std::collections::HashSet::new();
+    let instance_bindings =
+        generalization_field(generalization, "instance_bindings", "instanceBindings")
+            .and_then(Value::as_object)
+            .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_INSTANCE_BINDINGS_REQUIRED"))?;
+    if required
+        .iter()
+        .any(|name| !instance_bindings.contains_key(*name))
+    {
+        anyhow::bail!("SKILL_GENERALIZATION_INSTANCE_BINDINGS_INCOMPLETE");
+    }
+    for scenario in generalization_scenarios(generalization)? {
+        let bindings = scenario
+            .get("bindings")
+            .and_then(Value::as_object)
+            .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_SCENARIO_BINDINGS_REQUIRED"))?;
+        if scenario
+            .get("name")
+            .and_then(Value::as_str)
+            .is_none_or(|name| name.trim().len() < 3)
+            || required.iter().any(|name| !bindings.contains_key(*name))
+        {
+            anyhow::bail!("SKILL_GENERALIZATION_SCENARIO_INCOMPLETE");
+        }
+        if !scenario_bindings.insert(serde_json::to_string(bindings)?) {
+            anyhow::bail!("SKILL_GENERALIZATION_SCENARIOS_NOT_DISTINCT");
+        }
+    }
+    Ok(())
+}
+
+fn validate_parameterized_body(generalization: &Value, body: &str) -> anyhow::Result<()> {
+    let lower = body.to_ascii_lowercase();
+    if !lower.contains("runtime parameter") {
+        anyhow::bail!("SKILL.md must include a Runtime parameters section");
+    }
+    let parameters = generalization
+        .get("parameters")
+        .and_then(Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("SKILL_GENERALIZATION_PARAMETERS_REQUIRED"))?;
+    for parameter in parameters {
+        let name = parameter
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if !body.contains(&format!("`{name}`"))
+            && !body.contains(&format!("{{{{{name}}}}}"))
+            && !body.contains(&format!("${{{name}}}"))
+        {
+            anyhow::bail!("SKILL.md does not expose approved runtime parameter {name}");
+        }
+    }
+    if let Some(bindings) =
+        generalization_field(generalization, "instance_bindings", "instanceBindings")
+            .and_then(Value::as_object)
+    {
+        for value in bindings.values().filter_map(Value::as_str) {
+            if (value.starts_with("https://") || value.starts_with("http://"))
+                && body.contains(value)
+            {
+                anyhow::bail!("SKILL.md hardcodes an instance URL instead of a runtime parameter");
+            }
+        }
+    }
+    Ok(())
+}
+
 fn validate_authored_skill(
     authored: &Value,
     success_criteria: &[String],
+    generalization: &Value,
     body: &str,
     sources: &[Value],
     extracted_sources: &[ResearchSource],
@@ -923,14 +1109,42 @@ fn validate_authored_skill(
             anyhow::bail!("SKILL.md does not cite every selected authoritative source");
         }
     }
+    let generality_scenarios = validation
+        .get("generality_scenarios")
+        .and_then(Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("skill_author returned no generality scenario evidence"))?;
+    let approved_scenarios = generalization_scenarios(generalization)?;
+    for approved in approved_scenarios {
+        let name = approved
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let result = generality_scenarios
+            .iter()
+            .find(|candidate| candidate.get("name").and_then(Value::as_str) == Some(name))
+            .ok_or_else(|| {
+                anyhow::anyhow!("skill_author omitted an approved generality scenario")
+            })?;
+        if result.get("passed").and_then(Value::as_bool) != Some(true)
+            || result
+                .get("evidence")
+                .and_then(Value::as_str)
+                .is_none_or(|value| value.trim().len() < 20)
+        {
+            anyhow::bail!("skill_author did not pass an approved generality scenario");
+        }
+    }
+    validate_parameterized_body(generalization, body)?;
     Ok(json!({
         "passed":true,
         "checks":[
             "structured_output","source_count","independent_hosts",
             "authority_rationales","extracted_source_membership","body_bounds",
-            "approved_success_criteria","grounded_criterion_evidence","source_citations"
+            "approved_success_criteria","grounded_criterion_evidence","source_citations",
+            "runtime_parameterization","generality_scenarios"
         ],
         "criteria":evidence,
+        "generality_scenarios":generality_scenarios,
     }))
 }
 
@@ -947,6 +1161,7 @@ async fn author_with_llm(
     slug: &str,
     query: &str,
     criteria: &[String],
+    generalization: &Value,
     sources: &[ResearchSource],
     validation_feedback: Option<&str>,
 ) -> anyhow::Result<Value> {
@@ -970,8 +1185,8 @@ async fn author_with_llm(
         .redirect(Policy::none())
         .build()?;
     let mut messages = vec![
-        json!({"role":"system","content":"You are the approved OpenAgents skill_author. Write concise reusable procedural instructions grounded only in the supplied extracted sources. Select at least two primary or official sources from different supplied hosts, explain each source's authority, and cite every selected exact URL in skill_md. Evaluate every supplied success criterion verbatim. For each criterion, evidence must be an exact contiguous quotation of at least 20 characters copied from skill_md or from one of the selected supplied extracts; paraphrases are invalid. Only set validation.passed=true when every criterion is satisfied. The sources array must contain exact supplied URLs from at least two distinct hosts. If the supplied sources are not authoritative enough, do not submit a skill. Do not claim activation."}),
-        json!({"role":"user","content":serde_json::to_string(&json!({"approved_slug":slug,"research_query":query,"success_criteria":criteria,"sources":source_context}))?}),
+        json!({"role":"system","content":"You are the approved OpenAgents skill_author. Write concise reusable procedural instructions grounded only in the supplied extracted sources. The approved generalization contract is authoritative: core steps must use its runtime parameter names and discovery branches, never fixed values from instance_bindings. Include a Runtime parameters section and make the procedure executable for every validation scenario. Target-specific values may appear only as clearly labeled examples, never as required constants. Select at least two primary or official sources from different supplied hosts, explain each source's authority, and cite every selected exact URL in skill_md. Evaluate every supplied success criterion verbatim. For each criterion, evidence must be an exact contiguous quotation of at least 20 characters copied from skill_md or from one of the selected supplied extracts; paraphrases are invalid. Return a passed generality_scenarios item with meaningful evidence for every approved scenario. Only set validation.passed=true when every criterion and generality scenario is satisfied. The sources array must contain exact supplied URLs from at least two distinct hosts. If the supplied sources are not authoritative enough, do not submit a skill. Do not claim activation."}),
+        json!({"role":"user","content":serde_json::to_string(&json!({"approved_slug":slug,"research_query":query,"success_criteria":criteria,"generalization":generalization,"sources":source_context}))?}),
     ];
     if let Some(feedback) = validation_feedback {
         messages.push(json!({"role":"user","content":format!("The previous candidate failed strict validation: {feedback}. Repair only the candidate. Criterion evidence must be copied verbatim from skill_md or one selected extract; never cite this request as evidence.")}));
@@ -981,7 +1196,7 @@ async fn author_with_llm(
         "messages":messages,
         "tools":[{"type":"function","function":{"name":"submit_skill","description":"Submit the authored skill.","parameters":{
             "type":"object","additionalProperties":false,"required":["description","skill_md","sources","validation"],
-            "properties":{"description":{"type":"string","minLength":20},"skill_md":{"type":"string","minLength":120,"maxLength":18000},"sources":{"type":"array","minItems":2,"maxItems":8,"items":{"type":"object","additionalProperties":false,"required":["url","authority"],"properties":{"url":{"type":"string"},"authority":{"type":"string","minLength":12}}}},"validation":{"type":"object","additionalProperties":false,"required":["passed","criteria"],"properties":{"passed":{"type":"boolean"},"criteria":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"object","additionalProperties":false,"required":["criterion","passed","evidence"],"properties":{"criterion":{"type":"string"},"passed":{"type":"boolean"},"evidence":{"type":"string","minLength":20}}}}}}}
+            "properties":{"description":{"type":"string","minLength":20},"skill_md":{"type":"string","minLength":120,"maxLength":18000},"sources":{"type":"array","minItems":2,"maxItems":8,"items":{"type":"object","additionalProperties":false,"required":["url","authority"],"properties":{"url":{"type":"string"},"authority":{"type":"string","minLength":12}}}},"validation":{"type":"object","additionalProperties":false,"required":["passed","criteria","generality_scenarios"],"properties":{"passed":{"type":"boolean"},"criteria":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"object","additionalProperties":false,"required":["criterion","passed","evidence"],"properties":{"criterion":{"type":"string"},"passed":{"type":"boolean"},"evidence":{"type":"string","minLength":20}}}},"generality_scenarios":{"type":"array","minItems":2,"maxItems":4,"items":{"type":"object","additionalProperties":false,"required":["name","passed","evidence"],"properties":{"name":{"type":"string"},"passed":{"type":"boolean"},"evidence":{"type":"string","minLength":20}}}}}}}
         }}}],
         "tool_choice":{"type":"function","function":{"name":"submit_skill"}}
     });
@@ -1610,6 +1825,17 @@ mod tests {
     #[test]
     fn requires_grounded_evidence_for_every_approved_criterion() {
         let criteria = vec!["Validate syntax before business rules".to_string()];
+        let generalization = json!({
+            "capability":"Validate authoritative business documents",
+            "parameters":[{"name":"target","description":"Document system to validate","required":true,"source":"user","schema":{"type":"string"}}],
+            "instanceBindings":{"target":"network one"},
+            "invariants":["Use authoritative rules"],
+            "discoveryStrategy":["Resolve the target owner","Discover independent official rules"],
+            "validationScenarios":[
+                {"name":"network one","bindings":{"target":"network one"}},
+                {"name":"network two","bindings":{"target":"network two"}}
+            ]
+        });
         let sources = vec![
             json!({"url":"https://docs.example.org/spec"}),
             json!({"url":"https://standards.example.net/rules"}),
@@ -1617,8 +1843,11 @@ mod tests {
         let authored = json!({"validation":{"passed":true,"criteria":[{
             "criterion":criteria[0],"passed":true,
             "evidence":"The procedure explicitly orders syntax validation before rules."
-        }]}});
-        let body = "The procedure explicitly orders syntax validation before rules. Use https://docs.example.org/spec before applying https://standards.example.net/rules.";
+        }],"generality_scenarios":[
+            {"name":"network one","passed":true,"evidence":"The runtime target parameter selects network one rules."},
+            {"name":"network two","passed":true,"evidence":"The runtime target parameter selects network two rules."}
+        ]}});
+        let body = "## Runtime parameters\nUse `target`. The procedure explicitly orders syntax validation before rules. Use https://docs.example.org/spec before applying https://standards.example.net/rules.";
         let extracted = vec![
             ResearchSource {
                 url: "https://docs.example.org/spec".into(),
@@ -1631,18 +1860,93 @@ mod tests {
                 text: "Official business rules.".into(),
             },
         ];
-        assert!(validate_authored_skill(&authored, &criteria, body, &sources, &extracted).is_ok());
+        assert!(validate_authored_skill(
+            &authored,
+            &criteria,
+            &generalization,
+            body,
+            &sources,
+            &extracted
+        )
+        .is_ok());
 
         let missing = json!({"validation":{"passed":true,"criteria":[]}});
-        assert!(validate_authored_skill(&missing, &criteria, body, &sources, &extracted).is_err());
+        assert!(validate_authored_skill(
+            &missing,
+            &criteria,
+            &generalization,
+            body,
+            &sources,
+            &extracted
+        )
+        .is_err());
 
         let unsupported = json!({"validation":{"passed":true,"criteria":[{
             "criterion":criteria[0],"passed":true,
             "evidence":"This assertion appears in neither the skill nor its selected sources."
         }]}});
-        assert!(
-            validate_authored_skill(&unsupported, &criteria, body, &sources, &extracted).is_err()
-        );
+        assert!(validate_authored_skill(
+            &unsupported,
+            &criteria,
+            &generalization,
+            body,
+            &sources,
+            &extracted
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn documentation_skill_generalizes_across_repository_and_website_discovery() {
+        let generalization = json!({
+            "capability":"Discover and ingest authoritative application documentation",
+            "parameters":[
+                {"name":"target","description":"Application whose docs are required","required":true,"source":"user","schema":{"type":"string"}},
+                {"name":"source_hint","description":"Available source discovery hint","required":true,"source":"discovery","schema":{"type":"string"}},
+                {"name":"destination","description":"Registered ingestion destination","required":true,"source":"organization_config","schema":{"type":"string"}}
+            ],
+            "instanceBindings":{"target":"OpenFoo","source_hint":"local_source","destination":"openbrain_docs"},
+            "invariants":["Verify provenance and never ingest secrets"],
+            "discoveryStrategy":["Inspect source code and Git remotes","Otherwise verify official website ownership"],
+            "validationScenarios":[
+                {"name":"source repository","bindings":{"target":"OpenFoo","source_hint":"local_source","destination":"openbrain_docs"}},
+                {"name":"official website","bindings":{"target":"External SaaS","source_hint":"website","destination":"openbrain_docs"}}
+            ]
+        });
+        let body = "## Runtime parameters\nUse `target`, `source_hint`, and `destination`. If source is available inspect Git remotes; otherwise resolve the official website and owner.";
+
+        assert!(validate_generalization_contract(&generalization).is_ok());
+        assert!(validate_parameterized_body(&generalization, body).is_ok());
+
+        let missing_instance_binding = json!({
+            "capability":generalization["capability"],
+            "parameters":generalization["parameters"],
+            "instanceBindings":{"target":"OpenFoo","source_hint":"local_source"},
+            "invariants":generalization["invariants"],
+            "discoveryStrategy":generalization["discoveryStrategy"],
+            "validationScenarios":generalization["validationScenarios"]
+        });
+        assert!(validate_generalization_contract(&missing_instance_binding).is_err());
+
+        let hardcoded = format!("{body} Always fetch https://vendor.example/docs.");
+        let with_url_binding = json!({
+            "capability":"Discover and ingest authoritative application documentation",
+            "parameters":generalization["parameters"],
+            "instanceBindings":{"target":"Vendor","source_hint":"website","destination":"openbrain_docs","website":"https://vendor.example/docs"},
+            "invariants":generalization["invariants"],
+            "discoveryStrategy":generalization["discoveryStrategy"],
+            "validationScenarios":generalization["validationScenarios"]
+        });
+        assert!(validate_parameterized_body(&with_url_binding, &hardcoded).is_err());
+    }
+
+    #[test]
+    fn engineering_jobs_receive_bounded_generalization_rules() {
+        let prompt = engineering_prompt("Implement documentation ingestion for OpenFoo.");
+        assert!(prompt.contains("facts that vary between valid instances"));
+        assert!(prompt.contains("smallest reusable boundary"));
+        assert!(prompt.contains("materially different instance"));
+        assert!(!prompt.contains("Always use OpenFoo"));
     }
 
     #[test]
