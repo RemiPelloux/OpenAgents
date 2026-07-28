@@ -981,7 +981,7 @@ fn validate_generalization_contract(generalization: &Value) -> anyhow::Result<()
     {
         anyhow::bail!("SKILL_GENERALIZATION_INVARIANTS_INVALID");
     }
-    let mut scenario_bindings = std::collections::HashSet::new();
+    let mut scenario_bindings: Vec<&Value> = Vec::new();
     let instance_bindings =
         generalization_field(generalization, "instance_bindings", "instanceBindings")
             .and_then(Value::as_object)
@@ -1005,9 +1005,13 @@ fn validate_generalization_contract(generalization: &Value) -> anyhow::Result<()
         {
             anyhow::bail!("SKILL_GENERALIZATION_SCENARIO_INCOMPLETE");
         }
-        if !scenario_bindings.insert(serde_json::to_string(bindings)?) {
+        let bindings_value = scenario
+            .get("bindings")
+            .expect("bindings were validated above");
+        if scenario_bindings.contains(&bindings_value) {
             anyhow::bail!("SKILL_GENERALIZATION_SCENARIOS_NOT_DISTINCT");
         }
+        scenario_bindings.push(bindings_value);
     }
     Ok(())
 }
