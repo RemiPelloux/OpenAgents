@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import time
 from typing import Any, Dict
 
 from plugins.openos_engineering.rec_outbox_common import (
@@ -51,56 +50,69 @@ def drain_pg_outbox(max_items: int = 20) -> int:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, payload, attempts, max_attempts
-                FROM outbox_jobs
-                WHERE producer = %s
-                  AND status = 'pending'
-                  AND attempts < max_attempts
-                ORDER BY created_at ASC
-                LIMIT %s
-                FOR UPDATE SKIP LOCKED
+                UPDATE outbox_jobs AS jobs
+                SET status = 'processing', attempts = attempts + 1, processed_at = now()
+                FROM (
+                    SELECT id
+                    FROM outbox_jobs
+                    WHERE producer = %s
+                      AND (
+                        status = 'pending'
+                        OR (status = 'processing' AND (
+                          processed_at IS NULL OR processed_at < now() - interval '15 minutes'
+                        ))
+                      )
+                      AND attempts < max_attempts
+                    ORDER BY created_at ASC
+                    LIMIT %s
+                    FOR UPDATE SKIP LOCKED
+                ) AS claim
+                WHERE jobs.id = claim.id
+                RETURNING jobs.id, jobs.payload, jobs.attempts, jobs.max_attempts
                 """,
                 (PRODUCER, max_items),
             )
             jobs = cur.fetchall()
-            for job_id, payload, attempts, max_attempts in jobs:
-                cur.execute(
-                    """
-                    UPDATE outbox_jobs
-                    SET status = 'processing', attempts = attempts + 1
-                    WHERE id = %s
-                    """,
-                    (job_id,),
-                )
             conn.commit()
 
+        completed_ids = []
+        retry_ids = []
+        failed_ids = []
         for job_id, payload, attempts, max_attempts in jobs:
             event = payload.get("event", payload)
             if post_rec_event(base_url, event):
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        UPDATE outbox_jobs
-                        SET status = 'completed', processed_at = now()
-                        WHERE id = %s
-                        """,
-                        (job_id,),
-                    )
-                conn.commit()
+                completed_ids.append(job_id)
                 sent += 1
                 continue
 
-            next_attempts = attempts + 1
-            status = "failed" if next_attempts >= max_attempts else "pending"
-            with conn.cursor() as cur:
+            target = failed_ids if attempts >= max_attempts else retry_ids
+            target.append(job_id)
+
+        with conn.cursor() as cur:
+            if completed_ids:
                 cur.execute(
                     """
-                    UPDATE outbox_jobs
-                    SET status = %s, last_error = %s
-                    WHERE id = %s
+                    UPDATE outbox_jobs SET status = 'completed', processed_at = now(),
+                        last_error = NULL WHERE id = ANY(%s)
                     """,
-                    (status, "openrec_post_failed", job_id),
+                    (completed_ids,),
                 )
-            conn.commit()
-            time.sleep(0.25)
+            if retry_ids:
+                cur.execute(
+                    """
+                    UPDATE outbox_jobs SET status = 'pending',
+                        processed_at = NULL, last_error = 'openrec_post_failed'
+                    WHERE id = ANY(%s)
+                    """,
+                    (retry_ids,),
+                )
+            if failed_ids:
+                cur.execute(
+                    """
+                    UPDATE outbox_jobs SET status = 'failed', processed_at = now(),
+                        last_error = 'openrec_post_failed' WHERE id = ANY(%s)
+                    """,
+                    (failed_ids,),
+                )
+        conn.commit()
     return sent

@@ -54,7 +54,7 @@ def emit_execution_rec_event(execution: WorkflowExecution, workflow: Workflow) -
         "type": event_type,
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "tenant": {
-            "org_id": os.environ.get("OPENREC_ORG_ID", "default"),
+            "org_id": os.environ.get("OPENREC_ORG_ID", "00000000-0000-4000-8000-000000000001"),
             "environment": os.environ.get("OPENREC_ENV", "dev"),
         },
         "actor": {"type": "agent", "id": "openagents", "agent_profile": "openagentui"},
