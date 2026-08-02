@@ -61,7 +61,7 @@ Brain Knowledge MCP with agent key.
 
 - Brain agent writing code without ticket + W4
 - Missing ETA on mission (auto-default by priority if omitted)
-- OpenNotes deferred paths confused with W4
+- Deferred connector paths confused with W4
 
 ## Verification
 
