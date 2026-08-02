@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM oven/bun:1.3.14-debian AS opencode-builder
+FROM oven/bun:1.3.14-alpine AS opencode-builder
 WORKDIR /src/OpenCode
 COPY --from=opencode . .
 COPY --from=opencontract packages/envelope /src/OpenContract/packages/envelope
@@ -11,7 +11,8 @@ RUN bun install --frozen-lockfile && \
       --define "MACRO.VERSION='${version}'" \
       --define "MACRO='{}'"
 
-FROM rust:1.90-bookworm AS worker-builder
+FROM rust:1.90-alpine3.22 AS worker-builder
+RUN apk add --no-cache musl-dev
 WORKDIR /src
 COPY --from=opencontract . /src/OpenContract
 COPY Cargo.toml Cargo.lock ./OpenAgents/
@@ -22,15 +23,16 @@ RUN --mount=type=cache,id=openagents-rust-cargo-registry,target=/usr/local/cargo
     cargo build --locked --release -p openagents-worker && \
     cp target/release/openagents-worker /tmp/openagents-worker
 
-FROM debian:bookworm-slim
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates curl git python3 python-is-python3 && \
-    rm -rf /var/lib/apt/lists/*
+FROM alpine:3.24
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates curl git python3 \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && addgroup -S -g 10000 openagents \
+    && adduser -S -D -u 10000 -G openagents -h /home/openagents openagents
 COPY --from=worker-builder /tmp/openagents-worker /usr/local/bin/openagents-worker
 COPY --from=opencode-builder /tmp/opencode /usr/local/bin/opencode
 COPY --from=opencontract registry /etc/opencontract/registry
-RUN useradd --system --uid 10000 --create-home openagents && \
-    mkdir -p /worktrees /workspace && chown -R openagents:openagents /worktrees /workspace
+RUN mkdir -p /worktrees /workspace && chown -R openagents:openagents /worktrees /workspace
 USER openagents
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/openagents-worker"]
