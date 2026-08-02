@@ -35,6 +35,9 @@ const MAX_RESEARCH_SOURCES: usize = 8;
 pub async fn runtime_healthy(config: &Config) -> bool {
     command_ok(Command::new("git").arg("--version")).await
         && command_ok(Command::new(&config.opencode_binary).arg("--version")).await
+        && fs::metadata(&config.shell_binary)
+            .await
+            .is_ok_and(|metadata| metadata.is_file())
         && fs::create_dir_all(&config.managed_root).await.is_ok()
 }
 
@@ -95,7 +98,12 @@ pub async fn execute(
         )
         .await;
     let engine = run_opencode(config, job, run_id, &workspace, &prompt, store).await?;
-    if contains_secret(&engine.stdout) || contains_secret(&engine.stderr) {
+    if let Some(kind) = detect_secret(&engine.stdout).or_else(|| detect_secret(&engine.stderr)) {
+        tracing::warn!(
+            run_id = %run_id,
+            secret_kind = kind.label(),
+            "OpenCode output rejected by credential guard"
+        );
         anyhow::bail!("ENGINE_SECRET_LEAK_REJECTED");
     }
     ensure_not_cancelled(store, run_id).await?;
@@ -103,7 +111,15 @@ pub async fn execute(
     if engine.exit_status != 0 || test_evidence.iter().any(|test| test.exit_status != 0) {
         anyhow::bail!("engine or declared tests failed");
     }
-    let git = commit_changes(&workspace, &repository, &base_sha, job.ticket_id, run_id).await?;
+    let git = commit_changes(
+        &workspace,
+        &repository,
+        &base_sha,
+        job.ticket_id,
+        run_id,
+        config.git_sign_commits,
+    )
+    .await?;
     let changed_files = changed_files_artifact(&workspace, &base_sha, &git.commit_sha)?;
     let artifact = persist_events(&config.managed_root, run_id, &engine.stdout).await?;
     Ok(WorkerResult {
@@ -119,7 +135,12 @@ pub async fn execute(
 
 fn engineering_prompt(task: &str) -> String {
     format!(
-        "{task}\n\nOpenOS generalization contract:\n\
+        "{task}\n\nOpenOS worktree isolation contract:\n\
+         - The current working directory is the only permitted file-editing and Git target.\n\
+         - Treat repository paths from the task as source identity metadata, never as an edit location.\n\
+         - Resolve requested paths relative to the current working directory; never edit an absolute repository path or use git -C outside the current working directory.\n\
+         - Fail explicitly if a requested target resolves outside the current working directory.\n\n\
+         OpenOS generalization contract:\n\
          - Identify facts that vary between valid instances and expose them through existing configuration, function arguments, typed schemas, or discovery outputs.\n\
          - Keep the triggering app name, owner, repository, URL, credential reference, and destination as instance data, not reusable control flow.\n\
          - When a value is unknown, discover it from available evidence and registered tools; fail explicitly when evidence, authorization, or a required real tool is unavailable.\n\
@@ -1336,6 +1357,8 @@ async fn run_opencode(
         ])
         .arg(prompt)
         .current_dir(workspace)
+        .env("SHELL", &config.shell_binary)
+        .env("PYTHONDONTWRITEBYTECODE", "1")
         .env("OPENCODE_INVOKED_BY", "openagents-rust")
         .env("OPENTICKET_TICKET_ID", job.ticket_id.to_string())
         .env("OPENTICKET_CORRELATION_ID", job.correlation_id.to_string())
@@ -1413,6 +1436,7 @@ async fn run_tests(
         let output = Command::new("sh")
             .args(["-lc", command])
             .current_dir(workspace)
+            .env("PYTHONDONTWRITEBYTECODE", "1")
             .output()
             .await?;
         let path = workspace
@@ -1467,6 +1491,7 @@ async fn commit_changes(
     base_sha: &str,
     ticket_id: Uuid,
     run_id: Uuid,
+    sign_commit: bool,
 ) -> anyhow::Result<GitEvidence> {
     checked(
         Command::new("git")
@@ -1493,6 +1518,12 @@ async fn commit_changes(
                     "user.name=OpenAgents",
                     "-c",
                     "user.email=openagents@openos.local",
+                    "-c",
+                    if sign_commit {
+                        "commit.gpgsign=true"
+                    } else {
+                        "commit.gpgsign=false"
+                    },
                     "commit",
                     "-m",
                 ])
@@ -1633,11 +1664,105 @@ fn sanitize(value: &str) -> String {
         .join("\n")
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SecretKind {
+    ApiKey,
+    BearerToken,
+    PemPrivateKey,
+    ProviderToken,
+}
+
+impl SecretKind {
+    fn label(self) -> &'static str {
+        match self {
+            Self::ApiKey => "api_key",
+            Self::BearerToken => "bearer_token",
+            Self::PemPrivateKey => "pem_private_key",
+            Self::ProviderToken => "provider_token",
+        }
+    }
+}
+
 fn contains_secret(value: &str) -> bool {
+    detect_secret(value).is_some()
+}
+
+fn detect_secret(value: &str) -> Option<SecretKind> {
     let lower = value.to_ascii_lowercase();
-    ["sk-", "api_key=", "authorization: bearer", "private_key"]
+    if [
+        "-----begin private key-----",
+        "-----begin rsa private key-----",
+        "-----begin ec private key-----",
+        "-----begin openssh private key-----",
+    ]
+    .iter()
+    .any(|marker| lower.contains(marker))
+    {
+        return Some(SecretKind::PemPrivateKey);
+    }
+    if ["sk-", "ghp_", "github_pat_", "xoxb-", "xoxp-"]
         .iter()
-        .any(|needle| lower.contains(needle))
+        .any(|prefix| has_prefixed_token(&lower, prefix, 16))
+    {
+        return Some(SecretKind::ProviderToken);
+    }
+    if ["authorization: bearer", "authorization=bearer"]
+        .iter()
+        .any(|marker| has_assigned_credential(&lower, marker, 20))
+    {
+        return Some(SecretKind::BearerToken);
+    }
+    if ["api_key=", "api-key=", "apikey="]
+        .iter()
+        .any(|marker| has_assigned_credential(&lower, marker, 16))
+    {
+        return Some(SecretKind::ApiKey);
+    }
+    None
+}
+
+fn has_prefixed_token(value: &str, prefix: &str, min_suffix: usize) -> bool {
+    value.match_indices(prefix).any(|(index, _)| {
+        let suffix = &value[index + prefix.len()..];
+        credential_token(suffix).chars().count() >= min_suffix
+    })
+}
+
+fn has_assigned_credential(value: &str, marker: &str, min_length: usize) -> bool {
+    value.match_indices(marker).any(|(index, _)| {
+        let suffix = &value[index + marker.len()..];
+        let token = credential_token(suffix);
+        token.chars().count() >= min_length && !is_placeholder(token)
+    })
+}
+
+fn credential_token(value: &str) -> &str {
+    let value = value.trim_start_matches(|character: char| {
+        character.is_ascii_whitespace() || matches!(character, '\\' | '\'' | '"' | ':' | '=')
+    });
+    let end = value
+        .find(|character: char| {
+            !(character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.'))
+        })
+        .unwrap_or(value.len());
+    &value[..end]
+}
+
+fn is_placeholder(value: &str) -> bool {
+    [
+        "changeme",
+        "dummy",
+        "example",
+        "none",
+        "null",
+        "placeholder",
+        "redacted",
+        "replace",
+        "test",
+        "your",
+    ]
+    .iter()
+    .any(|prefix| value.starts_with(prefix))
 }
 
 fn nonempty(value: String) -> Option<String> {
@@ -1665,6 +1790,40 @@ mod tests {
         assert_eq!(
             sanitize("ok\nAuthorization: Bearer abc\nsk-secret"),
             "ok\n[redacted]\n[redacted]"
+        );
+    }
+
+    #[test]
+    fn credential_guard_ignores_source_identifiers_and_placeholders() {
+        for value in [
+            "private_key",
+            "document the sk- provider prefix",
+            "API_KEY=",
+            "API_KEY=$OPENAI_API_KEY",
+            "API_KEY=placeholder-value-long-enough",
+            "Authorization: Bearer <token>",
+        ] {
+            assert_eq!(detect_secret(value), None, "false positive for {value}");
+        }
+    }
+
+    #[test]
+    fn credential_guard_detects_realistic_secret_shapes() {
+        assert_eq!(
+            detect_secret("-----BEGIN PRIVATE KEY-----\\nbase64-material"),
+            Some(SecretKind::PemPrivateKey)
+        );
+        assert_eq!(
+            detect_secret("sk-proj-fakecredentialmaterial123456"),
+            Some(SecretKind::ProviderToken)
+        );
+        assert_eq!(
+            detect_secret("API_KEY=fakeCredentialValue123456"),
+            Some(SecretKind::ApiKey)
+        );
+        assert_eq!(
+            detect_secret("Authorization: Bearer fake.jwt.token-value-123456"),
+            Some(SecretKind::BearerToken)
         );
     }
 
@@ -1947,6 +2106,9 @@ mod tests {
     #[test]
     fn engineering_jobs_receive_bounded_generalization_rules() {
         let prompt = engineering_prompt("Implement documentation ingestion for OpenFoo.");
+        assert!(prompt.contains("current working directory is the only permitted"));
+        assert!(prompt.contains("repository paths from the task as source identity metadata"));
+        assert!(prompt.contains("never edit an absolute repository path"));
         assert!(prompt.contains("facts that vary between valid instances"));
         assert!(prompt.contains("smallest reusable boundary"));
         assert!(prompt.contains("materially different instance"));

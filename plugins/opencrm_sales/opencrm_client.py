@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from plugins.openos_mesh.contract_wrap import wrap_signed_hop
 
-W1_MEETING_TO_CRM = "CC-W1-001"
+W1_CRM_TO_REC = "CC-W1-002"
 W1_AGENT_FOLLOWUP = "CC-W1-003"
 W1_PROSPECTION_TO_CRM = "CC-W1-004"
 
@@ -244,7 +244,7 @@ def propose_crm_update(
         consumer="OpenCRM",
         payload=body,
         correlation_id=correlation_id,
-        prerequisites=[W1_MEETING_TO_CRM],
+        prerequisites=[W1_CRM_TO_REC],
         goal_met=False,
         signer_id="OpenAgents",
     )

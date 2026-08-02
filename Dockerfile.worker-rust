@@ -24,8 +24,9 @@ RUN --mount=type=cache,id=openagents-rust-cargo-registry,target=/usr/local/cargo
     cp target/release/openagents-worker /tmp/openagents-worker
 
 FROM alpine:3.24
+ENV SHELL=/bin/bash
 RUN apk upgrade --no-cache \
-    && apk add --no-cache ca-certificates curl git python3 \
+    && apk add --no-cache bash ca-certificates curl git python3 \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && addgroup -S -g 10000 openagents \
     && adduser -S -D -u 10000 -G openagents -h /home/openagents openagents

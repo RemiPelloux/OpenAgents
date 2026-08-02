@@ -14,6 +14,8 @@ pub struct Config {
     pub managed_root: PathBuf,
     pub allowed_repositories: Vec<PathBuf>,
     pub opencode_binary: PathBuf,
+    pub shell_binary: PathBuf,
+    pub git_sign_commits: bool,
     pub opencode_timeout: Duration,
     pub request_timeout: Duration,
     pub capacity: u32,
@@ -47,6 +49,12 @@ impl Config {
                 std::env::var("OPENOS_OPENCODE_PATH")
                     .unwrap_or_else(|_| "/usr/local/bin/opencode".into()),
             ),
+            shell_binary: PathBuf::from(
+                std::env::var("OPENAGENTS_SHELL")
+                    .or_else(|_| std::env::var("SHELL"))
+                    .unwrap_or_else(|_| "/bin/bash".into()),
+            ),
+            git_sign_commits: parse("OPENAGENTS_GIT_SIGN_COMMITS", false)?,
             opencode_timeout: Duration::from_secs(parse(
                 "OPENOS_OPENCODE_TIMEOUT_SECONDS",
                 3600u64,
