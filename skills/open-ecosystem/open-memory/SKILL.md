@@ -65,4 +65,4 @@ openagents honcho mode hybrid
 
 - [ ] `openagents honcho status` matches config mode
 - [ ] Profile `-p` uses separate `sessions.db`
-- [ ] Sensitive domains use `open-whistle` boundaries
+- [ ] Sensitive domains use dedicated authorization and retention boundaries

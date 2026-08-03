@@ -28,7 +28,7 @@ metadata:
 
 - `ORCHESTRATOR_URL` (default `http://localhost:3050`)
 - MCP `openorchestrator` or REST parity
-- Profiles: 18 domain roles — `GET /v1/profiles` · auto `ensure` before dispatch
+- Profiles: 16 canonical roles — `GET /v1/profiles` · auto `ensure` before dispatch
 - OpenRec for `orchestrator.*` outcome events
 
 ## Structural overview

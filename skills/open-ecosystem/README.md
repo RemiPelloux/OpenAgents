@@ -2,7 +2,7 @@
 
 Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profiles and orchestrator `required_skills`.
 
-## Skill index (31)
+## Skill index
 
 | Skill | Description |
 |-------|-------------|
@@ -24,7 +24,6 @@ Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profil
 | `open-orchestrator-intent` | NL → NormalizedGoal |
 | `open-orchestrator-plan` | Goals → dispatch |
 | `open-mcp-scaffold` | Add MCP + REST tools |
-| `open-notes` | Meeting intelligence |
 | `open-team` | Harvest + dispatch |
 | `open-sec` | Security findings → tickets |
 | `open-center` | Human GUI Phase 2 |
@@ -35,7 +34,6 @@ Agent-facing **skill.md** files for the OpenOS mesh. Loaded by OpenAgents profil
 | `open-agentui` | YAML workflows |
 | `open-memory` | Agent session memory |
 | `open-app` | CLI/TUI/desktop |
-| `open-whistle` | Compliance intake |
 | `open-pro` | Flutter mobile |
 | `open-browser` | Browser automation via Playwright MCP |
 | `open-toolbox` | Autonomous tool discovery and integration |
@@ -54,10 +52,10 @@ Every skill includes:
 
 `description` frontmatter ≤ 60 characters.
 
-## W4 profile skills (18 domain roles)
+## Canonical agent profiles (16 roles)
 
 ```bash
-openagents openos init-profiles          # scaffold all 18
+openagents openos init-profiles          # scaffold all canonical profiles
 openagents openos ensure-profiles --profiles sales,security
 openagents openos list-profiles
 ```
@@ -71,8 +69,7 @@ Orchestrator auto-provisions missing profiles before dispatch (`POST /v1/profile
 | Platform | mesh_engineer, contract_officer |
 | Knowledge | brain_researcher, recorder_analyst |
 | Commercial | sales, crm_analyst, creative, content_ops |
-| Compliance | security, compliance_officer |
-| Notes | notes_analyst |
+| Compliance | security |
 
 | Profile | Key skills |
 |---------|------------|

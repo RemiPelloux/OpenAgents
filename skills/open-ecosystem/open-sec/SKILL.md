@@ -22,7 +22,9 @@ Aggregates scanner findings → tickets → agent remediation (W3 mesh).
 - User asks to open a ticket from a CVE/scan result
 - W3 workflow: finding → ticket → dev fix
 
-Not for whistleblower intake — use `open-whistle` (separate compliance boundary).
+Sensitive compliance intake requires an explicitly authorized workflow with
+dedicated retention and disclosure controls; it is not stored as ordinary agent
+memory.
 
 ## Structural overview
 

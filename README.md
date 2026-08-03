@@ -280,7 +280,6 @@ Bundled skills for the Open product suite live under `skills/open-ecosystem/`:
 | `open-pro` | Flutter hiring mobile app |
 | `open-brain` | Shared MCP memory infrastructure |
 | `open-memory` | OpenAgents memory + Honcho |
-| `open-whistle` | Whistleblower compliance platform |
 | `open-app` | Desktop, web dashboard, TUI |
 
 Load with `/skills open-ecosystem-hub` or `openagents chat -s open-pro`.

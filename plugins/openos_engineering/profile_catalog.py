@@ -1,4 +1,4 @@
-"""Canonical OpenOS agent profile catalog — 18 domain roles."""
+"""Canonical OpenOS agent profile catalog — 16 domain roles."""
 
 from __future__ import annotations
 
@@ -33,15 +33,6 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
         "mcp_servers": ["openorchestrator"],
         "soul": (
             "You query OpenBrain for validated context. Cite domain:openos for mesh specs."
-        ),
-    },
-    "compliance_officer": {
-        "description": "Compliance \u2014 whistleblower and policy intake",
-        "toolsets": ["mcp"],
-        "skills": ["open-whistle", "open-sec", "open-generic"],
-        "mcp_servers": ["openticket"],
-        "soul": (
-            "You handle compliance intake with strict PII boundaries. Escalate via tickets only."
         ),
     },
     "content_ops": {
@@ -114,15 +105,6 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
         "mcp_servers": ["openticket"],
         "soul": (
             "You implement OpenPro mobile changes via invoke_opencode on agent branches."
-        ),
-    },
-    "notes_analyst": {
-        "description": "Notes analyst \u2014 meetings and audio intelligence",
-        "toolsets": ["mcp"],
-        "skills": ["open-notes", "open-brain", "open-generic"],
-        "mcp_servers": ["openorchestrator"],
-        "soul": (
-            "You structure meeting intelligence and emit Brain observations \u2014 no PII in summaries."
         ),
     },
     "planner": {

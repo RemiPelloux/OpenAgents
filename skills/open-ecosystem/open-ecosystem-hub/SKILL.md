@@ -65,9 +65,7 @@ OpenContract (step 0) → producers (Ticket, CRM, Notes, Team, Sec)
 | CRM lead enrichment | `opencrm-contact-enrichment` |
 | TikTok prospection | `openpro-tiktok-prospection` |
 | OpenTeam harvest | `open-team` |
-| Meetings | `open-notes` |
 | Security findings | `open-sec` |
-| Whistleblower | `open-whistle` |
 | Agent memory | `open-memory` |
 | Workflows YAML | `open-agentui` |
 | Human GUI (later) | `open-center` |
@@ -100,4 +98,4 @@ OpenContract (step 0) → producers (Ticket, CRM, Notes, Team, Sec)
 
 - [ ] Named the owning app and loaded its skill (not hub only)
 - [ ] Cross-app flow has `correlation_id` plan
-- [ ] PII/compliance boundaries respected (`open-whistle` vs `open-memory`)
+- [ ] PII/compliance boundaries and retention policy are explicit
