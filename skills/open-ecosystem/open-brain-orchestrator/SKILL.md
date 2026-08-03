@@ -55,7 +55,6 @@ Brain Knowledge MCP with agent key.
 |-----------|-------|
 | Start work | `start_mission` |
 | Implement code | W4 via OpenAgents (not Brain direct) |
-| Meeting notes | `open-notes` |
 
 ## Pitfalls
 
