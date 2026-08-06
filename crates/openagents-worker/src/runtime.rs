@@ -1,4 +1,5 @@
 use std::{
+    io::Read,
     net::{IpAddr, SocketAddr},
     path::{Component, Path, PathBuf},
     process::Stdio,
@@ -7,7 +8,10 @@ use std::{
 
 use anyhow::Context;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use contract_core::{GitEvidence, TestEvidence, WorkerArtifact, WorkerJob, WorkerResult};
+use contract_core::{
+    AcceptanceCriterionEvidence, GitEvidence, SkillReference, SkillSource, TestEvidence,
+    WorkerArtifact, WorkerJob, WorkerResult,
+};
 use reqwest::{header::LOCATION, redirect::Policy};
 use scraper::{Html, Selector};
 use serde_json::{json, Value};
@@ -31,6 +35,22 @@ const MAX_RESEARCH_BODY_BYTES: usize = 2_000_000;
 const SKILL_AUTHOR_TRANSPORT_ATTEMPTS: usize = 2;
 const SKILL_AUTHOR_CANDIDATE_ATTEMPTS: usize = 3;
 const MAX_RESEARCH_SOURCES: usize = 8;
+const MAX_CHANGED_FILE_PATCHES: usize = 32;
+const MAX_FILE_PATCH_BYTES: usize = 16 * 1024;
+const MAX_TOTAL_PATCH_BYTES: usize = 64 * 1024;
+const MAX_DIFF_SCAN_BYTES: usize = 4 * 1024 * 1024;
+const MAX_REQUIRED_SKILLS: usize = 16;
+const MAX_SKILL_BODY_BYTES: usize = 18_000;
+const MAX_SKILL_CONTEXT_BYTES: usize = 64 * 1024;
+const MAX_ACCEPTANCE_DIFF_BYTES: usize = 64 * 1024;
+const MAX_ACCEPTANCE_TEST_BYTES: usize = 32 * 1024;
+const MAX_ACCEPTANCE_REPORT_BYTES: usize = 32 * 1024;
+const ACCEPTANCE_AUDIT_TIMEOUT: Duration = Duration::from_secs(120);
+
+struct LoadedSkill {
+    reference: SkillReference,
+    body: String,
+}
 
 pub async fn runtime_healthy(config: &Config) -> bool {
     command_ok(Command::new("git").arg("--version")).await
@@ -76,7 +96,16 @@ pub async fn execute(
             .unwrap_or_default()
             .to_string()
     });
-    let prompt = engineering_prompt(&prompt);
+    let loaded_skills = load_required_skills(job, config).await?;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "skills.loaded",
+            json!({"skills":loaded_skills.iter().map(|skill| &skill.reference).collect::<Vec<_>>() }),
+        )
+        .await;
+    let prompt = engineering_prompt(&prompt, &loaded_skills, &job.acceptance_criteria)?;
     if contains_secret(&serde_json::to_string(inputs)?) {
         anyhow::bail!("INPUT_SECRET_REJECTED");
     }
@@ -121,21 +150,90 @@ pub async fn execute(
     )
     .await?;
     let changed_files = changed_files_artifact(&workspace, &base_sha, &git.commit_sha)?;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "acceptance.audit.started",
+            json!({"criteria_count":job.acceptance_criteria.len(),"provider":"openai-compatible","model":config.llm_model}),
+        )
+        .await;
+    let acceptance_evidence = audit_acceptance_criteria(
+        config,
+        &workspace,
+        &base_sha,
+        &git.commit_sha,
+        &test_evidence,
+        &engine.stdout,
+        &job.acceptance_criteria,
+    )
+    .await?;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "acceptance.audit.completed",
+            json!({"criteria_count":acceptance_evidence.len(),"passed":true}),
+        )
+        .await;
+    let prompt_sha256 = format!("{:x}", Sha256::digest(prompt.as_bytes()));
+    let execution_contract = WorkerArtifact {
+        kind: "execution_contract".into(),
+        name: "Verified skills and acceptance criteria".into(),
+        uri: format!("openagents://runs/{run_id}/execution-contract"),
+        sha256: Some(prompt_sha256.clone()),
+        metadata: json!({
+            "skills":loaded_skills.iter().map(|skill| json!({
+                "reference":skill.reference,
+                "content_sha256":format!("{:x}", Sha256::digest(skill.body.as_bytes())),
+                "content_bytes":skill.body.len(),
+            })).collect::<Vec<_>>(),
+            "acceptance_criteria":job.acceptance_criteria,
+            "prompt_injected":true,
+            "prompt_sha256":prompt_sha256,
+        }),
+    };
     let artifact = persist_events(&config.managed_root, run_id, &engine.stdout).await?;
     Ok(WorkerResult {
         run_id,
-        artifacts: vec![artifact, changed_files],
+        artifacts: vec![artifact, changed_files, execution_contract],
         stderr: nonempty(sanitize(&engine.stderr)),
         exit_status: engine.exit_status,
         tests: test_evidence,
         git: Some(git),
         engine_session_id: engine.session_id,
+        loaded_skills: loaded_skills
+            .into_iter()
+            .map(|skill| skill.reference)
+            .collect(),
+        acceptance_evidence,
     })
 }
 
-fn engineering_prompt(task: &str) -> String {
-    format!(
-        "{task}\n\nOpenOS worktree isolation contract:\n\
+fn engineering_prompt(
+    task: &str,
+    loaded_skills: &[LoadedSkill],
+    acceptance_criteria: &[String],
+) -> anyhow::Result<String> {
+    let skill_context = loaded_skills
+        .iter()
+        .map(|skill| {
+            format!(
+                "## Skill {}@{} ({:?}, sha256={})\n{}",
+                skill.reference.id,
+                skill.reference.version,
+                skill.reference.source,
+                skill.reference.sha256,
+                skill.body
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    let criteria = serde_json::to_string_pretty(acceptance_criteria)?;
+    Ok(format!(
+        "{task}\n\nOpenOS required skill instructions (immutable references verified by OpenAgents):\n{skill_context}\n\n\
+         OpenOS acceptance criteria (satisfy every item and leave evidence in the diff or declared test output):\n{criteria}\n\n\
+         OpenOS worktree isolation contract:\n\
          - The current working directory is the only permitted file-editing and Git target.\n\
          - Treat repository paths from the task as source identity metadata, never as an edit location.\n\
          - Resolve requested paths relative to the current working directory; never edit an absolute repository path or use git -C outside the current working directory.\n\
@@ -146,7 +244,242 @@ fn engineering_prompt(task: &str) -> String {
          - When a value is unknown, discover it from available evidence and registered tools; fail explicitly when evidence, authorization, or a required real tool is unavailable.\n\
          - Implement the smallest reusable boundary justified by at least two concrete instances; avoid speculative abstractions.\n\
          - Add behavior tests for the triggering instance and a materially different instance whenever the changed behavior is reusable."
-    )
+    ))
+}
+
+async fn load_required_skills(
+    job: &WorkerJob,
+    config: &Config,
+) -> anyhow::Result<Vec<LoadedSkill>> {
+    if job.required_skills.len() > MAX_REQUIRED_SKILLS {
+        anyhow::bail!("REQUIRED_SKILLS_LIMIT_EXCEEDED");
+    }
+    let mut seen = std::collections::HashSet::new();
+    for reference in &job.required_skills {
+        validate_skill_reference(reference)?;
+        if !seen.insert((
+            reference.id.clone(),
+            reference.version.clone(),
+            reference.source.clone(),
+        )) {
+            anyhow::bail!("REQUIRED_SKILL_DUPLICATE");
+        }
+    }
+
+    let bundled_references = job
+        .required_skills
+        .iter()
+        .filter(|reference| reference.source == SkillSource::Bundled)
+        .collect::<Vec<_>>();
+    let organization_references = job
+        .required_skills
+        .iter()
+        .filter(|reference| reference.source == SkillSource::Organization)
+        .collect::<Vec<_>>();
+    let bundled = load_bundled_skills(&config.skill_root, &bundled_references).await?;
+    let organization = load_organization_skills(job, config, &organization_references).await?;
+    let mut by_reference = bundled
+        .into_iter()
+        .chain(organization)
+        .map(|skill| {
+            (
+                (
+                    skill.reference.id.clone(),
+                    skill.reference.version.clone(),
+                    skill.reference.source.clone(),
+                ),
+                skill,
+            )
+        })
+        .collect::<std::collections::HashMap<_, _>>();
+    let mut loaded = Vec::with_capacity(job.required_skills.len());
+    let mut total_bytes = 0usize;
+    for reference in &job.required_skills {
+        let key = (
+            reference.id.clone(),
+            reference.version.clone(),
+            reference.source.clone(),
+        );
+        let skill = by_reference
+            .remove(&key)
+            .ok_or_else(|| anyhow::anyhow!("REQUIRED_SKILL_NOT_FOUND: {}", reference.id))?;
+        total_bytes += skill.body.len();
+        if total_bytes > MAX_SKILL_CONTEXT_BYTES {
+            anyhow::bail!("REQUIRED_SKILL_CONTEXT_LIMIT_EXCEEDED");
+        }
+        loaded.push(skill);
+    }
+    Ok(loaded)
+}
+
+fn validate_skill_reference(reference: &SkillReference) -> anyhow::Result<()> {
+    let valid_id = !reference.id.is_empty()
+        && reference.id.len() <= 96
+        && reference
+            .id
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-');
+    let valid_version = !reference.version.trim().is_empty() && reference.version.len() <= 32;
+    let valid_hash = reference.sha256.len() == 64
+        && reference
+            .sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit());
+    if !valid_id || !valid_version || !valid_hash {
+        anyhow::bail!("REQUIRED_SKILL_REFERENCE_INVALID");
+    }
+    Ok(())
+}
+
+async fn load_bundled_skills(
+    root: &Path,
+    references: &[&SkillReference],
+) -> anyhow::Result<Vec<LoadedSkill>> {
+    if references.is_empty() {
+        return Ok(Vec::new());
+    }
+    let root = fs::canonicalize(root)
+        .await
+        .context("OPENOS_SKILL_ROOT is unavailable")?;
+    let mut directories = vec![(root.clone(), 0usize)];
+    let mut found = std::collections::HashMap::<String, (String, String)>::new();
+    while let Some((directory, depth)) = directories.pop() {
+        if depth > 6 {
+            continue;
+        }
+        let mut entries = fs::read_dir(&directory).await?;
+        while let Some(entry) = entries.next_entry().await? {
+            let file_type = entry.file_type().await?;
+            let path = entry.path();
+            if file_type.is_dir() {
+                if !entry.file_name().to_string_lossy().starts_with('.') {
+                    directories.push((path, depth + 1));
+                }
+            } else if file_type.is_file() && entry.file_name() == "SKILL.md" {
+                let canonical = fs::canonicalize(&path).await?;
+                if !canonical.starts_with(&root) {
+                    anyhow::bail!("BUNDLED_SKILL_PATH_ESCAPE");
+                }
+                let raw = fs::read_to_string(&canonical).await?;
+                let id = skill_frontmatter_value(&raw, "name").unwrap_or_else(|| {
+                    canonical
+                        .parent()
+                        .and_then(Path::file_name)
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned()
+                });
+                if references.iter().any(|reference| reference.id == id) {
+                    let version =
+                        skill_frontmatter_value(&raw, "version").unwrap_or_else(|| "1".into());
+                    found
+                        .entry(id)
+                        .or_insert((version, strip_skill_frontmatter(&raw).to_string()));
+                }
+            }
+        }
+    }
+    references
+        .iter()
+        .map(|reference| {
+            let (version, body) = found.get(&reference.id).ok_or_else(|| {
+                anyhow::anyhow!("REQUIRED_BUNDLED_SKILL_NOT_FOUND: {}", reference.id)
+            })?;
+            verified_loaded_skill(reference, version, body)
+        })
+        .collect()
+}
+
+async fn load_organization_skills(
+    job: &WorkerJob,
+    config: &Config,
+    references: &[&SkillReference],
+) -> anyhow::Result<Vec<LoadedSkill>> {
+    if references.is_empty() {
+        return Ok(Vec::new());
+    }
+    let response = reqwest::Client::builder()
+        .timeout(config.request_timeout)
+        .redirect(Policy::none())
+        .build()?
+        .get(format!(
+            "{}/api/v1/internal/runtime-skills/{}",
+            config.openbrain_url, job.organization_id
+        ))
+        .header("X-Internal-Service-Key", &config.internal_service_key)
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<Value>()
+        .await?;
+    let rows = response
+        .get("skills")
+        .and_then(Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("ORGANIZATION_SKILL_CATALOG_INVALID"))?;
+    references
+        .iter()
+        .map(|reference| {
+            let row = rows
+                .iter()
+                .find(|row| {
+                    row.get("slug").and_then(Value::as_str) == Some(&reference.id)
+                        && row.get("version").map(value_string).as_deref()
+                            == Some(reference.version.as_str())
+                })
+                .ok_or_else(|| {
+                    anyhow::anyhow!("REQUIRED_ORGANIZATION_SKILL_NOT_FOUND: {}", reference.id)
+                })?;
+            let body = row
+                .get("body")
+                .and_then(Value::as_str)
+                .ok_or_else(|| anyhow::anyhow!("ORGANIZATION_SKILL_BODY_INVALID"))?
+                .trim();
+            verified_loaded_skill(reference, &reference.version, body)
+        })
+        .collect()
+}
+
+fn value_string(value: &Value) -> String {
+    value
+        .as_str()
+        .map(str::to_owned)
+        .unwrap_or_else(|| value.to_string())
+}
+
+fn verified_loaded_skill(
+    reference: &SkillReference,
+    version: &str,
+    body: &str,
+) -> anyhow::Result<LoadedSkill> {
+    if body.is_empty() || body.len() > MAX_SKILL_BODY_BYTES {
+        anyhow::bail!("REQUIRED_SKILL_BODY_INVALID: {}", reference.id);
+    }
+    let digest = format!("{:x}", Sha256::digest(body.as_bytes()));
+    if version != reference.version || !digest.eq_ignore_ascii_case(&reference.sha256) {
+        anyhow::bail!("REQUIRED_SKILL_INTEGRITY_MISMATCH: {}", reference.id);
+    }
+    Ok(LoadedSkill {
+        reference: reference.clone(),
+        body: body.to_string(),
+    })
+}
+
+fn strip_skill_frontmatter(raw: &str) -> &str {
+    let Some(rest) = raw.strip_prefix("---\n") else {
+        return raw.trim();
+    };
+    rest.find("\n---\n")
+        .map(|end| rest[end + 5..].trim())
+        .unwrap_or_else(|| raw.trim())
+}
+
+fn skill_frontmatter_value(raw: &str, key: &str) -> Option<String> {
+    let rest = raw.strip_prefix("---\n")?;
+    let end = rest.find("\n---\n")?;
+    rest[..end].lines().find_map(|line| {
+        let (candidate, value) = line.split_once(':')?;
+        (candidate.trim() == key).then(|| value.trim().trim_matches(['\'', '"']).to_string())
+    })
 }
 
 fn changed_files_artifact(
@@ -154,27 +487,120 @@ fn changed_files_artifact(
     base_sha: &str,
     commit_sha: &str,
 ) -> anyhow::Result<WorkerArtifact> {
-    let output = std::process::Command::new("git")
+    let names_output = std::process::Command::new("git")
         .arg("-C")
         .arg(workspace)
         .args(["diff", "--name-only", base_sha, commit_sha])
         .output()?;
-    if !output.status.success() {
+    if !names_output.status.success() {
         anyhow::bail!("CHANGED_FILES_EVIDENCE_FAILED");
     }
-    let files: Vec<&str> = std::str::from_utf8(&output.stdout)?
+    let files: Vec<&str> = std::str::from_utf8(&names_output.stdout)?
         .lines()
         .filter(|value| !value.trim().is_empty())
         .collect();
     if files.is_empty() {
         anyhow::bail!("CHANGED_FILES_EVIDENCE_EMPTY");
     }
+    let full_diff = bounded_git_diff(workspace, base_sha, commit_sha, None)?;
+    let full_diff_text = std::str::from_utf8(&full_diff)?;
+    if detect_secret(full_diff_text).is_some() {
+        anyhow::bail!("CHANGED_FILES_PATCH_SECRET_REJECTED");
+    }
+
+    let mut patches = Vec::new();
+    let mut retained_bytes = 0usize;
+    let mut patches_truncated = files.len() > MAX_CHANGED_FILE_PATCHES;
+    for path in files.iter().take(MAX_CHANGED_FILE_PATCHES) {
+        if retained_bytes >= MAX_TOTAL_PATCH_BYTES {
+            patches_truncated = true;
+            break;
+        }
+        let output = bounded_git_diff(workspace, base_sha, commit_sha, Some(path))?;
+        let raw = std::str::from_utf8(&output)?;
+        let allowance = MAX_FILE_PATCH_BYTES.min(MAX_TOTAL_PATCH_BYTES - retained_bytes);
+        let (unified, truncated) = bounded_utf8(raw, allowance);
+        let (additions, deletions) = diff_line_counts(raw);
+        retained_bytes += unified.len();
+        patches_truncated |= truncated;
+        patches.push(json!({
+            "path": path,
+            "unified": unified,
+            "additions": additions,
+            "deletions": deletions,
+            "truncated": truncated,
+        }));
+    }
     Ok(WorkerArtifact {
         kind: "changed_files".into(),
         name: "Changed files".into(),
         uri: format!("git://{commit_sha}/changed-files"),
-        sha256: Some(format!("{:x}", Sha256::digest(&output.stdout))),
-        metadata: json!({"base_sha":base_sha,"commit_sha":commit_sha,"files":files}),
+        sha256: Some(format!("{:x}", Sha256::digest(&full_diff))),
+        metadata: json!({
+            "base_sha": base_sha,
+            "commit_sha": commit_sha,
+            "files": files,
+            "patches": patches,
+            "patches_truncated": patches_truncated,
+        }),
+    })
+}
+
+fn bounded_git_diff(
+    workspace: &Path,
+    base_sha: &str,
+    commit_sha: &str,
+    path: Option<&str>,
+) -> anyhow::Result<Vec<u8>> {
+    let mut command = std::process::Command::new("git");
+    command.arg("-C").arg(workspace).args([
+        "diff",
+        "--no-ext-diff",
+        "--unified=3",
+        base_sha,
+        commit_sha,
+        "--",
+    ]);
+    if let Some(path) = path {
+        command.arg(path);
+    }
+    let mut child = command.stdout(Stdio::piped()).spawn()?;
+    let stdout = child.stdout.take().context("CHANGED_FILES_PATCH_STDOUT")?;
+    let mut output = Vec::new();
+    stdout
+        .take((MAX_DIFF_SCAN_BYTES + 1) as u64)
+        .read_to_end(&mut output)?;
+    if output.len() > MAX_DIFF_SCAN_BYTES {
+        let _ = child.kill();
+        let _ = child.wait();
+        anyhow::bail!("CHANGED_FILES_PATCH_TOO_LARGE");
+    }
+    if !child.wait()?.success() {
+        anyhow::bail!("CHANGED_FILES_PATCH_FAILED");
+    }
+    Ok(output)
+}
+
+fn bounded_utf8(value: &str, max_bytes: usize) -> (&str, bool) {
+    if value.len() <= max_bytes {
+        return (value, false);
+    }
+    let mut end = max_bytes;
+    while end > 0 && !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    (&value[..end], true)
+}
+
+fn diff_line_counts(diff: &str) -> (usize, usize) {
+    diff.lines().fold((0, 0), |(additions, deletions), line| {
+        if line.starts_with('+') && !line.starts_with("+++") {
+            (additions + 1, deletions)
+        } else if line.starts_with('-') && !line.starts_with("---") {
+            (additions, deletions + 1)
+        } else {
+            (additions, deletions)
+        }
     })
 }
 
@@ -393,6 +819,8 @@ async fn author_skill(
         }],
         git: None,
         engine_session_id: Some(format!("skill_author:{run_id}")),
+        loaded_skills: vec![],
+        acceptance_evidence: vec![],
     })
 }
 
@@ -1271,6 +1699,214 @@ fn retryable_author_status(status: u16) -> bool {
     status == 429 || (500..=599).contains(&status)
 }
 
+async fn audit_acceptance_criteria(
+    config: &Config,
+    workspace: &Path,
+    base_sha: &str,
+    commit_sha: &str,
+    tests: &[TestEvidence],
+    engine_stdout: &str,
+    criteria: &[String],
+) -> anyhow::Result<Vec<AcceptanceCriterionEvidence>> {
+    if criteria.is_empty() {
+        anyhow::bail!("ACCEPTANCE_CRITERIA_REQUIRED");
+    }
+    if criteria.len() > 32 || criteria.iter().any(|criterion| criterion.trim().is_empty()) {
+        anyhow::bail!("ACCEPTANCE_CRITERIA_INVALID");
+    }
+    let diff = bounded_git_diff(workspace, base_sha, commit_sha, None)?;
+    let diff = std::str::from_utf8(&diff)?;
+    let (diff, diff_truncated) = bounded_utf8(diff, MAX_ACCEPTANCE_DIFF_BYTES);
+    if detect_secret(diff).is_some() {
+        anyhow::bail!("ACCEPTANCE_DIFF_SECRET_REJECTED");
+    }
+    let mut test_logs = String::new();
+    for test in tests {
+        let Some(uri) = test.output_uri.as_deref() else {
+            continue;
+        };
+        let Some(path) = uri.strip_prefix("file://") else {
+            continue;
+        };
+        let remaining = MAX_ACCEPTANCE_TEST_BYTES.saturating_sub(test_logs.len());
+        if remaining == 0 {
+            break;
+        }
+        let raw = fs::read_to_string(path).await.unwrap_or_default();
+        let (bounded, _) = bounded_utf8(&raw, remaining);
+        test_logs.push_str(&format!("\n$ {}\n{}", test.command, bounded));
+    }
+    if detect_secret(&test_logs).is_some() {
+        anyhow::bail!("ACCEPTANCE_TEST_LOG_SECRET_REJECTED");
+    }
+    let execution_report = final_execution_report(engine_stdout)?;
+    if detect_secret(&execution_report).is_some() {
+        anyhow::bail!("ACCEPTANCE_EXECUTION_REPORT_SECRET_REJECTED");
+    }
+
+    let base = config.llm_base_url.trim_end_matches('/');
+    let url = if base.ends_with("/v1") {
+        format!("{base}/chat/completions")
+    } else {
+        format!("{base}/v1/chat/completions")
+    };
+    let payload = json!({
+        "model":config.llm_model,
+        "temperature":0,
+        "messages":[
+            {"role":"system","content":"You are the OpenAgents acceptance auditor. Evaluate every supplied criterion verbatim using only the supplied committed Git diff, declared test logs, and terminal OpenCode execution report. For each criterion, quote exact contiguous excerpts from the named sources as evidence. When one excerpt cannot prove every clause, join multiple exact excerpts with a line containing only ---; every excerpt will be checked independently. Use execution_report only for process evidence that cannot exist in a diff or test log. Never infer evidence that is absent, never claim a test that was not run, and set passed=false when the supplied corpus does not prove the criterion. Call submit_acceptance_evidence and do not answer in prose."},
+            {"role":"user","content":serde_json::to_string(&json!({
+                "criteria":criteria,
+                "sources":{
+                    "git_diff":{"content":diff,"truncated":diff_truncated},
+                    "test_logs":{"content":test_logs,"truncated":test_logs.len() >= MAX_ACCEPTANCE_TEST_BYTES},
+                    "execution_report":{"content":execution_report,"truncated":false}
+                }
+            }))?}
+        ],
+        "tools":[{"type":"function","function":{
+            "name":"submit_acceptance_evidence",
+            "description":"Submit grounded evidence for every acceptance criterion.",
+            "parameters":{
+                "type":"object","additionalProperties":false,"required":["criteria"],
+                "properties":{"criteria":{
+                    "type":"array","minItems":criteria.len(),"maxItems":criteria.len(),
+                    "items":{"type":"object","additionalProperties":false,
+                        "required":["criterion","passed","evidence","sources"],
+                        "properties":{
+                            "criterion":{"type":"string","enum":criteria},
+                            "passed":{"type":"boolean"},
+                            "evidence":{"type":"string"},
+                            "sources":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","enum":["git_diff","test_logs","execution_report"]}}
+                        }
+                    }
+                }}
+            }
+        }}],
+        "tool_choice":{"type":"function","function":{"name":"submit_acceptance_evidence"}}
+    });
+    let response = reqwest::Client::builder()
+        .timeout(ACCEPTANCE_AUDIT_TIMEOUT)
+        .redirect(Policy::none())
+        .build()?
+        .post(url)
+        .bearer_auth(&config.llm_api_key)
+        .json(&payload)
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<Value>()
+        .await?;
+    let arguments = response
+        .pointer("/choices/0/message/tool_calls/0/function/arguments")
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_AUDIT_TOOL_CALL_MISSING"))?;
+    let submitted: Value = serde_json::from_str(arguments)?;
+    let items = submitted
+        .get("criteria")
+        .and_then(Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_AUDIT_RESULT_INVALID"))?;
+    if items.len() != criteria.len() {
+        anyhow::bail!("ACCEPTANCE_AUDIT_CRITERIA_MISMATCH");
+    }
+    let source_text = [
+        ("git_diff", diff),
+        ("test_logs", test_logs.as_str()),
+        ("execution_report", execution_report.as_str()),
+    ]
+    .into_iter()
+    .collect::<std::collections::HashMap<_, _>>();
+    let mut by_criterion = std::collections::HashMap::new();
+    for item in items {
+        let criterion = item
+            .get("criterion")
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_AUDIT_CRITERION_INVALID"))?;
+        if !criteria.iter().any(|expected| expected == criterion)
+            || by_criterion.contains_key(criterion)
+        {
+            anyhow::bail!("ACCEPTANCE_AUDIT_CRITERIA_MISMATCH");
+        }
+        let evidence = item
+            .get("evidence")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| value.len() >= 8)
+            .ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_EVIDENCE_MISSING: {criterion}"))?;
+        let sources = item
+            .get("sources")
+            .and_then(Value::as_array)
+            .ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_EVIDENCE_SOURCE_MISSING: {criterion}"))?
+            .iter()
+            .map(|source| {
+                source
+                    .as_str()
+                    .map(str::to_owned)
+                    .ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_EVIDENCE_SOURCE_INVALID"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        let grounded = evidence_is_grounded(evidence, &sources, &source_text);
+        if item.get("passed").and_then(Value::as_bool) != Some(true) || !grounded {
+            anyhow::bail!("ACCEPTANCE_CRITERION_UNPROVEN: {criterion}");
+        }
+        by_criterion.insert(
+            criterion.to_string(),
+            AcceptanceCriterionEvidence {
+                criterion: criterion.to_string(),
+                passed: true,
+                evidence: evidence.to_string(),
+                sources,
+            },
+        );
+    }
+    criteria
+        .iter()
+        .map(|criterion| {
+            by_criterion
+                .remove(criterion)
+                .ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_AUDIT_CRITERIA_MISMATCH"))
+        })
+        .collect()
+}
+
+fn evidence_is_grounded(
+    evidence: &str,
+    sources: &[String],
+    source_text: &std::collections::HashMap<&str, &str>,
+) -> bool {
+    let excerpts = evidence
+        .split("\n---\n")
+        .map(str::trim)
+        .filter(|excerpt| excerpt.len() >= 8)
+        .collect::<Vec<_>>();
+    !excerpts.is_empty()
+        && excerpts.iter().all(|excerpt| {
+            sources.iter().any(|source| {
+                source_text
+                    .get(source.as_str())
+                    .is_some_and(|content| content.contains(excerpt))
+            })
+        })
+}
+
+fn final_execution_report(stdout: &str) -> anyhow::Result<String> {
+    let report = stdout.lines().rev().find_map(|line| {
+        let event = serde_json::from_str::<Value>(line).ok()?;
+        if event.get("type").and_then(Value::as_str) != Some("result") {
+            return None;
+        }
+        event
+            .get("result")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+    });
+    let report = report.ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_EXECUTION_REPORT_MISSING"))?;
+    let (report, _) = bounded_utf8(&report, MAX_ACCEPTANCE_REPORT_BYTES);
+    Ok(report.to_string())
+}
+
 async fn canonical_repository(inputs: &Value, allowed: &[PathBuf]) -> anyhow::Result<PathBuf> {
     let requested = PathBuf::from(string(inputs, "repository")?);
     if requested
@@ -1723,6 +2359,12 @@ fn detect_secret(value: &str) -> Option<SecretKind> {
 
 fn has_prefixed_token(value: &str, prefix: &str, min_suffix: usize) -> bool {
     value.match_indices(prefix).any(|(index, _)| {
+        if index > 0 {
+            let previous = value[..index].chars().next_back().unwrap_or_default();
+            if previous.is_ascii_alphanumeric() || matches!(previous, '_' | '-') {
+                return false;
+            }
+        }
         let suffix = &value[index + prefix.len()..];
         credential_token(suffix).chars().count() >= min_suffix
     })
@@ -1785,6 +2427,37 @@ mod tests {
             .is_err());
     }
 
+    #[tokio::test]
+    async fn loads_only_the_exact_versioned_bundled_skill_content() {
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().join("open-code");
+        std::fs::create_dir(&directory).unwrap();
+        let body = "# OpenCode\nUse the isolated worktree and run declared tests.";
+        std::fs::write(
+            directory.join("SKILL.md"),
+            format!("---\nname: open-code\nversion: 7\n---\n{body}\n"),
+        )
+        .unwrap();
+        let reference = SkillReference {
+            id: "open-code".into(),
+            version: "7".into(),
+            sha256: format!("{:x}", Sha256::digest(body.as_bytes())),
+            source: SkillSource::Bundled,
+        };
+        let loaded = load_bundled_skills(temp.path(), &[&reference])
+            .await
+            .unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].reference, reference);
+        assert_eq!(loaded[0].body, body);
+
+        let altered = SkillReference {
+            sha256: "0".repeat(64),
+            ..reference
+        };
+        assert!(load_bundled_skills(temp.path(), &[&altered]).await.is_err());
+    }
+
     #[test]
     fn strips_secret_bearing_stderr() {
         assert_eq!(
@@ -1802,9 +2475,49 @@ mod tests {
             "API_KEY=$OPENAI_API_KEY",
             "API_KEY=placeholder-value-long-enough",
             "Authorization: Bearer <token>",
+            "branch openos/task-6899b97b-1fa3-4d0d-b7ed-c68386db6bd4",
+            "task_key=acceptance-task-1234567890abcdef",
         ] {
             assert_eq!(detect_secret(value), None, "false positive for {value}");
         }
+    }
+
+    #[test]
+    fn acceptance_uses_only_the_terminal_opencode_report() {
+        let stdout = [
+            json!({"type":"assistant","message":{"content":[{"type":"text","text":"intermediate claim"}]}}),
+            json!({"type":"result","subtype":"success","result":"Base main at abc123 was clean before implementation."}),
+        ]
+        .into_iter()
+        .map(|event| event.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+        assert_eq!(
+            final_execution_report(&stdout).unwrap(),
+            "Base main at abc123 was clean before implementation."
+        );
+        assert!(final_execution_report("{\"type\":\"assistant\"}").is_err());
+    }
+
+    #[test]
+    fn acceptance_grounds_every_composite_evidence_excerpt() {
+        let sources = std::collections::HashMap::from([
+            ("git_diff", "print('Hello, World!')"),
+            ("test_logs", "Ran 1 test\nOK"),
+        ]);
+        let declared = vec!["git_diff".to_string(), "test_logs".to_string()];
+
+        assert!(evidence_is_grounded(
+            "print('Hello, World!')\n---\nRan 1 test\nOK",
+            &declared,
+            &sources,
+        ));
+        assert!(!evidence_is_grounded(
+            "print('Hello, World!')\n---\n2 tests passed",
+            &declared,
+            &sources,
+        ));
     }
 
     #[test]
@@ -1857,21 +2570,91 @@ mod tests {
         let commit_sha = git(&["rev-parse", "HEAD"]);
 
         let artifact = changed_files_artifact(repository, &base_sha, &commit_sha).unwrap();
-        let expected_output = b"README.md\nsrc/lib.rs\n";
+        let expected_diff = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repository)
+            .args([
+                "diff",
+                "--no-ext-diff",
+                "--unified=3",
+                &base_sha,
+                &commit_sha,
+                "--",
+            ])
+            .output()
+            .unwrap();
+        assert!(expected_diff.status.success(), "git diff failed");
         assert_eq!(artifact.kind, "changed_files");
         assert_eq!(artifact.uri, format!("git://{commit_sha}/changed-files"));
         assert_eq!(
             artifact.sha256.as_deref(),
-            Some(format!("{:x}", Sha256::digest(expected_output)).as_str())
+            Some(format!("{:x}", Sha256::digest(&expected_diff.stdout)).as_str())
         );
         assert_eq!(
-            artifact.metadata,
-            json!({
-                "base_sha":base_sha,
-                "commit_sha":commit_sha,
-                "files":["README.md", "src/lib.rs"],
-            })
+            artifact.metadata["files"],
+            json!(["README.md", "src/lib.rs"])
         );
+        let patches = artifact.metadata["patches"].as_array().unwrap();
+        assert_eq!(patches.len(), 2);
+        assert_eq!(patches[0]["path"], "README.md");
+        assert_eq!(patches[0]["additions"], 1);
+        assert_eq!(patches[0]["deletions"], 1);
+        assert!(patches[0]["unified"].as_str().unwrap().contains("-base"));
+        assert!(patches[0]["unified"].as_str().unwrap().contains("+changed"));
+        assert_eq!(patches[1]["path"], "src/lib.rs");
+        assert_eq!(artifact.metadata["patches_truncated"], false);
+    }
+
+    #[test]
+    fn changed_file_artifact_rejects_oversized_diffs_before_buffering() {
+        let temp = tempfile::tempdir().unwrap();
+        let repository = temp.path();
+        let git = |args: &[&str]| {
+            let status = std::process::Command::new("git")
+                .arg("-C")
+                .arg(repository)
+                .args(args)
+                .status()
+                .unwrap();
+            assert!(status.success(), "git {:?} failed", args);
+        };
+        git(&["init", "--quiet"]);
+        git(&["config", "user.email", "worker-test@openos.local"]);
+        git(&["config", "user.name", "OpenAgents Worker Test"]);
+        std::fs::write(repository.join("large.txt"), "base\n").unwrap();
+        git(&["add", "large.txt"]);
+        git(&["commit", "--quiet", "-m", "base"]);
+        let base_sha = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repository)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .unwrap();
+        let base_sha = String::from_utf8(base_sha.stdout)
+            .unwrap()
+            .trim()
+            .to_string();
+
+        std::fs::write(
+            repository.join("large.txt"),
+            "x".repeat(MAX_DIFF_SCAN_BYTES + 1024),
+        )
+        .unwrap();
+        git(&["add", "large.txt"]);
+        git(&["commit", "--quiet", "-m", "large change"]);
+        let commit_sha = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repository)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .unwrap();
+        let commit_sha = String::from_utf8(commit_sha.stdout)
+            .unwrap()
+            .trim()
+            .to_string();
+
+        let error = changed_files_artifact(repository, &base_sha, &commit_sha).unwrap_err();
+        assert!(error.to_string().contains("CHANGED_FILES_PATCH_TOO_LARGE"));
     }
 
     #[tokio::test]
@@ -2105,7 +2888,23 @@ mod tests {
 
     #[test]
     fn engineering_jobs_receive_bounded_generalization_rules() {
-        let prompt = engineering_prompt("Implement documentation ingestion for OpenFoo.");
+        let skills = [LoadedSkill {
+            reference: SkillReference {
+                id: "open-code".into(),
+                version: "1".into(),
+                sha256: "a".repeat(64),
+                source: SkillSource::Bundled,
+            },
+            body: "Use the isolated OpenCode worktree and run declared tests.".into(),
+        }];
+        let prompt = engineering_prompt(
+            "Implement documentation ingestion for OpenFoo.",
+            &skills,
+            &["The declared test command passes.".into()],
+        )
+        .unwrap();
+        assert!(prompt.contains("open-code@1"));
+        assert!(prompt.contains("The declared test command passes."));
         assert!(prompt.contains("current working directory is the only permitted"));
         assert!(prompt.contains("repository paths from the task as source identity metadata"));
         assert!(prompt.contains("never edit an absolute repository path"));

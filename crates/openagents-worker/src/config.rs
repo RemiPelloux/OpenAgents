@@ -23,6 +23,8 @@ pub struct Config {
     pub llm_api_key: String,
     pub llm_model: String,
     pub internal_service_key: String,
+    pub openbrain_url: String,
+    pub skill_root: PathBuf,
 }
 
 impl Config {
@@ -65,6 +67,11 @@ impl Config {
             llm_api_key: required("LLM_API_KEY")?,
             llm_model: required("LLM_MODEL")?,
             internal_service_key: required("INTERNAL_SERVICE_KEY")?,
+            openbrain_url: required("OPENBRAIN_URL")?.trim_end_matches('/').to_string(),
+            skill_root: PathBuf::from(
+                std::env::var("OPENOS_SKILL_ROOT")
+                    .unwrap_or_else(|_| "/opt/openagents/skills".into()),
+            ),
         })
     }
 }
