@@ -8,9 +8,11 @@ use std::{
 
 use anyhow::Context;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use chrono::Utc;
 use contract_core::{
-    AcceptanceCriterionEvidence, GitEvidence, SkillReference, SkillSource, TestEvidence,
-    WorkerArtifact, WorkerJob, WorkerResult,
+    AcceptanceCriterionEvidence, CognitiveEvidenceReference, CognitiveObservation,
+    CognitiveObservationType, CognitiveRisk, CognitiveScope, CognitiveScopeType, GitEvidence,
+    SkillReference, SkillSource, TestEvidence, WorkerArtifact, WorkerJob, WorkerResult,
 };
 use reqwest::{header::LOCATION, redirect::Policy};
 use scraper::{Html, Selector};
@@ -194,6 +196,8 @@ pub async fn execute(
         }),
     };
     let artifact = persist_events(&config.managed_root, run_id, &engine.stdout).await?;
+    let cognitive_observations =
+        engineering_cognitive_observations(job, run_id, &loaded_skills, &engine.cognitive_events);
     Ok(WorkerResult {
         run_id,
         artifacts: vec![artifact, changed_files, execution_contract],
@@ -203,10 +207,11 @@ pub async fn execute(
         git: Some(git),
         engine_session_id: engine.session_id,
         loaded_skills: loaded_skills
-            .into_iter()
-            .map(|skill| skill.reference)
+            .iter()
+            .map(|skill| skill.reference.clone())
             .collect(),
         acceptance_evidence,
+        cognitive_observations,
     })
 }
 
@@ -821,6 +826,36 @@ async fn author_skill(
         engine_session_id: Some(format!("skill_author:{run_id}")),
         loaded_skills: vec![],
         acceptance_evidence: vec![],
+        cognitive_observations: vec![CognitiveObservation {
+            id: Uuid::new_v4(),
+            organization_id: job.organization_id,
+            correlation_id: job.correlation_id,
+            run_id: Some(run_id.to_string()),
+            session_id: None,
+            agent_id: None,
+            revision_id: None,
+            producer: "openagents".into(),
+            sequence: 0,
+            scope: CognitiveScope {
+                r#type: CognitiveScopeType::Organization,
+                id: job.organization_id,
+            },
+            r#type: CognitiveObservationType::AdaptationProposed,
+            confidence: 0.9,
+            expected: None,
+            observed: Some(
+                json!({ "key":"skill.candidate", "value":slug, "validation":validation }),
+            ),
+            evidence: vec![CognitiveEvidenceReference {
+                r#type: "artifact".into(),
+                r#ref: format!("openagents://runs/{run_id}/skills/{slug}"),
+                summary: Some("Validated read-only skill candidate".into()),
+                protected: false,
+            }],
+            risk: CognitiveRisk::Low,
+            observed_at: Utc::now(),
+            idempotency_key: format!("openagents:{run_id}:skill-candidate"),
+        }],
     })
 }
 
@@ -1970,6 +2005,90 @@ struct EngineOutput {
     stdout: String,
     stderr: String,
     session_id: Option<String>,
+    cognitive_events: Vec<Value>,
+}
+
+fn engineering_cognitive_observations(
+    job: &WorkerJob,
+    run_id: Uuid,
+    loaded_skills: &[LoadedSkill],
+    events: &[Value],
+) -> Vec<CognitiveObservation> {
+    let evidence = || {
+        vec![CognitiveEvidenceReference {
+            r#type: "run".into(),
+            r#ref: run_id.to_string(),
+            summary: Some("Verified managed OpenCode execution".into()),
+            protected: false,
+        }]
+    };
+    let mut observations = vec![CognitiveObservation {
+        id: Uuid::new_v4(),
+        organization_id: job.organization_id,
+        correlation_id: job.correlation_id,
+        run_id: Some(run_id.to_string()),
+        session_id: None,
+        agent_id: None,
+        revision_id: None,
+        producer: "openagents".into(),
+        sequence: 0,
+        scope: CognitiveScope {
+            r#type: CognitiveScopeType::Organization,
+            id: job.organization_id,
+        },
+        r#type: CognitiveObservationType::StrategySelected,
+        confidence: 1.0,
+        expected: None,
+        observed: Some(json!({
+            "key":"worker.strategy", "value":"managed_opencode", "jobType":job.job_type,
+            "loadedSkills":loaded_skills.iter().map(|skill| &skill.reference.id).collect::<Vec<_>>()
+        })),
+        evidence: evidence(),
+        risk: CognitiveRisk::None,
+        observed_at: Utc::now(),
+        idempotency_key: format!("openagents:{run_id}:strategy"),
+    }];
+    for (index, event) in events.iter().take(50).enumerate() {
+        let event_type = match event.get("type").and_then(Value::as_str) {
+            Some("hypothesis_updated") => CognitiveObservationType::HypothesisUpdated,
+            Some("expected_observed_mismatch") => {
+                CognitiveObservationType::ExpectedObservedMismatch
+            }
+            _ => continue,
+        };
+        observations.push(CognitiveObservation {
+            id: Uuid::new_v4(),
+            organization_id: job.organization_id,
+            correlation_id: job.correlation_id,
+            run_id: Some(run_id.to_string()),
+            session_id: None,
+            agent_id: None,
+            revision_id: None,
+            producer: "opencode-hacn".into(),
+            sequence: (index + 1) as u32,
+            scope: CognitiveScope {
+                r#type: CognitiveScopeType::Organization,
+                id: job.organization_id,
+            },
+            r#type: event_type,
+            confidence: event
+                .get("confidence")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.5)
+                .clamp(0.0, 1.0),
+            expected: event.get("expected").cloned(),
+            observed: event.get("observed").cloned(),
+            evidence: evidence(),
+            risk: CognitiveRisk::None,
+            observed_at: event
+                .get("observedAt")
+                .and_then(Value::as_str)
+                .and_then(|value| value.parse().ok())
+                .unwrap_or_else(Utc::now),
+            idempotency_key: format!("openagents:{run_id}:hacn:{index}"),
+        });
+    }
+    observations
 }
 
 async fn run_opencode(
@@ -1980,6 +2099,17 @@ async fn run_opencode(
     prompt: &str,
     store: &RunStore,
 ) -> anyhow::Result<EngineOutput> {
+    let cognitive_event_path = workspace
+        .parent()
+        .expect("run parent")
+        .join("hacn-cognitive.ndjson");
+    let workspace_id = job
+        .inputs
+        .get("inputs")
+        .unwrap_or(&job.inputs)
+        .get("repository")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| workspace.to_str().unwrap_or("managed"));
     let mut child = Command::new(&config.opencode_binary)
         .args([
             "-p",
@@ -1996,6 +2126,12 @@ async fn run_opencode(
         .env("SHELL", &config.shell_binary)
         .env("PYTHONDONTWRITEBYTECODE", "1")
         .env("OPENCODE_INVOKED_BY", "openagents-rust")
+        .env("OPENCODE_HACN", "1")
+        .env("OPENOS_MANAGED_RUNTIME", "1")
+        .env("OPENOS_ORGANIZATION_ID", job.organization_id.to_string())
+        .env("OPENOS_WORKSPACE_ID", workspace_id)
+        .env("OPENOS_SESSION_ID", run_id.to_string())
+        .env("OPENOS_HACN_EVENT_FILE", &cognitive_event_path)
         .env("OPENTICKET_TICKET_ID", job.ticket_id.to_string())
         .env("OPENTICKET_CORRELATION_ID", job.correlation_id.to_string())
         .stdout(Stdio::piped())
@@ -2044,11 +2180,23 @@ async fn run_opencode(
     };
     let (stdout, session_id) = stdout_task.await??;
     let stderr = stderr_task.await??;
+    let cognitive_events = fs::read_to_string(&cognitive_event_path)
+        .await
+        .ok()
+        .into_iter()
+        .flat_map(|content| {
+            content
+                .lines()
+                .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                .collect::<Vec<_>>()
+        })
+        .collect();
     Ok(EngineOutput {
         exit_status: status.code().unwrap_or(-1),
         stdout,
         stderr,
         session_id,
+        cognitive_events,
     })
 }
 

@@ -357,6 +357,20 @@ second use case.
 The OpenOS worker gate runs `cargo test -p openagents-worker` on Linux, macOS,
 and Windows with no skipped fallback path.
 
+### Cognitive observations and background review
+
+OpenOS engineering results can include structured `cognitive_observations` for
+tool corrections, missed expectations, authorization blocks, acceptance
+failures, selected strategies, and grounded adaptation proposals. The field is
+optional with an empty default, preserving worker-v1 compatibility.
+
+The background reviewer is proposal-only. Its only mutation-shaped tool is the
+read-only `propose_improvement` tool, which returns a versionable memory,
+prompt, routing, or skill candidate plus evidence references. It never edits
+`MEMORY.md`, user memory, or a skill. OpenOrchestrator enriches and forwards the
+observations; OpenBrain remains responsible for consolidation, evaluation,
+promotion, and rollback.
+
 ---
 
 ## OpenContract (OpenOS mesh)

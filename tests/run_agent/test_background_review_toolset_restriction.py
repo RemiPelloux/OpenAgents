@@ -1,16 +1,13 @@
-"""Tests that the background review agent restricts tools at runtime, not at schema time.
+"""Tests that background review exposes only its read-only proposal tool.
 
 Regression coverage for issue #15204 (the background skill-review agent must
 not perform non-skill side effects like terminal, send_message, delegate_task)
 combined with issue #25322 / PR #17276 (the review fork must hit the parent's
 Anthropic/OpenRouter prefix cache).
 
-Reconciling the two: the fork now inherits the parent's full ``tools`` schema
-so the cache-key matches, and enforces the memory+skills restriction at
-runtime via a thread-local whitelist on the existing
-``get_pre_tool_call_block_message`` gate. Safety is preserved mechanically
-(any non-whitelisted dispatch is blocked) without the schema-level narrowing
-that caused the prefix-cache miss.
+The fork inherits the parent runtime for provider/cache parity, but both its
+schema and dispatch whitelist are narrowed to ``propose_improvement``. It can
+emit a versioned candidate and cannot mutate memory or skills directly.
 """
 
 from unittest.mock import patch
@@ -86,13 +83,7 @@ def test_background_review_matches_parent_toolset_config():
 
 
 def test_background_review_installs_thread_local_whitelist():
-    """The review fork must install a memory/skills-only thread-local whitelist.
-
-    The schema-level toolset narrowing was lifted (for prefix-cache parity),
-    so #15204's safety contract now relies on the runtime whitelist gate to
-    deny terminal/send_message/delegate_task at dispatch time. Verify the
-    whitelist is set with exactly the memory+skills tool names.
-    """
+    """The review fork must allow only the read-only proposal tool."""
     import run_agent
     from openagents_cli import plugins as _plugins
 
@@ -122,12 +113,9 @@ def test_background_review_installs_thread_local_whitelist():
 
     assert "whitelist" in captured, "set_thread_tool_whitelist was not called"
     whitelist = captured["whitelist"]
-    # memory + skills tools must be allowed
-    assert "memory" in whitelist
-    assert "skill_manage" in whitelist
-    assert "skill_view" in whitelist
-    assert "skills_list" in whitelist
-    # dangerous tools must NOT be in the whitelist
+    assert whitelist == {"propose_improvement"}
+    assert "memory" not in whitelist
+    assert "skill_manage" not in whitelist
     assert "terminal" not in whitelist
     assert "send_message" not in whitelist
     assert "delegate_task" not in whitelist
@@ -136,20 +124,17 @@ def test_background_review_installs_thread_local_whitelist():
 
 
 def test_background_review_agent_tools_are_limited():
-    """Verify the resolved memory+skills toolsets only contain memory and skill tools.
+    """Verify the resolved review schema cannot write memory or skills."""
+    from model_tools import get_tool_definitions
 
-    Sanity check on the source of truth for what the runtime whitelist is
-    derived from — if a future PR adds e.g. `terminal` to the `memory`
-    toolset, the review-fork safety contract silently breaks.
-    """
-    from toolsets import resolve_multiple_toolsets
+    expected_tools = {
+        tool["function"]["name"]
+        for tool in get_tool_definitions(enabled_toolsets=["review"], quiet_mode=True)
+    }
 
-    expected_tools = set(resolve_multiple_toolsets(["memory", "skills"]))
-
-    assert "memory" in expected_tools
-    assert "skill_manage" in expected_tools
-    assert "skill_view" in expected_tools
-    assert "skills_list" in expected_tools
+    assert expected_tools == {"propose_improvement"}
+    assert "memory" not in expected_tools
+    assert "skill_manage" not in expected_tools
 
     assert "terminal" not in expected_tools
     assert "send_message" not in expected_tools
