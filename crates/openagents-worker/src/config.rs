@@ -3,7 +3,7 @@ use std::{net::SocketAddr, path::PathBuf, time::Duration};
 use anyhow::Context;
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Config {
     pub bind: SocketAddr,
     pub organization_id: Uuid,
@@ -16,6 +16,11 @@ pub struct Config {
     pub opencode_binary: PathBuf,
     pub shell_binary: PathBuf,
     pub git_sign_commits: bool,
+    pub git_remote: String,
+    pub git_provider_binary: PathBuf,
+    pub git_signing_key_b64: Option<String>,
+    pub git_timeout: Duration,
+    pub qa_timeout: Duration,
     pub opencode_timeout: Duration,
     pub request_timeout: Duration,
     pub capacity: u32,
@@ -56,7 +61,16 @@ impl Config {
                     .or_else(|_| std::env::var("SHELL"))
                     .unwrap_or_else(|_| "/bin/bash".into()),
             ),
-            git_sign_commits: parse("OPENAGENTS_GIT_SIGN_COMMITS", false)?,
+            git_sign_commits: parse("OPENAGENTS_GIT_SIGN_COMMITS", true)?,
+            git_remote: std::env::var("OPENAGENTS_GIT_REMOTE").unwrap_or_else(|_| "origin".into()),
+            git_provider_binary: PathBuf::from(
+                std::env::var("OPENAGENTS_GIT_PROVIDER_PATH").unwrap_or_else(|_| "gh".into()),
+            ),
+            git_signing_key_b64: std::env::var("OPENAGENTS_GIT_SIGNING_KEY_B64")
+                .ok()
+                .filter(|value| !value.trim().is_empty()),
+            git_timeout: Duration::from_secs(parse("OPENAGENTS_GIT_TIMEOUT_SECONDS", 300u64)?),
+            qa_timeout: Duration::from_secs(parse("OPENAGENTS_QA_TIMEOUT_SECONDS", 1800u64)?),
             opencode_timeout: Duration::from_secs(parse(
                 "OPENOS_OPENCODE_TIMEOUT_SECONDS",
                 3600u64,

@@ -346,6 +346,15 @@ retry), and makes at most three model-backed candidate attempts (two repairs)
 before failing explicitly. Strict source, criterion, and activation validation
 remains authoritative.
 
+For OpenOS engineering, the worker creates
+`<managed-root>/<organization>/<plan>/<repository-name>`, never edits the source
+checkout directly, and runs Orchestrator-injected QA for every affected product
+surface. After QA and the model-backed acceptance audit, it verifies a signed
+commit, pushes without force, and idempotently creates a GitHub draft PR. The
+worker never merges. `GH_TOKEN` and `OPENAGENTS_GIT_SIGNING_KEY_B64` must be
+provisioned before health can pass; see
+[`../docs/ENGINEERING-WORKSPACES.md`](../docs/ENGINEERING-WORKSPACES.md).
+
 Skill-author jobs also require an approved generalization contract. The worker
 checks runtime parameters, discovery branches, invariants, distinct validation
 instances, and the generated `SKILL.md` parameter surface. It rejects instance

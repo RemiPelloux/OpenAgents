@@ -3,6 +3,7 @@ use std::{
     net::{IpAddr, SocketAddr},
     path::{Component, Path, PathBuf},
     process::Stdio,
+    sync::atomic::{AtomicBool, Ordering},
     time::Duration,
 };
 
@@ -11,7 +12,8 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::Utc;
 use contract_core::{
     AcceptanceCriterionEvidence, CognitiveEvidenceReference, CognitiveObservation,
-    CognitiveObservationType, CognitiveRisk, CognitiveScope, CognitiveScopeType, GitEvidence,
+    CognitiveObservationType, CognitiveRisk, CognitiveScope, CognitiveScopeType,
+    EngineeringWorkspaceEvidence, GitEvidence, PullRequestEvidence, QaEvidence, QaRequirement,
     SkillReference, SkillSource, TestEvidence, WorkerArtifact, WorkerJob, WorkerResult,
 };
 use reqwest::{header::LOCATION, redirect::Policy};
@@ -20,7 +22,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use tokio::{
     fs,
-    io::{AsyncBufReadExt, BufReader},
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::Command,
     time::{sleep, timeout},
 };
@@ -48,6 +50,7 @@ const MAX_ACCEPTANCE_DIFF_BYTES: usize = 64 * 1024;
 const MAX_ACCEPTANCE_TEST_BYTES: usize = 32 * 1024;
 const MAX_ACCEPTANCE_REPORT_BYTES: usize = 32 * 1024;
 const ACCEPTANCE_AUDIT_TIMEOUT: Duration = Duration::from_secs(120);
+static GIT_DELIVERY_SETUP_READY: AtomicBool = AtomicBool::new(false);
 
 struct LoadedSkill {
     reference: SkillReference,
@@ -55,12 +58,94 @@ struct LoadedSkill {
 }
 
 pub async fn runtime_healthy(config: &Config) -> bool {
+    let provider_ready = command_ok(Command::new(&config.git_provider_binary).arg("--version"))
+        .await
+        && command_ok(Command::new(&config.git_provider_binary).args([
+            "auth",
+            "status",
+            "--hostname",
+            "github.com",
+        ]))
+        .await;
+    let git_delivery_setup_ready = if GIT_DELIVERY_SETUP_READY.load(Ordering::Acquire) {
+        true
+    } else {
+        let ready = provider_ready
+            && command_ok(Command::new(&config.git_provider_binary).args([
+                "auth",
+                "setup-git",
+                "--hostname",
+                "github.com",
+            ]))
+            .await
+            && prepare_git_signing(config).await;
+        if ready {
+            GIT_DELIVERY_SETUP_READY.store(true, Ordering::Release);
+        }
+        ready
+    };
     command_ok(Command::new("git").arg("--version")).await
+        && provider_ready
+        && git_delivery_setup_ready
         && command_ok(Command::new(&config.opencode_binary).arg("--version")).await
         && fs::metadata(&config.shell_binary)
             .await
             .is_ok_and(|metadata| metadata.is_file())
         && fs::create_dir_all(&config.managed_root).await.is_ok()
+}
+
+async fn prepare_git_signing(config: &Config) -> bool {
+    if !config.git_sign_commits {
+        return false;
+    }
+    if let Some(encoded) = config.git_signing_key_b64.as_deref() {
+        let Ok(key) = base64::engine::general_purpose::STANDARD.decode(encoded.trim()) else {
+            return false;
+        };
+        let mut child = match Command::new("gpg")
+            .args(["--batch", "--import"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(_) => return false,
+        };
+        let Some(mut stdin) = child.stdin.take() else {
+            return false;
+        };
+        if stdin.write_all(&key).await.is_err() {
+            return false;
+        }
+        drop(stdin);
+        if !matches!(child.wait().await, Ok(status) if status.success()) {
+            return false;
+        }
+    }
+    let output = match Command::new("gpg")
+        .args(["--batch", "--with-colons", "--list-secret-keys"])
+        .output()
+        .await
+    {
+        Ok(output) if output.status.success() => output,
+        _ => return false,
+    };
+    let listing = String::from_utf8_lossy(&output.stdout);
+    let Some(fingerprint) = listing
+        .lines()
+        .find(|line| line.starts_with("fpr:"))
+        .and_then(|line| line.split(':').nth(9))
+        .filter(|value| !value.is_empty())
+    else {
+        return false;
+    };
+    command_ok(Command::new("git").args(["config", "--global", "user.signingkey", fingerprint]))
+        .await
+        && command_ok(Command::new("git").args(["config", "--global", "gpg.format", "openpgp"]))
+            .await
+        && command_ok(Command::new("git").args(["config", "--global", "commit.gpgsign", "true"]))
+            .await
 }
 
 async fn command_ok(command: &mut Command) -> bool {
@@ -87,10 +172,33 @@ pub async fn execute(
         .await
         .map_err(|_| anyhow::anyhow!("SKILL_AUTHOR_WORKFLOW_TIMEOUT"))?;
     }
+    if job.organization_id != config.organization_id {
+        anyhow::bail!("WORKSPACE_TENANT_MISMATCH");
+    }
+    if !config.git_sign_commits {
+        anyhow::bail!("UNSIGNED_ENGINEERING_COMMITS_DISABLED");
+    }
     let inputs = job.inputs.get("inputs").unwrap_or(&job.inputs);
-    let repository = canonical_repository(inputs, &config.allowed_repositories).await?;
+    let remote_url = string(inputs, "remote_url")?;
+    let repository = canonical_repository(
+        inputs,
+        &config.allowed_repositories,
+        &remote_url,
+        &config.git_remote,
+        config.git_timeout,
+    )
+    .await?;
+    let repository_name = string(inputs, "repository_name")?;
+    let provider = string(inputs, "provider")?;
+    let external_repository_id = string(inputs, "external_repository_id")?;
+    verify_repository_remote(&repository, &config.git_remote, &remote_url).await?;
+    let pull_request_base_branch = string(inputs, "pull_request_base_branch")?;
+    if inputs.get("requires_human_review").and_then(Value::as_bool) != Some(true) {
+        anyhow::bail!("HUMAN_REVIEW_POLICY_REQUIRED");
+    }
     let base_ref = string(inputs, "base_ref")?;
     let tests = string_array(inputs, "test_commands")?;
+    let qa_requirements = parse_qa_requirements(inputs, &tests)?;
     let prompt = string(inputs, "prompt").unwrap_or_else(|_| {
         job.inputs
             .get("task")
@@ -111,13 +219,18 @@ pub async fn execute(
     if contains_secret(&serde_json::to_string(inputs)?) {
         anyhow::bail!("INPUT_SECRET_REJECTED");
     }
-    let (workspace, base_sha) = create_worktree(
-        &repository,
-        &config.managed_root,
-        job.ticket_id,
-        run_id,
-        &base_ref,
-    )
+    let (workspace_root, workspace, base_sha) = create_worktree(WorktreeSpec {
+        repository: &repository,
+        managed_root: &config.managed_root,
+        organization_id: job.organization_id,
+        repository_name: &repository_name,
+        ticket_id: job.ticket_id,
+        plan_id: job.plan_id,
+        task_id: job.task_id,
+        base_ref: &base_ref,
+        remote: &config.git_remote,
+        timeout: config.git_timeout,
+    })
     .await?;
     ensure_not_cancelled(store, run_id).await?;
     store
@@ -125,7 +238,13 @@ pub async fn execute(
             run_id,
             RunStatus::Running,
             "worktree.created",
-            json!({"worktree":workspace,"repository":repository}),
+            json!({
+                "workspace_root":workspace_root,
+                "worktree":workspace,
+                "repository":repository,
+                "repository_name":repository_name,
+                "organization_id":job.organization_id
+            }),
         )
         .await;
     let engine = run_opencode(config, job, run_id, &workspace, &prompt, store).await?;
@@ -138,7 +257,8 @@ pub async fn execute(
         anyhow::bail!("ENGINE_SECRET_LEAK_REJECTED");
     }
     ensure_not_cancelled(store, run_id).await?;
-    let test_evidence = run_tests(&workspace, &tests, run_id, store).await?;
+    let test_evidence = run_tests(&workspace, &tests, run_id, store, config.qa_timeout).await?;
+    let qa_evidence = qa_evidence(&qa_requirements, &test_evidence)?;
     if engine.exit_status != 0 || test_evidence.iter().any(|test| test.exit_status != 0) {
         anyhow::bail!("engine or declared tests failed");
     }
@@ -148,10 +268,12 @@ pub async fn execute(
         &base_sha,
         job.ticket_id,
         run_id,
-        config.git_sign_commits,
+        true,
+        config.git_timeout,
     )
     .await?;
     let changed_files = changed_files_artifact(&workspace, &base_sha, &git.commit_sha)?;
+    validate_changed_file_policy(&changed_files, inputs)?;
     store
         .update(
             run_id,
@@ -178,6 +300,66 @@ pub async fn execute(
             json!({"criteria_count":acceptance_evidence.len(),"passed":true}),
         )
         .await;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "git.push.started",
+            json!({"remote":config.git_remote,"branch":git.branch}),
+        )
+        .await;
+    let mut git = git;
+    push_branch(
+        &workspace,
+        &config.git_remote,
+        &git.branch,
+        config.git_timeout,
+    )
+    .await?;
+    git.pushed = true;
+    git.remote = Some(config.git_remote.clone());
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "git.push.completed",
+            json!({"remote":config.git_remote,"branch":git.branch,"commit_sha":git.commit_sha}),
+        )
+        .await;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "pull_request.started",
+            json!({"provider":provider,"base_branch":pull_request_base_branch,"draft":true,"review_required":true}),
+        )
+        .await;
+    let pull_request = create_or_read_pull_request(PullRequestSpec {
+        config,
+        workspace: &workspace,
+        provider: &provider,
+        external_repository_id: &external_repository_id,
+        base_branch: &pull_request_base_branch,
+        head_branch: &git.branch,
+        ticket_id: job.ticket_id,
+        run_id,
+        qa: &qa_evidence,
+    })
+    .await?;
+    store
+        .update(
+            run_id,
+            RunStatus::Running,
+            "pull_request.completed",
+            json!({
+                "provider":pull_request.provider,
+                "url":pull_request.url,
+                "number":pull_request.number,
+                "draft":pull_request.draft,
+                "review_required":pull_request.review_required
+            }),
+        )
+        .await;
     let prompt_sha256 = format!("{:x}", Sha256::digest(prompt.as_bytes()));
     let execution_contract = WorkerArtifact {
         kind: "execution_contract".into(),
@@ -195,7 +377,7 @@ pub async fn execute(
             "prompt_sha256":prompt_sha256,
         }),
     };
-    let artifact = persist_events(&config.managed_root, run_id, &engine.stdout).await?;
+    let artifact = persist_events(&workspace_root, run_id, &engine.stdout).await?;
     let cognitive_observations =
         engineering_cognitive_observations(job, run_id, &loaded_skills, &engine.cognitive_events);
     Ok(WorkerResult {
@@ -212,6 +394,15 @@ pub async fn execute(
             .collect(),
         acceptance_evidence,
         cognitive_observations,
+        engineering_workspace: Some(EngineeringWorkspaceEvidence {
+            organization_id: job.organization_id,
+            run_id,
+            repository_name,
+            workspace_root: workspace_root.display().to_string(),
+            repository_folder: workspace.display().to_string(),
+        }),
+        qa: qa_evidence,
+        pull_request: Some(pull_request),
     })
 }
 
@@ -856,6 +1047,9 @@ async fn author_skill(
             observed_at: Utc::now(),
             idempotency_key: format!("openagents:{run_id}:skill-candidate"),
         }],
+        engineering_workspace: None,
+        qa: vec![],
+        pull_request: None,
     })
 }
 
@@ -1942,24 +2136,147 @@ fn final_execution_report(stdout: &str) -> anyhow::Result<String> {
     Ok(report.to_string())
 }
 
-async fn canonical_repository(inputs: &Value, allowed: &[PathBuf]) -> anyhow::Result<PathBuf> {
+fn parse_qa_requirements(
+    inputs: &Value,
+    commands: &[String],
+) -> anyhow::Result<Vec<QaRequirement>> {
+    let requirements = inputs
+        .get("qa_requirements")
+        .and_then(Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("QA_REQUIREMENTS_MISSING"))?
+        .iter()
+        .map(|value| serde_json::from_value::<QaRequirement>(value.clone()))
+        .collect::<Result<Vec<_>, _>>()
+        .context("QA_REQUIREMENTS_INVALID")?;
+    if requirements.is_empty()
+        || requirements.len() != commands.len()
+        || requirements
+            .iter()
+            .zip(commands)
+            .any(|(requirement, command)| requirement.command != *command)
+    {
+        anyhow::bail!("QA_COMMAND_POLICY_MISMATCH");
+    }
+    Ok(requirements)
+}
+
+fn qa_evidence(
+    requirements: &[QaRequirement],
+    tests: &[TestEvidence],
+) -> anyhow::Result<Vec<QaEvidence>> {
+    if requirements.len() != tests.len() {
+        anyhow::bail!("QA_EVIDENCE_INCOMPLETE");
+    }
+    requirements
+        .iter()
+        .zip(tests)
+        .map(|(requirement, test)| {
+            if requirement.command != test.command {
+                anyhow::bail!("QA_EVIDENCE_COMMAND_MISMATCH");
+            }
+            Ok(QaEvidence {
+                surface: requirement.surface,
+                kind: requirement.kind,
+                command: test.command.clone(),
+                exit_status: test.exit_status,
+                passed: test.exit_status == 0 && test.failed == 0,
+                output_uri: test.output_uri.clone(),
+            })
+        })
+        .collect()
+}
+
+fn validate_changed_file_policy(artifact: &WorkerArtifact, inputs: &Value) -> anyhow::Result<()> {
+    let files = string_array(&artifact.metadata, "files")?;
+    if files.is_empty() {
+        anyhow::bail!("CHANGED_FILES_EVIDENCE_EMPTY");
+    }
+    let protected_paths = string_array(inputs, "protected_paths")?;
+    if files.iter().any(|file| {
+        protected_paths
+            .iter()
+            .any(|path| file == path || file.starts_with(&format!("{path}/")))
+    }) {
+        anyhow::bail!("PROTECTED_PATH_CHANGED");
+    }
+    let declared = string_array(inputs, "impact_surfaces")?;
+    let surface_paths = inputs
+        .get("surface_paths")
+        .and_then(Value::as_object)
+        .ok_or_else(|| anyhow::anyhow!("SURFACE_PATH_POLICY_MISSING"))?;
+    for file in files {
+        let actual = surface_paths
+            .iter()
+            .filter(|(_, prefixes)| {
+                prefixes.as_array().is_some_and(|prefixes| {
+                    prefixes.iter().filter_map(Value::as_str).any(|prefix| {
+                        prefix == "." || file == prefix || file.starts_with(&format!("{prefix}/"))
+                    })
+                })
+            })
+            .map(|(surface, _)| surface.as_str())
+            .collect::<Vec<_>>();
+        if actual.is_empty() {
+            anyhow::bail!("CHANGED_FILE_SURFACE_UNCLASSIFIED: {file}");
+        }
+        if actual
+            .iter()
+            .any(|surface| !declared.iter().any(|value| value == surface))
+        {
+            anyhow::bail!("DECLARED_IMPACT_INCOMPLETE: {file}");
+        }
+    }
+    Ok(())
+}
+
+async fn canonical_repository(
+    inputs: &Value,
+    allowed: &[PathBuf],
+    remote_url: &str,
+    remote: &str,
+    git_timeout: Duration,
+) -> anyhow::Result<PathBuf> {
     let requested = PathBuf::from(string(inputs, "repository")?);
-    if requested
-        .components()
-        .any(|component| matches!(component, Component::ParentDir))
+    if !requested.is_absolute()
+        || requested
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
     {
         anyhow::bail!("REPOSITORY_PATH_ESCAPE");
+    }
+    let mut allowed_roots = Vec::new();
+    for root in allowed {
+        if let Ok(root) = fs::canonicalize(root).await {
+            allowed_roots.push(root);
+        }
+    }
+    if !fs::try_exists(&requested).await? {
+        let parent = requested
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("REPOSITORY_PARENT_MISSING"))?;
+        let canonical_parent = fs::canonicalize(parent)
+            .await
+            .context("canonicalize repository parent")?;
+        if !allowed_roots
+            .iter()
+            .any(|root| canonical_parent.starts_with(root))
+        {
+            anyhow::bail!("REPOSITORY_PARENT_NOT_MANAGED");
+        }
+        checked_with_timeout(
+            Command::new("git")
+                .args(["clone", "--origin", remote, "--no-checkout", remote_url])
+                .arg(&requested),
+            "git clone managed repository",
+            git_timeout,
+        )
+        .await?;
     }
     let canonical = fs::canonicalize(&requested)
         .await
         .context("canonicalize repository")?;
-    let mut permitted = false;
-    for root in allowed {
-        if let Ok(root) = fs::canonicalize(root).await {
-            permitted |= canonical.starts_with(root);
-        }
-    }
-    if !permitted {
+    let canonical_permitted = allowed_roots.iter().any(|root| canonical.starts_with(root));
+    if !canonical_permitted {
         anyhow::bail!("REPOSITORY_NOT_MANAGED");
     }
     if !fs::try_exists(canonical.join(".git")).await? {
@@ -1968,36 +2285,146 @@ async fn canonical_repository(inputs: &Value, allowed: &[PathBuf]) -> anyhow::Re
     Ok(canonical)
 }
 
-async fn create_worktree(
+async fn verify_repository_remote(
     repository: &Path,
-    managed_root: &Path,
+    remote: &str,
+    expected_url: &str,
+) -> anyhow::Result<()> {
+    let actual = output_text(
+        Command::new("git")
+            .arg("-C")
+            .arg(repository)
+            .args(["remote", "get-url", remote]),
+        "git remote URL",
+    )
+    .await?;
+    if actual.trim() != expected_url.trim() {
+        anyhow::bail!("REPOSITORY_REMOTE_POLICY_MISMATCH");
+    }
+    Ok(())
+}
+
+struct WorktreeSpec<'a> {
+    repository: &'a Path,
+    managed_root: &'a Path,
+    organization_id: Uuid,
+    repository_name: &'a str,
     ticket_id: Uuid,
-    run_id: Uuid,
-    base_ref: &str,
-) -> anyhow::Result<(PathBuf, String)> {
-    let workspace = managed_root.join(run_id.to_string()).join("worktree");
-    fs::create_dir_all(workspace.parent().expect("run parent")).await?;
-    let branch = format!("openos/{ticket_id}-{}", &run_id.to_string()[..8]);
+    plan_id: Uuid,
+    task_id: Uuid,
+    base_ref: &'a str,
+    remote: &'a str,
+    timeout: Duration,
+}
+
+async fn create_worktree(spec: WorktreeSpec<'_>) -> anyhow::Result<(PathBuf, PathBuf, String)> {
+    let repository_folder = safe_workspace_name(spec.repository_name)?;
+    let workspace_root = spec
+        .managed_root
+        .join(spec.organization_id.to_string())
+        .join(spec.plan_id.to_string());
+    let workspace = workspace_root.join(&repository_folder);
+    fs::create_dir_all(&workspace_root).await?;
+    let branch = format!(
+        "openos/{}-{}-{}",
+        spec.ticket_id,
+        repository_folder.to_ascii_lowercase(),
+        &spec.task_id.to_string()[..8]
+    );
+    checked_with_timeout(
+        Command::new("git").arg("-C").arg(spec.repository).args([
+            "fetch",
+            "--prune",
+            spec.remote,
+            spec.base_ref,
+        ]),
+        "git fetch base ref",
+        spec.timeout,
+    )
+    .await?;
+    let remote_ref = format!("{}/{}", spec.remote, spec.base_ref);
     let base_sha = output_text(
         Command::new("git")
             .arg("-C")
-            .arg(repository)
-            .args(["rev-parse", base_ref]),
+            .arg(spec.repository)
+            .args(["rev-parse", &remote_ref]),
         "git base ref",
     )
     .await?;
-    checked(
-        Command::new("git")
+    if fs::try_exists(&workspace).await? {
+        let actual_branch = output_text(
+            Command::new("git")
+                .arg("-C")
+                .arg(&workspace)
+                .args(["branch", "--show-current"]),
+            "existing worktree branch",
+        )
+        .await?;
+        if actual_branch != branch {
+            anyhow::bail!("WORKSPACE_BRANCH_MISMATCH");
+        }
+    } else {
+        checked(
+            Command::new("git")
+                .arg("-C")
+                .arg(spec.repository)
+                .args(["worktree", "prune"]),
+            "git worktree prune",
+        )
+        .await?;
+        let branch_exists = checked_output(
+            Command::new("git")
+                .arg("-C")
+                .arg(spec.repository)
+                .args(["show-ref", "--verify", "--quiet"])
+                .arg(format!("refs/heads/{branch}")),
+        )
+        .await?
+        .success();
+        let mut command = Command::new("git");
+        command
             .arg("-C")
-            .arg(repository)
-            .args(["worktree", "add", "-b"])
-            .arg(&branch)
-            .arg(&workspace)
-            .arg(base_ref),
-        "git worktree add",
-    )
-    .await?;
-    Ok((workspace, base_sha))
+            .arg(spec.repository)
+            .args(["worktree", "add"]);
+        if branch_exists {
+            command.arg(&workspace).arg(&branch);
+        } else {
+            command
+                .arg("-b")
+                .arg(&branch)
+                .arg(&workspace)
+                .arg(&remote_ref);
+        }
+        checked(&mut command, "git worktree add").await?;
+    }
+    let canonical_root = fs::canonicalize(&workspace_root).await?;
+    let canonical_workspace = fs::canonicalize(&workspace).await?;
+    if !canonical_workspace.starts_with(&canonical_root) {
+        anyhow::bail!("WORKSPACE_PATH_ESCAPE");
+    }
+    Ok((canonical_root, canonical_workspace, base_sha))
+}
+
+fn safe_workspace_name(value: &str) -> anyhow::Result<String> {
+    let mut name = String::with_capacity(value.len().min(64));
+    let mut separator = false;
+    for character in value.trim().chars() {
+        if name.len() >= 64 {
+            break;
+        }
+        if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
+            name.push(character);
+            separator = false;
+        } else if !separator && !name.is_empty() {
+            name.push('-');
+            separator = true;
+        }
+    }
+    let name = name.trim_matches(['.', '-', '_']).to_string();
+    if name.is_empty() || name == "." || name == ".." {
+        anyhow::bail!("REPOSITORY_WORKSPACE_NAME_INVALID");
+    }
+    Ok(name)
 }
 
 struct EngineOutput {
@@ -2205,6 +2632,7 @@ async fn run_tests(
     commands: &[String],
     run_id: Uuid,
     store: &RunStore,
+    qa_timeout: Duration,
 ) -> anyhow::Result<Vec<TestEvidence>> {
     let mut evidence = Vec::new();
     for command in commands {
@@ -2217,18 +2645,42 @@ async fn run_tests(
                 json!({"command":command}),
             )
             .await;
-        let output = Command::new("sh")
+        let mut process = Command::new("sh");
+        process
             .args(["-lc", command])
             .current_dir(workspace)
-            .env("PYTHONDONTWRITEBYTECODE", "1")
-            .output()
-            .await?;
+            .env("PYTHONDONTWRITEBYTECODE", "1");
+        let output = match timeout(qa_timeout, process.output()).await {
+            Ok(output) => output?,
+            Err(_) => {
+                store
+                    .update(
+                        run_id,
+                        RunStatus::Failed,
+                        "test.failed",
+                        json!({"command":command,"error":"QA_COMMAND_TIMEOUT"}),
+                    )
+                    .await;
+                anyhow::bail!("QA_COMMAND_TIMEOUT: {command}");
+            }
+        };
         let path = workspace
             .parent()
             .expect("run root")
-            .join(format!("test-{}.log", evidence.len() + 1));
+            .join(format!("{run_id}-test-{}.log", evidence.len() + 1));
         let mut data = output.stdout;
         data.extend_from_slice(&output.stderr);
+        if detect_secret(&String::from_utf8_lossy(&data)).is_some() {
+            store
+                .update(
+                    run_id,
+                    RunStatus::Failed,
+                    "test.failed",
+                    json!({"command":command,"error":"QA_SECRET_LEAK_REJECTED"}),
+                )
+                .await;
+            anyhow::bail!("QA_SECRET_LEAK_REJECTED");
+        }
         fs::write(&path, &data).await?;
         let exit_status = output.status.code().unwrap_or(-1);
         store
@@ -2276,6 +2728,7 @@ async fn commit_changes(
     ticket_id: Uuid,
     run_id: Uuid,
     sign_commit: bool,
+    git_timeout: Duration,
 ) -> anyhow::Result<GitEvidence> {
     checked(
         Command::new("git")
@@ -2293,7 +2746,7 @@ async fn commit_changes(
     )
     .await?;
     if !diff.success() {
-        checked(
+        checked_with_timeout(
             Command::new("git")
                 .arg("-C")
                 .arg(workspace)
@@ -2315,6 +2768,7 @@ async fn commit_changes(
                     "OpenTicket {ticket_id}: validated worker run {run_id}"
                 )),
             "git commit",
+            git_timeout,
         )
         .await?;
     }
@@ -2345,17 +2799,191 @@ async fn commit_changes(
         "git status",
     )
     .await?;
+    checked(
+        Command::new("git")
+            .arg("-C")
+            .arg(workspace)
+            .args(["verify-commit", "HEAD"]),
+        "git verify signed commit",
+    )
+    .await?;
     Ok(GitEvidence {
         repository: repository.display().to_string(),
         worktree: workspace.display().to_string(),
         branch,
         commit_sha: sha,
         clean: status.is_empty(),
+        pushed: false,
+        remote: None,
     })
 }
 
+async fn push_branch(
+    workspace: &Path,
+    remote: &str,
+    branch: &str,
+    git_timeout: Duration,
+) -> anyhow::Result<()> {
+    if remote.trim().is_empty() || branch.trim().is_empty() {
+        anyhow::bail!("GIT_PUSH_POLICY_INVALID");
+    }
+    checked_with_timeout(
+        Command::new("git").arg("-C").arg(workspace).args([
+            "push",
+            "--set-upstream",
+            remote,
+            branch,
+        ]),
+        "git push branch",
+        git_timeout,
+    )
+    .await
+}
+
+struct PullRequestSpec<'a> {
+    config: &'a Config,
+    workspace: &'a Path,
+    provider: &'a str,
+    external_repository_id: &'a str,
+    base_branch: &'a str,
+    head_branch: &'a str,
+    ticket_id: Uuid,
+    run_id: Uuid,
+    qa: &'a [QaEvidence],
+}
+
+async fn create_or_read_pull_request(
+    spec: PullRequestSpec<'_>,
+) -> anyhow::Result<PullRequestEvidence> {
+    if spec.provider != "github" {
+        anyhow::bail!("GIT_PROVIDER_UNSUPPORTED: {}", spec.provider);
+    }
+    if let Some(existing) = read_pull_request(
+        spec.config,
+        spec.workspace,
+        spec.external_repository_id,
+        spec.head_branch,
+    )
+    .await?
+    {
+        return Ok(existing);
+    }
+    let qa_summary = spec
+        .qa
+        .iter()
+        .map(|evidence| {
+            format!(
+                "- [x] {:?}/{:?}: `{}`",
+                evidence.surface, evidence.kind, evidence.command
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let title = format!("fix: OpenTicket {}", spec.ticket_id);
+    let body = format!(
+        "## OpenOS delivery\n\nTicket: `{}`\nRun: `{}`\n\n## Verified QA\n{qa_summary}\n\nThis pull request was created as a draft and requires human review. OpenOS does not merge automatically.",
+        spec.ticket_id, spec.run_id
+    );
+    let mut command = Command::new(&spec.config.git_provider_binary);
+    command
+        .current_dir(spec.workspace)
+        .args([
+            "pr",
+            "create",
+            "--repo",
+            spec.external_repository_id,
+            "--draft",
+            "--base",
+            spec.base_branch,
+            "--head",
+            spec.head_branch,
+        ])
+        .arg("--title")
+        .arg(title)
+        .arg("--body")
+        .arg(body);
+    let output = timeout(spec.config.git_timeout, command.output())
+        .await
+        .map_err(|_| anyhow::anyhow!("pull request create: timeout"))??;
+    if !output.status.success() {
+        anyhow::bail!(
+            "pull request create: {}",
+            sanitize(&String::from_utf8_lossy(&output.stderr))
+        );
+    }
+    read_pull_request(
+        spec.config,
+        spec.workspace,
+        spec.external_repository_id,
+        spec.head_branch,
+    )
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("PULL_REQUEST_EVIDENCE_MISSING"))
+}
+
+async fn read_pull_request(
+    config: &Config,
+    workspace: &Path,
+    external_repository_id: &str,
+    head_branch: &str,
+) -> anyhow::Result<Option<PullRequestEvidence>> {
+    let mut command = Command::new(&config.git_provider_binary);
+    command.current_dir(workspace).args([
+        "pr",
+        "view",
+        head_branch,
+        "--repo",
+        external_repository_id,
+        "--json",
+        "url,number,baseRefName,headRefName,isDraft,state",
+    ]);
+    let output = timeout(config.git_timeout, command.output())
+        .await
+        .map_err(|_| anyhow::anyhow!("pull request read: timeout"))??;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let value: Value = serde_json::from_slice(&output.stdout).context("pull request JSON")?;
+    let url = value
+        .get("url")
+        .and_then(Value::as_str)
+        .filter(|value| value.starts_with("https://"))
+        .ok_or_else(|| anyhow::anyhow!("PULL_REQUEST_URL_INVALID"))?;
+    let expected_url_prefix = format!("https://github.com/{external_repository_id}/pull/");
+    if !url.starts_with(&expected_url_prefix) {
+        anyhow::bail!("PULL_REQUEST_REPOSITORY_MISMATCH");
+    }
+    let base_branch = value
+        .get("baseRefName")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("PULL_REQUEST_BASE_MISSING"))?;
+    let actual_head = value
+        .get("headRefName")
+        .and_then(Value::as_str)
+        .filter(|value| *value == head_branch)
+        .ok_or_else(|| anyhow::anyhow!("PULL_REQUEST_HEAD_MISMATCH"))?;
+    Ok(Some(PullRequestEvidence {
+        provider: "github".into(),
+        url: url.into(),
+        number: value.get("number").and_then(Value::as_u64),
+        base_branch: base_branch.into(),
+        head_branch: actual_head.into(),
+        draft: value
+            .get("isDraft")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        review_required: true,
+        status: value
+            .get("state")
+            .and_then(Value::as_str)
+            .unwrap_or("UNKNOWN")
+            .to_ascii_lowercase(),
+    }))
+}
+
 async fn persist_events(root: &Path, run_id: Uuid, data: &str) -> anyhow::Result<WorkerArtifact> {
-    let path = root.join(run_id.to_string()).join("opencode-events.jsonl");
+    let path = root.join(format!("{run_id}-opencode-events.jsonl"));
     fs::write(&path, data).await?;
     let hash = format!("{:x}", Sha256::digest(data.as_bytes()));
     Ok(WorkerArtifact {
@@ -2369,6 +2997,23 @@ async fn persist_events(root: &Path, run_id: Uuid, data: &str) -> anyhow::Result
 
 async fn checked(command: &mut Command, name: &str) -> anyhow::Result<()> {
     let output = command.output().await?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "{name}: {}",
+            sanitize(&String::from_utf8_lossy(&output.stderr))
+        );
+    }
+    Ok(())
+}
+
+async fn checked_with_timeout(
+    command: &mut Command,
+    name: &str,
+    duration: Duration,
+) -> anyhow::Result<()> {
+    let output = timeout(duration, command.output())
+        .await
+        .map_err(|_| anyhow::anyhow!("{name}: timeout"))??;
     if !output.status.success() {
         anyhow::bail!(
             "{name}: {}",
@@ -2570,9 +3215,15 @@ mod tests {
     async fn rejects_path_escape_and_unmanaged_repository() {
         let temp = tempfile::tempdir().unwrap();
         let value = json!({"repository":"../outside"});
-        assert!(canonical_repository(&value, &[temp.path().into()])
-            .await
-            .is_err());
+        assert!(canonical_repository(
+            &value,
+            &[temp.path().into()],
+            "https://example.test/repo.git",
+            "origin",
+            Duration::from_secs(1)
+        )
+        .await
+        .is_err());
     }
 
     #[tokio::test]
@@ -3060,6 +3711,103 @@ mod tests {
         assert!(prompt.contains("smallest reusable boundary"));
         assert!(prompt.contains("materially different instance"));
         assert!(!prompt.contains("Always use OpenFoo"));
+    }
+
+    #[test]
+    fn workspace_names_are_contained_and_project_named() {
+        assert_eq!(
+            safe_workspace_name("OpenPro Front").unwrap(),
+            "OpenPro-Front"
+        );
+        assert_eq!(safe_workspace_name("../OpenPro").unwrap(), "OpenPro");
+        assert_eq!(safe_workspace_name("team/api").unwrap(), "team-api");
+        assert!(safe_workspace_name("../../").is_err());
+    }
+
+    #[test]
+    fn qa_commands_must_exactly_match_orchestrator_policy() {
+        let inputs = json!({"qa_requirements":[{
+            "surface":"frontend","kind":"responsive","command":"pnpm test:responsive"
+        }]});
+        assert!(parse_qa_requirements(&inputs, &["pnpm test:responsive".to_string()]).is_ok());
+        assert!(parse_qa_requirements(&inputs, &["pnpm test".to_string()]).is_err());
+    }
+
+    #[test]
+    fn changed_files_are_blocked_before_push_when_impact_or_path_policy_fails() {
+        let artifact = WorkerArtifact {
+            kind: "changed_files".into(),
+            name: "Changed files".into(),
+            uri: "git://changed".into(),
+            sha256: None,
+            metadata: json!({"files":["apps/web/src/page.tsx"]}),
+        };
+        let valid = json!({
+            "protected_paths":[".github"],
+            "impact_surfaces":["frontend"],
+            "surface_paths":{"frontend":["apps/web"],"backend":["apps/api"]}
+        });
+        validate_changed_file_policy(&artifact, &valid).unwrap();
+
+        let protected = WorkerArtifact {
+            metadata: json!({"files":[".github/workflows/release.yml"]}),
+            ..artifact.clone()
+        };
+        assert_eq!(
+            validate_changed_file_policy(&protected, &valid)
+                .unwrap_err()
+                .to_string(),
+            "PROTECTED_PATH_CHANGED"
+        );
+        let undeclared = WorkerArtifact {
+            metadata: json!({"files":["apps/api/src/server.ts"]}),
+            ..artifact
+        };
+        assert_eq!(
+            validate_changed_file_policy(&undeclared, &valid)
+                .unwrap_err()
+                .to_string(),
+            "DECLARED_IMPACT_INCOMPLETE: apps/api/src/server.ts"
+        );
+    }
+
+    #[tokio::test]
+    async fn managed_repository_is_cloned_once_below_allowed_root() {
+        let root = std::env::temp_dir().join(format!("openagents-clone-{}", Uuid::new_v4()));
+        let source = root.join("source.git");
+        let managed = root.join("managed");
+        std::fs::create_dir_all(&managed).unwrap();
+        assert!(std::process::Command::new("git")
+            .args(["init", "--bare"])
+            .arg(&source)
+            .status()
+            .unwrap()
+            .success());
+        let target = managed.join("OpenPro");
+        let inputs = json!({"repository":target});
+        let cloned = canonical_repository(
+            &inputs,
+            std::slice::from_ref(&managed),
+            source.to_str().unwrap(),
+            "origin",
+            Duration::from_secs(5),
+        )
+        .await
+        .unwrap();
+        assert!(cloned.starts_with(std::fs::canonicalize(&managed).unwrap()));
+        assert!(cloned.join(".git").exists());
+
+        let escaped = json!({"repository":managed.join("../escape")});
+        assert!(canonical_repository(
+            &escaped,
+            std::slice::from_ref(&managed),
+            source.to_str().unwrap(),
+            "origin",
+            Duration::from_secs(5)
+        )
+        .await
+        .is_err());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
