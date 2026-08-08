@@ -26,7 +26,8 @@ RUN --mount=type=cache,id=openagents-rust-cargo-registry,target=/usr/local/cargo
 FROM alpine:3.24
 ENV SHELL=/bin/bash
 RUN apk upgrade --no-cache \
-    && apk add --no-cache bash ca-certificates curl git github-cli gnupg openssh-client python3 \
+    && apk add --no-cache bash ca-certificates curl git github-cli gnupg nodejs npm openssh-client python3 \
+    && npm install --global pnpm@9.15.0 \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && addgroup -S -g 10000 openagents \
     && adduser -S -D -u 10000 -G openagents -h /home/openagents openagents
@@ -34,7 +35,8 @@ COPY --from=worker-builder /tmp/openagents-worker /usr/local/bin/openagents-work
 COPY --from=opencode-builder /tmp/opencode /usr/local/bin/opencode
 COPY --from=opencontract registry /etc/opencontract/registry
 COPY skills /opt/openagents/skills
-RUN mkdir -p /worktrees /workspace && chown -R openagents:openagents /worktrees /workspace /opt/openagents/skills
+RUN mkdir -p /repositories /worktrees \
+    && chown -R openagents:openagents /repositories /worktrees /opt/openagents/skills
 USER openagents
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/openagents-worker"]

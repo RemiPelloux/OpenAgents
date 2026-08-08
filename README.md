@@ -349,11 +349,31 @@ remains authoritative.
 For OpenOS engineering, the worker creates
 `<managed-root>/<organization>/<plan>/<repository-name>`, never edits the source
 checkout directly, and runs Orchestrator-injected QA for every affected product
-surface. After QA and the model-backed acceptance audit, it verifies a signed
-commit, pushes without force, and idempotently creates a GitHub draft PR. The
-worker never merges. `GH_TOKEN` and `OPENAGENTS_GIT_SIGNING_KEY_B64` must be
-provisioned before health can pass; see
+surface. It creates and verifies one signed commit first, runs QA against that
+exact commit, and rejects any QA command that changes `HEAD`, the index, or the
+worktree. Only then does it push without force and idempotently create a GitHub
+draft PR. The model-backed acceptance
+audit then receives the committed diff, QA logs, and verified delivery state;
+the worker rechecks that the PR is still open, draft, unmerged, and has no
+auto-merge before completion. Lost leases fence execution, while transient
+heartbeats and idempotent completion callbacks are retried. The worker never
+merges. `GH_TOKEN` and `OPENAGENTS_GIT_SIGNING_KEY_B64` must be
+provisioned before health can pass. The runtime image includes Node.js, pnpm,
+and Python. Registration publishes a detected `toolchain.*` capability matrix;
+repositories whose QA requires browser, Rust, Go, Java, Flutter, Android, or
+Apple tooling need a worker image that actually contains that toolchain. It is
+never inferred from a project name or claimed when absent. Fetch/push use the registered HTTPS remote so an
+equivalent SSH `origin` never requires mounting a personal SSH key; see
 [`../docs/ENGINEERING-WORKSPACES.md`](../docs/ENGINEERING-WORKSPACES.md).
+
+The managed worktree provides path separation and Git evidence, not an OS-level
+security sandbox. Repository code and QA must not be treated as untrusted until
+execution moves behind a credential-isolated sandbox and a separate Git signing
+and delivery broker.
+
+Managed H-ACN events use a parent-only sink. OpenCode removes the sink path from
+every Bash, MCP, LSP, and hook subprocess environment before repository code is
+executed, preventing those tools from directly forging cognitive observations.
 
 Skill-author jobs also require an approved generalization contract. The worker
 checks runtime parameters, discovery branches, invariants, distinct validation

@@ -5,11 +5,62 @@ use contract_core::{
     WorkerRegistration,
 };
 use reqwest::Client;
+use reqwest::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
 use crate::config::Config;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ControlPlaneFailure {
+    Transient,
+    LeaseLost,
+    Permanent,
+}
+
+#[derive(Debug)]
+struct ControlPlaneHttpError {
+    status: StatusCode,
+    body: String,
+}
+
+impl std::fmt::Display for ControlPlaneHttpError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "control plane returned {}: {}",
+            self.status, self.body
+        )
+    }
+}
+
+impl std::error::Error for ControlPlaneHttpError {}
+
+pub fn classify_failure(error: &anyhow::Error) -> ControlPlaneFailure {
+    if let Some(error) = error.downcast_ref::<ControlPlaneHttpError>() {
+        return classify_status(error.status);
+    }
+    if let Some(error) = error.downcast_ref::<reqwest::Error>() {
+        if error.is_timeout() || error.is_connect() {
+            return ControlPlaneFailure::Transient;
+        }
+    }
+    ControlPlaneFailure::Permanent
+}
+
+fn classify_status(status: StatusCode) -> ControlPlaneFailure {
+    if status == StatusCode::CONFLICT || status == StatusCode::GONE {
+        ControlPlaneFailure::LeaseLost
+    } else if status == StatusCode::REQUEST_TIMEOUT
+        || status == StatusCode::TOO_MANY_REQUESTS
+        || status.is_server_error()
+    {
+        ControlPlaneFailure::Transient
+    } else {
+        ControlPlaneFailure::Permanent
+    }
+}
 
 #[derive(Clone)]
 pub struct ControlPlaneClient {
@@ -50,21 +101,20 @@ impl ControlPlaneClient {
     }
 
     pub async fn register(&self, healthy: bool, capacity: u32) -> anyhow::Result<()> {
+        let capabilities = if healthy {
+            worker_capabilities()
+        } else {
+            Vec::new()
+        };
+        let toolchains = capabilities
+            .iter()
+            .filter(|value| value.starts_with("toolchain."))
+            .cloned()
+            .collect::<Vec<_>>();
         let payload = WorkerRegistration {
             worker_id: self.worker_id.clone(),
             runtime_version: env!("CARGO_PKG_VERSION").into(),
-            capabilities: if healthy {
-                vec![
-                    "invoke_opencode".into(),
-                    "git_worktree".into(),
-                    "test_execution".into(),
-                    "skill_author".into(),
-                    "web_search".into(),
-                    "web_extract".into(),
-                ]
-            } else {
-                vec![]
-            },
+            capabilities,
             job_types: if healthy {
                 vec!["engineering.opencode".into(), "agent.skill_author".into()]
             } else {
@@ -76,7 +126,12 @@ impl ControlPlaneClient {
             } else {
                 WorkerHealth::Unavailable
             },
-            metadata: serde_json::json!({"runtime":"rust","adapter":"opencode","cost_per_success":1.0}),
+            metadata: serde_json::json!({
+                "runtime":"rust",
+                "adapter":"opencode",
+                "cost_per_success":1.0,
+                "toolchains":toolchains
+            }),
         };
         let registration_key = format!("register:{}:{}", healthy, Utc::now().timestamp() / 30);
         let _: Value = self
@@ -94,14 +149,7 @@ impl ControlPlaneClient {
     pub async fn claim(&self, capacity: u32) -> anyhow::Result<Vec<WorkerJob>> {
         let payload = JobClaimRequest {
             worker_id: self.worker_id.clone(),
-            capabilities: vec![
-                "invoke_opencode".into(),
-                "git_worktree".into(),
-                "test_execution".into(),
-                "skill_author".into(),
-                "web_search".into(),
-                "web_extract".into(),
-            ],
+            capabilities: worker_capabilities(),
             job_types: vec!["engineering.opencode".into(), "agent.skill_author".into()],
             limit: capacity,
             lease_seconds: 60,
@@ -227,7 +275,11 @@ impl ControlPlaneClient {
         let status = response.status();
         let body: Value = response.json().await.unwrap_or_default();
         if !status.is_success() {
-            anyhow::bail!("control plane returned {status}: {body}");
+            return Err(ControlPlaneHttpError {
+                status,
+                body: sanitize(&body.to_string()),
+            }
+            .into());
         }
         let signed: SignedWorkerEnvelope<Value> = serde_json::from_value(body)?;
         verify_worker_envelope(&signed, &self.identities, Utc::now())?;
@@ -239,6 +291,54 @@ impl ControlPlaneClient {
         }
         Ok(serde_json::from_value(signed.payload)?)
     }
+}
+
+fn worker_capabilities() -> Vec<String> {
+    let mut capabilities = vec![
+        "invoke_opencode".into(),
+        "git_worktree".into(),
+        "test_execution".into(),
+        "skill_author".into(),
+        "web_search".into(),
+        "web_extract".into(),
+    ];
+    for (capability, commands) in [
+        ("toolchain.node", &["node", "pnpm"][..]),
+        ("toolchain.python", &["python"][..]),
+        ("toolchain.rust", &["cargo", "rustc"][..]),
+        ("toolchain.go", &["go"][..]),
+        ("toolchain.java", &["java", "javac"][..]),
+        ("toolchain.flutter", &["flutter"][..]),
+    ] {
+        if commands.iter().all(|command| command_available(command)) {
+            capabilities.push(capability.into());
+        }
+    }
+    if ["chromium", "chromium-browser", "google-chrome"]
+        .iter()
+        .any(|command| command_available(command))
+    {
+        capabilities.push("toolchain.browser".into());
+    }
+    capabilities
+}
+
+fn command_available(name: &str) -> bool {
+    let Some(path) = std::env::var_os("PATH") else {
+        return false;
+    };
+    std::env::split_paths(&path).any(|directory| {
+        #[cfg(windows)]
+        {
+            ["", ".exe", ".cmd", ".bat"]
+                .iter()
+                .any(|suffix| directory.join(format!("{name}{suffix}")).is_file())
+        }
+        #[cfg(not(windows))]
+        {
+            directory.join(name).is_file()
+        }
+    })
 }
 
 fn sanitize(message: &str) -> String {
@@ -254,4 +354,50 @@ fn sanitize(message: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reports_only_detected_toolchains() {
+        let capabilities = worker_capabilities();
+        assert!(capabilities.iter().any(|value| value == "invoke_opencode"));
+        for capability in capabilities
+            .iter()
+            .filter(|value| value.starts_with("toolchain."))
+        {
+            let known = [
+                "toolchain.node",
+                "toolchain.python",
+                "toolchain.rust",
+                "toolchain.go",
+                "toolchain.java",
+                "toolchain.flutter",
+                "toolchain.browser",
+            ];
+            assert!(known.contains(&capability.as_str()));
+        }
+    }
+
+    #[test]
+    fn classifies_retryable_transport_and_lease_failures() {
+        assert_eq!(
+            classify_status(StatusCode::SERVICE_UNAVAILABLE),
+            ControlPlaneFailure::Transient
+        );
+        assert_eq!(
+            classify_status(StatusCode::TOO_MANY_REQUESTS),
+            ControlPlaneFailure::Transient
+        );
+        assert_eq!(
+            classify_status(StatusCode::CONFLICT),
+            ControlPlaneFailure::LeaseLost
+        );
+        assert_eq!(
+            classify_status(StatusCode::UNPROCESSABLE_ENTITY),
+            ControlPlaneFailure::Permanent
+        );
+    }
 }

@@ -9,7 +9,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::Context;
@@ -22,7 +22,7 @@ use uuid::Uuid;
 
 use crate::{
     config::Config,
-    control_plane::ControlPlaneClient,
+    control_plane::{classify_failure, ControlPlaneClient, ControlPlaneFailure},
     model::{RunRecord, RunStatus, RunStore},
 };
 
@@ -118,81 +118,146 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
             Ok(value) => value,
             Err(_) => return,
         };
-        let direct_skill_author = job.job_type == "agent.skill_author";
-        state.runs.update(run_id, RunStatus::Running, "run.started", serde_json::json!({"job_id":job.job_id,"ticket_id":job.ticket_id,"adapter":if direct_skill_author { "skill_author" } else { "invoke_opencode" }})).await;
+        let adapter = if job.job_type == "agent.skill_author" {
+            "skill_author"
+        } else {
+            "invoke_opencode"
+        };
+        state.runs.update(run_id, RunStatus::Running, "run.started", serde_json::json!({"job_id":job.job_id,"ticket_id":job.ticket_id,"adapter":adapter})).await;
         let heartbeat_state = state.clone();
         let heartbeat_job = job.clone();
-        let heartbeat = tokio::spawn(async move {
-            let mut tick = interval(Duration::from_secs(20));
-            loop {
-                tick.tick().await;
-                if heartbeat_state
-                    .client
-                    .heartbeat(&heartbeat_job, run_id)
-                    .await
-                    .is_err()
-                {
-                    break;
-                }
-            }
+        let mut heartbeat = tokio::spawn(async move {
+            maintain_lease(&heartbeat_state.client, &heartbeat_job, run_id).await
         });
-        match runtime::execute(&job, run_id, &state.config, &state.runs).await {
-            Ok(result) if direct_skill_author => {
-                let value = serde_json::to_value(&result).unwrap_or_default();
-                state
-                    .runs
-                    .update(
-                        run_id,
-                        RunStatus::Completed,
-                        "run.completed",
-                        serde_json::json!({"evidence_validated_by":"OpenAgents.skill_author"}),
-                    )
-                    .await;
-                state
-                    .runs
-                    .terminal(run_id, RunStatus::Completed, Some(value), None)
-                    .await;
+        let execution = tokio::select! {
+            result = runtime::execute(&job, run_id, &state.config, &state.runs) => Some(result),
+            lease = &mut heartbeat => {
+                let reason = match lease {
+                    Ok(Err(error)) => error.to_string(),
+                    Ok(Ok(())) => "LEASE_HEARTBEAT_STOPPED".into(),
+                    Err(error) => format!("LEASE_HEARTBEAT_TASK_FAILED: {error}"),
+                };
+                terminal_failure(&state, run_id, reason).await;
+                None
             }
-            Ok(result) => match state.client.complete(&job, result.clone()).await {
-                Ok(_) => {
-                    let value = serde_json::to_value(&result).unwrap_or_default();
-                    state
-                        .runs
-                        .update(
+        };
+        if let Some(execution) = execution {
+            match execution {
+                Ok(result) => match complete_with_retry(&state.client, &job, &result).await {
+                    Ok(_) => {
+                        let value = serde_json::to_value(&result).unwrap_or_default();
+                        state
+                            .runs
+                            .update(
+                                run_id,
+                                RunStatus::Completed,
+                                "run.completed",
+                                serde_json::json!({"evidence_validated_by":"OpenOrchestrator"}),
+                            )
+                            .await;
+                        state
+                            .runs
+                            .terminal(run_id, RunStatus::Completed, Some(value), None)
+                            .await;
+                    }
+                    Err(error) => {
+                        terminal_failure(
+                            &state,
                             run_id,
-                            RunStatus::Completed,
-                            "run.completed",
-                            serde_json::json!({"evidence_validated_by":"OpenOrchestrator"}),
+                            format!("completion callback failed: {error}"),
                         )
-                        .await;
-                    state
-                        .runs
-                        .terminal(run_id, RunStatus::Completed, Some(value), None)
-                        .await;
-                }
+                        .await
+                    }
+                },
                 Err(error) => {
-                    terminal_failure(
-                        &state,
-                        run_id,
-                        format!("completion callback failed: {error}"),
-                    )
-                    .await
-                }
-            },
-            Err(error) => {
-                let reason = error.to_string();
-                if !state.runs.is_cancelled(run_id).await {
-                    let _ = state
-                        .client
-                        .fail(&job, run_id, &reason, job.attempt < job.max_attempts)
-                        .await;
-                    terminal_failure(&state, run_id, reason).await;
+                    let reason = error.to_string();
+                    if !state.runs.is_cancelled(run_id).await {
+                        let _ = state
+                            .client
+                            .fail(&job, run_id, &reason, job.attempt < job.max_attempts)
+                            .await;
+                        terminal_failure(&state, run_id, reason).await;
+                    }
                 }
             }
         }
         heartbeat.abort();
         drop(permit);
     });
+}
+
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(20);
+const LEASE_SAFETY_WINDOW: Duration = Duration::from_secs(50);
+const CONTROL_PLANE_RETRY_ATTEMPTS: usize = 4;
+
+async fn maintain_lease(
+    client: &ControlPlaneClient,
+    job: &WorkerJob,
+    run_id: Uuid,
+) -> anyhow::Result<()> {
+    let mut last_confirmed = Instant::now();
+    loop {
+        let mut attempt = 0usize;
+        loop {
+            let remaining = LEASE_SAFETY_WINDOW.saturating_sub(last_confirmed.elapsed());
+            if remaining.is_zero() {
+                anyhow::bail!("LEASE_HEARTBEAT_UNCONFIRMED: lease safety deadline expired");
+            }
+            let heartbeat = tokio::time::timeout(remaining, client.heartbeat(job, run_id)).await;
+            match heartbeat {
+                Err(_) => {
+                    anyhow::bail!(
+                        "LEASE_HEARTBEAT_UNCONFIRMED: heartbeat exceeded lease safety deadline"
+                    )
+                }
+                Ok(Ok(())) => {
+                    last_confirmed = Instant::now();
+                    break;
+                }
+                Ok(Err(error)) => match classify_failure(&error) {
+                    ControlPlaneFailure::LeaseLost => {
+                        anyhow::bail!("WORKER_LEASE_LOST: {error}")
+                    }
+                    ControlPlaneFailure::Permanent => {
+                        return Err(error.context("LEASE_HEARTBEAT_PERMANENT_FAILURE"));
+                    }
+                    ControlPlaneFailure::Transient => {
+                        let delay = retry_delay(attempt);
+                        if delay >= LEASE_SAFETY_WINDOW.saturating_sub(last_confirmed.elapsed()) {
+                            anyhow::bail!("LEASE_HEARTBEAT_UNCONFIRMED: {error}");
+                        }
+                        tokio::time::sleep(delay).await;
+                        attempt += 1;
+                    }
+                },
+            }
+        }
+        tokio::time::sleep(HEARTBEAT_INTERVAL).await;
+    }
+}
+
+async fn complete_with_retry(
+    client: &ControlPlaneClient,
+    job: &WorkerJob,
+    result: &contract_core::WorkerResult,
+) -> anyhow::Result<()> {
+    for attempt in 0..CONTROL_PLANE_RETRY_ATTEMPTS {
+        match client.complete(job, result.clone()).await {
+            Ok(()) => return Ok(()),
+            Err(error)
+                if classify_failure(&error) == ControlPlaneFailure::Transient
+                    && attempt + 1 < CONTROL_PLANE_RETRY_ATTEMPTS =>
+            {
+                tokio::time::sleep(retry_delay(attempt)).await;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    unreachable!("bounded completion attempts always return")
+}
+
+fn retry_delay(attempt: usize) -> Duration {
+    Duration::from_millis(250 * (1u64 << attempt.min(5)))
 }
 
 async fn terminal_failure(state: &AppState, run_id: Uuid, reason: String) {
