@@ -42,16 +42,23 @@ async fn health(State(state): State<AppState>) -> Response {
     };
     (
         status,
-        Json(json!({"ok":healthy,"runtime":"rust","worker_id":state.config.worker_id})),
+        Json(json!({
+            "ok":healthy,
+            "runtime":"rust",
+            "worker_id":state.config.worker_id,
+            "role":state.config.role.as_str()
+        })),
     )
         .into_response()
 }
 
 async fn capabilities(State(state): State<AppState>) -> Json<Value> {
     let healthy = state.healthy.load(std::sync::atomic::Ordering::Relaxed);
+    let coding = healthy && state.config.role == crate::config::WorkerRole::Coding;
+    let delivery = healthy && state.config.role == crate::config::WorkerRole::Delivery;
     Json(json!({
         "protocol":"openos.capabilities/v1","app":"OpenAgents","version":env!("CARGO_PKG_VERSION"),"runtime":"rust","object":"openagents.worker.capabilities",
-        "tools": if healthy { json!([
+        "tools": if coding { json!([
             {
                 "name":"openagents_invoke_opencode","description":"Run an approved engineering job in an isolated managed Git worktree and return real test and commit evidence.",
                 "input_schema":{"type":"object","required":["job"],"properties":{"job":{"type":"object"}},"additionalProperties":false},
@@ -63,9 +70,9 @@ async fn capabilities(State(state): State<AppState>) -> Json<Value> {
                 "mutates":false,"requires_confirmation":false,"operation":{"method":"GET","path":"/v1/runs/{run_id}"}
             }
         ]) } else { json!([]) },
-        "profiles": if healthy { json!({"catalog":["skill_author"],"available":["skill_author"]}) } else { json!({"catalog":["skill_author"],"available":[]}) },
-        "capabilities": if healthy { json!(["invoke_opencode","git_worktree","test_execution","skill_author","web_search","web_extract"]) } else { json!([]) },
-        "job_types": if healthy { json!(["engineering.opencode","agent.skill_author"]) } else { json!([]) },
+        "profiles": if coding { json!({"catalog":["skill_author"],"available":["skill_author"]}) } else { json!({"catalog":["skill_author"],"available":[]}) },
+        "capabilities": if coding { json!(["invoke_opencode","git_worktree","test_execution","skill_author","web_search","web_extract"]) } else if delivery { json!(["engineering.delivery","trusted_delivery"]) } else { json!([]) },
+        "job_types": if coding { json!(["engineering.opencode","agent.skill_author"]) } else if delivery { json!(["engineering.delivery"]) } else { json!([]) },
         "runs":{"start":"/v1/runs","status":"/v1/runs/{run_id}","events":"/v1/runs/{run_id}/events","stop":"/v1/runs/{run_id}/stop","approval":"/v1/runs/{run_id}/approval"}
     }))
 }
@@ -80,6 +87,9 @@ async fn start_run(
     }
     if !state.healthy.load(std::sync::atomic::Ordering::Relaxed) {
         return error(StatusCode::SERVICE_UNAVAILABLE, "RUNTIME_UNAVAILABLE");
+    }
+    if !state.config.role.permits(&body.job.job_type) {
+        return error(StatusCode::FORBIDDEN, "WORKER_ROLE_JOB_TYPE_MISMATCH");
     }
     if body.job.organization_id != state.config.organization_id {
         return error(StatusCode::FORBIDDEN, "ORG_SCOPE_MISMATCH");
@@ -249,6 +259,7 @@ fn error(status: StatusCode, message: &str) -> Response {
     (status, Json(json!({"error":message}))).into_response()
 }
 
+#[allow(clippy::result_large_err)]
 fn require_internal_service(state: &AppState, headers: &HeaderMap) -> Result<(), Response> {
     let supplied = headers
         .get("x-internal-service-key")

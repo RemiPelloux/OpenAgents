@@ -1,6 +1,7 @@
 mod api;
 mod config;
 mod control_plane;
+mod delivery;
 mod model;
 mod runtime;
 
@@ -46,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
     let identities = IdentityRegistry::load_dir(&config.identity_registry)?;
     let http = Client::builder().timeout(config.request_timeout).build()?;
     let client = ControlPlaneClient::new(http, &config, identities);
-    let healthy = Arc::new(AtomicBool::new(runtime::runtime_healthy(&config).await));
+    let healthy = Arc::new(AtomicBool::new(worker_healthy(&config).await));
     let state = AppState {
         config: config.clone(),
         client,
@@ -74,7 +75,7 @@ fn spawn_poller(state: AppState) {
         let mut registration_tick = 0u32;
         loop {
             tick.tick().await;
-            let healthy = runtime::runtime_healthy(&state.config).await;
+            let healthy = worker_healthy(&state.config).await;
             state.healthy.store(healthy, Ordering::Relaxed);
             if registration_tick == 0 {
                 if let Err(error) = state.client.register(healthy, state.config.capacity).await {
@@ -118,19 +119,28 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
             Ok(value) => value,
             Err(_) => return,
         };
-        let adapter = if job.job_type == "agent.skill_author" {
-            "skill_author"
-        } else {
-            "invoke_opencode"
+        let adapter = match job.job_type.as_str() {
+            "agent.skill_author" => "skill_author",
+            "engineering.delivery" => "trusted_delivery",
+            _ => "invoke_opencode",
         };
         state.runs.update(run_id, RunStatus::Running, "run.started", serde_json::json!({"job_id":job.job_id,"ticket_id":job.ticket_id,"adapter":adapter})).await;
         let heartbeat_state = state.clone();
         let heartbeat_job = job.clone();
+        let settlement_started = Arc::new(AtomicBool::new(false));
+        let heartbeat_settlement = settlement_started.clone();
         let mut heartbeat = tokio::spawn(async move {
-            maintain_lease(&heartbeat_state.client, &heartbeat_job, run_id).await
+            maintain_lease(
+                &heartbeat_state.client,
+                &heartbeat_job,
+                run_id,
+                &heartbeat_settlement,
+            )
+            .await
         });
         let execution = tokio::select! {
-            result = runtime::execute(&job, run_id, &state.config, &state.runs) => Some(result),
+            biased;
+            result = execute_job(&state, &job, run_id, settlement_started) => Some(result),
             lease = &mut heartbeat => {
                 let reason = match lease {
                     Ok(Err(error)) => error.to_string(),
@@ -143,7 +153,7 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
         };
         if let Some(execution) = execution {
             match execution {
-                Ok(result) => match complete_with_retry(&state.client, &job, &result).await {
+                Ok(result) => match complete_job(&state.client, &job, &result).await {
                     Ok(_) => {
                         let value = serde_json::to_value(&result).unwrap_or_default();
                         state
@@ -186,6 +196,50 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
     });
 }
 
+async fn execute_job(
+    state: &AppState,
+    job: &WorkerJob,
+    run_id: Uuid,
+    settlement_started: Arc<AtomicBool>,
+) -> anyhow::Result<contract_core::WorkerResult> {
+    if !state.config.role.permits(&job.job_type) {
+        anyhow::bail!("WORKER_ROLE_JOB_TYPE_MISMATCH");
+    }
+    if job.job_type == "engineering.delivery" {
+        delivery::execute(
+            job,
+            run_id,
+            &state.config,
+            &state.client,
+            &state.runs,
+            settlement_started,
+        )
+        .await
+    } else {
+        runtime::execute(job, run_id, &state.config, &state.runs).await
+    }
+}
+
+async fn worker_healthy(config: &Config) -> bool {
+    match config.role {
+        config::WorkerRole::Coding => runtime::runtime_healthy(config).await,
+        config::WorkerRole::Delivery => delivery::runtime_healthy(config).await,
+    }
+}
+
+async fn complete_job(
+    client: &ControlPlaneClient,
+    job: &WorkerJob,
+    result: &contract_core::WorkerResult,
+) -> anyhow::Result<()> {
+    if job.job_type == "engineering.delivery" {
+        // The signed provider callback atomically settles this dependent job.
+        Ok(())
+    } else {
+        complete_with_retry(client, job, result).await
+    }
+}
+
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(20);
 const LEASE_SAFETY_WINDOW: Duration = Duration::from_secs(50);
 const CONTROL_PLANE_RETRY_ATTEMPTS: usize = 4;
@@ -194,6 +248,7 @@ async fn maintain_lease(
     client: &ControlPlaneClient,
     job: &WorkerJob,
     run_id: Uuid,
+    settlement_started: &AtomicBool,
 ) -> anyhow::Result<()> {
     let mut last_confirmed = Instant::now();
     loop {
@@ -201,6 +256,10 @@ async fn maintain_lease(
         loop {
             let remaining = LEASE_SAFETY_WINDOW.saturating_sub(last_confirmed.elapsed());
             if remaining.is_zero() {
+                if settlement_started.load(Ordering::Acquire) {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    continue;
+                }
                 anyhow::bail!("LEASE_HEARTBEAT_UNCONFIRMED: lease safety deadline expired");
             }
             let heartbeat = tokio::time::timeout(remaining, client.heartbeat(job, run_id)).await;
@@ -216,6 +275,10 @@ async fn maintain_lease(
                 }
                 Ok(Err(error)) => match classify_failure(&error) {
                     ControlPlaneFailure::LeaseLost => {
+                        if settlement_started.load(Ordering::Acquire) {
+                            tokio::time::sleep(Duration::from_millis(100)).await;
+                            continue;
+                        }
                         anyhow::bail!("WORKER_LEASE_LOST: {error}")
                     }
                     ControlPlaneFailure::Permanent => {

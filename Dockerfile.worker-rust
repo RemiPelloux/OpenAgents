@@ -25,22 +25,24 @@ WORKDIR /src/OpenAgents
 RUN --mount=type=cache,id=openagents-rust-cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=openagents-rust-cargo-target,target=/src/OpenAgents/target \
     cargo build --locked --release -p openagents-worker && \
-    cp target/release/openagents-worker /tmp/openagents-worker
+    cp target/release/openagents-worker /tmp/openagents-worker && \
+    cp target/release/openagents-sandbox /tmp/openagents-sandbox
 
 FROM alpine:3.24
 ENV SHELL=/bin/bash
 RUN apk upgrade --no-cache \
-    && apk add --no-cache bash ca-certificates curl git github-cli gnupg nodejs npm openssh-client python3 \
+    && apk add --no-cache aws-cli bash ca-certificates curl git gnupg nodejs npm openssh-client python3 ripgrep \
     && npm install --global pnpm@9.15.0 \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && addgroup -S -g 10000 openagents \
     && adduser -S -D -u 10000 -G openagents -h /home/openagents openagents
 COPY --from=worker-builder /tmp/openagents-worker /usr/local/bin/openagents-worker
+COPY --from=worker-builder /tmp/openagents-sandbox /usr/local/bin/openagents-sandbox
 COPY --from=opencode-builder /tmp/opencode /usr/local/bin/opencode
 COPY --from=opencontract registry /etc/opencontract/registry
 COPY skills /opt/openagents/skills
-RUN mkdir -p /repositories /worktrees \
-    && chown -R openagents:openagents /repositories /worktrees /opt/openagents/skills
+RUN mkdir -p /repositories /worktrees /run/openos/connectors \
+    && chown -R openagents:openagents /repositories /worktrees /run/openos/connectors /opt/openagents/skills
 USER openagents
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/openagents-worker"]

@@ -10,7 +10,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::config::Config;
+use crate::config::{Config, WorkerRole};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ControlPlaneFailure {
@@ -68,7 +68,9 @@ pub struct ControlPlaneClient {
     base_url: String,
     organization_id: Uuid,
     worker_id: String,
+    role: WorkerRole,
     signing_key: String,
+    internal_service_key: String,
     identities: IdentityRegistry,
 }
 
@@ -79,7 +81,9 @@ impl ControlPlaneClient {
             base_url: config.orchestrator_url.clone(),
             organization_id: config.organization_id,
             worker_id: config.worker_id.clone(),
+            role: config.role,
             signing_key: config.signing_key.clone(),
+            internal_service_key: config.internal_service_key.clone(),
             identities,
         }
     }
@@ -102,7 +106,7 @@ impl ControlPlaneClient {
 
     pub async fn register(&self, healthy: bool, capacity: u32) -> anyhow::Result<()> {
         let capabilities = if healthy {
-            worker_capabilities()
+            worker_capabilities(self.role)
         } else {
             Vec::new()
         };
@@ -115,11 +119,7 @@ impl ControlPlaneClient {
             worker_id: self.worker_id.clone(),
             runtime_version: env!("CARGO_PKG_VERSION").into(),
             capabilities,
-            job_types: if healthy {
-                vec!["engineering.opencode".into(), "agent.skill_author".into()]
-            } else {
-                vec![]
-            },
+            job_types: healthy_job_types(self.role, healthy),
             capacity,
             health: if healthy {
                 WorkerHealth::Healthy
@@ -128,7 +128,8 @@ impl ControlPlaneClient {
             },
             metadata: serde_json::json!({
                 "runtime":"rust",
-                "adapter":"opencode",
+                "role":self.role.as_str(),
+                "adapters":role_adapters(self.role),
                 "cost_per_success":1.0,
                 "toolchains":toolchains
             }),
@@ -149,8 +150,8 @@ impl ControlPlaneClient {
     pub async fn claim(&self, capacity: u32) -> anyhow::Result<Vec<WorkerJob>> {
         let payload = JobClaimRequest {
             worker_id: self.worker_id.clone(),
-            capabilities: worker_capabilities(),
-            job_types: vec!["engineering.opencode".into(), "agent.skill_author".into()],
+            capabilities: worker_capabilities(self.role),
+            job_types: healthy_job_types(self.role, true),
             limit: capacity,
             lease_seconds: 60,
         };
@@ -243,6 +244,87 @@ impl ControlPlaneClient {
         Ok(())
     }
 
+    pub fn worker_id(&self) -> &str {
+        &self.worker_id
+    }
+
+    pub async fn provider_callback(
+        &self,
+        path: &str,
+        correlation_id: Uuid,
+        idempotency_key: &str,
+        expires_at: chrono::DateTime<Utc>,
+        payload: Value,
+    ) -> anyhow::Result<()> {
+        let mut envelope = SignedWorkerEnvelope::new(
+            WorkerMessageKind::Complete,
+            self.organization_id,
+            correlation_id,
+            idempotency_key,
+            "OpenAgents",
+            "OpenOrchestrator",
+            expires_at,
+            payload,
+        );
+        sign_worker_envelope(&mut envelope, "OpenAgents", &self.signing_key)?;
+        let response = self
+            .http
+            .post(format!("{}{}", self.base_url, path))
+            .header("x-internal-service-key", &self.internal_service_key)
+            .header("x-organization-id", self.organization_id.to_string())
+            .json(&envelope)
+            .send()
+            .await?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ControlPlaneHttpError {
+                status,
+                body: sanitize(&body),
+            }
+            .into());
+        }
+        Ok(())
+    }
+
+    pub async fn confirm_provider_callback(
+        &self,
+        delivery_id: Uuid,
+        correlation_id: Uuid,
+        idempotency_key: &str,
+        expected_payload: &Value,
+    ) -> anyhow::Result<bool> {
+        let response = self
+            .http
+            .get(format!("{}/v1/deliveries/{delivery_id}", self.base_url))
+            .header("x-internal-service-key", &self.internal_service_key)
+            .header("x-organization-id", self.organization_id.to_string())
+            .send()
+            .await?;
+        if !response.status().is_success() {
+            return Ok(false);
+        }
+        let response: Value = response.json().await?;
+        let Some(delivery) = response.get("delivery") else {
+            return Ok(false);
+        };
+        if delivery.get("status").and_then(Value::as_str) != Some("pr_open") {
+            return Ok(false);
+        }
+        let Some(value) = delivery.get("provider_result").cloned() else {
+            return Ok(false);
+        };
+        let recorded: SignedWorkerEnvelope<Value> = serde_json::from_value(value)?;
+        verify_worker_envelope(&recorded, &self.identities, Utc::now())?;
+        Ok(recorded.kind == WorkerMessageKind::Complete
+            && recorded.organization_id == self.organization_id
+            && recorded.correlation_id == correlation_id
+            && recorded.idempotency_key == idempotency_key
+            && recorded.producer == "OpenAgents"
+            && recorded.consumer == "OpenOrchestrator"
+            && recorded.payload == *expected_payload)
+    }
+
     async fn send<T, R>(
         &self,
         path: &str,
@@ -293,7 +375,10 @@ impl ControlPlaneClient {
     }
 }
 
-fn worker_capabilities() -> Vec<String> {
+fn worker_capabilities(role: WorkerRole) -> Vec<String> {
+    if role == WorkerRole::Delivery {
+        return vec!["engineering.delivery".into(), "trusted_delivery".into()];
+    }
     let mut capabilities = vec![
         "invoke_opencode".into(),
         "git_worktree".into(),
@@ -321,6 +406,23 @@ fn worker_capabilities() -> Vec<String> {
         capabilities.push("toolchain.browser".into());
     }
     capabilities
+}
+
+fn healthy_job_types(role: WorkerRole, healthy: bool) -> Vec<String> {
+    if !healthy {
+        return Vec::new();
+    }
+    role.job_types()
+        .iter()
+        .map(|value| (*value).into())
+        .collect()
+}
+
+fn role_adapters(role: WorkerRole) -> &'static [&'static str] {
+    match role {
+        WorkerRole::Coding => &["opencode", "skill_author"],
+        WorkerRole::Delivery => &["trusted_delivery"],
+    }
 }
 
 fn command_available(name: &str) -> bool {
@@ -362,8 +464,11 @@ mod tests {
 
     #[test]
     fn reports_only_detected_toolchains() {
-        let capabilities = worker_capabilities();
+        let capabilities = worker_capabilities(WorkerRole::Coding);
         assert!(capabilities.iter().any(|value| value == "invoke_opencode"));
+        assert!(!capabilities
+            .iter()
+            .any(|value| value == "engineering.delivery"));
         for capability in capabilities
             .iter()
             .filter(|value| value.starts_with("toolchain."))
@@ -379,6 +484,14 @@ mod tests {
             ];
             assert!(known.contains(&capability.as_str()));
         }
+        assert_eq!(
+            worker_capabilities(WorkerRole::Delivery),
+            vec!["engineering.delivery", "trusted_delivery"]
+        );
+        assert_eq!(
+            healthy_job_types(WorkerRole::Delivery, true),
+            vec!["engineering.delivery"]
+        );
     }
 
     #[test]
