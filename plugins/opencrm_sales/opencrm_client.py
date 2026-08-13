@@ -20,8 +20,16 @@ def _api_url() -> str:
     return os.environ.get("OPENCRM_API_URL", "http://localhost:3010").rstrip("/")
 
 
-def _headers(correlation_id: Optional[str] = None) -> Dict[str, str]:
+def _headers(
+    correlation_id: Optional[str] = None,
+    *,
+    include_webhook_secret: bool = False,
+) -> Dict[str, str]:
     headers = {"Content-Type": "application/json"}
+    if include_webhook_secret:
+        webhook_secret = os.environ.get("OPENTEAM_WEBHOOK_SECRET", "").strip()
+        if webhook_secret:
+            headers["X-Webhook-Secret"] = webhook_secret
     corr = correlation_id or os.environ.get("OPENCRM_CORRELATION_ID", "").strip()
     if corr:
         headers["X-Correlation-Id"] = corr
@@ -44,7 +52,10 @@ def _request(
     url = f"{_api_url()}{path}"
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method)
-    for key, value in _headers(correlation_id).items():
+    for key, value in _headers(
+        correlation_id,
+        include_webhook_secret=path.startswith("/v1/webhooks/openteam/"),
+    ).items():
         if body is None and key == "Content-Type":
             continue
         req.add_header(key, value)

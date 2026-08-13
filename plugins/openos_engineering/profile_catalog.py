@@ -1,4 +1,4 @@
-"""Canonical OpenOS agent profile catalog — 16 domain roles."""
+"""Canonical OpenOS agent profile catalog — 17 domain roles."""
 
 from __future__ import annotations
 
@@ -168,6 +168,15 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
         "mcp_servers": ["openorchestrator"],
         "soul": (
             "You author org-scoped skills only after an approved gap. Research with real web_search and web_extract tools, cite at least two independent authoritative HTTPS sources, return the requested strict JSON, and never modify bundled OpenOS skills or claim activation."
+        ),
+    },
+    "tiktok_prospector": {
+        "description": "TikTok prospector \u2014 OpenTeam harvest to OpenCRM",
+        "toolsets": ["openpro_prospection"],
+        "skills": ["openpro-tiktok-prospection", "open-ecosystem-hub"],
+        "mcp_servers": [],
+        "soul": (
+            "Process OpenTeam TikTok leads into OpenCRM. Never recreate duplicate companies. Always call upsert_crm_from_lead for accepted leads and report_prospection_status after every lead. Do not send outreach unless the request explicitly authorizes it."
         ),
     },
 }

@@ -23,23 +23,28 @@ from plugins.openpro_prospection.tools import (
 )
 
 
+def _always_available() -> bool:
+    return True
+
+
 def register(ctx) -> None:
     tools = [
-        (CHECK_DUPLICATE_SCHEMA, handle_check_company_duplicate, "🔍"),
-        (ENRICH_SCHEMA, handle_enrich_tiktok_lead, "🧩"),
-        (UPSERT_CRM_SCHEMA, handle_upsert_crm_from_lead, "🗂️"),
+        (CHECK_DUPLICATE_SCHEMA, handle_check_company_duplicate, "🔍", check_openpro_prospection_available),
+        (ENRICH_SCHEMA, handle_enrich_tiktok_lead, "🧩", _always_available),
+        (UPSERT_CRM_SCHEMA, handle_upsert_crm_from_lead, "🗂️", _always_available),
         (PROVISION_SCHEMA, handle_provision_openpro_company, "🏢"),
         (CREATE_JOB_SCHEMA, handle_create_job_post_with_media, "📋"),
         (EMAIL_SCHEMA, handle_send_prospect_email, "✉️"),
         (DM_SCHEMA, handle_send_tiktok_dm, "💬"),
-        (STATUS_SCHEMA, handle_report_prospection_status, "📌"),
+        (STATUS_SCHEMA, handle_report_prospection_status, "📌", _always_available),
     ]
-    for schema, handler, emoji in tools:
+    for item in tools:
+        schema, handler, emoji, *check = item
         ctx.register_tool(
             name=schema["name"],
             toolset="openpro_prospection",
             schema=schema,
             handler=handler,
-            check_fn=check_openpro_prospection_available,
+            check_fn=check[0] if check else check_openpro_prospection_available,
             emoji=emoji,
         )

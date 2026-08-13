@@ -22,6 +22,34 @@ def test_plugin_registers_tools():
     assert "report_prospection_status" in registered
 
 
+def test_crm_and_status_tools_do_not_require_openpro_key():
+    import plugins.openpro_prospection as plugin
+
+    registered = {}
+
+    class Ctx:
+        def register_tool(self, **kwargs):
+            registered[kwargs["name"]] = kwargs
+
+    plugin.register(Ctx())
+    with patch.dict(os.environ, {}, clear=True):
+        assert registered["upsert_crm_from_lead"]["check_fn"]() is True
+        assert registered["report_prospection_status"]["check_fn"]() is True
+        assert registered["provision_openpro_company"]["check_fn"]() is False
+
+
+def test_opencrm_client_adds_webhook_secret():
+    from plugins.opencrm_sales.opencrm_client import _headers
+
+    with patch.dict(os.environ, {"OPENTEAM_WEBHOOK_SECRET": "test-secret"}, clear=True):
+        headers = _headers("corr-1", include_webhook_secret=True)
+    assert headers["X-Webhook-Secret"] == "test-secret"
+    assert headers["X-Correlation-Id"] == "corr-1"
+
+    regular_headers = _headers("corr-1")
+    assert "X-Webhook-Secret" not in regular_headers
+
+
 def test_enrich_tiktok_lead_extracts_email():
     from plugins.openpro_prospection.tools import handle_enrich_tiktok_lead
 
