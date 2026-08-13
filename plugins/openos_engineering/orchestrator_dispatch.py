@@ -7,10 +7,14 @@ import json
 import os
 from typing import Any, Dict, Mapping, MutableMapping
 
-DISPATCH_RUN_CONTRACT = "CC-ORCH-004"
+DISPATCH_RUN_CONTRACTS: Dict[str, tuple[str, str]] = {
+    "CC-ORCH-004": ("OpenOrchestrator", "OpenAgents"),
+    "CC-OT-001": ("OpenTeam", "OpenAgents"),
+}
 
 MESH_IDENTITIES: Dict[str, str] = {
     "OpenOrchestrator": "2gcbZ39WzoPCS3Jrh1QHSo3YCYCmIoyESHINVI+0toE=",
+    "OpenTeam": "FsrWcHmOoewkBeVhVTcj7RTe2KwiSo6k5MIzIKGbJcs=",
 }
 
 
@@ -103,8 +107,16 @@ def unwrap_orchestrator_run_body(body: Dict[str, Any]) -> Dict[str, Any]:
         return body
 
     contract_id = body.get("contract_id")
-    if contract_id != DISPATCH_RUN_CONTRACT:
-        raise ValueError(f"expected contract {DISPATCH_RUN_CONTRACT}, got {contract_id}")
+    parties = DISPATCH_RUN_CONTRACTS.get(str(contract_id))
+    if parties is None:
+        expected = ", ".join(sorted(DISPATCH_RUN_CONTRACTS))
+        raise ValueError(f"expected one of {expected}, got {contract_id}")
+
+    expected_producer, expected_consumer = parties
+    if _normalize_party_identity(str(body.get("producer", ""))) != expected_producer:
+        raise ValueError(f"expected producer {expected_producer}")
+    if _normalize_party_identity(str(body.get("consumer", ""))) != expected_consumer:
+        raise ValueError(f"expected consumer {expected_consumer}")
 
     _verify_envelope_signature(body)
 

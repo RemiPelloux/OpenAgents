@@ -392,9 +392,19 @@ def test_unwrap_orchestrator_run_envelope(monkeypatch):
 
     wrapped = {
         "contract_id": "CC-ORCH-004",
+        "producer": "OpenOrchestrator",
+        "consumer": "OpenAgents",
         "payload": {"agent_profile": "developer", "input": "hello", "task_context": {}},
     }
     assert unwrap_orchestrator_run_body(wrapped)["agent_profile"] == "developer"
+
+    openteam = {
+        "contract_id": "CC-OT-001",
+        "producer": "OpenTeam",
+        "consumer": "OpenAgents",
+        "payload": {"agent_profile": "tiktok_prospector", "input": "hello"},
+    }
+    assert unwrap_orchestrator_run_body(openteam)["agent_profile"] == "tiktok_prospector"
 
 
 def test_unwrap_orchestrator_requires_envelope_when_strict(monkeypatch):
@@ -439,3 +449,17 @@ def test_unwrap_orchestrator_verifies_unicode_signature(monkeypatch):
 
     monkeypatch.delenv("OPENCONTRACT_DEV_KEYS", raising=False)
     assert unwrap_orchestrator_run_body(envelope)["input"] == "Implement — résumé"
+
+
+def test_unwrap_dispatch_rejects_wrong_contract_parties(monkeypatch):
+    from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
+
+    monkeypatch.setenv("OPENCONTRACT_REQUIRE_SIGNATURE", "0")
+    envelope = {
+        "contract_id": "CC-OT-001",
+        "producer": "OpenOrchestrator",
+        "consumer": "OpenAgents",
+        "payload": {"input": "hello"},
+    }
+    with pytest.raises(ValueError, match="expected producer OpenTeam"):
+        unwrap_orchestrator_run_body(envelope)
