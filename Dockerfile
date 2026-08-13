@@ -4,6 +4,7 @@ COPY --from=opencode . .
 COPY --from=opencontract packages/envelope /src/OpenContract/packages/envelope
 RUN bun install --frozen-lockfile && \
     ln -s /src/OpenCode/node_modules /src/OpenContract/node_modules && \
+    /src/OpenCode/node_modules/.bin/tsc -p /src/OpenContract/packages/envelope/tsconfig.json && \
     version="$(bun -e 'const p = require("./package.json"); console.log(p.version)')" && \
     bun build main.tsx --outfile /tmp/opencode --compile \
       --define "process.env.NODE_ENV='production'" \

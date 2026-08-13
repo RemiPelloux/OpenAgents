@@ -34,6 +34,7 @@ def test_crm_and_status_tools_do_not_require_openpro_key():
     plugin.register(Ctx())
     with patch.dict(os.environ, {}, clear=True):
         assert registered["upsert_crm_from_lead"]["check_fn"]() is True
+        assert registered["check_company_duplicate"]["check_fn"]() is True
         assert registered["report_prospection_status"]["check_fn"]() is True
         assert registered["provision_openpro_company"]["check_fn"]() is False
 
@@ -67,13 +68,55 @@ def test_enrich_tiktok_lead_extracts_email():
 def test_check_duplicate_calls_openpro():
     from plugins.openpro_prospection.tools import handle_check_company_duplicate
 
-    with patch(
-        "plugins.openpro_prospection.tools.check_company_duplicate",
-        return_value={"duplicate": False, "matches": []},
-    ) as mock:
+    with (
+        patch.dict(os.environ, {"OPENPRO_AGENT_API_KEY": "test-key"}, clear=True),
+        patch(
+            "plugins.openpro_prospection.tools.check_company_duplicate",
+            return_value={"duplicate": False, "matches": []},
+        ) as mock,
+        patch(
+            "plugins.openpro_prospection.tools.check_crm_account_duplicate",
+            return_value={"duplicate": False, "matches": []},
+        ),
+    ):
         out = handle_check_company_duplicate({"company_name": "Cafe Paris", "city": "Paris"})
-        mock.assert_called_once()
-        assert json.loads(out)["duplicate"] is False
+    mock.assert_called_once()
+    assert json.loads(out)["duplicate"] is False
+
+
+def test_check_duplicate_uses_crm_without_openpro_key():
+    from plugins.openpro_prospection.tools import handle_check_company_duplicate
+
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        patch("plugins.openpro_prospection.tools.check_company_duplicate") as openpro_mock,
+        patch(
+            "plugins.openpro_prospection.tools.check_crm_account_duplicate",
+            return_value={"duplicate": True, "matches": [{"id": "account-1"}]},
+        ),
+    ):
+        result = json.loads(
+            handle_check_company_duplicate({"company_name": "Cafe Paris", "city": "Paris"})
+        )
+
+    openpro_mock.assert_not_called()
+    assert result["duplicate"] is True
+    assert result["available"] is False
+    assert result["opencrm"]["matches"][0]["id"] == "account-1"
+
+
+def test_status_schema_supports_crm_only_success():
+    from plugins.openpro_prospection.tools import STATUS_SCHEMA
+
+    statuses = STATUS_SCHEMA["parameters"]["properties"]["status"]["enum"]
+    assert "crm_created" in statuses
+
+
+def test_tiktok_profile_has_only_prospection_tools():
+    from plugins.openpro_prospection.profiles import PROFILE_SPEC
+
+    assert PROFILE_SPEC["toolsets"] == ["openpro_prospection"]
+    assert "explicitly authorizes" in PROFILE_SPEC["soul"]
 
 
 def test_upsert_crm_from_lead_requires_fields():

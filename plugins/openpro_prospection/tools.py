@@ -37,8 +37,17 @@ def handle_check_company_duplicate(args: Dict[str, Any]) -> str:
     city = str(args.get("city") or "France").strip()
     if not name:
         return "Error: company_name is required"
-    result = check_company_duplicate(name, city, _corr(args))
     crm_result = check_crm_account_duplicate(name, city)
+    if check_openpro_prospection_available():
+        result = check_company_duplicate(name, city, _corr(args))
+        result["available"] = True
+    else:
+        result = {
+            "duplicate": False,
+            "matches": [],
+            "available": False,
+            "reason": "openpro_not_configured",
+        }
     result["opencrm"] = crm_result
     if crm_result.get("duplicate"):
         result["duplicate"] = True
@@ -158,7 +167,10 @@ def handle_enrich_tiktok_lead(args: Dict[str, Any]) -> str:
 
 CHECK_DUPLICATE_SCHEMA: Dict[str, Any] = {
     "name": "check_company_duplicate",
-    "description": "Check if an OpenPro company already exists (name + city).",
+    "description": (
+        "Check OpenCRM for a duplicate company and also check OpenPro when its "
+        "credential is configured."
+    ),
     "parameters": {
         "type": "object",
         "properties": {
@@ -249,6 +261,7 @@ STATUS_SCHEMA: Dict[str, Any] = {
                 "type": "string",
                 "enum": [
                     "processing",
+                    "crm_created",
                     "provisioned",
                     "skipped_duplicate",
                     "skipped_no_email",
