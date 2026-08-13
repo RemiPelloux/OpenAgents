@@ -6,7 +6,7 @@ import json
 import os
 from typing import Any, Dict
 
-from plugins.openpro_prospection.enrichment import build_company_brief, extract_email_from_lead
+from plugins.openpro_prospection.enrichment import analyze_tiktok_lead, filter_tiktok_leads
 from plugins.openpro_prospection.openpro_client import (
     check_company_duplicate,
     create_job_post,
@@ -152,17 +152,14 @@ def handle_enrich_tiktok_lead(args: Dict[str, Any], **_: Any) -> str:
     lead = args.get("lead")
     if not isinstance(lead, dict):
         return "Error: lead object is required"
-    email = extract_email_from_lead(lead)
-    brief = build_company_brief(lead, email)
-    enriched = {
-        "email": email,
-        "brief": brief,
-        "account": lead.get("account"),
-        "video_url": lead.get("video_url"),
-        "profile_url": lead.get("profile_url"),
-        "description": lead.get("description"),
-    }
-    return json.dumps(enriched, ensure_ascii=False)
+    return json.dumps(analyze_tiktok_lead(lead), ensure_ascii=False)
+
+
+def handle_filter_tiktok_leads(args: Dict[str, Any], **_: Any) -> str:
+    leads = args.get("leads")
+    if not isinstance(leads, list):
+        return "Error: leads array is required"
+    return json.dumps(filter_tiktok_leads(leads), ensure_ascii=False)
 
 
 CHECK_DUPLICATE_SCHEMA: Dict[str, Any] = {
@@ -265,6 +262,7 @@ STATUS_SCHEMA: Dict[str, Any] = {
                     "provisioned",
                     "skipped_duplicate",
                     "skipped_no_email",
+                    "skipped_unqualified",
                     "failed",
                 ],
             },
@@ -282,11 +280,34 @@ STATUS_SCHEMA: Dict[str, Any] = {
 
 ENRICH_SCHEMA: Dict[str, Any] = {
     "name": "enrich_tiktok_lead",
-    "description": "Extract email and build OpenPro provision brief from TikTok lead.",
+    "description": (
+        "Normalize one source-backed TikTok lead and return company/contact/location evidence, "
+        "hiring signals, qualification score, safety flags, and stable rejection reasons."
+    ),
     "parameters": {
         "type": "object",
         "properties": {"lead": {"type": "object"}},
         "required": ["lead"],
+    },
+}
+
+FILTER_LEADS_SCHEMA: Dict[str, Any] = {
+    "name": "filter_tiktok_leads",
+    "description": (
+        "Preflight a bounded TikTok harvest: normalize and deduplicate video URLs, extract "
+        "source-backed company/contact evidence, score hiring relevance, and separate candidates "
+        "from rejected rows for model review before any CRM mutation."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "leads": {
+                "type": "array",
+                "items": {"type": "object"},
+                "maxItems": 100,
+            }
+        },
+        "required": ["leads"],
     },
 }
 

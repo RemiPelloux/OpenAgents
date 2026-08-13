@@ -25,6 +25,16 @@ A qualified CRM lead has all of the following:
 - no duplicate returned by OpenCRM or OpenPro;
 - a source-provided contact email.
 
+Run `filter_tiktok_leads` before per-lead processing. Its `preflight_pass` means the
+minimum deterministic evidence exists; it does not replace model review. The model must
+resolve evidence conflicts and confirm the post is a current hiring signal. A company
+candidate derived only from a normalized handle has confidence `0.65` and needs at least
+one corroborating source: business/profile display name, source email domain, source
+profile website, bio, or caption.
+
+The quality score is auditable triage, not a popularity rank. Follower and play counts
+are context only and never make an otherwise unqualified lead eligible.
+
 Do not reject a lead for writing quality, follower count, company size, or an unfamiliar
 industry. Do not infer protected or sensitive characteristics.
 
@@ -36,6 +46,7 @@ industry. Do not infer protected or sensitive characteristics.
 | `provisioned` | CRM upsert, OpenPro recruiter provisioning, and job creation all returned success. |
 | `skipped_duplicate` | OpenCRM or OpenPro confirms the company/source already exists. |
 | `skipped_no_email` | Identity is usable but no source-provided email is available. |
+| `skipped_unqualified` | Preflight/model review rejects the row before CRM mutation because URL, hiring intent, or company identity is not sufficiently evidenced. |
 | `failed` | Validation, identity, authorization-dependent completion, tool, or callback processing failed. Include a sanitized error code/message. |
 
 `processing` is transitional and must never be the final result.
@@ -50,6 +61,9 @@ Prefer stable codes with a brief message:
 - `invalid_lead`
 - `missing_video_url`
 - `identity_unresolved`
+- `hiring_need_unconfirmed`
+- `company_evidence_conflict`
+- `invalid_or_missing_tiktok_video_url`
 - `crm_unavailable`
 - `crm_upsert_failed`
 - `outreach_not_authorized`
@@ -78,6 +92,7 @@ Return one JSON-compatible object:
     "provisioned": 0,
     "skipped_duplicate": 1,
     "skipped_no_email": 0,
+    "skipped_unqualified": 0,
     "failed": 1
   },
   "outcomes": [

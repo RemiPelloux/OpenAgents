@@ -1,4 +1,4 @@
 interface:
   display_name: "TikTok Prospector"
-  short_description: "Qualify TikTok leads and create CRM prospects"
-  default_prompt: "Use $openpro-tiktok-prospection to process this OpenTeam TikTok harvest into deduplicated CRM outcomes."
+  short_description: "Filter and enrich TikTok leads for CRM"
+  default_prompt: "Use $openpro-tiktok-prospection to filter, enrich, verify, and process this OpenTeam TikTok harvest into deduplicated CRM outcomes."

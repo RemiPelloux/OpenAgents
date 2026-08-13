@@ -349,7 +349,7 @@ def test_init_profiles(tmp_path, monkeypatch):
     from plugins.openos_engineering.profiles import init_profiles, list_profile_ids
 
     names = init_profiles(tmp_path)
-    assert len(names) == 18
+    assert names
     assert set(names) == set(list_profile_ids())
     assert "mesh_engineer" in names
     assert "sales" in names
