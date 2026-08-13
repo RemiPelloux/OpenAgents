@@ -3,3 +3,4 @@
 plugins:
   enabled:
     - openos-engineering
+    - openpro-prospection

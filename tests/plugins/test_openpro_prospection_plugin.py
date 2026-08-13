@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from unittest.mock import patch
+
+import yaml
 
 
 def test_plugin_registers_tools():
@@ -117,6 +120,12 @@ def test_tiktok_profile_has_only_prospection_tools():
 
     assert PROFILE_SPEC["toolsets"] == ["openpro_prospection"]
     assert "explicitly authorizes" in PROFILE_SPEC["soul"]
+
+
+def test_managed_gateway_enables_prospection_plugin():
+    config_path = Path(__file__).parents[2] / "docker" / "managed" / "config.yaml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert "openpro-prospection" in config["plugins"]["enabled"]
 
 
 def test_upsert_crm_from_lead_requires_fields():
