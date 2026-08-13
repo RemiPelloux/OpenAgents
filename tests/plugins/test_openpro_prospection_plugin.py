@@ -10,6 +10,14 @@ from unittest.mock import patch
 import yaml
 
 
+class RegistryPluginContext:
+    def __init__(self, registry):
+        self.registry = registry
+
+    def register_tool(self, **kwargs):
+        self.registry.register(**kwargs)
+
+
 def test_plugin_registers_tools():
     import plugins.openpro_prospection as plugin
 
@@ -23,6 +31,56 @@ def test_plugin_registers_tools():
     assert "check_company_duplicate" in registered
     assert "enrich_tiktok_lead" in registered
     assert "report_prospection_status" in registered
+
+
+def test_registry_dispatch_accepts_gateway_execution_metadata():
+    import plugins.openpro_prospection as plugin
+    from tools.registry import ToolRegistry
+
+    registry = ToolRegistry()
+    plugin.register(RegistryPluginContext(registry))
+    lead = {
+        "account": "@cafe.paris",
+        "video_url": "https://tiktok.com/@cafe.paris/video/1",
+        "description": "On recrute un barista!",
+    }
+
+    result = json.loads(
+        registry.dispatch(
+            "enrich_tiktok_lead",
+            {"lead": lead},
+            task_id="run-1",
+            session_key="agent:tiktok_prospector:api:run-1",
+        )
+    )
+
+    assert result["video_url"] == lead["video_url"]
+    assert "error" not in result
+
+
+def test_registry_dispatch_reports_status_with_gateway_execution_metadata():
+    import plugins.openpro_prospection as plugin
+    from tools.registry import ToolRegistry
+
+    registry = ToolRegistry()
+    plugin.register(RegistryPluginContext(registry))
+    with patch(
+        "plugins.openpro_prospection.tools.report_prospection_status",
+        return_value={"status": "crm_created"},
+    ) as report:
+        result = json.loads(
+            registry.dispatch(
+                "report_prospection_status",
+                {
+                    "video_url": "https://tiktok.com/@cafe.paris/video/1",
+                    "status": "crm_created",
+                },
+                task_id="run-1",
+            )
+        )
+
+    report.assert_called_once()
+    assert result["status"] == "crm_created"
 
 
 def test_crm_and_status_tools_do_not_require_openpro_key():

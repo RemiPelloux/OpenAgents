@@ -29,7 +29,7 @@ def check_openpro_prospection_available() -> bool:
     return bool(os.environ.get("OPENPRO_AGENT_API_KEY", "").strip())
 
 
-def handle_check_company_duplicate(args: Dict[str, Any]) -> str:
+def handle_check_company_duplicate(args: Dict[str, Any], **_: Any) -> str:
     """OpenPro duplicate check — also consults OpenCRM (CC-W1-006) so a lead already
     tracked as a CRM account (e.g. from a prior meeting) is not re-provisioned on OpenPro.
     """
@@ -54,7 +54,7 @@ def handle_check_company_duplicate(args: Dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-def handle_provision_openpro_company(args: Dict[str, Any]) -> str:
+def handle_provision_openpro_company(args: Dict[str, Any], **_: Any) -> str:
     brief = str(args.get("brief") or "").strip()
     if not brief:
         return "Error: brief is required"
@@ -69,7 +69,7 @@ def handle_provision_openpro_company(args: Dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-def handle_create_job_post_with_media(args: Dict[str, Any]) -> str:
+def handle_create_job_post_with_media(args: Dict[str, Any], **_: Any) -> str:
     video_url = str(args.get("video_url") or "").strip()
     recruiter_id = str(args.get("recruiter_id") or args.get("openpro_recruiter_id") or "").strip()
     title = str(args.get("title") or "Offre recrutée depuis TikTok").strip()
@@ -86,7 +86,7 @@ def handle_create_job_post_with_media(args: Dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-def handle_send_prospect_email(args: Dict[str, Any]) -> str:
+def handle_send_prospect_email(args: Dict[str, Any], **_: Any) -> str:
     email = str(args.get("email") or "").strip()
     if not email:
         return "Error: email is required"
@@ -101,7 +101,7 @@ def handle_send_prospect_email(args: Dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-def handle_send_tiktok_dm(args: Dict[str, Any]) -> str:
+def handle_send_tiktok_dm(args: Dict[str, Any], **_: Any) -> str:
     payload = {
         "profile_url": args.get("profile_url"),
         "account": args.get("tiktok_account") or args.get("account"),
@@ -112,7 +112,7 @@ def handle_send_tiktok_dm(args: Dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-def handle_report_prospection_status(args: Dict[str, Any]) -> str:
+def handle_report_prospection_status(args: Dict[str, Any], **_: Any) -> str:
     video_url = str(args.get("video_url") or "").strip()
     status = str(args.get("status") or "").strip()
     if not video_url or not status:
@@ -131,7 +131,7 @@ def handle_report_prospection_status(args: Dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-def handle_upsert_crm_from_lead(args: Dict[str, Any]) -> str:
+def handle_upsert_crm_from_lead(args: Dict[str, Any], **_: Any) -> str:
     """CC-W1-004 — upsert the enriched lead into OpenCRM (account + opportunity, stage lead)."""
     video_url = str(args.get("video_url") or "").strip()
     company_name = str(args.get("company_name") or "").strip()
@@ -148,7 +148,7 @@ def handle_upsert_crm_from_lead(args: Dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-def handle_enrich_tiktok_lead(args: Dict[str, Any]) -> str:
+def handle_enrich_tiktok_lead(args: Dict[str, Any], **_: Any) -> str:
     lead = args.get("lead")
     if not isinstance(lead, dict):
         return "Error: lead object is required"
