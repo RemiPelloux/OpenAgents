@@ -44,12 +44,13 @@ Prefer **OpenCRM MCP** tools. Plugin `opencrm_sales` covers account search/stagi
 
 ## Procedure
 
-1. Resolve account: `search_accounts` / `get_account`
-2. Queue: `list_contacts_needing_enrichment` (or `search_contacts` on account)
-3. Gather facts (OpenTeam harvest, meeting notes, public LinkedIn) — **no PII into Brain**
-4. `enrich_contact(contact_id, …, mark_complete=true)` when confident
-5. Optional: `propose_crm_update` on the **account** for next_action (approval)
-6. Pair Brain: `search_observations(app=opencrm)` for narrative only
+1. Resolve account: `search_accounts` / `get_account` / `get_account_hub`
+2. After harvest or a new city location: `enrich_account` then `discover_account_people` (CC-W1-012)
+3. Queue remaining gaps: `list_contacts_needing_enrichment` or `list_key_people`
+4. Gather extra facts (OpenTeam harvest, meeting notes, public LinkedIn) — **no PII into Brain**
+5. `enrich_contact(contact_id, …, mark_complete=true)` when confident
+6. Optional: `propose_crm_update` on the **account** for next_action (approval)
+7. Pair Brain: `search_observations(app=opencrm)` for narrative only
 
 ## Decision rules
 
