@@ -14,7 +14,18 @@ metadata:
 
 # OpenTeam (market intelligence)
 
-OpenTeam runs on **OVH VPS** — harvests content/leads and dispatches OpenAgents runs.
+OpenTeam harvests content/leads and dispatches OpenAgents runs.
+
+| | |
+|---|---|
+| Public site | `https://teamopeng.online` |
+| Source | `OpenOS/OpenTeam/` · workdir `OpenTeam/openteam/` |
+| GitHub | `RemiPelloux/OpenTeam` |
+| VPS | `sysadm@82.97.8.94` · `/opt/openteam` |
+| API (loopback) | `http://127.0.0.1:8050` |
+| Env | `OPENTEAM_API_URL=https://teamopeng.online` |
+
+OpenTeam is **not** an OpenOS Compose service. Deploy with `env/scripts/remote-deploy-vps.sh`.
 
 ## When to Use
 
