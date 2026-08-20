@@ -14,6 +14,8 @@ metadata:
 
 # OpenBrain Orchestrator
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Command + visibility layer: missions, live tickets, RAG answers. **Execution** stays in OpenAgents W4.
 
 ## When to Use

@@ -10,6 +10,8 @@ metadata:
 
 # Open Image (Image Generation MCP Integration)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Generate and manipulate images using AI-powered image generation MCP server.
 
 ## When to Use

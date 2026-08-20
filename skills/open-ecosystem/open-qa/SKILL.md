@@ -14,6 +14,8 @@ metadata:
 
 # Open QA (sign-off discipline)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 **QA profile** owns acceptance verification and ticket closure — not implementation.
 
 ## When to Use

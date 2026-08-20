@@ -16,6 +16,8 @@ metadata:
 
 **Control plane discipline** — plans do not run blind. Gates, approvals, capability remediation, audit.
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Submit the goal or gate action in this turn.
+
 ## When to Use
 
 - `capability_blocked: true` on goal response

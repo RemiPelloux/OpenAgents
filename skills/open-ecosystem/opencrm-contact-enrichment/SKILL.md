@@ -16,6 +16,8 @@ metadata:
 
 Fill lead contact fields (email, mobile, LinkedIn, décideur) via MCP — keep PII in OpenCRM only.
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Call OpenCRM tools in this turn. Never invent a décideur.
+
 ## When to Use
 
 - "Enrich this lead / find the décideur"

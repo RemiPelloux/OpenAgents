@@ -10,6 +10,8 @@ metadata:
 
 # Open PDF (PDF Parsing MCP Integration)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Extract text, tables, and metadata from PDF documents using the PDF parsing MCP server.
 
 ## When to Use

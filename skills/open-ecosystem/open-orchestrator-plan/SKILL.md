@@ -14,6 +14,8 @@ metadata:
 
 # Open Orchestrator Plan
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Control plane: goals → plans → tasks → **OpenAgents** runs (never OpenCode direct).
 
 ## When to Use

@@ -14,6 +14,8 @@ metadata:
 
 # OpenBrain Chat — Mermaid mesh diagrams
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Use when OpenBrain Command Center (or any agent answering about OpenOS mesh) needs a **readable** architecture diagram in chat.
 
 ## When to use

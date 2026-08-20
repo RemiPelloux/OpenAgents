@@ -16,6 +16,8 @@ metadata:
 
 OpenAgents delegates all code edits to the **OpenOS OpenCode fork** — not npm `opencode-ai`.
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Launch OpenCode in this turn when the work is code.
+
 ## When to Use
 
 - `developer` or `qa` profile needs implement / review / test on a ticket

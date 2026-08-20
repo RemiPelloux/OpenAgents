@@ -16,6 +16,8 @@ metadata:
 
 Company Brain: graph, doc RAG, Skills File, MCP Knowledge.
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Query Brain in this turn; do not recap the question.
+
 ## When to Use
 
 - "How does CC-W4-005 work?" — before guessing mesh behavior

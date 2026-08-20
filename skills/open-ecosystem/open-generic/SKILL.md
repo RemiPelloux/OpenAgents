@@ -14,6 +14,8 @@ metadata:
 
 # Open Generic (OpenOS default loop)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Fallback discipline when no specialized skill matches — still follows mesh rules.
 
 ## When to Use

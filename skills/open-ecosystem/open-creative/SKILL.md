@@ -14,6 +14,8 @@ metadata:
 
 # Open Creative
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Creative deliverables from OpenBrain/orchestrator missions (`content.creative`).
 
 ## When to Use

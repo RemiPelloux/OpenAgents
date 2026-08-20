@@ -14,6 +14,8 @@ metadata:
 
 # OpenAgentUI
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Visual workflow builder — agents author **YAML**, persist, and run **without canvas**.
 
 Default LLM: Mistral (`mistral-medium-latest`) when `MISTRAL_API_KEY` set.

@@ -14,6 +14,8 @@ metadata:
 
 # Open Orchestrator Intent
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Classifies free text into **NormalizedGoal** JSON — no planning here.
 
 ## When to Use

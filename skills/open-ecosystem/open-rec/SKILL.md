@@ -14,6 +14,8 @@ metadata:
 
 # OpenRec (audit bus)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 **RecEvent** is the authoritative audit trail. Producers emit; OpenRec ingests (step 6).
 Until ingest is live, producers use **outbox** + worker retry.
 

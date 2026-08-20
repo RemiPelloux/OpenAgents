@@ -14,6 +14,8 @@ metadata:
 
 # OpenContract (mesh step 0)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Every inter-app hop needs a declared `CC-*` contract and a signed **ContractEnvelope**.
 OpenContract is the registry + validator — not a business app.
 

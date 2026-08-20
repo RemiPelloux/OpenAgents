@@ -14,6 +14,8 @@ metadata:
 
 # Open Pro (Flutter mobile)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 **OpenPro-Mobile** — candidate + recruiter hiring app. Outside OpenOS umbrella; integrates via APIs.
 
 ## When to Use

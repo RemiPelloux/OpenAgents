@@ -16,6 +16,8 @@ metadata:
 
 Router for the **OpenOS mesh**. Load this when the user names "Open" products without picking one, or when a task spans multiple apps.
 
+Read `open-ecosystem/OPERATING-STANCE.md` first. Act in this turn.
+
 ## When to Use
 
 - Ambiguous "Open" request — pick the owning skill first
@@ -32,9 +34,10 @@ Do **not** stop at this hub — always load the **specific** skill next.
 ## Procedure
 
 1. Read user intent — code, ticket, audit, CRM, compliance, or UI?
-2. Pick skill from routing table
+2. Pick skill from routing table and start its first real tool in this turn
 3. Load that skill fully before acting
 4. If cross-app: plan `correlation_id` + contract IDs via `open-brain`
+5. Name the tools used in the report
 
 ## Structural overview
 

@@ -14,6 +14,8 @@ metadata:
 
 # Open MCP Scaffold
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Close **capability gaps** — add missing MCP tools to OpenOS apps with mesh DoD.
 
 ## When to Use

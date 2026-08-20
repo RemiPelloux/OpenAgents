@@ -10,6 +10,8 @@ metadata:
 
 # Open Browser (Playwright MCP Integration)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Automate web interactions using Playwright, the official Microsoft headless browser with native MCP server support. Playwright provides robust browser automation with multi-browser support (Chromium, Firefox, WebKit).
 
 ## When to Use

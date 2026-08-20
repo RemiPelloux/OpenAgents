@@ -14,6 +14,8 @@ metadata:
 
 # Open Memory
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 How **OpenAgents** remembers within/across sessions — distinct from Open Brain.
 
 ## When to Use

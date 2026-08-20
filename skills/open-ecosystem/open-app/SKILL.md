@@ -14,6 +14,8 @@ metadata:
 
 # Open App (OpenAgents surfaces)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Client shells for **OpenAgents** — not OpenCenter (Phase 2 product GUI).
 
 ## When to Use

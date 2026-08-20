@@ -16,6 +16,8 @@ metadata:
 
 End-to-end engineering loop with **OpenAgents** as runtime and **OpenCode** as coder.
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Open or update the ticket, then start the next mesh hop in this turn.
+
 ## When to Use
 
 - Any ticket-backed implementation, review, or release

@@ -16,6 +16,8 @@ metadata:
 
 Issue tracker — **source of truth** for agent work and W4 status.
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. If the user asks to open or update a ticket, call the MCP tool in this turn.
+
 ## When to Use
 
 - PO creates backlog; Dev/QA transition tickets

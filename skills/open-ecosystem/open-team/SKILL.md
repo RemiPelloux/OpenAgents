@@ -14,6 +14,8 @@ metadata:
 
 # OpenTeam (market intelligence)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 OpenTeam harvests content/leads and dispatches OpenAgents runs.
 
 | | |

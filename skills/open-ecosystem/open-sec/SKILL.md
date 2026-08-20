@@ -14,6 +14,8 @@ metadata:
 
 # Security (AGI monitor)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 OpenBrain AGI watches security signals. Do **not** call OpenSec.
 
 Canonical skill: `OpenBrain/skills/openos-security-monitor/SKILL.md`.

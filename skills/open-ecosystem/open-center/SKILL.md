@@ -14,6 +14,8 @@ metadata:
 
 # OpenCenter (human shell — Phase 2)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 **Single product UI** for humans. Agents use MCP/REST; OpenCenter **displays** mesh state later.
 
 ## When to Use

@@ -14,6 +14,8 @@ metadata:
 
 # OpenProtocol — Integrator
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 **QA** role: verify coder branch, merge to `main`, delete branch, close ticket.
 
 ## When to Use

@@ -14,6 +14,8 @@ metadata:
 
 # Open Mesh Wiring
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Connect OpenOS apps end-to-end: contracts, env, compose, MCP/REST parity.
 
 ## When to Use

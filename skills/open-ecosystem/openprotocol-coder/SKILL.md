@@ -14,6 +14,8 @@ metadata:
 
 # OpenProtocol — Coder
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 **Developer** role: OpenAgents spawns OpenCode; you own the feature branch until handoff.
 
 ## When to Use

@@ -14,6 +14,8 @@ metadata:
 
 # OpenCRM Sales Follow-up
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Read CRM truth + Axon context → **stage** next action (`CC-W1-003`) — never send directly.
 
 For LinkedIn / décideur / phone enrichment, load **`opencrm-contact-enrichment`**.

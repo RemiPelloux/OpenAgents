@@ -10,6 +10,8 @@ metadata:
 
 # Open Toolbox (Autonomous Tool Discovery & Integration)
 
+Follow `open-ecosystem/OPERATING-STANCE.md`. Start the first real tool in this turn.
+
 Enable agents to discover, evaluate, and integrate new tools dynamically. Agents can search MCP registries, evaluate tool capabilities, test them in sandbox, and propose integration to the mesh.
 
 ## When to Use
