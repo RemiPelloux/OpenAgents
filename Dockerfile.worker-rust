@@ -16,7 +16,8 @@ RUN bun install --frozen-lockfile && \
       --define "MACRO='{}'"
 
 FROM rust:1.90.0-alpine3.22@sha256:b4b54b176a74db7e5c68fdfe6029be39a02ccbcfe72b6e5a3e18e2c61b57ae26 AS worker-builder
-RUN apk add --no-cache musl-dev
+RUN apk add --no-cache musl-dev && \
+    rustup component add rustfmt --toolchain 1.90.0
 WORKDIR /src
 COPY --from=opencontract . /src/OpenContract
 COPY Cargo.toml Cargo.lock ./OpenAgents/
@@ -36,7 +37,7 @@ ENV SHELL=/bin/bash \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 RUN apk upgrade --no-cache \
-    && apk add --no-cache aws-cli bash ca-certificates curl git gnupg nodejs npm openssh-client python3 ripgrep \
+    && apk add --no-cache aws-cli bash build-base ca-certificates curl git gnupg nodejs npm openssh-client python3 ripgrep \
     && npm install --global pnpm@9.15.0 \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && addgroup -S -g 10000 openagents \
@@ -52,7 +53,9 @@ COPY --from=opencontract registry /etc/opencontract/registry
 COPY skills /opt/openagents/skills
 RUN cargo --version | grep -F 'cargo 1.90.0' \
     && rustc --version | grep -F 'rustc 1.90.0' \
-    && uv --version | grep -F 'uv 0.11.6'
+    && uv --version | grep -F 'uv 0.11.6' \
+    && rustfmt --version \
+    && cc --version
 RUN mkdir -p /repositories /worktrees /run/openos/connectors \
     && chown -R openagents:openagents /repositories /worktrees /run/openos/connectors /opt/openagents/skills
 USER openagents
