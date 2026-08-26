@@ -134,7 +134,13 @@ impl ControlPlaneClient {
                 "toolchains":toolchains
             }),
         };
-        let registration_key = format!("register:{}:{}", healthy, Utc::now().timestamp() / 30);
+        let registration_key = format!(
+            "register:{}:{}:{}:{}",
+            self.worker_id,
+            healthy,
+            capacity,
+            Utc::now().timestamp() / 30
+        );
         let _: Value = self
             .send(
                 "/v1/workers/register",
