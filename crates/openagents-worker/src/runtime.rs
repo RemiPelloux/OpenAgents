@@ -244,7 +244,8 @@ pub async fn execute(
     })
     .await?;
     verify_workspace_dependencies_clean(&config.git_binary, &materialized_dependencies).await?;
-    if let Some(kind) = detect_secret(&engine.stdout).or_else(|| detect_secret(&engine.stderr)) {
+    let terminal_report = final_execution_report(&engine.stdout)?;
+    if let Some(kind) = post_opencode_secret_kind(&terminal_report, &engine.stderr) {
         tracing::warn!(
             run_id = %run_id,
             secret_kind = kind.label(),
@@ -2381,6 +2382,10 @@ fn final_execution_report(stdout: &str) -> anyhow::Result<String> {
     let report = report.ok_or_else(|| anyhow::anyhow!("ACCEPTANCE_EXECUTION_REPORT_MISSING"))?;
     let (report, _) = bounded_utf8(&report, MAX_ACCEPTANCE_REPORT_BYTES);
     Ok(report.to_string())
+}
+
+fn post_opencode_secret_kind(terminal_report: &str, stderr: &str) -> Option<SecretKind> {
+    detect_secret(terminal_report).or_else(|| detect_secret(stderr))
 }
 
 fn parse_qa_requirements(
@@ -6156,6 +6161,80 @@ mod tests {
         assert!(!persisted.contains(credential));
         assert!(!artifact.uri.ends_with(".jsonl"));
         assert_eq!(artifact.metadata["raw_jsonl_persisted"], false);
+    }
+
+    #[tokio::test]
+    async fn post_opencode_guard_ignores_internal_tool_content_and_does_not_persist_it() {
+        let temp = tempfile::tempdir().unwrap();
+        let run_id = Uuid::new_v4();
+        let credential = [
+            "sk", "-", "proj", "-", "runtime", "credential", "material", "123456",
+        ]
+        .concat();
+        let stream = [
+            json!({
+                "type":"tool_result",
+                "tool_name":"read",
+                "content":credential
+            }),
+            json!({
+                "type":"result",
+                "subtype":"success",
+                "is_error":false,
+                "result":"Updated terminal-only output validation."
+            }),
+        ]
+        .into_iter()
+        .map(|event| event.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+        let terminal_report = final_execution_report(&stream).unwrap();
+        assert_eq!(post_opencode_secret_kind(&terminal_report, ""), None);
+
+        let artifact = persist_opencode_evidence(temp.path(), run_id, &stream)
+            .await
+            .unwrap();
+        let path = PathBuf::from(artifact.uri.strip_prefix("file://").unwrap());
+        let persisted = fs::read_to_string(path).await.unwrap();
+        assert!(!persisted.contains(&credential));
+        let evidence: Value = serde_json::from_str(&persisted).unwrap();
+        assert_eq!(
+            evidence["events"][0],
+            json!({
+                "schema":"openos.opencode-event/v1",
+                "type":"tool_result",
+                "subtype":null,
+                "session_id":null
+            })
+        );
+        assert_eq!(artifact.metadata["raw_jsonl_persisted"], false);
+    }
+
+    #[test]
+    fn post_opencode_guard_rejects_terminal_result_credential() {
+        let credential = [
+            "sk", "-", "proj", "-", "terminal", "credential", "material", "123456",
+        ]
+        .concat();
+        let terminal_report = format!("report: {credential}");
+
+        assert_eq!(
+            post_opencode_secret_kind(&terminal_report, ""),
+            Some(SecretKind::ProviderToken)
+        );
+    }
+
+    #[test]
+    fn post_opencode_guard_rejects_stderr_credential() {
+        let credential = [
+            "sk", "-", "proj", "-", "stderr", "credential", "material", "123456",
+        ]
+        .concat();
+        assert_eq!(
+            post_opencode_secret_kind("Safe terminal report.", &credential),
+            Some(SecretKind::ProviderToken)
+        );
     }
 
     #[test]
