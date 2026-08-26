@@ -3902,6 +3902,24 @@ struct QaExecutionSpec<'a> {
     timeout: Duration,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct QaToolPaths {
+    cargo_home: PathBuf,
+    cargo_target_dir: PathBuf,
+    uv_cache_dir: PathBuf,
+    uv_project_environment: PathBuf,
+}
+
+fn qa_tool_paths(run_root: &Path, run_id: Uuid) -> QaToolPaths {
+    let qa_root = run_root.join(format!("qa-{run_id}"));
+    QaToolPaths {
+        cargo_home: qa_root.join("cargo-home"),
+        cargo_target_dir: qa_root.join("cargo-target"),
+        uv_cache_dir: qa_root.join("uv-cache"),
+        uv_project_environment: qa_root.join("uv-project-environment"),
+    }
+}
+
 async fn run_tests(spec: QaExecutionSpec<'_>) -> anyhow::Result<Vec<TestEvidence>> {
     let QaExecutionSpec {
         workspace,
@@ -3915,10 +3933,15 @@ async fn run_tests(spec: QaExecutionSpec<'_>) -> anyhow::Result<Vec<TestEvidence
         timeout: qa_timeout,
     } = spec;
     let mut evidence = Vec::new();
-    let qa_home = workspace.parent().expect("run root").join("qa-home");
-    let qa_tmp = workspace.parent().expect("run root").join("qa-tmp");
-    fs::create_dir_all(&qa_home).await?;
-    fs::create_dir_all(&qa_tmp).await?;
+    let tool_paths = qa_tool_paths(workspace.parent().expect("run root"), run_id);
+    for path in [
+        &tool_paths.cargo_home,
+        &tool_paths.cargo_target_dir,
+        &tool_paths.uv_cache_dir,
+        &tool_paths.uv_project_environment,
+    ] {
+        fs::create_dir_all(path).await?;
+    }
     for command in commands {
         ensure_not_cancelled(store, run_id).await?;
         restore_candidate_git_pointer(workspace, git_dir).await?;
@@ -3943,9 +3966,13 @@ async fn run_tests(spec: QaExecutionSpec<'_>) -> anyhow::Result<Vec<TestEvidence
             .arg("--rw")
             .arg(workspace)
             .arg("--rw")
-            .arg(&qa_home)
+            .arg(&tool_paths.cargo_home)
             .arg("--rw")
-            .arg(&qa_tmp)
+            .arg(&tool_paths.cargo_target_dir)
+            .arg("--rw")
+            .arg(&tool_paths.uv_cache_dir)
+            .arg("--rw")
+            .arg(&tool_paths.uv_project_environment)
             .arg("--")
             .arg(shell_binary)
             .arg("-lc")
@@ -3953,8 +3980,15 @@ async fn run_tests(spec: QaExecutionSpec<'_>) -> anyhow::Result<Vec<TestEvidence
             .current_dir(workspace)
             .env_clear()
             .env("PATH", "/usr/local/bin:/usr/bin:/bin")
-            .env("HOME", &qa_home)
-            .env("TMPDIR", &qa_tmp)
+            .env("HOME", &tool_paths.cargo_home)
+            .env("TMPDIR", &tool_paths.uv_cache_dir)
+            .env("CARGO_HOME", &tool_paths.cargo_home)
+            .env("CARGO_TARGET_DIR", &tool_paths.cargo_target_dir)
+            .env("UV_CACHE_DIR", &tool_paths.uv_cache_dir)
+            .env(
+                "UV_PROJECT_ENVIRONMENT",
+                &tool_paths.uv_project_environment,
+            )
             .env("SHELL", shell_binary)
             .env("CI", "1")
             .env("NO_COLOR", "1")
@@ -4884,12 +4918,65 @@ mod tests {
         assert_eq!(evidence[1].exit_status, 0);
     }
 
+    #[test]
+    fn qa_tool_paths_are_isolated_by_run_id() {
+        let run_root = Path::new("/runs/tenant");
+        let first = qa_tool_paths(
+            run_root,
+            Uuid::parse_str("11111111-1111-4111-8111-111111111111").unwrap(),
+        );
+        let second = qa_tool_paths(
+            run_root,
+            Uuid::parse_str("22222222-2222-4222-8222-222222222222").unwrap(),
+        );
+
+        assert_ne!(first.cargo_home, second.cargo_home);
+        assert_ne!(first.cargo_target_dir, second.cargo_target_dir);
+        assert_ne!(first.uv_cache_dir, second.uv_cache_dir);
+        assert_ne!(
+            first.uv_project_environment,
+            second.uv_project_environment
+        );
+    }
+
+    #[tokio::test]
+    async fn qa_exports_all_run_specific_tool_paths() {
+        let temp = tempfile::tempdir().unwrap();
+        let workspace = temp.path().join("repository");
+        fs::create_dir(&workspace).await.unwrap();
+        let run_id = Uuid::new_v4();
+        let expected = qa_tool_paths(temp.path(), run_id);
+        let environment_check = format!(
+            "test \"$CARGO_HOME\" = '{}' && \
+             test \"$CARGO_TARGET_DIR\" = '{}' && \
+             test \"$UV_CACHE_DIR\" = '{}' && \
+             test \"$UV_PROJECT_ENVIRONMENT\" = '{}'",
+            expected.cargo_home.display(),
+            expected.cargo_target_dir.display(),
+            expected.uv_cache_dir.display(),
+            expected.uv_project_environment.display(),
+        );
+        let evidence = run_test_qa(
+            &workspace,
+            &[environment_check],
+            run_id,
+            &RunStore::new(),
+            Duration::from_secs(5),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(evidence.len(), 1);
+        assert_eq!(evidence[0].exit_status, 0);
+    }
+
     #[tokio::test]
     async fn qa_uses_scrubbed_environment_and_continues_after_timeout() {
         let temp = tempfile::tempdir().unwrap();
         let workspace = temp.path().join("repository");
         fs::create_dir(&workspace).await.unwrap();
-        let expected_home = temp.path().join("qa-home");
+        let run_id = Uuid::new_v4();
+        let expected_home = qa_tool_paths(temp.path(), run_id).cargo_home;
         let environment_check = format!(
             "test \"$HOME\" = '{}' && test -z \"${{GH_TOKEN:-}}\" && test -n \"$PATH\"",
             expected_home.display()
@@ -4897,7 +4984,7 @@ mod tests {
         let evidence = run_test_qa(
             &workspace,
             &["sleep 2".into(), environment_check],
-            Uuid::new_v4(),
+            run_id,
             &RunStore::new(),
             Duration::from_secs(1),
         )

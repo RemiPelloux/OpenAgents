@@ -166,13 +166,25 @@ fn sandbox_process_group_escape_is_denied() {
     }
 
     assert_eq!(attempts.len(), 2);
-    for (syscall, _, result, errno) in attempts {
-        assert_eq!(result, -1, "{syscall} escaped the original process group");
-        assert_eq!(errno, libc::EPERM, "{syscall} did not fail with EPERM");
-    }
+    let setsid = attempts
+        .iter()
+        .find(|(syscall, _, _, _)| syscall == "setsid")
+        .expect("setsid probe result missing");
+    let setpgid = attempts
+        .iter()
+        .find(|(syscall, _, _, _)| syscall == "setpgid")
+        .expect("setpgid probe result missing");
+    assert_eq!(setsid.2, -1, "setsid escaped the original process group");
+    assert_eq!(setsid.3, libc::EPERM, "setsid did not fail with errno EPERM");
+    assert_eq!(setpgid.2, -1, "setpgid escaped the original process group");
+    assert_eq!(
+        setpgid.3,
+        libc::EPERM,
+        "setpgid did not fail with errno EPERM"
+    );
     assert!(
         survivors.is_empty(),
-        "escaped descendants survived process-group cleanup: {survivors:?}"
+        "descendants survived process-group cleanup: {survivors:?}"
     );
 }
 
