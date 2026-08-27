@@ -1,7 +1,7 @@
 use std::{
     fs::OpenOptions,
     os::unix::fs::PermissionsExt,
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
     process::Stdio,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -25,16 +25,19 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use tokio::{fs, io::AsyncWriteExt, process::Command, time::timeout};
 use uuid::Uuid;
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::Zeroizing;
 
 use crate::{
     config::Config,
     control_plane::{classify_failure, ControlPlaneClient, ControlPlaneFailure},
+    git_transport::{
+        git_transport_command, resolve_connector as resolve_scoped_connector, ConnectorSecret,
+        GitAuth,
+    },
     model::{RunStatus, RunStore},
 };
 
 const CALLBACK_ATTEMPTS: usize = 4;
-const MAX_CONNECTOR_BYTES: u64 = 16 * 1024;
 const MAX_GIT_SIGNING_PUBLIC_KEY_B64_BYTES: usize = 256 * 1024;
 
 pub async fn runtime_healthy(config: &Config) -> bool {
@@ -135,18 +138,6 @@ struct CallbackClaim {
     required_producer: String,
 }
 
-struct ConnectorSecret {
-    token: String,
-    username: String,
-}
-
-impl Drop for ConnectorSecret {
-    fn drop(&mut self) {
-        self.token.zeroize();
-        self.username.zeroize();
-    }
-}
-
 #[derive(Debug)]
 struct VerifiedCandidate {
     worktree: PathBuf,
@@ -160,143 +151,6 @@ struct DraftPullRequest {
     number: u64,
     base: String,
     head: String,
-}
-
-#[async_trait]
-trait ConnectorResolver: Send + Sync {
-    fn supports(&self, reference: &str) -> bool;
-    async fn resolve(
-        &self,
-        reference: &str,
-        organization_id: Uuid,
-        provider: &str,
-    ) -> anyhow::Result<ConnectorSecret>;
-}
-
-struct LocalConnectorResolver {
-    root: PathBuf,
-}
-
-struct AwsConnectorResolver {
-    binary: PathBuf,
-    timeout: Duration,
-}
-
-#[async_trait]
-impl ConnectorResolver for LocalConnectorResolver {
-    fn supports(&self, reference: &str) -> bool {
-        reference.starts_with("local-connector://")
-    }
-
-    async fn resolve(
-        &self,
-        reference: &str,
-        organization_id: Uuid,
-        provider: &str,
-    ) -> anyhow::Result<ConnectorSecret> {
-        let relative = tenant_connector_path(reference, organization_id)?;
-        if relative.components().next().and_then(|value| match value {
-            Component::Normal(value) => value.to_str(),
-            _ => None,
-        }) != Some(provider)
-        {
-            anyhow::bail!("CONNECTOR_PROVIDER_SCOPE_MISMATCH");
-        }
-        let root = fs::canonicalize(&self.root)
-            .await
-            .context("CONNECTOR_ROOT_UNAVAILABLE")?;
-        let file = fs::canonicalize(root.join(&relative))
-            .await
-            .context("CONNECTOR_NOT_FOUND")?;
-        if !file.starts_with(&root) {
-            anyhow::bail!("CONNECTOR_PATH_ESCAPE");
-        }
-        let metadata = fs::metadata(&file).await?;
-        if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_CONNECTOR_BYTES {
-            anyhow::bail!("CONNECTOR_FILE_INVALID");
-        }
-        let bytes = fs::read(file).await?;
-        parse_connector_secret(&bytes)
-    }
-}
-
-#[async_trait]
-impl ConnectorResolver for AwsConnectorResolver {
-    fn supports(&self, reference: &str) -> bool {
-        reference.starts_with("aws-sm://") || reference.starts_with("aws-secrets-manager://")
-    }
-
-    async fn resolve(
-        &self,
-        reference: &str,
-        organization_id: Uuid,
-        provider: &str,
-    ) -> anyhow::Result<ConnectorSecret> {
-        let remainder = reference
-            .strip_prefix("aws-sm://")
-            .or_else(|| reference.strip_prefix("aws-secrets-manager://"))
-            .ok_or_else(|| anyhow::anyhow!("CONNECTOR_REFERENCE_INVALID"))?;
-        let (region, secret_id) = remainder
-            .split_once('/')
-            .ok_or_else(|| anyhow::anyhow!("CONNECTOR_REFERENCE_INVALID"))?;
-        const EU_REGIONS: &[&str] = &[
-            "eu-central-1",
-            "eu-central-2",
-            "eu-west-1",
-            "eu-west-2",
-            "eu-west-3",
-            "eu-north-1",
-            "eu-south-1",
-            "eu-south-2",
-        ];
-        let expected = format!("orgs/{organization_id}/{provider}/");
-        if !EU_REGIONS.contains(&region)
-            || !secret_id.starts_with(&expected)
-            || secret_id.contains(['?', '#'])
-            || secret_id.chars().any(char::is_whitespace)
-        {
-            anyhow::bail!("CONNECTOR_TENANT_SCOPE_MISMATCH");
-        }
-        let mut command = Command::new(&self.binary);
-        command
-            .env_clear()
-            .env("PATH", "/usr/local/bin:/usr/bin:/bin")
-            .env("LANG", "C")
-            .env("LC_ALL", "C")
-            .env("AWS_REGION", region)
-            .env("AWS_DEFAULT_REGION", region)
-            .args([
-                "secretsmanager",
-                "get-secret-value",
-                "--region",
-                region,
-                "--secret-id",
-                secret_id,
-                "--query",
-                "SecretString",
-                "--output",
-                "text",
-                "--no-cli-pager",
-            ]);
-        for key in [
-            "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
-            "AWS_CONTAINER_CREDENTIALS_FULL_URI",
-            "AWS_CONTAINER_AUTHORIZATION_TOKEN",
-            "AWS_WEB_IDENTITY_TOKEN_FILE",
-            "AWS_ROLE_ARN",
-        ] {
-            if let Some(value) = std::env::var_os(key) {
-                command.env(key, value);
-            }
-        }
-        let output = timeout(self.timeout, command.kill_on_drop(true).output())
-            .await
-            .map_err(|_| anyhow::anyhow!("CONNECTOR_RESOLUTION_TIMEOUT"))??;
-        if !output.status.success() || output.stdout.len() as u64 > MAX_CONNECTOR_BYTES {
-            anyhow::bail!("CONNECTOR_RESOLUTION_FAILED");
-        }
-        parse_connector_secret(&output.stdout)
-    }
 }
 
 #[async_trait]
@@ -391,7 +245,7 @@ impl GithubAdapter {
             .header("accept", "application/vnd.github+json")
             .header("x-github-api-version", "2022-11-28")
             .header("user-agent", "OpenAgents-trusted-delivery")
-            .bearer_auth(&secret.token)
+            .bearer_auth(secret.token())
     }
 
     async fn list_pull_requests(
@@ -886,115 +740,13 @@ async fn resolve_connector(
     config: &Config,
     request: &DeliveryRequest,
 ) -> anyhow::Result<ConnectorSecret> {
-    let resolvers: [Box<dyn ConnectorResolver>; 2] = [
-        Box::new(LocalConnectorResolver {
-            root: config.connector_root.clone(),
-        }),
-        Box::new(AwsConnectorResolver {
-            binary: config.aws_binary.clone(),
-            timeout: config.request_timeout,
-        }),
-    ];
-    let resolver = resolvers
-        .iter()
-        .find(|resolver| resolver.supports(&request.provider.connector_ref))
-        .ok_or_else(|| anyhow::anyhow!("CONNECTOR_RESOLVER_UNAVAILABLE"))?;
-    resolver
-        .resolve(
-            &request.provider.connector_ref,
-            request.workspace.organization_id,
-            &request.provider.provider,
-        )
-        .await
-}
-
-fn tenant_connector_path(reference: &str, organization_id: Uuid) -> anyhow::Result<PathBuf> {
-    let path = reference
-        .strip_prefix("local-connector://")
-        .ok_or_else(|| anyhow::anyhow!("CONNECTOR_REFERENCE_INVALID"))?;
-    let prefix = format!("orgs/{organization_id}/");
-    let relative = path
-        .strip_prefix(&prefix)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("CONNECTOR_TENANT_SCOPE_MISMATCH"))?;
-    let relative = PathBuf::from(relative);
-    if relative.is_absolute()
-        || relative
-            .components()
-            .any(|component| !matches!(component, Component::Normal(_)))
-    {
-        anyhow::bail!("CONNECTOR_PATH_ESCAPE");
-    }
-    Ok(relative)
-}
-
-fn parse_connector_secret(bytes: &[u8]) -> anyhow::Result<ConnectorSecret> {
-    let text = std::str::from_utf8(bytes)?.trim();
-    let (token, username) = match serde_json::from_str::<Value>(text) {
-        Ok(value) => {
-            let token = ["token", "access_token", "password"]
-                .iter()
-                .find_map(|key| value.get(*key).and_then(Value::as_str))
-                .ok_or_else(|| anyhow::anyhow!("CONNECTOR_TOKEN_MISSING"))?;
-            let username = value
-                .get("username")
-                .and_then(Value::as_str)
-                .unwrap_or("x-access-token");
-            (token.to_string(), username.to_string())
-        }
-        Err(_) => (text.to_string(), "x-access-token".into()),
-    };
-    if token.is_empty()
-        || token.len() > 8192
-        || token.chars().any(char::is_whitespace)
-        || username.is_empty()
-        || username.chars().any(|value| value.is_control())
-    {
-        anyhow::bail!("CONNECTOR_SECRET_INVALID");
-    }
-    Ok(ConnectorSecret { token, username })
-}
-
-struct GitAuth {
-    _directory: tempfile::TempDir,
-    askpass: PathBuf,
-    token: String,
-    username: String,
-}
-
-impl GitAuth {
-    fn new(secret: &ConnectorSecret) -> anyhow::Result<Self> {
-        let directory = tempfile::Builder::new()
-            .prefix("openagents-delivery-")
-            .tempdir()?;
-        let askpass = directory.path().join("askpass.sh");
-        std::fs::write(
-            &askpass,
-            b"#!/bin/sh\ncase \"$1\" in\n  *Username*) printf '%s' \"$OPENAGENTS_CONNECTOR_USERNAME\" ;;\n  *) printf '%s' \"$OPENAGENTS_CONNECTOR_TOKEN\" ;;\nesac\n",
-        )?;
-        std::fs::set_permissions(&askpass, std::fs::Permissions::from_mode(0o700))?;
-        Ok(Self {
-            _directory: directory,
-            askpass,
-            token: secret.token.clone(),
-            username: secret.username.clone(),
-        })
-    }
-
-    fn apply(&self, command: &mut Command) {
-        command
-            .env("GIT_TERMINAL_PROMPT", "0")
-            .env("GIT_ASKPASS", &self.askpass)
-            .env("OPENAGENTS_CONNECTOR_TOKEN", &self.token)
-            .env("OPENAGENTS_CONNECTOR_USERNAME", &self.username);
-    }
-}
-
-impl Drop for GitAuth {
-    fn drop(&mut self) {
-        self.token.zeroize();
-        self.username.zeroize();
-    }
+    resolve_scoped_connector(
+        config,
+        &request.provider.connector_ref,
+        request.workspace.organization_id,
+        &request.provider.provider,
+    )
+    .await
 }
 
 async fn ensure_remote_branch(
@@ -1167,18 +919,8 @@ async fn acquire_delivery_lock(
 }
 
 fn delivery_git_command(config: &Config, worktree: &Path) -> Command {
-    let mut command = Command::new(&config.git_binary);
-    command
-        .env_clear()
-        .env("PATH", "/usr/local/bin:/usr/bin:/bin")
-        .env("HOME", "/nonexistent")
-        .env("LANG", "C")
-        .env("LC_ALL", "C")
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .arg("-C")
-        .arg(worktree)
-        .stdin(Stdio::null());
+    let mut command = git_transport_command(&config.git_binary);
+    command.arg("-C").arg(worktree);
     command
 }
 
@@ -2042,7 +1784,6 @@ mod tests {
 
     #[test]
     fn remote_and_connector_identity_are_strict_and_secret_free() {
-        let org = Uuid::new_v4();
         assert_eq!(
             github_remote_identity("https://github.com/acme/repo.git"),
             Some("acme/repo".into())
@@ -2051,23 +1792,16 @@ mod tests {
             github_remote_identity("https://evil.example/acme/repo.git"),
             None
         );
-        assert!(
-            tenant_connector_path(&format!("local-connector://orgs/{org}/github/app"), org).is_ok()
-        );
-        assert!(tenant_connector_path(
-            "local-connector://orgs/00000000-0000-0000-0000-000000000000/github/app",
-            org
-        )
-        .is_err());
-        assert!(
-            tenant_connector_path(&format!("local-connector://orgs/{org}/../secret"), org).is_err()
-        );
         let secret =
-            parse_connector_secret(br#"{"token":"connector-test-value-with-length"}"#).unwrap();
-        let auth = GitAuth::new(&secret).unwrap();
-        let script = std::fs::read_to_string(&auth.askpass).unwrap();
-        assert!(!script.contains(&secret.token));
-        assert!(!script.contains("connector-test-value"));
+            ConnectorSecret::test_value("connector-test-value-with-length", "x-access-token");
+        let command = format!(
+            "{:?}",
+            delivery_git_command(
+                &test_config(Path::new("/tmp"), "http://invalid".into()),
+                Path::new("/tmp"),
+            )
+        );
+        assert!(!command.contains(secret.token()));
     }
 
     #[test]
@@ -2098,28 +1832,24 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let binary = slow_executable(temp.path());
         let organization_id = Uuid::new_v4();
-        let resolver = AwsConnectorResolver {
-            binary: binary.clone(),
-            timeout: Duration::from_millis(20),
-        };
-        let connector_error = resolver
-            .resolve(
-                &format!("aws-sm://eu-west-1/orgs/{organization_id}/github/app"),
-                organization_id,
-                "github",
-            )
-            .await
-            .err()
-            .expect("slow connector must time out");
+        let mut config = test_config(temp.path(), "http://invalid".into());
+        config.aws_binary = binary.clone();
+        config.request_timeout = Duration::from_millis(20);
+        let connector_error = resolve_scoped_connector(
+            &config,
+            &format!("aws-sm://eu-west-1/orgs/{organization_id}/github/app"),
+            organization_id,
+            "github",
+        )
+        .await
+        .err()
+        .expect("slow connector must time out");
         assert_eq!(connector_error.to_string(), "CONNECTOR_RESOLUTION_TIMEOUT");
 
-        let mut config = test_config(temp.path(), "http://invalid".into());
         config.git_binary = binary;
         config.git_timeout = Duration::from_millis(20);
-        let secret = ConnectorSecret {
-            token: "fake-connector-value-with-length".into(),
-            username: "x-access-token".into(),
-        };
+        let secret =
+            ConnectorSecret::test_value("fake-connector-value-with-length", "x-access-token");
         let auth = GitAuth::new(&secret).unwrap();
         let remote_error = remote_branch_head(
             &config,
@@ -2194,10 +1924,10 @@ mod tests {
             http: Client::new(),
             api_url: github_server(state.clone()).await,
         });
-        let secret = Arc::new(ConnectorSecret {
-            token: "not-a-real-token".into(),
-            username: "x-access-token".into(),
-        });
+        let secret = Arc::new(ConnectorSecret::test_value(
+            "not-a-real-token",
+            "x-access-token",
+        ));
         let run = Uuid::new_v4();
         let ticket = Uuid::new_v4();
         let first = {
