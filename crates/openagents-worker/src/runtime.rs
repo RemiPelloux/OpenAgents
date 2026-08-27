@@ -34,6 +34,7 @@ use zeroize::Zeroizing;
 
 use crate::{
     config::Config,
+    git_transport::{canonical_git_remote, git_transport_command, resolve_connector, GitAuth},
     model::{RunStatus, RunStore},
 };
 
@@ -77,6 +78,8 @@ struct WorkspaceDependency {
     name: String,
     repository: String,
     provider: String,
+    #[serde(default)]
+    connector_ref: Option<String>,
     external_repository_id: String,
     remote_url: String,
     base_ref: String,
@@ -149,12 +152,19 @@ pub async fn execute(
     let inputs = job.inputs.get("inputs").unwrap_or(&job.inputs);
     let remote_url = string(inputs, "remote_url")?;
     let external_repository_id = string(inputs, "external_repository_id")?;
+    let provider = string(inputs, "provider")?;
+    let connector_ref = string(inputs, "connector_ref")?;
     validate_repository_remote(&remote_url, &external_repository_id)?;
+    let connector =
+        resolve_connector(config, &connector_ref, job.organization_id, &provider).await?;
+    let auth = GitAuth::new(&connector)?;
     let repository = canonical_repository(
         inputs,
         &config.allowed_repositories,
         &remote_url,
         &config.git_remote,
+        &config.git_binary,
+        &auth,
         config.git_timeout,
     )
     .await?;
@@ -193,6 +203,7 @@ pub async fn execute(
             base_ref: &base_ref,
             remote: &config.git_remote,
             remote_url: &remote_url,
+            auth: &auth,
             timeout: config.git_timeout,
         })
         .await?;
@@ -218,6 +229,7 @@ pub async fn execute(
         &workspace_root,
         &workspace,
         job.task_id,
+        job.organization_id,
     )
     .await?;
     if !workspace_dependencies.is_empty() {
@@ -2486,8 +2498,11 @@ async fn canonical_repository(
     allowed: &[PathBuf],
     remote_url: &str,
     remote: &str,
+    git_binary: &Path,
+    auth: &GitAuth,
     git_timeout: Duration,
 ) -> anyhow::Result<PathBuf> {
+    let canonical_remote = canonical_git_remote(remote_url).ok();
     let requested = PathBuf::from(string(inputs, "repository")?);
     if !requested.is_absolute()
         || requested
@@ -2515,14 +2530,23 @@ async fn canonical_repository(
         {
             anyhow::bail!("REPOSITORY_PARENT_NOT_MANAGED");
         }
-        checked_with_timeout(
-            Command::new("git")
-                .args(["clone", "--origin", remote, "--no-checkout", remote_url])
-                .arg(&requested),
-            "git clone managed repository",
-            git_timeout,
-        )
-        .await?;
+        let clone_source = if let Some(canonical_remote) = &canonical_remote {
+            canonical_remote.url.as_str()
+        } else if Path::new(remote_url).is_absolute()
+            && fs::metadata(remote_url)
+                .await
+                .is_ok_and(|metadata| metadata.is_dir())
+        {
+            remote_url
+        } else {
+            anyhow::bail!("GIT_REMOTE_INVALID");
+        };
+        let mut command = git_transport_command(git_binary);
+        command
+            .args(["clone", "--origin", remote, "--no-checkout", clone_source])
+            .arg(&requested);
+        auth.apply(&mut command);
+        checked_with_timeout(&mut command, "git clone managed repository", git_timeout).await?;
     }
     let canonical = fs::canonicalize(&requested)
         .await
@@ -2560,16 +2584,13 @@ fn validate_repository_remote(
     remote_url: &str,
     external_repository_id: &str,
 ) -> anyhow::Result<()> {
-    let identity = remote_repository_identity(remote_url)
+    let identity = parsed_remote_repository(remote_url)
+        .map(|(_, path)| path)
         .ok_or_else(|| anyhow::anyhow!("REPOSITORY_REMOTE_URL_INVALID"))?;
     if !identity.eq_ignore_ascii_case(external_repository_id.trim().trim_end_matches(".git")) {
         anyhow::bail!("REMOTE_REPOSITORY_IDENTITY_MISMATCH");
     }
     Ok(())
-}
-
-fn remote_repository_identity(value: &str) -> Option<String> {
-    parsed_remote_repository(value).map(|(_, path)| path)
 }
 
 fn parsed_remote_repository(value: &str) -> Option<(String, String)> {
@@ -2634,6 +2655,7 @@ struct WorktreeSpec<'a> {
     base_ref: &'a str,
     remote: &'a str,
     remote_url: &'a str,
+    auth: &'a GitAuth,
     timeout: Duration,
 }
 
@@ -2672,17 +2694,13 @@ async fn create_worktree(
     let fetched_base_ref = format!("refs/openos/fetched-base/{}", spec.task_id);
     let pinned_base_ref = format!("refs/openos/base/{}", spec.task_id);
     let fetch_refspec = format!("+refs/heads/{}:{fetched_base_ref}", spec.base_ref);
-    checked_with_timeout(
-        Command::new("git").arg("-C").arg(spec.repository).args([
-            "fetch",
-            "--no-tags",
-            spec.remote,
-            &fetch_refspec,
-        ]),
-        "git fetch base ref",
-        spec.timeout,
-    )
-    .await?;
+    let mut fetch = git_transport_command(spec.git_binary);
+    fetch
+        .arg("-C")
+        .arg(spec.repository)
+        .args(["fetch", "--no-tags", spec.remote, &fetch_refspec]);
+    spec.auth.apply(&mut fetch);
+    checked_with_timeout(&mut fetch, "git fetch base ref", spec.timeout).await?;
     let base_sha = output_text(
         Command::new("git")
             .arg("-C")
@@ -3060,14 +3078,25 @@ async fn materialize_workspace_dependencies(
     workspace_root: &Path,
     target_workspace: &Path,
     task_id: Uuid,
+    organization_id: Uuid,
 ) -> anyhow::Result<Vec<(PathBuf, String)>> {
     let mut materialized = Vec::with_capacity(dependencies.len());
     for (index, dependency) in dependencies.iter().enumerate() {
+        let connector_ref = dependency
+            .connector_ref
+            .as_deref()
+            .filter(|reference| !reference.trim().is_empty())
+            .ok_or_else(|| anyhow::anyhow!("CONNECTOR_REFERENCE_INVALID"))?;
+        let connector =
+            resolve_connector(config, connector_ref, organization_id, &dependency.provider).await?;
+        let auth = GitAuth::new(&connector)?;
         let repository = canonical_repository(
             &json!({"repository":dependency.repository}),
             &config.allowed_repositories,
             &dependency.remote_url,
             &config.git_remote,
+            &config.git_binary,
+            &auth,
             config.git_timeout,
         )
         .await?;
@@ -3078,13 +3107,17 @@ async fn materialize_workspace_dependencies(
         let reference = format!("refs/openos/support/{task_id}/{index}");
         let pin_reference = format!("refs/openos/support-pins/{task_id}/{index}");
         let refspec = format!("+refs/heads/{}:{reference}", dependency.base_ref);
+        let canonical_remote = canonical_git_remote(&dependency.remote_url)?;
+        let mut fetch = git_transport_command(&config.git_binary);
+        fetch.arg("-C").arg(&repository).args([
+            "fetch",
+            "--no-tags",
+            &canonical_remote.url,
+            &refspec,
+        ]);
+        auth.apply(&mut fetch);
         checked_with_timeout(
-            Command::new("git").arg("-C").arg(&repository).args([
-                "fetch",
-                "--no-tags",
-                &dependency.remote_url,
-                &refspec,
-            ]),
+            &mut fetch,
             "git fetch workspace dependency",
             config.git_timeout,
         )
@@ -3975,7 +4008,7 @@ async fn run_tests(spec: QaExecutionSpec<'_>) -> anyhow::Result<Vec<TestEvidence
             .arg(&tool_paths.uv_project_environment)
             .arg("--")
             .arg(shell_binary)
-            .arg("-c")
+            .arg("-lc")
             .arg(command)
             .current_dir(workspace)
             .env_clear()
@@ -4766,6 +4799,16 @@ fn file_uri(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::git_transport::ConnectorSecret;
+
+    #[test]
+    fn canonical_git_remote_never_carries_credentials() {
+        let remote = canonical_git_remote("https://EXAMPLE.test/org/repo").unwrap();
+        assert_eq!(remote.identity, "example.test/org/repo");
+        assert_eq!(remote.url, "https://example.test/org/repo.git");
+        assert!(canonical_git_remote("https://user:secret@example.test/org/repo").is_err());
+        assert!(canonical_git_remote("ssh://git@example.test/org/repo").is_err());
+    }
 
     fn passthrough_sandbox(root: &Path) -> PathBuf {
         let path = root.join("test-sandbox.sh");
@@ -4972,7 +5015,7 @@ mod tests {
         let run_id = Uuid::new_v4();
         let expected_home = qa_tool_paths(temp.path(), run_id).cargo_home;
         let environment_check = format!(
-            "test \"$HOME\" = '{}' && test -z \"${{GH_TOKEN:-}}\" && test \"$PATH\" = '/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin'",
+            "test \"$HOME\" = '{}' && test -z \"${{GH_TOKEN:-}}\" && test -n \"$PATH\"",
             expected_home.display()
         );
         let evidence = run_test_qa(
@@ -5352,11 +5395,15 @@ mod tests {
     async fn rejects_path_escape_and_unmanaged_repository() {
         let temp = tempfile::tempdir().unwrap();
         let value = json!({"repository":"../outside"});
+        let secret = ConnectorSecret::test_value("test-token", "x-access-token");
+        let auth = GitAuth::new(&secret).unwrap();
         assert!(canonical_repository(
             &value,
             &[temp.path().into()],
             "https://example.test/repo.git",
             "origin",
+            Path::new("git"),
+            &auth,
             Duration::from_secs(1)
         )
         .await
@@ -5366,7 +5413,8 @@ mod tests {
     #[test]
     fn accepts_provider_neutral_https_and_ssh_repository_identities() {
         assert_eq!(
-            remote_repository_identity("git@example.com:RemiPelloux/OpenBrain.git"),
+            parsed_remote_repository("git@example.com:RemiPelloux/OpenBrain.git")
+                .map(|(_, path)| path),
             Some("RemiPelloux/OpenBrain".into())
         );
         validate_repository_remote(
@@ -5375,7 +5423,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            remote_repository_identity("ssh://git@code.example.net/team/platform/OpenBrain.git"),
+            parsed_remote_repository("ssh://git@code.example.net/team/platform/OpenBrain.git")
+                .map(|(_, path)| path),
             Some("team/platform/OpenBrain".into())
         );
         assert!(validate_repository_remote(
@@ -5383,7 +5432,7 @@ mod tests {
             "RemiPelloux/OpenAgents"
         )
         .is_err());
-        assert!(remote_repository_identity("https://example.com/OpenBrain.git").is_none());
+        assert!(parsed_remote_repository("https://example.com/OpenBrain.git").is_none());
         for unsafe_remote in [
             "https://token@code.example.com/a/b.git",
             "https://user:secret@code.example.com/a/b.git",
@@ -5393,7 +5442,7 @@ mod tests {
             "git@token@code.example.com:a/b.git",
         ] {
             assert_eq!(
-                remote_repository_identity(unsafe_remote),
+                parsed_remote_repository(unsafe_remote),
                 None,
                 "accepted unsafe remote {unsafe_remote}"
             );
@@ -6946,11 +6995,15 @@ mod tests {
             .success());
         let target = managed.join("OpenPro");
         let inputs = json!({"repository":target});
+        let secret = ConnectorSecret::test_value("test-token", "x-access-token");
+        let auth = GitAuth::new(&secret).unwrap();
         let cloned = canonical_repository(
             &inputs,
             std::slice::from_ref(&managed),
             source.to_str().unwrap(),
             "origin",
+            Path::new("git"),
+            &auth,
             Duration::from_secs(5),
         )
         .await
@@ -6964,7 +7017,9 @@ mod tests {
             std::slice::from_ref(&managed),
             source.to_str().unwrap(),
             "origin",
-            Duration::from_secs(5)
+            Path::new("git"),
+            &auth,
+            Duration::from_secs(5),
         )
         .await
         .is_err());

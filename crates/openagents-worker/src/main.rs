@@ -2,6 +2,7 @@ mod api;
 mod config;
 mod control_plane;
 mod delivery;
+mod git_transport;
 mod model;
 mod runtime;
 
