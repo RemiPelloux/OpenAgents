@@ -28,7 +28,11 @@ impl WorkerRole {
 
     pub fn job_types(self) -> &'static [&'static str] {
         match self {
-            Self::Coding => &["engineering.opencode", "agent.skill_author"],
+            Self::Coding => &[
+                "engineering.opencode",
+                "engineering.inspect",
+                "agent.skill_author",
+            ],
             Self::Delivery => &["engineering.delivery"],
         }
     }
@@ -43,6 +47,7 @@ pub struct Config {
     pub bind: SocketAddr,
     pub organization_id: Uuid,
     pub worker_id: String,
+    pub database_url: String,
     pub role: WorkerRole,
     pub orchestrator_url: String,
     pub signing_key: String,
@@ -88,6 +93,7 @@ impl Config {
             organization_id: required("OPENOS_ORGANIZATION_ID")?.parse()?,
             worker_id: std::env::var("OPENAGENTS_WORKER_ID")
                 .unwrap_or_else(|_| "openagents-rust-1".into()),
+            database_url: required("OPENAGENTS_DATABASE_URL")?,
             role,
             orchestrator_url: required("OPENORCHESTRATOR_API_URL")?
                 .trim_end_matches('/')
@@ -256,6 +262,7 @@ mod tests {
     #[test]
     fn worker_roles_have_disjoint_job_types() {
         assert!(WorkerRole::Coding.permits("engineering.opencode"));
+        assert!(WorkerRole::Coding.permits("engineering.inspect"));
         assert!(WorkerRole::Coding.permits("agent.skill_author"));
         assert!(!WorkerRole::Coding.permits("engineering.delivery"));
         assert!(WorkerRole::Delivery.permits("engineering.delivery"));

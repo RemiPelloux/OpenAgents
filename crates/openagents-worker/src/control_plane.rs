@@ -19,6 +19,53 @@ pub enum ControlPlaneFailure {
     Permanent,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExecutionFailure {
+    pub code: &'static str,
+    pub retryable: bool,
+}
+
+pub fn classify_execution_failure(error: &anyhow::Error) -> ExecutionFailure {
+    let upper = error.to_string().to_ascii_uppercase();
+    let transient = upper.contains("TIMEOUT")
+        || upper.contains("TIMED OUT")
+        || upper.contains("NETWORK")
+        || upper.contains("CONNECTION")
+        || upper.contains("ECONNRESET")
+        || upper.contains("429")
+        || (500..=599).any(|status| upper.contains(&status.to_string()))
+        || upper.contains("LEASE_LOST")
+        || upper.contains("LEASE_HEARTBEAT_UNCONFIRMED");
+    if transient {
+        return ExecutionFailure {
+            code: "TRANSIENT_EXECUTION_FAILURE",
+            retryable: true,
+        };
+    }
+    let code = if upper.contains("OPENCODE_PRODUCED_NO_CHANGES") {
+        "OPENCODE_PRODUCED_NO_CHANGES"
+    } else if upper.contains("OPENCODE_PROTOCOL_CONTRADICTORY_TERMINAL") {
+        "OPENCODE_PROTOCOL_CONTRADICTORY_TERMINAL"
+    } else if upper.contains("OPENCODE_PROTOCOL_TERMINAL_MISSING")
+        || upper.contains("OPENCODE_PROTOCOL_TERMINAL_MALFORMED")
+        || upper.contains("OPENCODE_TERMINAL_REPORT_MISSING")
+    {
+        "OPENCODE_PROTOCOL_MALFORMED"
+    } else if upper.contains("POLICY") || upper.contains("FORBIDDEN") {
+        "POLICY_VIOLATION"
+    } else if upper.contains("CONNECTOR") || upper.contains("REMOTE_REPOSITORY") {
+        "CONNECTOR_INVALID"
+    } else if upper.contains("EVIDENCE") || upper.contains("PROOF") {
+        "EVIDENCE_MISSING_OR_INVALID"
+    } else {
+        "PERMANENT_EXECUTION_FAILURE"
+    };
+    ExecutionFailure {
+        code,
+        retryable: false,
+    }
+}
+
 #[derive(Debug)]
 struct ControlPlaneHttpError {
     status: StatusCode,
@@ -225,6 +272,7 @@ impl ControlPlaneClient {
         &self,
         job: &WorkerJob,
         run_id: Uuid,
+        error_code: &str,
         message: &str,
         retryable: bool,
     ) -> anyhow::Result<()> {
@@ -233,7 +281,7 @@ impl ControlPlaneClient {
             job_id: job.job_id,
             lease_token: job.lease_token,
             run_id,
-            error_code: "WORKER_EXECUTION_FAILED".into(),
+            error_code: error_code.into(),
             message: sanitize(message),
             retryable,
             stderr: None,
@@ -387,6 +435,7 @@ fn worker_capabilities(role: WorkerRole) -> Vec<String> {
     }
     let mut capabilities = vec![
         "invoke_opencode".into(),
+        "inspect_repository".into(),
         "git_worktree".into(),
         "test_execution".into(),
         "skill_author".into(),
@@ -426,7 +475,7 @@ fn healthy_job_types(role: WorkerRole, healthy: bool) -> Vec<String> {
 
 fn role_adapters(role: WorkerRole) -> &'static [&'static str] {
     match role {
-        WorkerRole::Coding => &["opencode", "skill_author"],
+        WorkerRole::Coding => &["opencode", "repository_inspector", "skill_author"],
         WorkerRole::Delivery => &["trusted_delivery"],
     }
 }
@@ -518,5 +567,26 @@ mod tests {
             classify_status(StatusCode::UNPROCESSABLE_ENTITY),
             ControlPlaneFailure::Permanent
         );
+    }
+
+    #[test]
+    fn classifies_execution_failures_without_attempt_count_heuristics() {
+        let no_changes =
+            classify_execution_failure(&anyhow::anyhow!("OPENCODE_PRODUCED_NO_CHANGES"));
+        assert_eq!(no_changes.code, "OPENCODE_PRODUCED_NO_CHANGES");
+        assert!(!no_changes.retryable);
+
+        let malformed = classify_execution_failure(&anyhow::anyhow!(
+            "OPENCODE_PROTOCOL_CONTRADICTORY_TERMINAL"
+        ));
+        assert_eq!(malformed.code, "OPENCODE_PROTOCOL_CONTRADICTORY_TERMINAL");
+        assert!(!malformed.retryable);
+
+        let timeout = classify_execution_failure(&anyhow::anyhow!("OPENCODE_TIMEOUT"));
+        assert_eq!(timeout.code, "TRANSIENT_EXECUTION_FAILURE");
+        assert!(timeout.retryable);
+
+        let throttled = classify_execution_failure(&anyhow::anyhow!("provider returned HTTP 429"));
+        assert!(throttled.retryable);
     }
 }
