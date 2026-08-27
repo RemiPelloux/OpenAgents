@@ -74,38 +74,11 @@ def _resolve_args() -> list[str]:
     return shlex.split(raw)
 
 
-def _resolve_home_dir() -> str:
-    """Return a stable HOME for child ACP processes."""
-    home = os.environ.get("HOME", "").strip()
-    if home:
-        return home
-
-    expanded = os.path.expanduser("~")
-    if expanded and expanded != "~":
-        return expanded
-
-    try:
-        import pwd
-
-        resolved = pwd.getpwuid(os.getuid()).pw_dir.strip()  # windows-footgun: ok — POSIX fallback inside try/except (pwd import fails on Windows)
-        if resolved:
-            return resolved
-    except Exception:
-        pass
-
-    # Last resort: /tmp (writable on any POSIX system). Avoids crashing the
-    # subprocess with no HOME; callers can set OPENAGENTS_HOME explicitly if they
-    # need a different writable dir.
-    return "/tmp"
-
-
 def _build_subprocess_env() -> dict[str, str]:
     # Copilot ACP is a model-driving CLI executor: it legitimately needs LLM
     # provider credentials. Route through the central helper so Tier-1 secrets
     # (gateway bot tokens, GitHub auth, infra) are still stripped (#29157).
     env = hermes_subprocess_env(inherit_credentials=True)
-    home = _resolve_home_dir()
-    env["HOME"] = home
     from openagents_constants import apply_subprocess_home_env
     apply_subprocess_home_env(env)
     return env

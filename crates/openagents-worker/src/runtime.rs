@@ -3979,7 +3979,7 @@ async fn run_tests(spec: QaExecutionSpec<'_>) -> anyhow::Result<Vec<TestEvidence
             .arg(command)
             .current_dir(workspace)
             .env_clear()
-            .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+            .env("PATH", "/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin")
             .env("HOME", &tool_paths.cargo_home)
             .env("TMPDIR", &tool_paths.uv_cache_dir)
             .env("CARGO_HOME", &tool_paths.cargo_home)
@@ -4972,7 +4972,7 @@ mod tests {
         let run_id = Uuid::new_v4();
         let expected_home = qa_tool_paths(temp.path(), run_id).cargo_home;
         let environment_check = format!(
-            "test \"$HOME\" = '{}' && test -z \"${{GH_TOKEN:-}}\" && test -n \"$PATH\"",
+            "test \"$HOME\" = '{}' && test -z \"${{GH_TOKEN:-}}\" && test \"$PATH\" = '/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin'",
             expected_home.display()
         );
         let evidence = run_test_qa(

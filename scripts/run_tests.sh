@@ -39,7 +39,11 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # ── Activate venv ───────────────────────────────────────────────────────────
 VENV=""
+if [ -n "${UV_PROJECT_ENVIRONMENT:-}" ] && [ -f "$UV_PROJECT_ENVIRONMENT/bin/activate" ]; then
+  VENV="$UV_PROJECT_ENVIRONMENT"
+fi
 for candidate in "$REPO_ROOT/.venv" "$REPO_ROOT/venv" "$HOME/.hermes/openagents/venv"; do
+  [ -n "$VENV" ] && break
   if [ -f "$candidate/bin/activate" ]; then
     VENV="$candidate"
     break
@@ -47,7 +51,7 @@ for candidate in "$REPO_ROOT/.venv" "$REPO_ROOT/venv" "$HOME/.hermes/openagents/
 done
 
 if [ -z "$VENV" ]; then
-  echo "error: no virtualenv found in $REPO_ROOT/.venv or $REPO_ROOT/venv" >&2
+  echo "error: no virtualenv found in UV_PROJECT_ENVIRONMENT, $REPO_ROOT/.venv, $REPO_ROOT/venv, or $HOME/.hermes/openagents/venv" >&2
   exit 1
 fi
 
