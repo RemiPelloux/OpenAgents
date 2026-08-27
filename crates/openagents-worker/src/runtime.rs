@@ -3975,7 +3975,7 @@ async fn run_tests(spec: QaExecutionSpec<'_>) -> anyhow::Result<Vec<TestEvidence
             .arg(&tool_paths.uv_project_environment)
             .arg("--")
             .arg(shell_binary)
-            .arg("-lc")
+            .arg("-c")
             .arg(command)
             .current_dir(workspace)
             .env_clear()

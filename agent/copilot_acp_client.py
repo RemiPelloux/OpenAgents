@@ -78,9 +78,17 @@ def _build_subprocess_env() -> dict[str, str]:
     # Copilot ACP is a model-driving CLI executor: it legitimately needs LLM
     # provider credentials. Route through the central helper so Tier-1 secrets
     # (gateway bot tokens, GitHub auth, infra) are still stripped (#29157).
+    parent_env = dict(os.environ)
+    from openagents_constants import get_real_home
+
+    real_home = get_real_home(parent_env)
     env = hermes_subprocess_env(inherit_credentials=True)
     from openagents_constants import apply_subprocess_home_env
+
     apply_subprocess_home_env(env)
+    if real_home:
+        env["HOME"] = real_home
+        env["HERMES_REAL_HOME"] = real_home
     return env
 
 
