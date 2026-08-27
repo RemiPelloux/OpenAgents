@@ -7,6 +7,9 @@ import json
 import os
 from typing import Any, Dict, Mapping, MutableMapping
 
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
 DISPATCH_RUN_CONTRACTS: Dict[str, tuple[str, str]] = {
     "CC-ORCH-004": ("OpenOrchestrator", "OpenAgents"),
     "CC-OT-001": ("OpenTeam", "OpenAgents"),
@@ -16,6 +19,32 @@ MESH_IDENTITIES: Dict[str, str] = {
     "OpenOrchestrator": "2gcbZ39WzoPCS3Jrh1QHSo3YCYCmIoyESHINVI+0toE=",
     "OpenTeam": "FsrWcHmOoewkBeVhVTcj7RTe2KwiSo6k5MIzIKGbJcs=",
 }
+
+
+def _identity_registry() -> Dict[str, str]:
+    raw = os.environ.get("OPENCONTRACT_IDENTITIES", "").strip()
+    if not raw:
+        if _dev_keys_relaxed() or not _strict_signature_required():
+            return MESH_IDENTITIES
+        raise ValueError("OPENCONTRACT_IDENTITIES required for strict signature verification")
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError("OPENCONTRACT_IDENTITIES must be valid JSON") from exc
+    if not isinstance(parsed, dict) or not parsed:
+        raise ValueError("OPENCONTRACT_IDENTITIES must be a non-empty object")
+    identities: Dict[str, str] = {}
+    for identity, public_key in parsed.items():
+        if not isinstance(identity, str) or not identity or not isinstance(public_key, str):
+            raise ValueError("OPENCONTRACT_IDENTITIES contains an invalid identity")
+        try:
+            decoded = base64.b64decode(public_key, validate=True)
+        except ValueError as exc:
+            raise ValueError(f"invalid public key for {identity}") from exc
+        if len(decoded) != 32:
+            raise ValueError(f"invalid public key for {identity}")
+        identities[identity] = public_key
+    return identities
 
 
 def _is_envelope(body: Any) -> bool:
@@ -78,24 +107,16 @@ def _verify_envelope_signature(envelope: Mapping[str, Any]) -> None:
     if signer_id != expected_signer:
         raise ValueError(f"signer mismatch: expected {expected_signer}, got {signer_id}")
 
-    public_key_b64 = MESH_IDENTITIES.get(str(signer_id))
+    public_key_b64 = _identity_registry().get(str(signer_id))
     if not public_key_b64:
         raise ValueError(f"unknown identity: {signer_id}")
 
-    try:
-        from nacl.exceptions import BadSignatureError
-        from nacl.signing import VerifyKey
-    except ImportError as exc:
-        if _dev_keys_relaxed():
-            return
-        raise ValueError("PyNaCl required for OPENCONTRACT signature verification") from exc
-
-    verify_key = VerifyKey(base64.b64decode(public_key_b64))
+    verify_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key_b64))
     sig = base64.b64decode(str(signature.get("value", "")))
     message = _envelope_signing_bytes(envelope)
     try:
-        verify_key.verify(message, sig)
-    except BadSignatureError as exc:
+        verify_key.verify(sig, message)
+    except InvalidSignature as exc:
         raise ValueError("invalid contract signature") from exc
 
 

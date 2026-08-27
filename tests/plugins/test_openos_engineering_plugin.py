@@ -422,7 +422,8 @@ def test_unwrap_orchestrator_requires_envelope_when_strict(monkeypatch):
 
 
 def test_unwrap_orchestrator_verifies_unicode_signature(monkeypatch):
-    from nacl.signing import SigningKey
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     from plugins.openos_engineering.orchestrator_dispatch import (
         _envelope_signing_bytes,
         unwrap_orchestrator_run_body,
@@ -440,7 +441,8 @@ def test_unwrap_orchestrator_verifies_unicode_signature(monkeypatch):
         "prerequisites_ok": True,
         "timestamp": "2026-07-19T00:00:00.000Z",
     }
-    signature = SigningKey(seed).sign(_envelope_signing_bytes(envelope)).signature
+    signing_key = Ed25519PrivateKey.from_private_bytes(seed)
+    signature = signing_key.sign(_envelope_signing_bytes(envelope))
     envelope["signature"] = {
         "algorithm": "ed25519",
         "signer_id": "OpenOrchestrator",
@@ -448,6 +450,19 @@ def test_unwrap_orchestrator_verifies_unicode_signature(monkeypatch):
     }
 
     monkeypatch.delenv("OPENCONTRACT_DEV_KEYS", raising=False)
+    monkeypatch.setenv(
+        "OPENCONTRACT_IDENTITIES",
+        json.dumps(
+            {
+                "OpenOrchestrator": base64.b64encode(
+                    signing_key.public_key().public_bytes(
+                        encoding=serialization.Encoding.Raw,
+                        format=serialization.PublicFormat.Raw,
+                    )
+                ).decode()
+            }
+        ),
+    )
     assert unwrap_orchestrator_run_body(envelope)["input"] == "Implement — résumé"
 
 
