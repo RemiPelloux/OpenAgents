@@ -57,6 +57,37 @@ def test_seeds_running_state_on_blank_volume(
     )
 
 
+def test_seeds_bootstrap_files_with_minimal_s6_capabilities(
+    built_image: str, container_name: str,
+) -> None:
+    """Fresh-volume bootstrap works without granting CAP_FOWNER."""
+    subprocess.run(
+        [
+            "docker", "run", "-d", "--name", container_name,
+            "--cap-drop", "ALL",
+            "--cap-add", "CHOWN",
+            "--cap-add", "SETGID",
+            "--cap-add", "SETUID",
+            "-e", 'HERMES_AUTH_JSON_BOOTSTRAP={"api_key":"test"}',
+            "-e", "HERMES_GATEWAY_BOOTSTRAP_STATE=running",
+            built_image, "sleep", "infinity",
+        ],
+        check=True, capture_output=True, timeout=60,
+    )
+    wait_for_container_ready(container_name)
+
+    result = docker_exec_sh(
+        container_name,
+        "stat -c '%u:%g:%a' /opt/data/auth.json "
+        "/opt/data/gateway_state.json",
+        timeout=10,
+    )
+    assert result.stdout.splitlines() == [
+        "10000:10000:600",
+        "10000:10000:644",
+    ]
+
+
 def test_does_not_clobber_existing_state(
     built_image: str, container_name: str,
 ) -> None:

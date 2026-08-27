@@ -440,8 +440,8 @@ if [ ! -f "$OPENAGENTS_HOME/auth.json" ] && [ -n "${HERMES_AUTH_JSON_BOOTSTRAP:-
         :
     else
         printf '%s' "$HERMES_AUTH_JSON_BOOTSTRAP" > "$OPENAGENTS_HOME/auth.json"
-        chown hermes:hermes "$OPENAGENTS_HOME/auth.json" 2>/dev/null || true
         chmod 600 "$OPENAGENTS_HOME/auth.json"
+        chown hermes:hermes "$OPENAGENTS_HOME/auth.json" 2>/dev/null || true
     fi
 fi
 
@@ -476,8 +476,8 @@ if [ ! -f "$OPENAGENTS_HOME/gateway_state.json" ] && \
         :
     else
         printf '{"gateway_state":"running"}\n' > "$OPENAGENTS_HOME/gateway_state.json"
-        chown hermes:hermes "$OPENAGENTS_HOME/gateway_state.json" 2>/dev/null || true
         chmod 644 "$OPENAGENTS_HOME/gateway_state.json"
+        chown hermes:hermes "$OPENAGENTS_HOME/gateway_state.json" 2>/dev/null || true
     fi
 fi
 
