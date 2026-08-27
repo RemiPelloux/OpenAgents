@@ -466,6 +466,52 @@ def test_unwrap_orchestrator_verifies_unicode_signature(monkeypatch):
     assert unwrap_orchestrator_run_body(envelope)["input"] == "Implement — résumé"
 
 
+def test_unwrap_orchestrator_accepts_structured_identity_registry(monkeypatch):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from plugins.openos_engineering.orchestrator_dispatch import (
+        _envelope_signing_bytes,
+        unwrap_orchestrator_run_body,
+    )
+
+    signing_key = Ed25519PrivateKey.generate()
+    public_key = base64.b64encode(
+        signing_key.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+    ).decode()
+    envelope = {
+        "contract_id": "CC-ORCH-004",
+        "producer": "OpenOrchestrator",
+        "consumer": "OpenAgents",
+        "payload": {"input": "ship"},
+    }
+    envelope["signature"] = {
+        "algorithm": "ed25519",
+        "signer_id": "OpenOrchestrator",
+        "value": base64.b64encode(signing_key.sign(_envelope_signing_bytes(envelope))).decode(),
+    }
+    monkeypatch.setenv("OPENCONTRACT_REQUIRE_SIGNATURE", "1")
+    monkeypatch.delenv("OPENCONTRACT_DEV_KEYS", raising=False)
+    monkeypatch.setenv(
+        "OPENCONTRACT_IDENTITIES",
+        json.dumps(
+            {
+                "identities": [
+                    {
+                        "id": "OpenOrchestrator",
+                        "algorithm": "ed25519",
+                        "public_key": public_key,
+                    }
+                ]
+            }
+        ),
+    )
+
+    assert unwrap_orchestrator_run_body(envelope) == {"input": "ship"}
+
+
 def test_unwrap_dispatch_rejects_wrong_contract_parties(monkeypatch):
     from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
 

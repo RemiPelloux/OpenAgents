@@ -33,8 +33,26 @@ def _identity_registry() -> Dict[str, str]:
         raise ValueError("OPENCONTRACT_IDENTITIES must be valid JSON") from exc
     if not isinstance(parsed, dict) or not parsed:
         raise ValueError("OPENCONTRACT_IDENTITIES must be a non-empty object")
+    configured: Dict[str, Any]
+    records = parsed.get("identities")
+    if records is not None:
+        if not isinstance(records, list):
+            raise ValueError("OPENCONTRACT_IDENTITIES identities must be an array")
+        configured = {}
+        for record in records:
+            if not isinstance(record, dict):
+                raise ValueError("OPENCONTRACT_IDENTITIES contains an invalid identity")
+            identity = record.get("id")
+            public_key = record.get("public_key")
+            if not isinstance(identity, str) or not isinstance(public_key, str):
+                raise ValueError("OPENCONTRACT_IDENTITIES contains an invalid identity")
+            if identity in configured:
+                raise ValueError(f"duplicate identity: {identity}")
+            configured[identity] = public_key
+    else:
+        configured = parsed
     identities: Dict[str, str] = {}
-    for identity, public_key in parsed.items():
+    for identity, public_key in configured.items():
         if not isinstance(identity, str) or not identity or not isinstance(public_key, str):
             raise ValueError("OPENCONTRACT_IDENTITIES contains an invalid identity")
         try:
