@@ -328,10 +328,11 @@ def get_service_manager() -> ServiceManager:
 # ---------------------------------------------------------------------------
 
 
-# s6-overlay's dynamic scandir for runtime-registered services. Lives on
-# tmpfs and is the directory s6-svscan watches. Writes here trigger
-# automatic supervision on the next rescan.
-S6_DYNAMIC_SCANDIR = Path("/run/service")
+# Dedicated hermes-owned scandir for runtime-registered services. A nested
+# s6-svscan runs as hermes here; PID 1's root scanner only watches immutable
+# static services under /run/service. Keeping the trust domains separate
+# prevents a writable service directory from becoming a root execution path.
+S6_DYNAMIC_SCANDIR = Path("/run/openagents-services")
 S6_SERVICE_PREFIX = "gateway-"
 
 

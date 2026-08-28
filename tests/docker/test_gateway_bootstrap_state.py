@@ -68,6 +68,8 @@ def test_seeds_bootstrap_files_with_minimal_s6_capabilities(
             "--cap-add", "CHOWN",
             "--cap-add", "SETGID",
             "--cap-add", "SETUID",
+            "--group-add", "10000",
+            "-e", "HERMES_MANAGED_DIR=/etc/hermes",
             "-e", 'HERMES_AUTH_JSON_BOOTSTRAP={"api_key":"test"}',
             "-e", "HERMES_GATEWAY_BOOTSTRAP_STATE=running",
             built_image, "sleep", "infinity",

@@ -6,7 +6,15 @@ user.
 """
 from __future__ import annotations
 
-from tests.docker.conftest import docker_exec, docker_exec_sh, start_container
+import subprocess
+
+from tests.docker.conftest import (
+    docker_exec,
+    docker_exec_sh,
+    poll_container,
+    start_container,
+    wait_for_container_ready,
+)
 
 
 def test_config_migration_runs_on_boot(
@@ -67,3 +75,86 @@ def test_config_migration_opt_out_env_var_respected(
     assert "EXISTS" in r.stdout, (
         f"config.yaml should be seeded even with migration skipped: {r.stdout}"
     )
+
+
+def test_managed_llm_env_survives_legacy_migration_with_minimal_caps(
+    built_image: str, container_name: str,
+) -> None:
+    """Managed LLM values are restored after migration 12 -> 13 clears them."""
+    volume = f"{container_name}-data"
+    subprocess.run(
+        ["docker", "volume", "create", volume],
+        check=True, capture_output=True, timeout=10,
+    )
+    try:
+        subprocess.run(
+            [
+                "docker", "run", "--rm", "-v", f"{volume}:/opt/data",
+                "--entrypoint", "sh", built_image, "-c",
+                "printf '_config_version: 12\\n' > /opt/data/config.yaml; "
+                "printf 'LLM_MODEL=legacy-model\\n' > /opt/data/.env",
+            ],
+            check=True, capture_output=True, timeout=30,
+        )
+        subprocess.run(
+            [
+                "docker", "run", "-d", "--name", container_name,
+                "-v", f"{volume}:/opt/data",
+                "--cap-drop", "ALL",
+                "--cap-add", "CHOWN",
+                "--cap-add", "SETGID",
+                "--cap-add", "SETUID",
+                "--group-add", "10000",
+                "-e", "HERMES_MANAGED_DIR=/etc/hermes",
+                "-e", "HERMES_GATEWAY_BOOTSTRAP_STATE=running",
+                "-e", "API_SERVER_ENABLED=true",
+                "-e", "API_SERVER_HOST=127.0.0.1",
+                "-e", "API_SERVER_PORT=8642",
+                "-e", "API_SERVER_KEY=test-key",
+                "-e", "LLM_PROVIDER=openai-compatible",
+                "-e", "LLM_BASE_URL=http://127.0.0.1:9/v1",
+                "-e", "LLM_API_KEY=test-llm-key",
+                "-e", "LLM_MODEL=managed-model",
+                built_image, "sleep", "infinity",
+            ],
+            check=True, capture_output=True, timeout=60,
+        )
+        wait_for_container_ready(container_name)
+
+        values = docker_exec(
+            container_name,
+            "/opt/hermes/.venv/bin/python", "-c",
+            "from dotenv import dotenv_values; "
+            "v=dotenv_values('/opt/data/.env'); "
+            "assert v['LLM_MODEL']=='managed-model'; "
+            "assert v['LLM_BASE_URL']=='http://127.0.0.1:9/v1'",
+            timeout=10,
+        )
+        assert values.returncode == 0, values.stderr
+
+        modes = docker_exec_sh(
+            container_name,
+            "stat -c '%u:%g:%a' /opt/data/.env /opt/data/config.yaml",
+            timeout=10,
+        )
+        assert modes.returncode == 0, modes.stderr
+        assert modes.stdout.splitlines() == [
+            "10000:10000:600",
+            "10000:10000:640",
+        ]
+
+        healthy, output = poll_container(
+            container_name,
+            "curl -fsS http://127.0.0.1:8642/v1/health >/dev/null",
+            deadline_s=45,
+        )
+        assert healthy, f"managed gateway did not become healthy: {output}"
+    finally:
+        subprocess.run(
+            ["docker", "rm", "-f", container_name],
+            capture_output=True, timeout=10,
+        )
+        subprocess.run(
+            ["docker", "volume", "rm", "-f", volume],
+            capture_output=True, timeout=10,
+        )

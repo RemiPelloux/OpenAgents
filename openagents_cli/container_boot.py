@@ -1,6 +1,6 @@
 """Container-boot reconciliation of per-profile gateway s6 services.
 
-Service directories under /run/service/ live on **tmpfs** and are wiped
+Service directories under /run/openagents-services/ live on **tmpfs** and are wiped
 on every container restart. Profile directories under
 ``$OPENAGENTS_HOME/profiles/<name>/`` live on the persistent VOLUME, and
 each one records its gateway's last state in ``gateway_state.json``.
@@ -70,7 +70,7 @@ def reconcile_profile_gateways(
     maps an empty profile suffix to ``gateway-default``, so this slot
     is what ``hermes gateway start`` (no ``-p``) targets. Without it,
     bare ``hermes gateway start`` inside the container would land on
-    ``s6-svc -u /run/service/gateway-default`` → uncaught
+    ``s6-svc -u /run/openagents-services/gateway-default`` → uncaught
     ``CalledProcessError`` → traceback to the user (PR #30136 review).
 
     The default slot's prior state is read from
@@ -82,7 +82,8 @@ def reconcile_profile_gateways(
         hermes_home: The container's OPENAGENTS_HOME (typically /opt/data).
             Profiles live under ``<hermes_home>/profiles/<name>/``;
             the default profile lives at ``<hermes_home>`` itself.
-        scandir: The s6 dynamic scandir (typically /run/service). Service
+        scandir: The hermes-owned s6 dynamic scandir (typically
+            /run/openagents-services). Service
             directories are created at ``<scandir>/gateway-<profile>/``.
         dry_run: When True, walk and return the action list without
             touching the filesystem. For tests and `--dry-run` debug.
@@ -488,6 +489,7 @@ def _write_reconcile_log(
 # worst case. Tuned for visibility (small enough to grep / cat without
 # scrolling forever) more than space (the persistent volume has GB).
 _LOG_ROTATE_BYTES = 256 * 1024
+_PROFILE_GATEWAY_SCANDIR = Path("/run/openagents-services")
 
 
 def main() -> int:
@@ -509,7 +511,7 @@ def main() -> int:
         return 0
 
     hermes_home = Path(os.environ.get("OPENAGENTS_HOME", "/opt/data"))
-    scandir = Path(os.environ.get("S6_PROFILE_GATEWAY_SCANDIR", "/run/service"))
+    scandir = _PROFILE_GATEWAY_SCANDIR
     actions = reconcile_profile_gateways(
         hermes_home=hermes_home, scandir=scandir,
     )

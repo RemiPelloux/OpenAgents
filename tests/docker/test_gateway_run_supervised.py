@@ -31,7 +31,10 @@ from tests.docker.conftest import (
 
 
 def _svstat(container: str, slot: str = "gateway-default") -> str:
-    r = docker_exec_sh(container, f"/command/s6-svstat /run/service/{slot}")
+    r = docker_exec_sh(
+        container,
+        f"/command/s6-svstat /run/openagents-services/{slot}",
+    )
     return r.stdout if r.returncode == 0 else ""
 
 

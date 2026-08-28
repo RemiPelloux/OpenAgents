@@ -1235,7 +1235,7 @@ def delete_profile(name: str, yes: bool = False) -> Path:
     _cleanup_gateway_service(canon, profile_dir)
     # 1b. Phase 4: unregister the s6 service slot (container path).
     # On host this is a no-op; on container it removes
-    # /run/service/gateway-<profile>/ so s6-supervise drops it.
+    # /run/openagents-services/gateway-<profile>/ so s6-supervise drops it.
     _maybe_unregister_gateway_service(canon)
 
     # 2. Stop running gateway

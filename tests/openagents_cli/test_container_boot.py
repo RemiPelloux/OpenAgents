@@ -853,7 +853,7 @@ def test_main_skips_reconcile_in_dashboard_container(
     scandir = tmp_path / "run-service"; scandir.mkdir()
     _make_profile(tmp_path, "worker", state="running")
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setenv("S6_PROFILE_GATEWAY_SCANDIR", str(scandir))
+    monkeypatch.setattr(container_boot, "_PROFILE_GATEWAY_SCANDIR", scandir)
     monkeypatch.setattr(
         container_boot,
         "_read_container_argv",
@@ -888,7 +888,7 @@ def test_main_skips_reconcile_in_dashboard_container_s6v3(
     scandir = tmp_path / "run-service"; scandir.mkdir()
     _make_profile(tmp_path, "worker", state="running")
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setenv("S6_PROFILE_GATEWAY_SCANDIR", str(scandir))
+    monkeypatch.setattr(container_boot, "_PROFILE_GATEWAY_SCANDIR", scandir)
     monkeypatch.setattr(
         container_boot,
         "_read_container_argv",
@@ -927,7 +927,7 @@ def test_main_reconciles_in_gateway_container(
     scandir = tmp_path / "run-service"; scandir.mkdir()
     _make_profile(tmp_path, "worker", state="running")
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setenv("S6_PROFILE_GATEWAY_SCANDIR", str(scandir))
+    monkeypatch.setattr(container_boot, "_PROFILE_GATEWAY_SCANDIR", scandir)
     monkeypatch.setattr(
         container_boot,
         "_read_container_argv",
@@ -954,7 +954,7 @@ def test_main_ignores_removed_skip_reconcile_env_var(
     scandir = tmp_path / "run-service"; scandir.mkdir()
     _make_profile(tmp_path, "worker", state="running")
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setenv("S6_PROFILE_GATEWAY_SCANDIR", str(scandir))
+    monkeypatch.setattr(container_boot, "_PROFILE_GATEWAY_SCANDIR", scandir)
     monkeypatch.setenv("HERMES_SKIP_PROFILE_RECONCILE", "1")
     monkeypatch.setattr(
         container_boot,

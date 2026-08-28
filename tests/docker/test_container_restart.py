@@ -1,6 +1,6 @@
 """Container-restart survives per-profile gateway registrations.
 
-The s6 dynamic scandir at /run/service/ lives on tmpfs and is wiped
+The s6 dynamic scandir at /run/openagents-services/ lives on tmpfs and is wiped
 on every container restart. Phase 4 Task 4.0's container_boot module
 + cont-init.d/02-reconcile-profiles regenerate the service slots from
 $OPENAGENTS_HOME/profiles/<name>/gateway_state.json on every boot and
@@ -88,7 +88,10 @@ def test_running_gateway_survives_container_restart(restart_container: str) -> N
     assert r.returncode == 0, f"gateway start failed: {r.stderr}"
 
     # Give the service time to actually come up under supervision.
-    poll_container(container, "/command/s6-svstat /run/service/gateway-coder | grep -q 'up '")
+    poll_container(
+        container,
+        "/command/s6-svstat /run/openagents-services/gateway-coder | grep -q 'up '",
+    )
 
     # Persist state so the reconciler will treat the slot as 'running'
     # post-restart. The gateway process itself writes gateway_state.json
@@ -102,7 +105,7 @@ def test_running_gateway_survives_container_restart(restart_container: str) -> N
     )
     docker_exec(container, "python3", "-c", write_state, timeout=10).check_returncode()
 
-    # Restart. After this, /run/service/ is empty until cont-init.d
+    # Restart. The dynamic scandir is empty until cont-init.d
     # runs the reconciler. We need to wait long enough for the
     # reconciler to write coder's entry to the boot log AND for
     # s6-svscan to spin up the service supervise tree from the
@@ -113,11 +116,17 @@ def test_running_gateway_survives_container_restart(restart_container: str) -> N
 
     # Service slot exists.
     assert wait_for_path(
-        container, "/run/service/gateway-coder", kind="d", deadline_s=10.0,
+        container,
+        "/run/openagents-services/gateway-coder",
+        kind="d",
+        deadline_s=10.0,
     ), "slot not recreated after restart"
 
     # No `down` marker — we asked for auto-start.
-    r = docker_exec_sh(container, "test -f /run/service/gateway-coder/down")
+    r = docker_exec_sh(
+        container,
+        "test -f /run/openagents-services/gateway-coder/down",
+    )
     assert r.returncode != 0, "down marker present despite prior_state=running"
 
 
@@ -140,11 +149,17 @@ def test_stopped_gateway_stays_stopped_after_restart(restart_container: str) -> 
 
     # Slot exists.
     assert wait_for_path(
-        container, "/run/service/gateway-writer", kind="d", deadline_s=10.0,
+        container,
+        "/run/openagents-services/gateway-writer",
+        kind="d",
+        deadline_s=10.0,
     )
 
     # Down marker present.
-    r = docker_exec_sh(container, "test -f /run/service/gateway-writer/down")
+    r = docker_exec_sh(
+        container,
+        "test -f /run/openagents-services/gateway-writer/down",
+    )
     assert r.returncode == 0, "down marker missing despite prior_state=stopped"
 
 
@@ -203,7 +218,10 @@ def test_live_gateway_autostarts_after_real_restart_without_manual_state_stamp(
 
     # Wait for the gateway to actually come up under supervision AND write
     # its own gateway_state=running (we do NOT stamp it ourselves).
-    poll_container(container, "/command/s6-svstat /run/service/gateway-live |  grep -q 'up '")
+    poll_container(
+        container,
+        "/command/s6-svstat /run/openagents-services/gateway-live | grep -q 'up '",
+    )
 
     # Confirm the gateway persisted its own 'running' state. The gateway has
     # to boot Python, discover ~50 plugins, construct GatewayRunner, and
@@ -226,9 +244,15 @@ def test_live_gateway_autostarts_after_real_restart_without_manual_state_stamp(
 
     # Slot recreated, and NO down marker (we expect auto-start).
     assert wait_for_path(
-        container, "/run/service/gateway-live", kind="d", deadline_s=10.0,
+        container,
+        "/run/openagents-services/gateway-live",
+        kind="d",
+        deadline_s=10.0,
     ), "slot not recreated after restart"
-    r = docker_exec_sh(container, "test -f /run/service/gateway-live/down")
+    r = docker_exec_sh(
+        container,
+        "test -f /run/openagents-services/gateway-live/down",
+    )
     assert r.returncode != 0, (
         "down marker present despite a live gateway being restarted — "
         "the signal-initiated shutdown wrongly persisted 'stopped' (#42675)"

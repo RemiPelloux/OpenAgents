@@ -280,11 +280,12 @@ def _check_s6_supervision(issues: list[str]) -> None:
     _section("s6 Supervision")
 
     mgr = S6ServiceManager()
+    static_mgr = S6ServiceManager(scandir=Path("/run/service"))
 
     # Static services. They live under /run/service/ via s6-rc symlinks,
     # so the same s6-svstat probe works.
-    for static in ("main-hermes", "dashboard"):
-        if mgr.is_running(static):
+    for static in ("main-hermes", "dashboard", "profile-gateways"):
+        if static_mgr.is_running(static):
             check_ok(f"{static}: up")
         else:
             check_info(f"{static}: down (expected if not enabled via env)")

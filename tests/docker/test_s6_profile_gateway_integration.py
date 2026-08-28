@@ -13,13 +13,13 @@ hooks land.
 
 Every ``docker exec`` here runs as the unprivileged ``hermes`` user
 (via :func:`docker_exec` in conftest); see the conftest module
-docstring. ``/run/service`` is chowned hermes-writable by the
-``02-reconcile-profiles`` cont-init.d script, so register/unregister
-operations work correctly under UID 10000.
+docstring. ``/run/openagents-services`` is owned by hermes and watched by a
+nested scanner that also runs as hermes, so registration cannot publish a
+root service.
 """
 from __future__ import annotations
 
-from tests.docker.conftest import docker_exec, start_container
+from tests.docker.conftest import docker_exec, poll_container, start_container
 
 
 _REGISTER_SCRIPT = """
@@ -46,7 +46,7 @@ def test_s6_register_creates_service_dir_in_live_container(
     built_image: str, container_name: str,
 ) -> None:
     """S6ServiceManager.register_profile_gateway must create
-    ``/run/service/gateway-<profile>/`` and trigger s6-svscan rescan
+    ``/run/openagents-services/gateway-<profile>/`` and trigger s6-svscan rescan
     against the real s6 supervision tree."""
     start_container(built_image, container_name, cmd="sleep 120")
 
@@ -56,21 +56,21 @@ def test_s6_register_creates_service_dir_in_live_container(
     )
 
     # Service directory exists with the expected structure.
-    r = docker_exec(container_name, "test", "-d", "/run/service/gateway-phase3test")
+    r = docker_exec(container_name, "test", "-d", "/run/openagents-services/gateway-phase3test")
     assert r.returncode == 0, "service directory not created"
 
-    r = docker_exec(container_name, "test", "-f", "/run/service/gateway-phase3test/run")
+    r = docker_exec(container_name, "test", "-f", "/run/openagents-services/gateway-phase3test/run")
     assert r.returncode == 0, "run script not created"
 
     r = docker_exec(container_name, "test", "-f",
-              "/run/service/gateway-phase3test/log/run")
+              "/run/openagents-services/gateway-phase3test/log/run")
     assert r.returncode == 0, "log/run script not created"
 
     # s6-svscan picked it up — s6-svstat works against the dir.
     # `docker exec` doesn't put /command/ on PATH (only the supervision
     # tree does), so call s6-svstat by absolute path.
     r = docker_exec(container_name, "/command/s6-svstat",
-              "/run/service/gateway-phase3test")
+              "/run/openagents-services/gateway-phase3test")
     assert r.returncode == 0, f"s6-svstat failed: {r.stderr or r.stdout}"
 
     # list_profile_gateways picks it up.
@@ -100,7 +100,7 @@ def test_s6_unregister_removes_service_dir_in_live_container(
     )
 
     # Directory is gone.
-    r = docker_exec(container_name, "test", "-d", "/run/service/gateway-phase3test")
+    r = docker_exec(container_name, "test", "-d", "/run/openagents-services/gateway-phase3test")
     assert r.returncode != 0, "service directory still exists after unregister"
 
     # list_profile_gateways no longer includes it.
@@ -109,3 +109,62 @@ def test_s6_unregister_removes_service_dir_in_live_container(
         "print(S6ServiceManager().list_profile_gateways())"
     ))
     assert "phase3test" not in r.stdout
+
+
+def test_dynamic_scanner_cannot_execute_a_published_service_as_root(
+    built_image: str, container_name: str,
+) -> None:
+    """A hostile hermes-owned service directory remains UID 10000."""
+    start_container(built_image, container_name, cmd="sleep 120")
+
+    script = """
+from pathlib import Path
+import subprocess
+
+scandir = Path('/run/openagents-services')
+service = scandir / 'hostile-publication'
+service.mkdir()
+run = service / 'run'
+run.write_text(
+    '#!/bin/sh\\n'
+    'id -u > /opt/data/hostile-publication.uid\\n'
+    'exec sleep 60\\n'
+)
+run.chmod(0o755)
+subprocess.run(
+    ['/command/s6-svscanctl', '-a', str(scandir)],
+    check=True,
+)
+"""
+    published = docker_exec(
+        container_name, "python3", "-c", script, timeout=30,
+    )
+    assert published.returncode == 0, published.stderr
+
+    ready, output = poll_container(
+        container_name,
+        "test \"$(cat /opt/data/hostile-publication.uid 2>/dev/null)\" = 10000",
+        deadline_s=15,
+    )
+    assert ready, f"published service escaped hermes UID: {output}"
+
+
+def test_hermes_cannot_publish_to_or_signal_root_scandir(
+    built_image: str, container_name: str,
+) -> None:
+    """The root scanner remains outside the hermes writable boundary."""
+    start_container(built_image, container_name, cmd="sleep 120")
+
+    create = docker_exec(
+        container_name,
+        "mkdir", "/run/service/hostile-publication",
+        timeout=10,
+    )
+    assert create.returncode != 0, "hermes unexpectedly wrote to /run/service"
+
+    signal = docker_exec(
+        container_name,
+        "/command/s6-svscanctl", "-a", "/run/service",
+        timeout=10,
+    )
+    assert signal.returncode != 0, "hermes unexpectedly signalled root s6-svscan"

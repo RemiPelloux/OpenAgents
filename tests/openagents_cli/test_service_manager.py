@@ -499,6 +499,7 @@ def test_seed_supervise_skeleton_handles_log_subservice(tmp_path) -> None:
     assert log_event.is_dir()
     assert stat.S_IMODE(log_event.stat().st_mode) == 0o3730
     assert log_supervise.is_dir()
+    assert stat.S_IMODE(log_supervise.stat().st_mode) == 0o755
     assert log_supervise_event.is_dir()
     assert log_control.exists() and stat.S_ISFIFO(log_control.stat().st_mode)
 

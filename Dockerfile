@@ -275,10 +275,11 @@ RUN if [ -n "${HERMES_GIT_SHA}" ]; then \
     fi
 
 # ---------- s6-overlay service wiring ----------
-# Static services declared at build time: main-hermes + dashboard.
+# Static services declared at build time: main-hermes, dashboard, and the
+# unprivileged scanner for dynamic profile gateways.
 # Per-profile gateway services are registered dynamically at runtime by
 # the profile create/delete hooks (Phase 4); they live under
-# /run/service/ (tmpfs) and are reconciled on container restart by
+# /run/openagents-services/ (tmpfs) and are reconciled on container restart by
 # /etc/cont-init.d/02-reconcile-profiles (Phase 4 Task 4.0).
 COPY docker/s6-rc.d/ /etc/s6-overlay/s6-rc.d/
 
@@ -289,7 +290,7 @@ COPY docker/s6-rc.d/ /etc/s6-overlay/s6-rc.d/
 #
 # 02-reconcile-profiles re-creates per-profile gateway s6 service
 # slots from $OPENAGENTS_HOME/profiles/<name>/ after a container restart
-# (the /run/service/ scandir is tmpfs and wiped on restart). Phase 4.
+# (the dynamic scandir is tmpfs and wiped on restart). Phase 4.
 RUN mkdir -p /etc/cont-init.d && \
     printf '#!/command/with-contenv sh\nexec /opt/hermes/docker/stage2-hook.sh\n' \
         > /etc/cont-init.d/01-hermes-setup && \

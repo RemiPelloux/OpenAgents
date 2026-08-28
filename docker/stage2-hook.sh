@@ -249,6 +249,14 @@ if [ "$needs_chown" = true ]; then
     done
 fi
 
+# A capability-minimal s6 PID 1 cannot bypass mode bits. In managed
+# deployments Docker adds the hermes GID as a supplementary group for root,
+# so keep the data root private while allowing s6 to traverse it before the
+# supervised process drops to hermes.
+if [ -n "${HERMES_MANAGED_DIR:-}" ]; then
+    as_hermes chmod 0750 "$OPENAGENTS_HOME" 2>/dev/null || true
+fi
+
 # --- Immutable install tree ---
 # Do not chown runtime code or dependency trees under $INSTALL_DIR back to the
 # hermes user. Hosted/container instances keep mutable state under
@@ -326,7 +334,7 @@ if [ -f "$OPENAGENTS_HOME/config.yaml" ]; then
         :
     else
         chown hermes:hermes "$OPENAGENTS_HOME/config.yaml" 2>/dev/null || true
-        chmod 640 "$OPENAGENTS_HOME/config.yaml" 2>/dev/null || true
+        as_hermes chmod 640 "$OPENAGENTS_HOME/config.yaml" 2>/dev/null || true
     fi
 fi
 
@@ -390,25 +398,6 @@ seed_one ".env" ".env.example"
 seed_one "config.yaml" "cli-config.yaml.example"
 seed_one "SOUL.md" "docker/SOUL.md"
 
-# In managed server mode the persistent .env must mirror the canonical
-# container LLM configuration. OpenAgents intentionally loads this file with
-# override semantics, so an empty first-boot template would otherwise erase
-# Docker-provided values before the supervised gateways start.
-if [ -n "${HERMES_MANAGED_DIR:-}" ] && [ -f "$OPENAGENTS_HOME/.env" ]; then
-    "$INSTALL_DIR/.venv/bin/python" - "$OPENAGENTS_HOME/.env" <<'PY'
-import os
-import sys
-
-from dotenv import set_key
-
-path = sys.argv[1]
-for key in ("LLM_PROVIDER", "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL"):
-    value = os.environ.get(key, "").strip()
-    if value:
-        set_key(path, key, value, quote_mode="always")
-PY
-fi
-
 # .env holds API keys and secrets — restrict to owner-only access. Applied
 # unconditionally (not only on first-seed) so a host-mounted .env that was
 # created with a permissive umask gets tightened on every container start.
@@ -417,7 +406,7 @@ if [ -f "$OPENAGENTS_HOME/.env" ]; then
         :
     else
         chown hermes:hermes "$OPENAGENTS_HOME/.env" 2>/dev/null || true
-        chmod 600 "$OPENAGENTS_HOME/.env" 2>/dev/null || true
+        as_hermes chmod 600 "$OPENAGENTS_HOME/.env" 2>/dev/null || true
     fi
 fi
 
@@ -432,6 +421,28 @@ if [ -f "$OPENAGENTS_HOME/config.yaml" ]; then
         || echo "[stage2] Warning: docker_config_migrate.py failed; continuing"
 fi
 
+# In managed server mode the persistent .env must mirror the canonical
+# container LLM configuration. OpenAgents intentionally loads this file with
+# override semantics, so an empty value would erase Docker-provided values in
+# the supervised gateway. Run this after schema migration: migration 12 -> 13
+# deliberately clears legacy LLM_MODEL, but managed deployments still use that
+# variable as their canonical runtime contract. The file is hermes-owned mode
+# 0600, so the write must also run as hermes when root lacks DAC_OVERRIDE.
+if [ -n "${HERMES_MANAGED_DIR:-}" ] && [ -f "$OPENAGENTS_HOME/.env" ]; then
+    s6-setuidgid hermes "$INSTALL_DIR/.venv/bin/python" - "$OPENAGENTS_HOME/.env" <<'PY'
+import os
+import sys
+
+from dotenv import set_key
+
+path = sys.argv[1]
+for key in ("LLM_PROVIDER", "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL"):
+    value = os.environ.get(key, "").strip()
+    if value:
+        set_key(path, key, value, quote_mode="always")
+PY
+fi
+
 # auth.json: bootstrap from env on first boot only. Same semantics as the
 # pre-s6 entrypoint — the [ ! -f ] guard is critical to avoid clobbering
 # rotated refresh tokens on container restart.
@@ -439,9 +450,9 @@ if [ ! -f "$OPENAGENTS_HOME/auth.json" ] && [ -n "${HERMES_AUTH_JSON_BOOTSTRAP:-
     if refuse_symlinked_path "seed" "$OPENAGENTS_HOME/auth.json"; then
         :
     else
-        printf '%s' "$HERMES_AUTH_JSON_BOOTSTRAP" > "$OPENAGENTS_HOME/auth.json"
-        chmod 600 "$OPENAGENTS_HOME/auth.json"
-        chown hermes:hermes "$OPENAGENTS_HOME/auth.json" 2>/dev/null || true
+        as_hermes sh -c 'umask 077; printf "%s" "$HERMES_AUTH_JSON_BOOTSTRAP" > "$1"' \
+            sh "$OPENAGENTS_HOME/auth.json"
+        as_hermes chmod 600 "$OPENAGENTS_HOME/auth.json"
     fi
 fi
 
@@ -475,9 +486,9 @@ if [ ! -f "$OPENAGENTS_HOME/gateway_state.json" ] && \
     if refuse_symlinked_path "seed" "$OPENAGENTS_HOME/gateway_state.json"; then
         :
     else
-        printf '{"gateway_state":"running"}\n' > "$OPENAGENTS_HOME/gateway_state.json"
-        chmod 644 "$OPENAGENTS_HOME/gateway_state.json"
-        chown hermes:hermes "$OPENAGENTS_HOME/gateway_state.json" 2>/dev/null || true
+        as_hermes sh -c 'umask 022; printf '\''{"gateway_state":"running"}\n'\'' > "$1"' \
+            sh "$OPENAGENTS_HOME/gateway_state.json"
+        as_hermes chmod 644 "$OPENAGENTS_HOME/gateway_state.json"
     fi
 fi
 

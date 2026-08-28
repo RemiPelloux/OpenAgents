@@ -1,0 +1,16 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+set -eu
+
+# Dynamic gateway service directories are writable by hermes. They must never
+# be scanned by PID 1's root s6-svscan, otherwise a compromised gateway could
+# publish an arbitrary root service. This nested scanner and every supervisor
+# it creates run as hermes instead.
+scandir=/run/openagents-services
+if [ ! -d "$scandir" ]; then
+    echo "[profile-gateways] missing scandir: $scandir" >&2
+    exit 1
+fi
+
+[ "$(id -u)" = 0 ] || exec /command/s6-svscan "$scandir"
+exec s6-setuidgid hermes /command/s6-svscan "$scandir"

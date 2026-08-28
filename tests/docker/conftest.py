@@ -162,7 +162,16 @@ def wait_for_container_ready(
             "cat /opt/data/logs/container-boot.log 2>/dev/null",
             timeout=5,
         )
-        if r.returncode == 0 and "profile=default" in r.stdout:
+        scanner = docker_exec(
+            container,
+            "test", "-p", "/run/openagents-services/.s6-svscan/control",
+            timeout=5,
+        )
+        if (
+            r.returncode == 0
+            and "profile=default" in r.stdout
+            and scanner.returncode == 0
+        ):
             return
         time.sleep(interval_s)
     raise TimeoutError(
