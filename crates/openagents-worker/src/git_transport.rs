@@ -315,8 +315,6 @@ pub(crate) fn git_transport_command(git: &Path) -> Command {
             "-c",
             "credential.helper=",
             "-c",
-            "credential.interactive=false",
-            "-c",
             "core.hooksPath=/dev/null",
             "-c",
             "core.fsmonitor=false",
@@ -397,6 +395,60 @@ mod tests {
 
         drop(auth);
         assert!(!askpass.exists());
+    }
+
+    #[tokio::test]
+    async fn git_transport_invokes_askpass_without_leaking_secrets() {
+        let secret =
+            ConnectorSecret::test_value("synthetic-askpass-token-8d7c2a", "synthetic-askpass-user");
+        let auth = GitAuth::new(&secret).unwrap();
+        let script = std::fs::read_to_string(auth.askpass_path()).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let marker = directory.path().join("askpass-invoked");
+        let fake_git = directory.path().join("git");
+        std::fs::write(
+            &fake_git,
+            "#!/bin/sh\n\
+             set -eu\n\
+             username=\"$(\"$GIT_ASKPASS\" 'Username for https://example.test')\"\n\
+             password=\"$(\"$GIT_ASKPASS\" 'Password for https://example.test')\"\n\
+             printf 'username=%s\\npassword=%s\\n' \"$username\" \"$password\" > \"$OPENAGENTS_ASKPASS_MARKER\"\n\
+             printf 'git shim argv:' >&2\n\
+             printf ' <%s>' \"$@\" >&2\n\
+             printf '\\n' >&2\n\
+             exit 1\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&fake_git, std::fs::Permissions::from_mode(0o700)).unwrap();
+
+        let mut command = git_transport_command(&fake_git);
+        command.env("OPENAGENTS_ASKPASS_MARKER", &marker).args([
+            "clone",
+            "https://example.test/acme/repository.git",
+            "/tmp/repository",
+        ]);
+        auth.apply(&mut command);
+        let command_argv = command
+            .as_std()
+            .get_args()
+            .map(|value| value.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(!command_argv.contains(secret.token()));
+        assert!(!command_argv.contains("synthetic-askpass-user"));
+        let output = command.output().await.unwrap();
+
+        assert!(!output.status.success());
+        assert_eq!(
+            std::fs::read_to_string(marker).unwrap(),
+            "username=synthetic-askpass-user\npassword=synthetic-askpass-token-8d7c2a\n"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(!stderr.contains(secret.token()));
+        assert!(!stderr.contains("synthetic-askpass-user"));
+        assert!(!script.contains(secret.token()));
+        assert!(!script.contains("synthetic-askpass-user"));
+        assert!(!stderr.contains("credential.interactive=false"));
     }
 
     #[tokio::test]
