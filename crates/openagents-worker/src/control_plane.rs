@@ -121,6 +121,16 @@ pub struct ControlPlaneClient {
     identities: IdentityRegistry,
 }
 
+fn add_internal_headers(
+    request: reqwest::RequestBuilder,
+    internal_service_key: &str,
+    organization_id: Uuid,
+) -> reqwest::RequestBuilder {
+    request
+        .header("x-internal-service-key", internal_service_key)
+        .header("x-organization-id", organization_id.to_string())
+}
+
 impl ControlPlaneClient {
     pub fn new(http: Client, config: &Config, identities: IdentityRegistry) -> Self {
         Self {
@@ -402,12 +412,14 @@ impl ControlPlaneClient {
             payload,
         );
         sign_worker_envelope(&mut envelope, "OpenAgents", &self.signing_key)?;
-        let response = self
-            .http
-            .post(format!("{}{}", self.base_url, path))
-            .json(&envelope)
-            .send()
-            .await?;
+        let response = add_internal_headers(
+            self.http.post(format!("{}{}", self.base_url, path)),
+            &self.internal_service_key,
+            self.organization_id,
+        )
+        .json(&envelope)
+        .send()
+        .await?;
         let status = response.status();
         let body: Value = response.json().await.unwrap_or_default();
         if !status.is_success() {
@@ -588,5 +600,25 @@ mod tests {
 
         let throttled = classify_execution_failure(&anyhow::anyhow!("provider returned HTTP 429"));
         assert!(throttled.retryable);
+    }
+
+    #[test]
+    fn control_plane_requests_include_internal_auth_scope() {
+        let organization_id = Uuid::new_v4();
+        let request = add_internal_headers(
+            Client::new().post("http://orchestrator.test/v1/workers/register"),
+            "service-key",
+            organization_id,
+        )
+        .build()
+        .unwrap();
+        assert_eq!(
+            request.headers().get("x-internal-service-key").unwrap(),
+            "service-key"
+        );
+        assert_eq!(
+            request.headers().get("x-organization-id").unwrap(),
+            organization_id.to_string().as_str()
+        );
     }
 }
