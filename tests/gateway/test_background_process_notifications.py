@@ -21,6 +21,7 @@ from gateway.run import GatewayRunner, _parse_session_key
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _FakeRegistry:
     """Return pre-canned sessions, then None once exhausted."""
 
@@ -69,10 +70,11 @@ def _watcher_dict(session_id="proc_test", thread_id=""):
 # _load_background_notifications_mode unit tests
 # ---------------------------------------------------------------------------
 
-class TestLoadBackgroundNotificationsMode:
 
+class TestLoadBackgroundNotificationsMode:
     def test_defaults_to_all(self, monkeypatch, tmp_path):
         import gateway.run as gw
+
         monkeypatch.setattr(gw, "_hermes_home", tmp_path)
         monkeypatch.delenv("HERMES_BACKGROUND_NOTIFICATIONS", raising=False)
         assert GatewayRunner._load_background_notifications_mode() == "all"
@@ -82,6 +84,7 @@ class TestLoadBackgroundNotificationsMode:
             "display:\n  background_process_notifications: error\n"
         )
         import gateway.run as gw
+
         monkeypatch.setattr(gw, "_hermes_home", tmp_path)
         monkeypatch.delenv("HERMES_BACKGROUND_NOTIFICATIONS", raising=False)
         assert GatewayRunner._load_background_notifications_mode() == "error"
@@ -91,6 +94,7 @@ class TestLoadBackgroundNotificationsMode:
             "display:\n  background_process_notifications: error\n"
         )
         import gateway.run as gw
+
         monkeypatch.setattr(gw, "_hermes_home", tmp_path)
         monkeypatch.setenv("HERMES_BACKGROUND_NOTIFICATIONS", "off")
         assert GatewayRunner._load_background_notifications_mode() == "off"
@@ -100,6 +104,7 @@ class TestLoadBackgroundNotificationsMode:
             "display:\n  background_process_notifications: false\n"
         )
         import gateway.run as gw
+
         monkeypatch.setattr(gw, "_hermes_home", tmp_path)
         monkeypatch.delenv("HERMES_BACKGROUND_NOTIFICATIONS", raising=False)
         assert GatewayRunner._load_background_notifications_mode() == "off"
@@ -109,6 +114,7 @@ class TestLoadBackgroundNotificationsMode:
             "display:\n  background_process_notifications: banana\n"
         )
         import gateway.run as gw
+
         monkeypatch.setattr(gw, "_hermes_home", tmp_path)
         monkeypatch.delenv("HERMES_BACKGROUND_NOTIFICATIONS", raising=False)
         assert GatewayRunner._load_background_notifications_mode() == "all"
@@ -118,6 +124,7 @@ class TestLoadBackgroundNotificationsMode:
 # _run_process_watcher integration tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("mode", "sessions", "expected_calls", "expected_fragment"),
@@ -126,7 +133,9 @@ class TestLoadBackgroundNotificationsMode:
         (
             "all",
             [
-                SimpleNamespace(output_buffer="building...\n", exited=False, exit_code=None),
+                SimpleNamespace(
+                    output_buffer="building...\n", exited=False, exit_code=None
+                ),
                 None,  # process disappears → watcher exits
             ],
             1,
@@ -136,7 +145,9 @@ class TestLoadBackgroundNotificationsMode:
         (
             "result",
             [
-                SimpleNamespace(output_buffer="building...\n", exited=False, exit_code=None),
+                SimpleNamespace(
+                    output_buffer="building...\n", exited=False, exit_code=None
+                ),
                 None,
             ],
             0,
@@ -189,6 +200,7 @@ async def test_run_process_watcher_respects_notification_mode(
     # Patch asyncio.sleep to avoid real delays
     async def _instant_sleep(*_a, **_kw):
         pass
+
     monkeypatch.setattr(asyncio, "sleep", _instant_sleep)
 
     runner = _build_runner(monkeypatch, tmp_path, mode)
@@ -214,6 +226,7 @@ async def test_thread_id_passed_to_send(monkeypatch, tmp_path):
 
     async def _instant_sleep(*_a, **_kw):
         pass
+
     monkeypatch.setattr(asyncio, "sleep", _instant_sleep)
 
     runner = _build_runner(monkeypatch, tmp_path, "all")
@@ -236,6 +249,7 @@ async def test_no_thread_id_sends_no_metadata(monkeypatch, tmp_path):
 
     async def _instant_sleep(*_a, **_kw):
         pass
+
     monkeypatch.setattr(asyncio, "sleep", _instant_sleep)
 
     runner = _build_runner(monkeypatch, tmp_path, "all")
@@ -249,19 +263,23 @@ async def test_no_thread_id_sends_no_metadata(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_inject_watch_notification_routes_from_session_store_origin(monkeypatch, tmp_path):
+async def test_inject_watch_notification_routes_from_session_store_origin(
+    monkeypatch, tmp_path
+):
     from gateway.session import SessionSource
 
     runner = _build_runner(monkeypatch, tmp_path, "all")
     adapter = runner.adapters[Platform.TELEGRAM]
-    runner.session_store._entries["agent:main:telegram:group:-100:42"] = SimpleNamespace(
-        origin=SessionSource(
-            platform=Platform.TELEGRAM,
-            chat_id="-100",
-            chat_type="group",
-            thread_id="42",
-            user_id="123",
-            user_name="Emiliyan",
+    runner.session_store._entries["agent:main:telegram:group:-100:42"] = (
+        SimpleNamespace(
+            origin=SessionSource(
+                platform=Platform.TELEGRAM,
+                chat_id="-100",
+                chat_type="group",
+                thread_id="42",
+                user_id="123",
+                user_name="Emiliyan",
+            )
         )
     )
 
@@ -284,7 +302,9 @@ async def test_inject_watch_notification_routes_from_session_store_origin(monkey
 
 
 @pytest.mark.asyncio
-async def test_agent_notification_carries_message_id_reply_anchor(monkeypatch, tmp_path):
+async def test_agent_notification_carries_message_id_reply_anchor(
+    monkeypatch, tmp_path
+):
     """notify_on_complete injection carries the triggering message_id so the
     synthetic event can be reply-anchored back into a Telegram DM topic.
 
@@ -292,13 +312,19 @@ async def test_agent_notification_carries_message_id_reply_anchor(monkeypatch, t
     chat (see _thread_kwargs_for_send / telegram_dm_topic_reply_fallback)."""
     import tools.process_registry as pr_module
 
-    sessions = [SimpleNamespace(
-        output_buffer="SMOKE_OK\n", exited=True, exit_code=0, command="sleep 1",
-    )]
+    sessions = [
+        SimpleNamespace(
+            output_buffer="SMOKE_OK\n",
+            exited=True,
+            exit_code=0,
+            command="sleep 1",
+        )
+    ]
     monkeypatch.setattr(pr_module, "process_registry", _FakeRegistry(sessions))
 
     async def _instant_sleep(*_a, **_kw):
         pass
+
     monkeypatch.setattr(asyncio, "sleep", _instant_sleep)
 
     runner = _build_runner(monkeypatch, tmp_path, "all")
@@ -329,13 +355,19 @@ async def test_agent_notification_no_message_id_is_tolerated(monkeypatch, tmp_pa
     still injects — message_id is simply None."""
     import tools.process_registry as pr_module
 
-    sessions = [SimpleNamespace(
-        output_buffer="done\n", exited=True, exit_code=0, command="sleep 1",
-    )]
+    sessions = [
+        SimpleNamespace(
+            output_buffer="done\n",
+            exited=True,
+            exit_code=0,
+            command="sleep 1",
+        )
+    ]
     monkeypatch.setattr(pr_module, "process_registry", _FakeRegistry(sessions))
 
     async def _instant_sleep(*_a, **_kw):
         pass
+
     monkeypatch.setattr(asyncio, "sleep", _instant_sleep)
 
     runner = _build_runner(monkeypatch, tmp_path, "all")
@@ -358,7 +390,9 @@ async def test_agent_notification_no_message_id_is_tolerated(monkeypatch, tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_inject_watch_notification_carries_message_id_reply_anchor(monkeypatch, tmp_path):
+async def test_inject_watch_notification_carries_message_id_reply_anchor(
+    monkeypatch, tmp_path
+):
     from gateway.session import SessionSource
 
     runner = _build_runner(monkeypatch, tmp_path, "all")
@@ -388,7 +422,9 @@ async def test_inject_watch_notification_carries_message_id_reply_anchor(monkeyp
     assert synth_event.source.thread_id == "24296"
 
 
-def test_build_process_event_source_falls_back_to_session_key_chat_type(monkeypatch, tmp_path):
+def test_build_process_event_source_falls_back_to_session_key_chat_type(
+    monkeypatch, tmp_path
+):
     runner = _build_runner(monkeypatch, tmp_path, "all")
 
     evt = {
@@ -430,12 +466,10 @@ def test_build_process_event_source_uses_cached_live_source_before_session_key_p
         ),
     )
 
-    source = runner._build_process_event_source(
-        {
-            "session_id": "proc_watch",
-            "session_key": "agent:main:telegram:group:-100:42",
-        }
-    )
+    source = runner._build_process_event_source({
+        "session_id": "proc_watch",
+        "session_key": "agent:main:telegram:group:-100:42",
+    })
 
     assert source is not None
     assert source.platform == Platform.TELEGRAM
@@ -447,7 +481,9 @@ def test_build_process_event_source_uses_cached_live_source_before_session_key_p
 
 
 @pytest.mark.asyncio
-async def test_inject_watch_notification_ignores_foreground_event_source(monkeypatch, tmp_path):
+async def test_inject_watch_notification_ignores_foreground_event_source(
+    monkeypatch, tmp_path
+):
     """Negative test: watch notification must NOT route to the foreground thread."""
     from gateway.session import SessionSource
 
@@ -455,14 +491,16 @@ async def test_inject_watch_notification_ignores_foreground_event_source(monkeyp
     adapter = runner.adapters[Platform.TELEGRAM]
 
     # Session store has the process's original thread (thread 42)
-    runner.session_store._entries["agent:main:telegram:group:-100:42"] = SimpleNamespace(
-        origin=SessionSource(
-            platform=Platform.TELEGRAM,
-            chat_id="-100",
-            chat_type="group",
-            thread_id="42",
-            user_id="proc_owner",
-            user_name="alice",
+    runner.session_store._entries["agent:main:telegram:group:-100:42"] = (
+        SimpleNamespace(
+            origin=SessionSource(
+                platform=Platform.TELEGRAM,
+                chat_id="-100",
+                chat_type="group",
+                thread_id="42",
+                user_id="proc_owner",
+                user_name="alice",
+            )
         )
     )
 
@@ -489,7 +527,9 @@ def test_build_process_event_source_returns_none_for_empty_evt(monkeypatch, tmp_
     assert source is None
 
 
-def test_build_process_event_source_returns_none_for_invalid_platform(monkeypatch, tmp_path):
+def test_build_process_event_source_returns_none_for_invalid_platform(
+    monkeypatch, tmp_path
+):
     """Invalid platform string → None."""
     runner = _build_runner(monkeypatch, tmp_path, "all")
 
@@ -503,7 +543,9 @@ def test_build_process_event_source_returns_none_for_invalid_platform(monkeypatc
     assert source is None
 
 
-def test_build_process_event_source_returns_none_for_short_session_key(monkeypatch, tmp_path):
+def test_build_process_event_source_returns_none_for_short_session_key(
+    monkeypatch, tmp_path
+):
     """Session key with <5 parts doesn't parse, falls through to empty metadata → None."""
     runner = _build_runner(monkeypatch, tmp_path, "all")
 
@@ -518,6 +560,7 @@ def test_build_process_event_source_returns_none_for_short_session_key(monkeypat
 # ---------------------------------------------------------------------------
 # _parse_session_key helper
 # ---------------------------------------------------------------------------
+
 
 def test_parse_session_key_valid():
     result = _parse_session_key("agent:main:telegram:group:-100")
@@ -539,13 +582,23 @@ def test_parse_session_key_with_user_id_part():
 def test_parse_session_key_dm_with_thread():
     """DM keys use parts[5] as thread_id unambiguously."""
     result = _parse_session_key("agent:main:telegram:dm:chat1:topic42")
-    assert result == {"platform": "telegram", "chat_type": "dm", "chat_id": "chat1", "thread_id": "topic42"}
+    assert result == {
+        "platform": "telegram",
+        "chat_type": "dm",
+        "chat_id": "chat1",
+        "thread_id": "topic42",
+    }
 
 
 def test_parse_session_key_thread_chat_type():
     """Thread-typed keys use parts[5] as thread_id unambiguously."""
     result = _parse_session_key("agent:main:discord:thread:chan1:thread99")
-    assert result == {"platform": "discord", "chat_type": "thread", "chat_id": "chan1", "thread_id": "thread99"}
+    assert result == {
+        "platform": "discord",
+        "chat_type": "thread",
+        "chat_id": "chan1",
+        "thread_id": "thread99",
+    }
 
 
 def test_parse_session_key_too_short():

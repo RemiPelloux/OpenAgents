@@ -56,6 +56,7 @@ from gateway.config import Platform
 # IRC protocol helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_irc_message(raw: str) -> dict:
     """Parse a raw IRC protocol line into components.
 
@@ -92,6 +93,7 @@ def _extract_nick(prefix: str) -> str:
 # IRC Adapter
 # ---------------------------------------------------------------------------
 
+
 class IRCAdapter(BasePlatformAdapter):
     """Async IRC adapter implementing the BasePlatformAdapter interface.
 
@@ -118,19 +120,26 @@ class IRCAdapter(BasePlatformAdapter):
             if os.getenv("IRC_USE_TLS")
             else extra.get("use_tls", True)
         )
-        self.server_password = os.getenv("IRC_SERVER_PASSWORD") or extra.get("server_password", "")
-        self.nickserv_password = os.getenv("IRC_NICKSERV_PASSWORD") or extra.get("nickserv_password", "")
+        self.server_password = os.getenv("IRC_SERVER_PASSWORD") or extra.get(
+            "server_password", ""
+        )
+        self.nickserv_password = os.getenv("IRC_NICKSERV_PASSWORD") or extra.get(
+            "nickserv_password", ""
+        )
 
         # Auth
         self.allowed_users: list = extra.get("allowed_users", [])
         # IRC nicks are case-insensitive — normalise for lookups
-        self._allowed_users_lower: set = {u.lower() for u in self.allowed_users if isinstance(u, str)}
+        self._allowed_users_lower: set = {
+            u.lower() for u in self.allowed_users if isinstance(u, str)
+        }
 
         # IRC limits
         max_msg = extra.get("max_message_length")
         if max_msg is None:
             try:
                 from gateway.platform_registry import platform_registry
+
                 entry = platform_registry.get("irc")
                 if entry and entry.max_message_length:
                     max_msg = entry.max_message_length
@@ -166,10 +175,19 @@ class IRCAdapter(BasePlatformAdapter):
         # Prevent two profiles from using the same IRC identity
         try:
             from gateway.status import acquire_scoped_lock, release_scoped_lock
+
             lock_key = f"{self.server}:{self.nickname}"
             if not acquire_scoped_lock("irc", lock_key):
-                logger.error("IRC: %s@%s already in use by another profile", self.nickname, self.server)
-                self._set_fatal_error("lock_conflict", "IRC identity in use by another profile", retryable=False)
+                logger.error(
+                    "IRC: %s@%s already in use by another profile",
+                    self.nickname,
+                    self.server,
+                )
+                self._set_fatal_error(
+                    "lock_conflict",
+                    "IRC identity in use by another profile",
+                    retryable=False,
+                )
                 return False
             self._lock_key = lock_key
         except ImportError:
@@ -185,7 +203,9 @@ class IRCAdapter(BasePlatformAdapter):
                 timeout=30.0,
             )
         except Exception as e:
-            logger.error("IRC: failed to connect to %s:%s — %s", self.server, self.port, e)
+            logger.error(
+                "IRC: failed to connect to %s:%s — %s", self.server, self.port, e
+            )
             self._set_fatal_error("connect_failed", str(e), retryable=True)
             return False
 
@@ -204,7 +224,11 @@ class IRCAdapter(BasePlatformAdapter):
         except asyncio.TimeoutError:
             logger.error("IRC: registration timed out")
             await self.disconnect()
-            self._set_fatal_error("registration_timeout", "IRC server did not send RPL_WELCOME", retryable=True)
+            self._set_fatal_error(
+                "registration_timeout",
+                "IRC server did not send RPL_WELCOME",
+                retryable=True,
+            )
             return False
 
         # NickServ identification
@@ -216,7 +240,13 @@ class IRCAdapter(BasePlatformAdapter):
         await self._send_raw(f"JOIN {self.channel}")
 
         self._mark_connected()
-        logger.info("IRC: connected to %s:%s as %s, joined %s", self.server, self.port, self._current_nick, self.channel)
+        logger.info(
+            "IRC: connected to %s:%s as %s, joined %s",
+            self.server,
+            self.port,
+            self._current_nick,
+            self.channel,
+        )
         return True
 
     async def disconnect(self) -> None:
@@ -225,6 +255,7 @@ class IRCAdapter(BasePlatformAdapter):
         if getattr(self, "_lock_key", None):
             try:
                 from gateway.status import release_scoped_lock
+
                 release_scoped_lock("irc", self._lock_key)
             except Exception:
                 pass
@@ -387,7 +418,11 @@ class IRCAdapter(BasePlatformAdapter):
         finally:
             if self.is_connected:
                 logger.warning("IRC: connection lost, marking disconnected")
-                self._set_fatal_error("connection_lost", "IRC connection closed unexpectedly", retryable=True)
+                self._set_fatal_error(
+                    "connection_lost",
+                    "IRC connection closed unexpectedly",
+                    retryable=True,
+                )
                 await self._notify_fatal_error()
 
     async def _handle_line(self, raw: str) -> None:
@@ -452,18 +487,26 @@ class IRCAdapter(BasePlatformAdapter):
             # In channels, only respond if addressed (nick: or nick,)
             if is_channel:
                 addressed = False
-                for prefix in (f"{self._current_nick}:", f"{self._current_nick},",
-                               f"{self._current_nick} "):
+                for prefix in (
+                    f"{self._current_nick}:",
+                    f"{self._current_nick},",
+                    f"{self._current_nick} ",
+                ):
                     if text.lower().startswith(prefix.lower()):
-                        text = text[len(prefix):].strip()
+                        text = text[len(prefix) :].strip()
                         addressed = True
                         break
                 if not addressed:
                     return  # Ignore unaddressed channel messages
 
             # Auth check (case-insensitive)
-            if self._allowed_users_lower and sender_nick.lower() not in self._allowed_users_lower:
-                logger.debug("IRC: ignoring message from unauthorized user %s", sender_nick)
+            if (
+                self._allowed_users_lower
+                and sender_nick.lower() not in self._allowed_users_lower
+            ):
+                logger.debug(
+                    "IRC: ignoring message from unauthorized user %s", sender_nick
+                )
                 return
 
             await self._dispatch_message(
@@ -475,7 +518,10 @@ class IRCAdapter(BasePlatformAdapter):
             )
 
         # NICK — track our own nick changes
-        if command == "NICK" and _extract_nick(msg["prefix"]).lower() == self._current_nick.lower():
+        if (
+            command == "NICK"
+            and _extract_nick(msg["prefix"]).lower() == self._current_nick.lower()
+        ):
             if params:
                 self._current_nick = params[0]
 
@@ -513,6 +559,7 @@ class IRCAdapter(BasePlatformAdapter):
 # ---------------------------------------------------------------------------
 # Plugin registration
 # ---------------------------------------------------------------------------
+
 
 def check_requirements() -> bool:
     """Check if IRC is configured.
@@ -559,11 +606,15 @@ def interactive_setup() -> None:
         if not prompt_yes_no("Reconfigure IRC?", False):
             return
 
-    print_info("Connect OpenAgents to an IRC network. Uses Python stdlib — no extra packages needed.")
+    print_info(
+        "Connect OpenAgents to an IRC network. Uses Python stdlib — no extra packages needed."
+    )
     print_info("   Works with Libera.Chat, OFTC, your own ZNC/InspIRCd, etc.")
     print()
 
-    server = prompt("IRC server hostname (e.g. irc.libera.chat)", default=existing_server or "")
+    server = prompt(
+        "IRC server hostname (e.g. irc.libera.chat)", default=existing_server or ""
+    )
     if not server:
         print_warning("Server is required — skipping IRC setup")
         return
@@ -573,7 +624,9 @@ def interactive_setup() -> None:
     save_env_value("IRC_USE_TLS", "true" if use_tls else "false")
 
     default_port = "6697" if use_tls else "6667"
-    port = prompt(f"Port (default {default_port})", default=get_env_value("IRC_PORT") or "")
+    port = prompt(
+        f"Port (default {default_port})", default=get_env_value("IRC_PORT") or ""
+    )
     if port:
         try:
             save_env_value("IRC_PORT", str(int(port)))
@@ -619,7 +672,9 @@ def interactive_setup() -> None:
     print_info("   IRC nicks are not authenticated — anyone can claim any nick.")
     print_info("   For public channels, pair with NickServ-only mode on your network")
     print_info("   if you want stronger identity guarantees.")
-    allow_all = prompt_yes_no("Allow all users in the channel to talk to the bot?", False)
+    allow_all = prompt_yes_no(
+        "Allow all users in the channel to talk to the bot?", False
+    )
     if allow_all:
         save_env_value("IRC_ALLOW_ALL_USERS", "true")
         save_env_value("IRC_ALLOWED_USERS", "")
@@ -635,7 +690,9 @@ def interactive_setup() -> None:
             print_success("Allowlist configured")
         else:
             save_env_value("IRC_ALLOWED_USERS", "")
-            print_info("No nicks allowed — the bot will ignore all messages until you add nicks.")
+            print_info(
+                "No nicks allowed — the bot will ignore all messages until you add nicks."
+            )
 
     print()
     print_success("IRC configuration saved to ~/.openagents/.env")
@@ -747,7 +804,9 @@ async def _standalone_send(
     server = os.getenv("IRC_SERVER") or extra.get("server", "")
     channel = os.getenv("IRC_CHANNEL") or extra.get("channel", "")
     if not server or not channel:
-        return {"error": "IRC standalone send: IRC_SERVER and IRC_CHANNEL must be configured"}
+        return {
+            "error": "IRC standalone send: IRC_SERVER and IRC_CHANNEL must be configured"
+        }
 
     port_value = os.getenv("IRC_PORT") or extra.get("port", 6697)
     try:
@@ -762,8 +821,12 @@ async def _standalone_send(
     else:
         use_tls = bool(extra.get("use_tls", True))
 
-    server_password = os.getenv("IRC_SERVER_PASSWORD") or extra.get("server_password", "")
-    nickserv_password = os.getenv("IRC_NICKSERV_PASSWORD") or extra.get("nickserv_password", "")
+    server_password = os.getenv("IRC_SERVER_PASSWORD") or extra.get(
+        "server_password", ""
+    )
+    nickserv_password = os.getenv("IRC_NICKSERV_PASSWORD") or extra.get(
+        "nickserv_password", ""
+    )
 
     # Reject control characters in chat_id to block IRC command injection.
     raw_target = chat_id or channel
@@ -808,13 +871,21 @@ async def _standalone_send(
         while not registered:
             remaining = deadline - loop.time()
             if remaining <= 0:
-                return {"error": "IRC standalone send: registration timeout (no RPL_WELCOME)"}
+                return {
+                    "error": "IRC standalone send: registration timeout (no RPL_WELCOME)"
+                }
             try:
-                raw_line = await asyncio.wait_for(reader.readuntil(b"\r\n"), timeout=remaining)
+                raw_line = await asyncio.wait_for(
+                    reader.readuntil(b"\r\n"), timeout=remaining
+                )
             except asyncio.TimeoutError:
-                return {"error": "IRC standalone send: registration timeout (no RPL_WELCOME)"}
+                return {
+                    "error": "IRC standalone send: registration timeout (no RPL_WELCOME)"
+                }
             except asyncio.IncompleteReadError:
-                return {"error": "IRC standalone send: server closed connection during registration"}
+                return {
+                    "error": "IRC standalone send: server closed connection during registration"
+                }
             decoded = raw_line.decode("utf-8", errors="replace").rstrip("\r\n")
             msg = _parse_irc_message(decoded)
             cmd = msg["command"]
@@ -835,7 +906,9 @@ async def _standalone_send(
                 return {"error": f"IRC standalone send: server rejected client ({cmd})"}
 
         if nickserv_password:
-            await _raw(f"PRIVMSG NickServ :IDENTIFY {_strip_irc_control_chars(nickserv_password)}")
+            await _raw(
+                f"PRIVMSG NickServ :IDENTIFY {_strip_irc_control_chars(nickserv_password)}"
+            )
             await asyncio.sleep(2)
 
         # JOIN before PRIVMSG.  IRC channels with the default ``+n`` mode
@@ -853,7 +926,9 @@ async def _standalone_send(
                     # server may still deliver the PRIVMSG depending on mode.
                     break
                 try:
-                    raw_line = await asyncio.wait_for(reader.readuntil(b"\r\n"), timeout=remaining)
+                    raw_line = await asyncio.wait_for(
+                        reader.readuntil(b"\r\n"), timeout=remaining
+                    )
                 except (asyncio.TimeoutError, asyncio.IncompleteReadError):
                     break
                 decoded = raw_line.decode("utf-8", errors="replace").rstrip("\r\n")
@@ -865,7 +940,9 @@ async def _standalone_send(
                 elif jcmd in {"366", "JOIN"}:
                     joined = True
                 elif jcmd in {"403", "405", "471", "473", "474", "475"}:
-                    return {"error": f"IRC standalone send: JOIN {target} rejected ({jcmd})"}
+                    return {
+                        "error": f"IRC standalone send: JOIN {target} rejected ({jcmd})"
+                    }
 
         # Bytes-aware per-line splitting so multi-line plain text never
         # exceeds the IRC 510-byte protocol limit.  Reuses the same

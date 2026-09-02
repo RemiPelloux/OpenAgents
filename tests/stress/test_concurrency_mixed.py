@@ -54,27 +54,40 @@ def worker_loop(worker_id: int, hermes_home: str, result_file: str) -> None:
                 if row:
                     try:
                         ok = kb.unblock_task(conn, row["id"])
-                        events.append({"kind": "unblocked" if ok else "unblock_noop",
-                                       "task": row["id"], "worker": worker_id})
+                        events.append({
+                            "kind": "unblocked" if ok else "unblock_noop",
+                            "task": row["id"],
+                            "worker": worker_id,
+                        })
                     except sqlite3.OperationalError as e:
-                        events.append({"kind": "sqlite_err", "op": "unblock",
-                                       "task": row["id"], "err": str(e)[:100]})
+                        events.append({
+                            "kind": "sqlite_err",
+                            "op": "unblock",
+                            "task": row["id"],
+                            "err": str(e)[:100],
+                        })
                 continue
 
             if op < 0.15:
                 # Try to archive a done task.
                 row = conn.execute(
-                    "SELECT id FROM tasks WHERE status='done' "
-                    "ORDER BY RANDOM() LIMIT 1"
+                    "SELECT id FROM tasks WHERE status='done' ORDER BY RANDOM() LIMIT 1"
                 ).fetchone()
                 if row:
                     try:
                         kb.archive_task(conn, row["id"])
-                        events.append({"kind": "archived", "task": row["id"],
-                                       "worker": worker_id})
+                        events.append({
+                            "kind": "archived",
+                            "task": row["id"],
+                            "worker": worker_id,
+                        })
                     except sqlite3.OperationalError as e:
-                        events.append({"kind": "sqlite_err", "op": "archive",
-                                       "task": row["id"], "err": str(e)[:100]})
+                        events.append({
+                            "kind": "sqlite_err",
+                            "op": "archive",
+                            "task": row["id"],
+                            "err": str(e)[:100],
+                        })
                 continue
 
             # Default: claim + complete-or-block.
@@ -93,47 +106,74 @@ def worker_loop(worker_id: int, hermes_home: str, result_file: str) -> None:
             tid = row["id"]
             try:
                 claimed = kb.claim_task(
-                    conn, tid, claimer=f"worker-{worker_id}",
+                    conn,
+                    tid,
+                    claimer=f"worker-{worker_id}",
                     ttl_seconds=5,  # short TTL so reclaim races in
                 )
             except sqlite3.OperationalError as e:
-                events.append({"kind": "sqlite_err", "op": "claim",
-                               "task": tid, "err": str(e)[:100]})
+                events.append({
+                    "kind": "sqlite_err",
+                    "op": "claim",
+                    "task": tid,
+                    "err": str(e)[:100],
+                })
                 continue
             if claimed is None:
                 events.append({"kind": "lost_claim_race", "task": tid})
                 continue
 
             run = kb.latest_run(conn, tid)
-            events.append({"kind": "claimed", "task": tid, "worker": worker_id,
-                           "run_id": run.id, "t": time.monotonic() - start})
+            events.append({
+                "kind": "claimed",
+                "task": tid,
+                "worker": worker_id,
+                "run_id": run.id,
+                "t": time.monotonic() - start,
+            })
 
             time.sleep(random.uniform(0.005, 0.05))
 
             # 20% of the time, block instead of complete
             if random.random() < 0.20:
                 try:
-                    kb.block_task(conn, tid,
-                                  reason=f"blocked by worker-{worker_id}")
-                    events.append({"kind": "blocked", "task": tid,
-                                   "worker": worker_id, "run_id": run.id})
+                    kb.block_task(conn, tid, reason=f"blocked by worker-{worker_id}")
+                    events.append({
+                        "kind": "blocked",
+                        "task": tid,
+                        "worker": worker_id,
+                        "run_id": run.id,
+                    })
                 except sqlite3.OperationalError as e:
-                    events.append({"kind": "sqlite_err", "op": "block",
-                                   "task": tid, "err": str(e)[:100]})
+                    events.append({
+                        "kind": "sqlite_err",
+                        "op": "block",
+                        "task": tid,
+                        "err": str(e)[:100],
+                    })
             else:
                 try:
                     kb.complete_task(
-                        conn, tid,
+                        conn,
+                        tid,
                         result=f"done by worker-{worker_id}",
                         summary=f"worker-{worker_id} ok",
                         metadata={"worker_id": worker_id},
                     )
-                    events.append({"kind": "completed", "task": tid,
-                                   "worker": worker_id, "run_id": run.id,
-                                   "t": time.monotonic() - start})
+                    events.append({
+                        "kind": "completed",
+                        "task": tid,
+                        "worker": worker_id,
+                        "run_id": run.id,
+                        "t": time.monotonic() - start,
+                    })
                 except sqlite3.OperationalError as e:
-                    events.append({"kind": "sqlite_err", "op": "complete",
-                                   "task": tid, "err": str(e)[:100]})
+                    events.append({
+                        "kind": "sqlite_err",
+                        "op": "complete",
+                        "task": tid,
+                        "err": str(e)[:100],
+                    })
         finally:
             conn.close()
 
@@ -156,11 +196,17 @@ def reclaimer_loop(hermes_home: str, result_file: str) -> None:
             try:
                 reclaimed = kb.release_stale_claims(conn)
                 if reclaimed:
-                    events.append({"kind": "reclaimed", "count": reclaimed,
-                                   "t": time.monotonic() - start})
+                    events.append({
+                        "kind": "reclaimed",
+                        "count": reclaimed,
+                        "t": time.monotonic() - start,
+                    })
             except sqlite3.OperationalError as e:
-                events.append({"kind": "sqlite_err", "op": "reclaim",
-                               "err": str(e)[:100]})
+                events.append({
+                    "kind": "sqlite_err",
+                    "op": "reclaim",
+                    "err": str(e)[:100],
+                })
         finally:
             conn.close()
         time.sleep(0.2)
@@ -182,7 +228,10 @@ def main():
     conn = kb.connect()
     for i in range(NUM_TASKS):
         kb.create_task(
-            conn, title=f"t#{i}", assignee="shared", tenant="mixed-stress",
+            conn,
+            title=f"t#{i}",
+            assignee="shared",
+            tenant="mixed-stress",
         )
     conn.close()
     print(f"Seeded {NUM_TASKS} tasks, launching {NUM_WORKERS} workers + 1 reclaimer")
@@ -294,7 +343,9 @@ def main():
 
         # Counts — should roughly balance.
         status_counts = dict(
-            conn.execute("SELECT status, COUNT(*) FROM tasks GROUP BY status").fetchall()
+            conn.execute(
+                "SELECT status, COUNT(*) FROM tasks GROUP BY status"
+            ).fetchall()
         )
         run_outcome_counts = dict(
             conn.execute(
@@ -327,7 +378,7 @@ def main():
     for s, n in sorted(status_counts.items()):
         print(f"  {s:<10} {n}")
     print("Final run outcomes:")
-    for o, n in sorted(run_outcome_counts.items(), key=lambda x: (x[0] or '',)):
+    for o, n in sorted(run_outcome_counts.items(), key=lambda x: (x[0] or "",)):
         print(f"  {o:<12} {n}")
     print(f"  active       {active_runs}")
 

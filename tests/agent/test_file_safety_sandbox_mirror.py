@@ -12,6 +12,7 @@ Reference: #32049 — under ``terminal.backend: docker``, the agent's
 while the host process kept loading the untouched authoritative file.
 The agent reported success; the rule never took effect.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -31,9 +32,16 @@ class TestClassifySandboxMirrorTarget:
 
         target = (
             tmp_path
-            / "profiles" / "group1"
-            / "sandboxes" / "docker" / "default" / "home" / ".hermes"
-            / "profiles" / "group1" / "SOUL.md"
+            / "profiles"
+            / "group1"
+            / "sandboxes"
+            / "docker"
+            / "default"
+            / "home"
+            / ".hermes"
+            / "profiles"
+            / "group1"
+            / "SOUL.md"
         )
         target.parent.mkdir(parents=True)
         target.write_text("# mirror copy\n")
@@ -41,9 +49,7 @@ class TestClassifySandboxMirrorTarget:
         result = classify_sandbox_mirror_target(str(target))
         assert result is not None
         assert result["target_path"] == str(target.resolve())
-        assert result["mirror_root"].endswith(
-            "sandboxes/docker/default/home/.hermes"
-        )
+        assert result["mirror_root"].endswith("sandboxes/docker/default/home/.hermes")
         assert result["inner_path"] == "profiles/group1/SOUL.md"
 
     @pytest.mark.parametrize(
@@ -60,7 +66,11 @@ class TestClassifySandboxMirrorTarget:
 
         target = (
             tmp_path
-            / "sandboxes" / backend / "task-42" / "home" / ".hermes"
+            / "sandboxes"
+            / backend
+            / "task-42"
+            / "home"
+            / ".hermes"
             / Path(inner)
         )
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -86,10 +96,7 @@ class TestClassifySandboxMirrorTarget:
         the sandbox workspace itself) is not flagged."""
         from agent.file_safety import classify_sandbox_mirror_target
 
-        target = (
-            tmp_path
-            / "sandboxes" / "docker" / "task-42" / "workspace" / "main.py"
-        )
+        target = tmp_path / "sandboxes" / "docker" / "task-42" / "workspace" / "main.py"
         target.parent.mkdir(parents=True)
         target.write_text("print('hi')\n")
 
@@ -99,10 +106,7 @@ class TestClassifySandboxMirrorTarget:
         """``sandboxes/<backend>/<task>/home/anything-not-hermes`` is not a mirror."""
         from agent.file_safety import classify_sandbox_mirror_target
 
-        target = (
-            tmp_path
-            / "sandboxes" / "docker" / "task-42" / "home" / ".bashrc"
-        )
+        target = tmp_path / "sandboxes" / "docker" / "task-42" / "home" / ".bashrc"
         target.parent.mkdir(parents=True)
         target.write_text("alias ll='ls -la'\n")
 
@@ -124,9 +128,16 @@ class TestClassifySandboxMirrorTarget:
 
         target = (
             tmp_path
-            / "profiles" / "group1"
-            / "sandboxes" / "docker" / "default" / "home" / ".hermes"
-            / "profiles" / "group1" / "SOUL.md"
+            / "profiles"
+            / "group1"
+            / "sandboxes"
+            / "docker"
+            / "default"
+            / "home"
+            / ".hermes"
+            / "profiles"
+            / "group1"
+            / "SOUL.md"
         )
         # Parent directory exists so .resolve() doesn't strip the tail
         # under strict mode, but the file itself does NOT exist.
@@ -158,9 +169,16 @@ class TestGetSandboxMirrorWarning:
 
         target = (
             tmp_path
-            / "profiles" / "group1"
-            / "sandboxes" / "docker" / "default" / "home" / ".hermes"
-            / "profiles" / "group1" / "SOUL.md"
+            / "profiles"
+            / "group1"
+            / "sandboxes"
+            / "docker"
+            / "default"
+            / "home"
+            / ".hermes"
+            / "profiles"
+            / "group1"
+            / "SOUL.md"
         )
         target.parent.mkdir(parents=True)
         target.write_text("# mirror copy\n")
@@ -179,8 +197,14 @@ class TestGetSandboxMirrorWarning:
 
         target = (
             tmp_path
-            / "sandboxes" / "docker" / "t" / "home" / ".hermes"
-            / "profiles" / "g" / "SOUL.md"
+            / "sandboxes"
+            / "docker"
+            / "t"
+            / "home"
+            / ".hermes"
+            / "profiles"
+            / "g"
+            / "SOUL.md"
         )
         target.parent.mkdir(parents=True)
         target.write_text("x")
@@ -204,14 +228,24 @@ class TestSandboxMirrorIsOrthogonalToCrossProfile:
 
     def test_same_profile_mirror_still_flagged(self, tmp_path, monkeypatch):
         import agent.file_safety as fs
+
         monkeypatch.setattr(fs, "_hermes_root_path", lambda: tmp_path)
-        monkeypatch.setattr(fs, "_hermes_home_path", lambda: tmp_path / "profiles" / "group1")
+        monkeypatch.setattr(
+            fs, "_hermes_home_path", lambda: tmp_path / "profiles" / "group1"
+        )
 
         target = (
             tmp_path
-            / "profiles" / "group1"
-            / "sandboxes" / "docker" / "default" / "home" / ".hermes"
-            / "profiles" / "group1" / "SOUL.md"
+            / "profiles"
+            / "group1"
+            / "sandboxes"
+            / "docker"
+            / "default"
+            / "home"
+            / ".hermes"
+            / "profiles"
+            / "group1"
+            / "SOUL.md"
         )
         target.parent.mkdir(parents=True)
         target.write_text("x")

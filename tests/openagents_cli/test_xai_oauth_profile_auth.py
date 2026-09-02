@@ -6,7 +6,9 @@ from openagents_cli import auth
 from openagents_cli.auth import AuthError
 
 
-def test_read_xai_oauth_tokens_uses_credential_pool_when_provider_tokens_empty(monkeypatch):
+def test_read_xai_oauth_tokens_uses_credential_pool_when_provider_tokens_empty(
+    monkeypatch,
+):
     """Profile auth can have fresh pool tokens while singleton provider state is empty.
 
     This mirrors profiled cron after re-auth/credential-pool sync: the xAI

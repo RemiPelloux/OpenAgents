@@ -138,9 +138,7 @@ class TestProvider:
         with pytest.raises(NotImplementedError):
             p.start_login(redirect_uri="https://x/auth/callback")
         with pytest.raises(NotImplementedError):
-            p.complete_login(
-                code="c", state="s", code_verifier="v", redirect_uri="r"
-            )
+            p.complete_login(code="c", state="s", code_verifier="v", redirect_uri="r")
 
     def test_construction_validates_inputs(self, basic):
         good_hash = basic.hash_password("pw")
@@ -204,9 +202,10 @@ class TestRegister:
         basic.register(ctx)
         ctx.register_dashboard_auth_provider.assert_called_once()
         provider = ctx.register_dashboard_auth_provider.call_args.args[0]
-        assert provider.complete_password_login(
-            username="ops", password="s3cret"
-        ).user_id == "ops"
+        assert (
+            provider.complete_password_login(username="ops", password="s3cret").user_id
+            == "ops"
+        )
 
     def test_env_password_overrides_config(self, basic, monkeypatch):
         cfg_hash = basic.hash_password("config-pw")
@@ -221,9 +220,7 @@ class TestRegister:
         basic.register(ctx)
         provider = ctx.register_dashboard_auth_provider.call_args.args[0]
         # env password works ...
-        assert provider.complete_password_login(
-            username="admin", password="env-pw"
-        )
+        assert provider.complete_password_login(username="admin", password="env-pw")
         # ... and the config password no longer does.
         with pytest.raises(InvalidCredentialsError):
             provider.complete_password_login(username="admin", password="config-pw")

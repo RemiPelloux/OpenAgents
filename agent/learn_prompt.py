@@ -127,7 +127,7 @@ def build_learn_prompt(user_request: str) -> str:
         "they pasted as-is. If the request is ambiguous about scope, make a "
         "reasonable choice and note it; do not stall.\n"
         "2. Author ONE SKILL.md and save it with the `skill_manage` tool "
-        "(action=\"create\"). Pick a sensible category. If the procedure needs "
+        '(action="create"). Pick a sensible category. If the procedure needs '
         "a non-trivial script, add it under the skill's `scripts/` with "
         "`skill_manage` write_file and reference it by relative path.\n\n"
         f"{_AUTHORING_STANDARDS}\n\n"

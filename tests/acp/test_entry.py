@@ -24,7 +24,11 @@ def test_main_enables_unstable_protocol(monkeypatch):
 
 
 def test_main_version_prints_without_starting_server(monkeypatch, capsys):
-    monkeypatch.setattr(entry, "_setup_logging", lambda: (_ for _ in ()).throw(AssertionError("started server")))
+    monkeypatch.setattr(
+        entry,
+        "_setup_logging",
+        lambda: (_ for _ in ()).throw(AssertionError("started server")),
+    )
 
     entry.main(["--version"])
 
@@ -34,7 +38,11 @@ def test_main_version_prints_without_starting_server(monkeypatch, capsys):
 
 
 def test_main_check_prints_ok_without_starting_server(monkeypatch, capsys):
-    monkeypatch.setattr(entry, "_setup_logging", lambda: (_ for _ in ()).throw(AssertionError("started server")))
+    monkeypatch.setattr(
+        entry,
+        "_setup_logging",
+        lambda: (_ for _ in ()).throw(AssertionError("started server")),
+    )
 
     entry.main(["--check"])
 
@@ -145,6 +153,7 @@ def test_main_setup_browser_stops_on_node_failure(monkeypatch):
 
 def test_main_setup_browser_propagates_browser_failure(monkeypatch):
     """If browser install fails, exit code is 1."""
+
     def fake_ensure(dep, interactive=True):
         return dep != "browser"  # browser fails
 

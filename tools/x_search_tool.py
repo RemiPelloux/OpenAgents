@@ -66,6 +66,7 @@ MAX_HANDLES = 10
 # Config
 # ---------------------------------------------------------------------------
 
+
 def _load_x_search_config() -> Dict[str, Any]:
     try:
         from openagents_cli.config import load_config
@@ -77,7 +78,7 @@ def _load_x_search_config() -> Dict[str, Any]:
 
 def _get_x_search_model() -> str:
     cfg = _load_x_search_config()
-    return (str(cfg.get("model") or "").strip() or DEFAULT_X_SEARCH_MODEL)
+    return str(cfg.get("model") or "").strip() or DEFAULT_X_SEARCH_MODEL
 
 
 def _get_x_search_timeout_seconds() -> int:
@@ -101,6 +102,7 @@ def _get_x_search_retries() -> int:
 # ---------------------------------------------------------------------------
 # Credential resolution
 # ---------------------------------------------------------------------------
+
 
 def _resolve_xai_bearer() -> Tuple[str, str, str]:
     """Return ``(api_key, base_url, source)``.
@@ -143,6 +145,7 @@ def check_x_search_requirements() -> bool:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _normalize_handles(handles: Optional[List[str]], field_name: str) -> List[str]:
     cleaned: List[str] = []
     for handle in handles or []:
@@ -168,9 +171,7 @@ def _parse_iso_date(value: str, field_name: str) -> date:
     try:
         return datetime.strptime(raw, "%Y-%m-%d").date()
     except ValueError as exc:
-        raise ValueError(
-            f"{field_name} must be YYYY-MM-DD (got {raw!r})"
-        ) from exc
+        raise ValueError(f"{field_name} must be YYYY-MM-DD (got {raw!r})") from exc
 
 
 def _validate_date_range(from_date: str, to_date: str) -> None:
@@ -232,14 +233,12 @@ def _extract_inline_citations(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             for annotation in content.get("annotations", []) or []:
                 if annotation.get("type") != "url_citation":
                     continue
-                citations.append(
-                    {
-                        "url": annotation.get("url", ""),
-                        "title": annotation.get("title", ""),
-                        "start_index": annotation.get("start_index"),
-                        "end_index": annotation.get("end_index"),
-                    }
-                )
+                citations.append({
+                    "url": annotation.get("url", ""),
+                    "title": annotation.get("title", ""),
+                    "start_index": annotation.get("start_index"),
+                    "end_index": annotation.get("end_index"),
+                })
     return citations
 
 
@@ -271,6 +270,7 @@ def _http_error_message(exc: requests.HTTPError) -> str:
 # Tool implementation
 # ---------------------------------------------------------------------------
 
+
 def x_search_tool(
     query: str,
     allowed_x_handles: Optional[List[str]] = None,
@@ -292,7 +292,9 @@ def x_search_tool(
         allowed = _normalize_handles(allowed_x_handles, "allowed_x_handles")
         excluded = _normalize_handles(excluded_x_handles, "excluded_x_handles")
         if allowed and excluded:
-            return tool_error("allowed_x_handles and excluded_x_handles cannot be used together")
+            return tool_error(
+                "allowed_x_handles and excluded_x_handles cannot be used together"
+            )
 
         try:
             _validate_date_range(from_date, to_date)

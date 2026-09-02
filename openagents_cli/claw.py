@@ -18,7 +18,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from openagents_cli.config import get_openagents_home, get_config_path, load_config, save_config
+from openagents_cli.config import (
+    get_openagents_home,
+    get_config_path,
+    load_config,
+    save_config,
+)
 from openagents_constants import get_optional_skills_dir
 from openagents_cli.setup import (
     Colors,
@@ -55,6 +60,7 @@ _OPENCLAW_SCRIPT_INSTALLED = (
 # Known OpenClaw directory names (current + legacy)
 _OPENCLAW_DIR_NAMES = (".openclaw", ".clawdbot", ".moltbot")
 
+
 def _detect_openclaw_processes() -> list[str]:
     """Detect running OpenClaw processes and services.
 
@@ -68,7 +74,9 @@ def _detect_openclaw_processes() -> list[str]:
         try:
             result = subprocess.run(
                 ["systemctl", "--user", "is-active", "openclaw-gateway.service"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.stdout.strip() == "active":
                 found.append("systemd service: openclaw-gateway.service")
@@ -81,7 +89,9 @@ def _detect_openclaw_processes() -> list[str]:
             for exe in ("openclaw.exe", "clawd.exe"):
                 result = subprocess.run(
                     ["tasklist", "/FI", f"IMAGENAME eq {exe}"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if exe in result.stdout.lower():
                     found.append(f"process: {exe}")
@@ -89,23 +99,29 @@ def _detect_openclaw_processes() -> list[str]:
             # Node.js-hosted OpenClaw — tasklist doesn't show command lines,
             # so fall back to PowerShell.
             ps_cmd = (
-                'Get-CimInstance Win32_Process -Filter "Name = \'node.exe\'" | '
+                "Get-CimInstance Win32_Process -Filter \"Name = 'node.exe'\" | "
                 'Where-Object { $_.CommandLine -match "openclaw|clawd" } | '
-                'Select-Object -First 1 ProcessId'
+                "Select-Object -First 1 ProcessId"
             )
             result = subprocess.run(
                 ["powershell", "-NoProfile", "-Command", ps_cmd],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.stdout.strip():
-                found.append(f"node.exe process with openclaw in command line (PID {result.stdout.strip()})")
+                found.append(
+                    f"node.exe process with openclaw in command line (PID {result.stdout.strip()})"
+                )
         except Exception:
             pass
     else:
         try:
             result = subprocess.run(
                 ["pgrep", "-f", "openclaw"],
-                capture_output=True, text=True, timeout=3,
+                capture_output=True,
+                text=True,
+                timeout=3,
             )
             if result.returncode == 0:
                 pids = result.stdout.strip().split()
@@ -162,15 +178,17 @@ def _warn_if_gateway_running(auto_yes: bool) -> None:
 
     data = read_runtime_status() or {}
     platforms = data.get("platforms") or {}
-    connected = [name for name, info in platforms.items()
-                 if isinstance(info, dict) and info.get("state") == "connected"]
+    connected = [
+        name
+        for name, info in platforms.items()
+        if isinstance(info, dict) and info.get("state") == "connected"
+    ]
     if not connected:
         return
 
     print()
     print_error(
-        "OpenAgents gateway is running with active connections: "
-        + ", ".join(connected)
+        "OpenAgents gateway is running with active connections: " + ", ".join(connected)
     )
     print_info(
         "Migrating bot tokens while the gateway is active will cause "
@@ -182,6 +200,7 @@ def _warn_if_gateway_running(auto_yes: bool) -> None:
     if not auto_yes and not prompt_yes_no("Continue anyway?", default=False):
         print_info("Migration cancelled. Stop the gateway and try again.")
         sys.exit(0)
+
 
 # State files commonly found in OpenClaw workspace directories — listed
 # during cleanup to help the user decide whether to archive
@@ -305,7 +324,9 @@ def claw_command(args):
         print()
         print("Commands:")
         print("  migrate          Migrate settings from OpenClaw to Hermes")
-        print("  cleanup          Archive leftover OpenClaw directories after migration")
+        print(
+            "  cleanup          Archive leftover OpenClaw directories after migration"
+        )
         print()
         print("Run 'hermes claw <command> --help' for options.")
 
@@ -364,7 +385,9 @@ def _cmd_migrate(args):
         print()
         print_error(f"OpenClaw directory not found: {source_dir}")
         print_info("Make sure your OpenClaw installation is at the expected path.")
-        print_info("You can specify a custom path: hermes claw migrate --source /path/to/.openclaw")
+        print_info(
+            "You can specify a custom path: hermes claw migrate --source /path/to/.openclaw"
+        )
         return
 
     # Find the migration script
@@ -476,9 +499,7 @@ def _cmd_migrate(args):
     # with a migration that skipped every conflicting item.
     if preview_conflicts > 0 and not overwrite:
         print()
-        print_error(
-            f"Plan has {preview_conflicts} conflict(s). Refusing to apply."
-        )
+        print_error(f"Plan has {preview_conflicts} conflict(s). Refusing to apply.")
         print_info(
             "Each conflict is an item whose target already exists in ~/.openagents/. "
             "Re-run with --overwrite to replace conflicting targets (item-level "
@@ -509,6 +530,7 @@ def _cmd_migrate(args):
     if not no_backup:
         try:
             from openagents_cli.backup import create_pre_migration_backup, _format_size
+
             backup_archive = create_pre_migration_backup(hermes_home=hermes_home)
             if backup_archive:
                 size_str = _format_size(backup_archive.stat().st_size)
@@ -608,14 +630,20 @@ def _cmd_cleanup(args):
             "Archiving .openclaw/ while the service is active may cause it to "
             "immediately recreate an empty skeleton directory, destroying your config."
         )
-        print_info("Stop OpenClaw first: systemctl --user stop openclaw-gateway.service")
+        print_info(
+            "Stop OpenClaw first: systemctl --user stop openclaw-gateway.service"
+        )
         print()
         if not auto_yes:
             if not sys.stdin.isatty():
-                print_info("Non-interactive session — aborting. Stop OpenClaw and re-run.")
+                print_info(
+                    "Non-interactive session — aborting. Stop OpenClaw and re-run."
+                )
                 return
             if not prompt_yes_no("Proceed anyway?", default=False):
-                print_info("Aborted. Stop OpenClaw first, then re-run: hermes claw cleanup")
+                print_info(
+                    "Aborted. Stop OpenClaw first, then re-run: hermes claw cleanup"
+                )
                 return
 
     total_archived = 0
@@ -630,9 +658,14 @@ def _cmd_cleanup(args):
         # Show directory stats
         try:
             workspace_dirs = [
-                d for d in source_dir.iterdir()
-                if d.is_dir() and not d.name.startswith(".")
-                and any((d / name).exists() for name in ("todo.json", "SOUL.md", "MEMORY.md", "USER.md"))
+                d
+                for d in source_dir.iterdir()
+                if d.is_dir()
+                and not d.name.startswith(".")
+                and any(
+                    (d / name).exists()
+                    for name in ("todo.json", "SOUL.md", "MEMORY.md", "USER.md")
+                )
             ]
         except OSError:
             workspace_dirs = []
@@ -695,7 +728,9 @@ def _cmd_cleanup(args):
             f"Cleaned up {total_archived} OpenClaw "
             f"{'directory' if total_archived == 1 else 'directories'}."
         )
-        print_info("Directories were renamed, not deleted. You can undo by renaming them back.")
+        print_info(
+            "Directories were renamed, not deleted. You can undo by renaming them back."
+        )
     else:
         print_info("No directories were archived.")
 
@@ -740,7 +775,11 @@ def _print_migration_report(report: dict, dry_run: bool):
             print()
 
         if conflict_items:
-            print(color("  ⚠ Conflicts (skipped — use --overwrite to force):", Colors.YELLOW))
+            print(
+                color(
+                    "  ⚠ Conflicts (skipped — use --overwrite to force):", Colors.YELLOW
+                )
+            )
             for item in conflict_items:
                 kind = item.get("kind", "unknown")
                 reason = item.get("reason", "already exists")
@@ -794,13 +833,24 @@ def _print_migration_report(report: dict, dry_run: bool):
         print_success("Migration complete!")
         # Warn if API keys were skipped (migrate_secrets not enabled)
         skipped_keys = [
-            i for i in report.get("items", [])
+            i
+            for i in report.get("items", [])
             if i.get("kind") == "provider-keys" and i.get("status") == "skipped"
         ]
         if skipped_keys:
             print()
-            print(color("  ⚠ API keys were NOT migrated (secrets migration is disabled by default).", Colors.YELLOW))
-            print(color("  Your OPENROUTER_API_KEY and other provider keys must be added manually.", Colors.YELLOW))
+            print(
+                color(
+                    "  ⚠ API keys were NOT migrated (secrets migration is disabled by default).",
+                    Colors.YELLOW,
+                )
+            )
+            print(
+                color(
+                    "  Your OPENROUTER_API_KEY and other provider keys must be added manually.",
+                    Colors.YELLOW,
+                )
+            )
             print()
             print_info("To migrate API keys, re-run with:")
             print_info("  hermes claw migrate --migrate-secrets")

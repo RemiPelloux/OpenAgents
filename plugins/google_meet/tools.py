@@ -23,6 +23,7 @@ from plugins.google_meet import process_manager as pm
 # Runtime gate
 # ---------------------------------------------------------------------------
 
+
 def check_meet_requirements() -> bool:
     """Return True when the plugin can actually run LOCALLY.
 
@@ -36,6 +37,7 @@ def check_meet_requirements() -> bool:
     handlers relax the requirement when a node is addressed.
     """
     import platform as _p
+
     if _p.system().lower() not in {"linux", "darwin"}:
         return False
     try:
@@ -48,6 +50,7 @@ def check_meet_requirements() -> bool:
 # ---------------------------------------------------------------------------
 # Node client helper
 # ---------------------------------------------------------------------------
+
 
 def _resolve_node_client(node: Optional[str]):
     """Return (NodeClient, node_name) for *node*, or (None, None) to run local.
@@ -91,9 +94,7 @@ MEET_JOIN_SCHEMA: Dict[str, Any] = {
         "properties": {
             "url": {
                 "type": "string",
-                "description": (
-                    "Full https://meet.google.com/... URL. Required."
-                ),
+                "description": ("Full https://meet.google.com/... URL. Required."),
             },
             "mode": {
                 "type": "string",
@@ -224,6 +225,7 @@ MEET_SAY_SCHEMA: Dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # Handlers
 # ---------------------------------------------------------------------------
+
 
 def _json(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False)

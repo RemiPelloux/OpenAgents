@@ -31,7 +31,12 @@ def _always_available() -> bool:
 
 def register(ctx) -> None:
     tools = [
-        (CHECK_DUPLICATE_SCHEMA, handle_check_company_duplicate, "🔍", _always_available),
+        (
+            CHECK_DUPLICATE_SCHEMA,
+            handle_check_company_duplicate,
+            "🔍",
+            _always_available,
+        ),
         (FILTER_LEADS_SCHEMA, handle_filter_tiktok_leads, "🧹", _always_available),
         (ENRICH_SCHEMA, handle_enrich_tiktok_lead, "🧩", _always_available),
         (UPSERT_CRM_SCHEMA, handle_upsert_crm_from_lead, "🗂️", _always_available),

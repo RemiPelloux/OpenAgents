@@ -31,7 +31,10 @@ def _logged_in_account(monkeypatch):
     """Stub the auth token + account fetch so build_credits_view runs offline."""
     monkeypatch.setattr(
         "openagents_cli.auth.get_provider_auth_state",
-        lambda provider: {"access_token": "tok", "portal_base_url": "https://portal.example.test"},
+        lambda provider: {
+            "access_token": "tok",
+            "portal_base_url": "https://portal.example.test",
+        },
     )
 
     def _install(account):
@@ -47,7 +50,9 @@ def _logged_in_account(monkeypatch):
 
 
 def test_view_logged_out_when_no_token(monkeypatch):
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: {})
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: {}
+    )
     view = build_credits_view()
     assert view == CreditsView(logged_in=False)
 
@@ -125,7 +130,9 @@ def test_view_fetch_failure_is_logged_out(monkeypatch):
     def _boom(*a, **kw):
         raise RuntimeError("portal down")
 
-    monkeypatch.setattr("openagents_cli.nous_account.get_nous_portal_account_info", _boom)
+    monkeypatch.setattr(
+        "openagents_cli.nous_account.get_nous_portal_account_info", _boom
+    )
 
     view = build_credits_view()
     assert view.logged_in is False
@@ -173,7 +180,9 @@ def test_gateway_credits_renders_block_and_url(monkeypatch):
 
 def test_gateway_credits_not_logged_in(monkeypatch):
     monkeypatch.setattr(
-        account_usage, "build_credits_view", lambda *a, **kw: CreditsView(logged_in=False)
+        account_usage,
+        "build_credits_view",
+        lambda *a, **kw: CreditsView(logged_in=False),
     )
     stub = _make_gateway_stub()
     out = asyncio.run(stub._handle_credits_command(_FakeEvent()))
@@ -235,7 +244,9 @@ def test_cli_show_credits_non_interactive_renders_text_not_modal(monkeypatch, ca
     def _boom_modal(*a, **k):
         raise AssertionError("modal must not run without a live app")
 
-    monkeypatch.setattr(HermesCLI, "_prompt_text_input_modal", _boom_modal, raising=False)
+    monkeypatch.setattr(
+        HermesCLI, "_prompt_text_input_modal", _boom_modal, raising=False
+    )
 
     cli._show_credits()
 
@@ -252,7 +263,9 @@ def test_cli_show_credits_logged_out(monkeypatch, capsys):
     from cli import HermesCLI
 
     monkeypatch.setattr(
-        account_usage, "build_credits_view", lambda *a, **k: CreditsView(logged_in=False)
+        account_usage,
+        "build_credits_view",
+        lambda *a, **k: CreditsView(logged_in=False),
     )
     cli = HermesCLI.__new__(HermesCLI)
     cli._app = None

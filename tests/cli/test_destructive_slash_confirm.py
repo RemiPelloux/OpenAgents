@@ -26,7 +26,8 @@ def _make_self(prompt_response):
         _prompt_text_input_modal=lambda **_kw: prompt_response,
     )
     self_._normalize_slash_confirm_choice = _bound(
-        HermesCLI._normalize_slash_confirm_choice, self_,
+        HermesCLI._normalize_slash_confirm_choice,
+        self_,
     )
     return self_
 
@@ -43,7 +44,8 @@ def test_gate_off_returns_once_without_prompting():
         return_value={"approvals": {"destructive_slash_confirm": False}},
     ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "clear", "detail",
+            "clear",
+            "detail",
         )
 
     assert result == "once"
@@ -60,7 +62,8 @@ def test_gate_on_choice_once_returns_once():
         return_value={"approvals": {"destructive_slash_confirm": True}},
     ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "clear", "detail",
+            "clear",
+            "detail",
         )
 
     assert result == "once"
@@ -77,7 +80,8 @@ def test_gate_on_choice_cancel_returns_none():
         return_value={"approvals": {"destructive_slash_confirm": True}},
     ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "clear", "detail",
+            "clear",
+            "detail",
         )
 
     assert result is None
@@ -94,7 +98,8 @@ def test_gate_on_no_input_returns_none():
         return_value={"approvals": {"destructive_slash_confirm": True}},
     ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "clear", "detail",
+            "clear",
+            "detail",
         )
 
     assert result is None
@@ -111,7 +116,8 @@ def test_gate_on_unknown_choice_returns_none():
         return_value={"approvals": {"destructive_slash_confirm": True}},
     ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "clear", "detail",
+            "clear",
+            "detail",
         )
 
     assert result is None
@@ -125,16 +131,21 @@ def test_gate_on_choice_always_persists_and_returns_always():
     self_ = _make_self(prompt_response="2")
 
     saves = []
+
     def _fake_save(key, value):
         saves.append((key, value))
         return True
 
-    with patch(
-        "cli.load_cli_config",
-        return_value={"approvals": {"destructive_slash_confirm": True}},
-    ), patch("cli.save_config_value", _fake_save):
+    with (
+        patch(
+            "cli.load_cli_config",
+            return_value={"approvals": {"destructive_slash_confirm": True}},
+        ),
+        patch("cli.save_config_value", _fake_save),
+    ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "clear", "detail",
+            "clear",
+            "detail",
         )
 
     assert result == "always"
@@ -150,7 +161,8 @@ def test_gate_default_true_when_config_missing():
 
     with patch("cli.load_cli_config", side_effect=Exception("boom")):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "clear", "detail",
+            "clear",
+            "detail",
         )
 
     # Got prompted (returned None from cancel) — meaning the gate was
@@ -235,7 +247,10 @@ def test_split_destructive_skip_strips_command_word():
     from cli import HermesCLI
 
     assert HermesCLI._split_destructive_skip("/new My title") == ("My title", False)
-    assert HermesCLI._split_destructive_skip("/new --yes My title") == ("My title", True)
+    assert HermesCLI._split_destructive_skip("/new --yes My title") == (
+        "My title",
+        True,
+    )
 
 
 def test_split_destructive_skip_case_insensitive():
@@ -270,7 +285,8 @@ def test_confirm_destructive_slash_now_skips_modal():
         _prompt_text_input_modal=_explode,
     )
     self_._normalize_slash_confirm_choice = _bound(
-        HermesCLI._normalize_slash_confirm_choice, self_,
+        HermesCLI._normalize_slash_confirm_choice,
+        self_,
     )
     self_._split_destructive_skip = HermesCLI._split_destructive_skip  # classmethod
 
@@ -279,7 +295,9 @@ def test_confirm_destructive_slash_now_skips_modal():
         return_value={"approvals": {"destructive_slash_confirm": True}},
     ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "new", "detail", cmd_original="/reset now",
+            "new",
+            "detail",
+            cmd_original="/reset now",
         )
 
     assert result == "once"
@@ -297,7 +315,8 @@ def test_confirm_destructive_slash_yes_flag_skips_modal():
         _prompt_text_input_modal=_explode,
     )
     self_._normalize_slash_confirm_choice = _bound(
-        HermesCLI._normalize_slash_confirm_choice, self_,
+        HermesCLI._normalize_slash_confirm_choice,
+        self_,
     )
     self_._split_destructive_skip = HermesCLI._split_destructive_skip
 
@@ -306,7 +325,9 @@ def test_confirm_destructive_slash_yes_flag_skips_modal():
         return_value={"approvals": {"destructive_slash_confirm": True}},
     ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "new", "detail", cmd_original="/new --yes My Session",
+            "new",
+            "detail",
+            cmd_original="/new --yes My Session",
         )
 
     assert result == "once"
@@ -324,7 +345,9 @@ def test_confirm_destructive_slash_no_skip_token_still_prompts():
         return_value={"approvals": {"destructive_slash_confirm": True}},
     ):
         result = _bound(HermesCLI._confirm_destructive_slash, self_)(
-            "new", "detail", cmd_original="/new My Session",
+            "new",
+            "detail",
+            cmd_original="/new My Session",
         )
 
     # Prompt was reached and returned cancel → None.

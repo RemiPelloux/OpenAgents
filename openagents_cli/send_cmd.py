@@ -235,6 +235,7 @@ def _load_hermes_env() -> None:
 
     try:
         from openagents_cli.config import get_openagents_home
+
         home = get_openagents_home()
     except Exception:
         return
@@ -255,6 +256,7 @@ def _load_hermes_env() -> None:
     # gateway.config.load_gateway_config() sees them. Scalars only; don't
     # override values already in the env.
     import os
+
     config_path = home / "config.yaml"
     if not config_path.exists():
         return
@@ -272,6 +274,7 @@ def _load_hermes_env() -> None:
 
     try:
         from openagents_cli.config import _expand_env_vars
+
         raw = _expand_env_vars(raw)
     except Exception:
         pass
@@ -280,6 +283,7 @@ def _load_hermes_env() -> None:
     # so a managed top-level scalar wins here too. Fail-open via the helper.
     try:
         from openagents_cli import managed_scope
+
         raw = managed_scope.apply_managed_overlay(raw if isinstance(raw, dict) else {})
     except Exception:
         pass
@@ -308,7 +312,9 @@ def cmd_send(args: argparse.Namespace) -> None:
         # When `--list telegram` is used, argparse stores "telegram" in the
         # `message` positional (since list_targets takes no argument).
         platform_filter = getattr(args, "message", None)
-        exit_code = _list_targets(platform_filter, json_mode=getattr(args, "json", False))
+        exit_code = _list_targets(
+            platform_filter, json_mode=getattr(args, "json", False)
+        )
         sys.exit(exit_code)
 
     target = _resolve_target(getattr(args, "to", None))
@@ -316,7 +322,7 @@ def cmd_send(args: argparse.Namespace) -> None:
         print(
             "hermes send: --to PLATFORM[:channel[:thread]] is required\n"
             "Examples:\n"
-            "  hermes send --to telegram \"hello\"\n"
+            '  hermes send --to telegram "hello"\n'
             "  hermes send --to discord:#ops --file report.md\n"
             "  hermes send --list      # list available targets",
             file=sys.stderr,
@@ -384,11 +390,11 @@ def register_send_subparser(subparsers) -> argparse.ArgumentParser:
         ),
         epilog=(
             "Examples:\n"
-            "  hermes send --to telegram \"deploy finished\"\n"
-            "  echo \"RAM 92%\" | hermes send --to telegram:-1001234567890\n"
+            '  hermes send --to telegram "deploy finished"\n'
+            '  echo "RAM 92%" | hermes send --to telegram:-1001234567890\n'
             "  hermes send --to discord:#ops --file /tmp/report.md\n"
-            "  hermes send --to slack:#eng --subject \"[CI]\" --file build.log\n"
-            "  hermes send --to telegram \"MEDIA:/tmp/chart.png\"   # send a media attachment\n"
+            '  hermes send --to slack:#eng --subject "[CI]" --file build.log\n'
+            '  hermes send --to telegram "MEDIA:/tmp/chart.png"   # send a media attachment\n'
             "  hermes send --list                  # all platforms\n"
             "  hermes send --list telegram         # filter by platform\n"
             "\n"

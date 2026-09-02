@@ -8,6 +8,7 @@ Covers the three Phase 0 deliverables:
      on, without disturbing the positional key layout downstream parsers rely
      on.
 """
+
 import pytest
 from unittest.mock import patch
 
@@ -44,15 +45,18 @@ class TestSessionKeyByteIdenticalWhenOff:
 
     @pytest.mark.parametrize("profile", [None, "default"])
     def test_group_per_user(self, profile):
-        s = _src(platform=Platform.DISCORD, chat_id="g1", chat_type="group", user_id="alice")
+        s = _src(
+            platform=Platform.DISCORD, chat_id="g1", chat_type="group", user_id="alice"
+        )
         assert (
-            build_session_key(s, profile=profile)
-            == "agent:main:discord:group:g1:alice"
+            build_session_key(s, profile=profile) == "agent:main:discord:group:g1:alice"
         )
 
     @pytest.mark.parametrize("profile", [None, "default"])
     def test_group_shared_when_disabled(self, profile):
-        s = _src(platform=Platform.DISCORD, chat_id="g1", chat_type="group", user_id="alice")
+        s = _src(
+            platform=Platform.DISCORD, chat_id="g1", chat_type="group", user_id="alice"
+        )
         assert (
             build_session_key(s, group_sessions_per_user=False, profile=profile)
             == "agent:main:discord:group:g1"
@@ -67,7 +71,9 @@ class TestSessionKeyNamespacedWhenOn:
         assert build_session_key(s, profile="coder") == "agent:coder:telegram:dm:99"
 
     def test_named_profile_group_per_user(self):
-        s = _src(platform=Platform.DISCORD, chat_id="g1", chat_type="group", user_id="alice")
+        s = _src(
+            platform=Platform.DISCORD, chat_id="g1", chat_type="group", user_id="alice"
+        )
         assert (
             build_session_key(s, profile="coder")
             == "agent:coder:discord:group:g1:alice"
@@ -84,7 +90,9 @@ class TestSessionKeyNamespacedWhenOn:
         """Downstream parsers split on ':' and read parts[2]=platform,
         parts[3]=chat_type, parts[4]=chat_id (see qqbot adapter
         _parse_gateway_session_key). The profile must occupy parts[1] only."""
-        s = _src(platform=Platform.DISCORD, chat_id="g1", chat_type="group", user_id="alice")
+        s = _src(
+            platform=Platform.DISCORD, chat_id="g1", chat_type="group", user_id="alice"
+        )
         parts = build_session_key(s, profile="coder").split(":")
         assert parts[0] == "agent"
         assert parts[1] == "coder"  # namespace slot (was always 'main')
@@ -94,7 +102,9 @@ class TestSessionKeyNamespacedWhenOn:
 
     def test_default_namespace_layout_matches_named(self):
         """Default and named keys differ ONLY in parts[1]."""
-        s = _src(platform=Platform.SLACK, chat_id="c1", chat_type="channel", user_id="u1")
+        s = _src(
+            platform=Platform.SLACK, chat_id="c1", chat_type="channel", user_id="u1"
+        )
         d = build_session_key(s, profile="default").split(":")
         n = build_session_key(s, profile="coder").split(":")
         assert d[0] == n[0] == "agent"
@@ -153,13 +163,15 @@ class TestSessionStoreProfileResolution:
     def test_flag_on_uses_active_profile_namespace(self, tmp_path):
         store = self._store(tmp_path, multiplex_profiles=True)
         s = _src(chat_id="99", chat_type="dm")
-        with patch("openagents_cli.profiles.get_active_profile_name", return_value="coder"):
+        with patch(
+            "openagents_cli.profiles.get_active_profile_name", return_value="coder"
+        ):
             assert store._generate_session_key(s) == "agent:coder:telegram:dm:99"
 
     def test_flag_on_default_profile_stays_legacy(self, tmp_path):
         store = self._store(tmp_path, multiplex_profiles=True)
         s = _src(chat_id="99", chat_type="dm")
-        with patch("openagents_cli.profiles.get_active_profile_name", return_value="default"):
+        with patch(
+            "openagents_cli.profiles.get_active_profile_name", return_value="default"
+        ):
             assert store._generate_session_key(s) == "agent:main:telegram:dm:99"
-
-

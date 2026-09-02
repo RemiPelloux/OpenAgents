@@ -184,7 +184,11 @@ def test_api_calendar_list_uses_events_list(api_module):
         return MagicMock(returncode=0, stdout="{}", stderr="")
 
     args = api_module.argparse.Namespace(
-        start="", end="", max=25, calendar="primary", func=api_module.calendar_list,
+        start="",
+        end="",
+        max=25,
+        calendar="primary",
+        func=api_module.calendar_list,
     )
 
     with patch.object(api_module.subprocess, "run", side_effect=capture_run):
@@ -236,7 +240,9 @@ def test_api_calendar_list_respects_date_range(api_module):
         ("From", "To", "Subject", "Date"),
     ],
 )
-def test_api_gmail_get_reads_headers_case_insensitively(api_module, capsys, header_names):
+def test_api_gmail_get_reads_headers_case_insensitively(
+    api_module, capsys, header_names
+):
     from_name, to_name, subject_name, date_name = header_names
 
     def fake_run_gws(parts, *, params=None, body=None):
@@ -435,7 +441,9 @@ def test_api_gmail_reply_reads_headers_case_insensitively_and_uses_conventional_
     assert "\nreferences: " not in raw_text
 
 
-def test_api_get_credentials_refresh_persists_authorized_user_type(api_module, monkeypatch):
+def test_api_get_credentials_refresh_persists_authorized_user_type(
+    api_module, monkeypatch
+):
     token_path = api_module.TOKEN_PATH
     _write_token(token_path, token="ya29.old")
 

@@ -5,6 +5,7 @@ ONE INFO line ("active for <root>") at the default INFO threshold.
 Steady-state events stay at DEBUG; first-time-seen events surface
 once at INFO/WARNING.
 """
+
 from __future__ import annotations
 
 import logging
@@ -56,7 +57,8 @@ def test_active_for_fires_once_per_root(caplog_lsp):
     for _ in range(50):
         eventlog.log_active("pyright", "/proj")
     info_records = [
-        r for r in caplog_lsp.records
+        r
+        for r in caplog_lsp.records
         if r.levelno == logging.INFO and "active for" in r.getMessage()
     ]
     assert len(info_records) == 1

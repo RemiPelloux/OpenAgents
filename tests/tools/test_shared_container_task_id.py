@@ -51,7 +51,9 @@ def test_subagent_task_id_collapses_to_default():
 
 def test_arbitrary_session_id_collapses_to_default():
     # Session UUIDs or anything else without an override still collapse.
-    assert terminal_tool._resolve_container_task_id("sess-123e4567-e89b-12d3") == "default"
+    assert (
+        terminal_tool._resolve_container_task_id("sess-123e4567-e89b-12d3") == "default"
+    )
 
 
 def test_rl_task_with_override_keeps_its_own_id():
@@ -116,10 +118,7 @@ def test_cwd_only_override_collapses_to_default():
         "acp-session-abc", {"cwd": "/home/user/project"}
     )
     try:
-        assert (
-            terminal_tool._resolve_container_task_id("acp-session-abc")
-            == "default"
-        )
+        assert terminal_tool._resolve_container_task_id("acp-session-abc") == "default"
     finally:
         terminal_tool.clear_task_env_overrides("acp-session-abc")
 
@@ -131,10 +130,7 @@ def test_cwd_plus_docker_image_keeps_own_id():
         "rl-with-cwd", {"docker_image": "myimg:latest", "cwd": "/workspace"}
     )
     try:
-        assert (
-            terminal_tool._resolve_container_task_id("rl-with-cwd")
-            == "rl-with-cwd"
-        )
+        assert terminal_tool._resolve_container_task_id("rl-with-cwd") == "rl-with-cwd"
     finally:
         terminal_tool.clear_task_env_overrides("rl-with-cwd")
 
@@ -145,9 +141,6 @@ def test_env_type_override_keeps_own_id():
         "bench-env", {"env_type": "sandbox", "cwd": "/work"}
     )
     try:
-        assert (
-            terminal_tool._resolve_container_task_id("bench-env")
-            == "bench-env"
-        )
+        assert terminal_tool._resolve_container_task_id("bench-env") == "bench-env"
     finally:
         terminal_tool.clear_task_env_overrides("bench-env")

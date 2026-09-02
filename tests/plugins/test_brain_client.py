@@ -60,16 +60,14 @@ def test_ingest_observation_posts_when_configured(monkeypatch):
     mock_resp.__exit__ = MagicMock(return_value=False)
 
     with patch("urllib.request.urlopen", return_value=mock_resp) as urlopen:
-        ingest_observation(
-            {
-                "observationId": "openagents:test:1",
-                "app": "openagents",
-                "sourceType": "event",
-                "title": "Run started",
-                "content": "mode=implement",
-                "domain": "openos",
-            }
-        )
+        ingest_observation({
+            "observationId": "openagents:test:1",
+            "app": "openagents",
+            "sourceType": "event",
+            "title": "Run started",
+            "content": "mode=implement",
+            "domain": "openos",
+        })
 
     req = urlopen.call_args[0][0]
     assert req.full_url == "http://localhost:3001/api/v1/brain/observations"

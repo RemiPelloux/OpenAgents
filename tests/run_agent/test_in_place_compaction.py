@@ -32,6 +32,7 @@ def _make_agent(session_db, session_id, *, in_place):
             skip_memory=True,
         )
     agent.compression_in_place = in_place
+
     # Mock the compressor to return a deterministic shrunk transcript so the
     # test exercises the DB-mutation path, not summarization quality.
     def _fake_compress(messages, current_tokens=None, focus_topic=None, force=False):
@@ -158,8 +159,10 @@ class TestInPlaceCompaction:
                 "n", calls["n"] + 1
             )
             compress_context(
-                agent, [{"role": "user", "content": "x"}] * 8,
-                approx_tokens=100_000, system_message="sys",
+                agent,
+                [{"role": "user", "content": "x"}] * 8,
+                approx_tokens=100_000,
+                system_message="sys",
             )
             assert calls["n"] == 0
 
@@ -178,8 +181,10 @@ class TestInPlaceCompaction:
                 "n", calls["n"] + 1
             )
             compress_context(
-                agent, [{"role": "user", "content": "x"}] * 8,
-                approx_tokens=100_000, system_message="sys",
+                agent,
+                [{"role": "user", "content": "x"}] * 8,
+                approx_tokens=100_000,
+                system_message="sys",
             )
             assert calls["n"] == 1
 
@@ -233,8 +238,10 @@ class TestInPlaceSignalForGateway:
             _seed(db, "s_ip", "ip")
             a_ip = _make_agent(db, "s_ip", in_place=True)
             compress_context(
-                a_ip, [{"role": "user", "content": "x"}] * 8,
-                approx_tokens=100_000, system_message="sys",
+                a_ip,
+                [{"role": "user", "content": "x"}] * 8,
+                approx_tokens=100_000,
+                system_message="sys",
             )
             assert a_ip._last_compaction_in_place is True
 
@@ -242,8 +249,10 @@ class TestInPlaceSignalForGateway:
             _seed(db, "s_rot", "rot")
             a_rot = _make_agent(db, "s_rot", in_place=False)
             compress_context(
-                a_rot, [{"role": "user", "content": "x"}] * 8,
-                approx_tokens=100_000, system_message="sys",
+                a_rot,
+                [{"role": "user", "content": "x"}] * 8,
+                approx_tokens=100_000,
+                system_message="sys",
             )
             assert a_rot._last_compaction_in_place is False
 
@@ -308,13 +317,16 @@ class TestCompactedTurnsStaySearchable:
             db = SessionDB(db_path=Path(tmp) / "t.db")
             sid = "20260619_undo"
             db.create_session(sid, "cli", model="test/model")
-            db.append_message(session_id=sid, role="user", content="ZEBRAWORD remember this")
+            db.append_message(
+                session_id=sid, role="user", content="ZEBRAWORD remember this"
+            )
             db.append_message(session_id=sid, role="assistant", content="noted")
             db.rewind_to_message(sid, db.get_messages(sid)[0]["id"])
 
-            assert db.search_messages("ZEBRAWORD", role_filter=["user", "assistant"]) == []
+            assert (
+                db.search_messages("ZEBRAWORD", role_filter=["user", "assistant"]) == []
+            )
             recovered = db.search_messages(
                 "ZEBRAWORD", role_filter=["user", "assistant"], include_inactive=True
             )
             assert len(recovered) == 1
-

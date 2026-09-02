@@ -17,10 +17,14 @@ DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 def resolve_agent_runtime_kwargs(explicit_model: str | None = None) -> Dict[str, Any]:
     """Build ``AIAgent`` kwargs for a workflow agent node."""
     model = (explicit_model or "").strip()
-    provider = (os.environ.get("LLM_PROVIDER") or os.environ.get("OPENAGENTS_PROVIDER") or "").strip()
+    provider = (
+        os.environ.get("LLM_PROVIDER") or os.environ.get("OPENAGENTS_PROVIDER") or ""
+    ).strip()
 
     if not model:
-        model = (os.environ.get("LLM_MODEL") or os.environ.get("OPENAGENTS_MODEL") or "").strip()
+        model = (
+            os.environ.get("LLM_MODEL") or os.environ.get("OPENAGENTS_MODEL") or ""
+        ).strip()
 
     if not model and (os.environ.get("MISTRAL_API_KEY") or "").strip():
         model = DEFAULT_MISTRAL_MODEL
@@ -34,11 +38,15 @@ def resolve_agent_runtime_kwargs(explicit_model: str | None = None) -> Dict[str,
     if provider:
         kwargs["provider"] = provider
 
-    base_url = (os.environ.get("LLM_BASE_URL") or os.environ.get("MISTRAL_BASE_URL") or "").strip()
+    base_url = (
+        os.environ.get("LLM_BASE_URL") or os.environ.get("MISTRAL_BASE_URL") or ""
+    ).strip()
     if base_url:
         kwargs["base_url"] = base_url
 
-    api_key = (os.environ.get("LLM_API_KEY") or os.environ.get("MISTRAL_API_KEY") or "").strip()
+    api_key = (
+        os.environ.get("LLM_API_KEY") or os.environ.get("MISTRAL_API_KEY") or ""
+    ).strip()
     if api_key:
         kwargs["api_key"] = api_key
 

@@ -26,6 +26,7 @@ which is already wired (see that module).
 
 Architecture is documented in ``website/docs/user-guide/features/lsp.md``.
 """
+
 from __future__ import annotations
 
 import atexit

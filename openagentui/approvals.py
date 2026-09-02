@@ -23,7 +23,9 @@ def resolve_approval(execution_id: str, decision: str) -> WorkflowExecution:
     """Approve/reject the pending approval on ``execution_id`` and resume the run."""
     decision = decision.strip().lower()
     if decision not in _VALID_DECISIONS:
-        raise ValueError(f"decision must be one of {sorted(_VALID_DECISIONS)}, got {decision!r}")
+        raise ValueError(
+            f"decision must be one of {sorted(_VALID_DECISIONS)}, got {decision!r}"
+        )
 
     execution = store.get_execution(execution_id)
     if execution is None:
@@ -35,7 +37,9 @@ def resolve_approval(execution_id: str, decision: str) -> WorkflowExecution:
     if approval is None:
         raise ValueError(f"unknown approval: {execution.pending_approval_id}")
     if approval.status != "pending":
-        raise ValueError(f"approval {approval.approval_id} already resolved as {approval.status!r}")
+        raise ValueError(
+            f"approval {approval.approval_id} already resolved as {approval.status!r}"
+        )
 
     approval.status = decision
     approval.responded_at = _now_iso()

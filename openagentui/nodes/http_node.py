@@ -23,15 +23,25 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
 
     method = str(ctx.data.get("method") or "GET").upper()
     headers = render_dict(
-        ctx.data.get("headers") or {}, variables=ctx.execution.variables, node_results=ctx.execution.node_results,
+        ctx.data.get("headers") or {},
+        variables=ctx.execution.variables,
+        node_results=ctx.execution.node_results,
     )
     body = ctx.data.get("body")
     if isinstance(body, dict):
-        body = render_dict(body, variables=ctx.execution.variables, node_results=ctx.execution.node_results)
+        body = render_dict(
+            body,
+            variables=ctx.execution.variables,
+            node_results=ctx.execution.node_results,
+        )
     elif isinstance(body, str):
         from openagentui.templating import render
 
-        body = render(body, variables=ctx.execution.variables, node_results=ctx.execution.node_results)
+        body = render(
+            body,
+            variables=ctx.execution.variables,
+            node_results=ctx.execution.node_results,
+        )
 
     request_input = {"method": method, "url": url, "headers": headers, "body": body}
 
@@ -42,7 +52,9 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
             else:
                 response = client.request(method, url, headers=headers, content=body)
     except httpx.HTTPError as exc:
-        return failed(ctx.node.id, f"http request failed: {exc}", input_value=request_input)
+        return failed(
+            ctx.node.id, f"http request failed: {exc}", input_value=request_input
+        )
 
     output: Any
     try:
@@ -50,7 +62,11 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
     except ValueError:
         output = response.text
 
-    result_payload = {"status": response.status_code, "headers": dict(response.headers), "body": output}
+    result_payload = {
+        "status": response.status_code,
+        "headers": dict(response.headers),
+        "body": output,
+    }
 
     output_field = ctx.data.get("outputField")
     if output_field:
@@ -58,6 +74,8 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
 
     if response.status_code >= 400:
         return failed(
-            ctx.node.id, f"http {response.status_code}: {str(output)[:500]}", input_value=request_input,
+            ctx.node.id,
+            f"http {response.status_code}: {str(output)[:500]}",
+            input_value=request_input,
         )
     return ok(ctx.node.id, result_payload, input_value=request_input)

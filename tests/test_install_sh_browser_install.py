@@ -24,8 +24,14 @@ def test_install_script_does_not_autodetect_system_browser_on_path() -> None:
     text = INSTALL_SH.read_text()
 
     assert "find_system_browser()" in text
-    assert "google-chrome google-chrome-stable chromium chromium-browser chrome" not in text
-    assert "Skipping Playwright browser download; OpenAgents will use the system browser." not in text
+    assert (
+        "google-chrome google-chrome-stable chromium chromium-browser chrome"
+        not in text
+    )
+    assert (
+        "Skipping Playwright browser download; OpenAgents will use the system browser."
+        not in text
+    )
 
 
 def test_install_script_honors_explicit_browser_override_only() -> None:
@@ -69,10 +75,11 @@ def test_playwright_installs_are_timeout_guarded() -> None:
     # is available non-interactively (root or passwordless sudo). Non-sudo
     # service users fall back to the browser-only install — see
     # install_node_deps() in install.sh.
-    assert "run_playwright_install 600 npx playwright install --with-deps chromium" in text
+    assert (
+        "run_playwright_install 600 npx playwright install --with-deps chromium" in text
+    )
     # The wrapper still bounds the download with the timeout helper.
     assert 'run_browser_install_with_timeout "$timeout_seconds" "$@"' in text
-
 
 
 def test_install_script_supports_skip_browser_flag() -> None:
@@ -92,7 +99,10 @@ def test_install_script_skips_with_deps_when_no_sudo() -> None:
     # The apt branch must gate --with-deps behind a sudo capability check
     # (root or non-interactive sudo), otherwise the installer hangs for
     # service-user installs (systemd accounts, operator users, etc.).
-    assert 'if [ "$(id -u)" -eq 0 ] || (command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null); then' in text
+    assert (
+        'if [ "$(id -u)" -eq 0 ] || (command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null); then'
+        in text
+    )
     assert "sudo npx playwright install-deps chromium" in text
 
 
@@ -116,7 +126,10 @@ def test_playwright_install_retries_with_platform_override_on_failure() -> None:
     assert 'echo "ubuntu24.04-x64"' in text
     assert 'echo "ubuntu24.04-arm64"' in text
     # Try native first: only retry after the first attempt fails.
-    assert 'if run_browser_install_with_timeout "$timeout_seconds" "$@" 2>/dev/null; then' in text
+    assert (
+        'if run_browser_install_with_timeout "$timeout_seconds" "$@" 2>/dev/null; then'
+        in text
+    )
     # Operator-pinned override is respected (retry skipped).
     assert 'if [ -n "${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-}" ]; then' in text
     # The retry is gated on the unrecognized-apt-release check, not any failure.
@@ -153,8 +166,14 @@ def test_browser_install_timeout_stays_interruptible() -> None:
 import subprocess
 
 
-def _run_install_fn(distro: str, version: str, *, native_fails: bool,
-                    arch: str = "x86_64", operator_override: str = "") -> dict:
+def _run_install_fn(
+    distro: str,
+    version: str,
+    *,
+    native_fails: bool,
+    arch: str = "x86_64",
+    operator_override: str = "",
+) -> dict:
     """Source the relevant functions from install.sh and drive run_playwright_install.
 
     Stubs `npx` (the install command) to fail/succeed, `uname -m` for arch, and
@@ -176,7 +195,9 @@ def _run_install_fn(distro: str, version: str, *, native_fails: bool,
 
     extracted = []
     for name in fn_names:
-        m = re.search(rf"^{re.escape(name)}\(\) \{{.*?^\}}", src, re.MULTILINE | re.DOTALL)
+        m = re.search(
+            rf"^{re.escape(name)}\(\) \{{.*?^\}}", src, re.MULTILINE | re.DOTALL
+        )
         assert m, f"could not extract {name}() from install.sh"
         extracted.append(m.group(0))
     body = "\n\n".join(extracted)
@@ -218,12 +239,14 @@ run_playwright_install 600 npx playwright install --with-deps chromium
 echo "FINAL_RC=$?"
 """
     import tempfile, os
+
     with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as lf:
         runlog = lf.name
     try:
         env = dict(os.environ, RUNLOG=runlog)
-        proc = subprocess.run(["bash", "-c", harness], capture_output=True,
-                              text=True, env=env)
+        proc = subprocess.run(
+            ["bash", "-c", harness], capture_output=True, text=True, env=env
+        )
         runs = Path(runlog).read_text().strip().splitlines()
         final_rc = None
         for line in proc.stdout.splitlines():
@@ -276,8 +299,9 @@ def test_no_retry_when_native_succeeds_on_ubuntu_26() -> None:
 
 def test_operator_override_respected_no_second_run() -> None:
     """An operator-pinned override applies to attempt 1; no second run on failure."""
-    r = _run_install_fn("ubuntu", "26.04", native_fails=True,
-                        operator_override="ubuntu22.04-x64")
+    r = _run_install_fn(
+        "ubuntu", "26.04", native_fails=True, operator_override="ubuntu22.04-x64"
+    )
     # The override is set, so the npx stub returns 0 on the first run.
     assert len(r["runs"]) == 1, r["runs"]
     assert "override=ubuntu22.04-x64" in r["runs"][0]
@@ -289,4 +313,3 @@ def test_override_retry_skipped_on_unsupported_arch() -> None:
     r = _run_install_fn("ubuntu", "26.04", native_fails=True, arch="riscv64")
     assert len(r["runs"]) == 1, r["runs"]
     assert r["final_rc"] == 1
-

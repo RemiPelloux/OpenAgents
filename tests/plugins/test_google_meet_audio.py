@@ -48,10 +48,10 @@ def test_setup_linux_loads_null_sink_and_virtual_source():
             return _linux_pactl_result("43\n")
         raise AssertionError(f"unexpected pactl invocation: {argv}")
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Linux"), \
-         patch("plugins.google_meet.audio_bridge.subprocess.run",
-               side_effect=_fake_run):
+    with (
+        patch("plugins.google_meet.audio_bridge.platform.system", return_value="Linux"),
+        patch("plugins.google_meet.audio_bridge.subprocess.run", side_effect=_fake_run),
+    ):
         br = AudioBridge()
         info = br.setup()
 
@@ -86,10 +86,12 @@ def test_teardown_linux_unloads_modules_in_reverse_order():
             return _linux_pactl_result("42\n")
         return _linux_pactl_result("43\n")
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Linux"), \
-         patch("plugins.google_meet.audio_bridge.subprocess.run",
-               side_effect=_setup_run):
+    with (
+        patch("plugins.google_meet.audio_bridge.platform.system", return_value="Linux"),
+        patch(
+            "plugins.google_meet.audio_bridge.subprocess.run", side_effect=_setup_run
+        ),
+    ):
         br = AudioBridge()
         br.setup()
 
@@ -99,8 +101,9 @@ def test_teardown_linux_unloads_modules_in_reverse_order():
         unload_calls.append(list(argv))
         return _linux_pactl_result("")
 
-    with patch("plugins.google_meet.audio_bridge.subprocess.run",
-               side_effect=_teardown_run):
+    with patch(
+        "plugins.google_meet.audio_bridge.subprocess.run", side_effect=_teardown_run
+    ):
         br.teardown()
 
     # Two unload calls, in reverse order: 43 (virtual-source) then 42 (sink).
@@ -123,10 +126,10 @@ def test_setup_linux_parses_module_id_from_multi_line_output():
             return _linux_pactl_result("42   \n")
         return _linux_pactl_result("43\n")
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Linux"), \
-         patch("plugins.google_meet.audio_bridge.subprocess.run",
-               side_effect=_fake_run):
+    with (
+        patch("plugins.google_meet.audio_bridge.platform.system", return_value="Linux"),
+        patch("plugins.google_meet.audio_bridge.subprocess.run", side_effect=_fake_run),
+    ):
         br = AudioBridge()
         info = br.setup()
 
@@ -136,10 +139,13 @@ def test_setup_linux_parses_module_id_from_multi_line_output():
 def test_setup_linux_pactl_missing_raises_clean_error():
     from plugins.google_meet.audio_bridge import AudioBridge
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Linux"), \
-         patch("plugins.google_meet.audio_bridge.subprocess.run",
-               side_effect=FileNotFoundError("pactl")):
+    with (
+        patch("plugins.google_meet.audio_bridge.platform.system", return_value="Linux"),
+        patch(
+            "plugins.google_meet.audio_bridge.subprocess.run",
+            side_effect=FileNotFoundError("pactl"),
+        ),
+    ):
         br = AudioBridge()
         with pytest.raises(RuntimeError, match="pactl"):
             br.setup()
@@ -167,10 +173,15 @@ _BH_ABSENT = (
 def test_setup_darwin_returns_blackhole_when_present():
     from plugins.google_meet.audio_bridge import AudioBridge
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Darwin"), \
-         patch("plugins.google_meet.audio_bridge.subprocess.check_output",
-               return_value=_BH_PRESENT) as check:
+    with (
+        patch(
+            "plugins.google_meet.audio_bridge.platform.system", return_value="Darwin"
+        ),
+        patch(
+            "plugins.google_meet.audio_bridge.subprocess.check_output",
+            return_value=_BH_PRESENT,
+        ) as check,
+    ):
         br = AudioBridge()
         info = br.setup()
 
@@ -195,10 +206,15 @@ def test_setup_darwin_returns_blackhole_when_present():
 def test_setup_darwin_raises_when_blackhole_missing():
     from plugins.google_meet.audio_bridge import AudioBridge
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Darwin"), \
-         patch("plugins.google_meet.audio_bridge.subprocess.check_output",
-               return_value=_BH_ABSENT):
+    with (
+        patch(
+            "plugins.google_meet.audio_bridge.platform.system", return_value="Darwin"
+        ),
+        patch(
+            "plugins.google_meet.audio_bridge.subprocess.check_output",
+            return_value=_BH_ABSENT,
+        ),
+    ):
         br = AudioBridge()
         with pytest.raises(RuntimeError, match="BlackHole"):
             br.setup()
@@ -212,8 +228,9 @@ def test_setup_darwin_raises_when_blackhole_missing():
 def test_setup_windows_raises():
     from plugins.google_meet.audio_bridge import AudioBridge
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Windows"):
+    with patch(
+        "plugins.google_meet.audio_bridge.platform.system", return_value="Windows"
+    ):
         br = AudioBridge()
         with pytest.raises(RuntimeError, match="not supported"):
             br.setup()
@@ -227,30 +244,35 @@ def test_setup_windows_raises():
 def test_chrome_fake_audio_flags_linux():
     from plugins.google_meet.audio_bridge import chrome_fake_audio_flags
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Linux"):
-        flags = chrome_fake_audio_flags(
-            {"platform": "linux", "device_name": "hermes_meet_src"}
-        )
+    with patch(
+        "plugins.google_meet.audio_bridge.platform.system", return_value="Linux"
+    ):
+        flags = chrome_fake_audio_flags({
+            "platform": "linux",
+            "device_name": "hermes_meet_src",
+        })
     assert "--use-fake-ui-for-media-stream" in flags
 
 
 def test_chrome_fake_audio_flags_darwin():
     from plugins.google_meet.audio_bridge import chrome_fake_audio_flags
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Darwin"):
-        flags = chrome_fake_audio_flags(
-            {"platform": "darwin", "device_name": "BlackHole 2ch"}
-        )
+    with patch(
+        "plugins.google_meet.audio_bridge.platform.system", return_value="Darwin"
+    ):
+        flags = chrome_fake_audio_flags({
+            "platform": "darwin",
+            "device_name": "BlackHole 2ch",
+        })
     assert "--use-fake-ui-for-media-stream" in flags
 
 
 def test_chrome_fake_audio_flags_windows_raises():
     from plugins.google_meet.audio_bridge import chrome_fake_audio_flags
 
-    with patch("plugins.google_meet.audio_bridge.platform.system",
-               return_value="Windows"):
+    with patch(
+        "plugins.google_meet.audio_bridge.platform.system", return_value="Windows"
+    ):
         with pytest.raises(RuntimeError):
             chrome_fake_audio_flags({"platform": "windows"})
 

@@ -29,7 +29,8 @@ def _check_config():
         missing.append("CANVAS_BASE_URL")
     if missing:
         hermes_env = os.path.join(
-            os.environ.get("OPENAGENTS_HOME", os.path.expanduser("~/.openagents")), ".env"
+            os.environ.get("OPENAGENTS_HOME", os.path.expanduser("~/.openagents")),
+            ".env",
         )
         print(
             f"Missing required environment variables: {', '.join(missing)}\n"
@@ -126,14 +127,14 @@ def list_assignments(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Canvas LMS API CLI for OpenAgents"
-    )
+    parser = argparse.ArgumentParser(description="Canvas LMS API CLI for OpenAgents")
     sub = parser.add_subparsers(dest="command", required=True)
 
     # --- list_courses ---
     p = sub.add_parser("list_courses", help="List enrolled courses")
-    p.add_argument("--per-page", type=int, default=50, help="Results per page (default 50)")
+    p.add_argument(
+        "--per-page", type=int, default=50, help="Results per page (default 50)"
+    )
     p.add_argument(
         "--enrollment-state",
         default="",
@@ -144,7 +145,9 @@ def main():
     # --- list_assignments ---
     p = sub.add_parser("list_assignments", help="List assignments for a course")
     p.add_argument("course_id", help="Canvas course ID")
-    p.add_argument("--per-page", type=int, default=50, help="Results per page (default 50)")
+    p.add_argument(
+        "--per-page", type=int, default=50, help="Results per page (default 50)"
+    )
     p.add_argument(
         "--order-by",
         default="",

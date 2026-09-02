@@ -30,13 +30,11 @@ def resolve_brain_secret(
     internal_key = os.environ.get("INTERNAL_SERVICE_KEY", "axon-internal-dev-key")
     org_id = organization_id or os.environ.get("OPENBRAIN_ORG_ID", "")
 
-    body = json.dumps(
-        {
-            "name": name,
-            "workflow_run_id": workflow_run_id,
-            "correlation_id": correlation_id,
-        }
-    ).encode()
+    body = json.dumps({
+        "name": name,
+        "workflow_run_id": workflow_run_id,
+        "correlation_id": correlation_id,
+    }).encode()
     headers = {
         "Content-Type": "application/json",
         "X-Internal-Service-Key": internal_key,

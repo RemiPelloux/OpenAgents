@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import logging
 import os
-import uuid
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from plugins.openos_engineering.rec_outbox import drain_rec_outbox, enqueue_rec_event
 
 logger = logging.getLogger(__name__)
+_RUN_SEQUENCES: dict[str, int] = {}
 
 
 def emit_rec_event(
@@ -25,15 +26,22 @@ def emit_rec_event(
     target_app: str = "openagents",
     severity: str = "info",
 ) -> None:
-    if not os.environ.get("OPENREC_URL", "").strip():
-        return
-
+    organization_id = os.environ.get(
+        "OPENREC_ORG_ID", "00000000-0000-4000-8000-000000000001"
+    )
+    run_key = agent_run_id or correlation_id or target_id or "unknown"
+    sequence = _RUN_SEQUENCES.get(run_key, 0) + 1
+    _RUN_SEQUENCES[run_key] = sequence
+    stable_subject = f"{organization_id}:{correlation_id or ''}:{run_key}:{sequence}:{event_type}"
+    event_id = "openagents:" + hashlib.sha256(stable_subject.encode()).hexdigest()
     body: Dict[str, Any] = {
-        "id": str(uuid.uuid4()),
+        "id": event_id,
+        "event_id": event_id,
+        "sequence": sequence,
         "type": event_type,
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "tenant": {
-            "org_id": os.environ.get("OPENREC_ORG_ID", "00000000-0000-4000-8000-000000000001"),
+            "org_id": organization_id,
             "environment": os.environ.get("OPENREC_ENV", "dev"),
         },
         "actor": {

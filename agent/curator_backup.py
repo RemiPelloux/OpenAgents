@@ -143,6 +143,7 @@ def _utc_id(now: Optional[datetime] = None) -> str:
 def _load_config() -> Dict[str, Any]:
     try:
         from openagents_cli.config import load_config
+
         cfg = load_config()
     except Exception as e:
         logger.debug("Failed to load config for curator backup: %s", e)
@@ -174,18 +175,21 @@ def get_keep() -> int:
 # Snapshot
 # ---------------------------------------------------------------------------
 
+
 def _count_skill_files(base: Path) -> int:
     try:
-        return sum(
-            1 for p in base.rglob("SKILL.md") if not is_excluded_skill_path(p)
-        )
+        return sum(1 for p in base.rglob("SKILL.md") if not is_excluded_skill_path(p))
     except OSError:
         return 0
 
 
-def _write_manifest(dest: Path, reason: str, archive_path: Path,
-                    skills_counted: int,
-                    cron_info: Optional[Dict[str, Any]] = None) -> None:
+def _write_manifest(
+    dest: Path,
+    reason: str,
+    archive_path: Path,
+    skills_counted: int,
+    cron_info: Optional[Dict[str, Any]] = None,
+) -> None:
     manifest = {
         "id": dest.name,
         "reason": reason,
@@ -208,7 +212,9 @@ def _write_manifest(dest: Path, reason: str, archive_path: Path,
     )
 
 
-def snapshot_skills(reason: str = "manual", *, protect_ids: Optional[Set[str]] = None) -> Optional[Path]:
+def snapshot_skills(
+    reason: str = "manual", *, protect_ids: Optional[Set[str]] = None
+) -> Optional[Path]:
     """Create a tar.gz snapshot of ``~/.openagents/skills/`` and prune old ones.
 
     Returns the snapshot directory path, or ``None`` if the snapshot was
@@ -268,9 +274,9 @@ def snapshot_skills(reason: str = "manual", *, protect_ids: Optional[Set[str]] =
         # additive. We still record in the manifest whether it was
         # captured so rollback can surface "no cron data in this snapshot".
         cron_info = _backup_cron_jobs_into(dest)
-        _write_manifest(dest, reason, archive,
-                        _count_skill_files(skills),
-                        cron_info=cron_info)
+        _write_manifest(
+            dest, reason, archive, _count_skill_files(skills), cron_info=cron_info
+        )
     except (OSError, tarfile.TarError) as e:
         logger.debug("Curator snapshot failed: %s", e, exc_info=True)
         # Clean up partial snapshot
@@ -332,6 +338,7 @@ def _prune_old(keep: int, protect: Optional[Set[str]] = None) -> List[str]:
 # List + rollback
 # ---------------------------------------------------------------------------
 
+
 def _read_manifest(snap_dir: Path) -> Dict[str, Any]:
     mf = snap_dir / "manifest.json"
     if not mf.exists():
@@ -387,7 +394,8 @@ def _resolve_backup(backup_id: Optional[str]) -> Optional[Path]:
             return target
         return None
     candidates = [
-        c for c in sorted(backups.iterdir(), reverse=True)
+        c
+        for c in sorted(backups.iterdir(), reverse=True)
         if c.is_dir() and _ID_RE.match(c.name) and (c / "skills.tar.gz").exists()
     ]
     return candidates[0] if candidates else None
@@ -535,7 +543,6 @@ def _restore_cron_skill_links(snapshot_dir: Path) -> Dict[str, Any]:
     return report
 
 
-
 def rollback(backup_id: Optional[str] = None) -> Tuple[bool, str, Optional[Path]]:
     """Restore ``~/.openagents/skills/`` from a snapshot.
 
@@ -563,7 +570,11 @@ def rollback(backup_id: Optional[str] = None) -> Tuple[bool, str, Optional[Path]
         )
     archive = target / "skills.tar.gz"
     if not archive.exists():
-        return (False, f"snapshot {target.name} has no skills.tar.gz — corrupted?", None)
+        return (
+            False,
+            f"snapshot {target.name} has no skills.tar.gz — corrupted?",
+            None,
+        )
 
     skills = _skills_dir()
     skills.mkdir(parents=True, exist_ok=True)
@@ -624,9 +635,7 @@ def rollback(backup_id: Optional[str] = None) -> Tuple[bool, str, Optional[Path]
             for member in tf.getmembers():
                 name = member.name
                 if name.startswith("/") or ".." in Path(name).parts:
-                    raise tarfile.TarError(
-                        f"refusing to extract unsafe path: {name!r}"
-                    )
+                    raise tarfile.TarError(f"refusing to extract unsafe path: {name!r}")
             try:
                 tf.extractall(str(skills), filter="data")  # type: ignore[call-arg]
             except TypeError:
@@ -665,7 +674,9 @@ def rollback(backup_id: Optional[str] = None) -> Tuple[bool, str, Optional[Path]
         skipped_n = len(cron_report.get("skipped_missing") or [])
         if cron_report.get("error"):
             summary_bits.append(f"cron links: error — {cron_report['error']}")
-        elif restored_n == 0 and skipped_n == 0 and cron_report.get("unchanged", 0) == 0:
+        elif (
+            restored_n == 0 and skipped_n == 0 and cron_report.get("unchanged", 0) == 0
+        ):
             # Attempted but nothing matched — empty snapshot or no overlapping ids.
             pass
         else:
@@ -678,14 +689,16 @@ def rollback(backup_id: Optional[str] = None) -> Tuple[bool, str, Optional[Path]
                 parts.append(f"{cron_report['unchanged']} already matched")
             summary_bits.append("cron links: " + ", ".join(parts))
 
-    logger.info("Curator rollback: restored from %s (cron_report=%s)",
-                target.name, cron_report)
+    logger.info(
+        "Curator rollback: restored from %s (cron_report=%s)", target.name, cron_report
+    )
     return (True, "; ".join(summary_bits), target)
 
 
 # ---------------------------------------------------------------------------
 # Human-readable summary for CLI
 # ---------------------------------------------------------------------------
+
 
 def format_size(n: int) -> str:
     for unit in ("B", "KB", "MB", "GB"):
@@ -703,8 +716,8 @@ def summarize_backups() -> str:
     lines.append("─" * len(lines[0]))
     for r in rows:
         lines.append(
-            f"{r.get('id','?'):<24}  "
-            f"{(r.get('reason','?') or '?')[:40]:<40}  "
+            f"{r.get('id', '?'):<24}  "
+            f"{(r.get('reason', '?') or '?')[:40]:<40}  "
             f"{r.get('skill_files', 0):>6}  "
             f"{format_size(int(r.get('archive_bytes', 0))):>8}"
         )

@@ -72,9 +72,7 @@ def test_acp_embedded_text_resource_is_inlined_as_text():
     ])
 
     assert content == (
-        "[Attached file: todo.txt]\n"
-        "URI: file:///workspace/todo.txt\n\n"
-        "first\nsecond"
+        "[Attached file: todo.txt]\nURI: file:///workspace/todo.txt\n\nfirst\nsecond"
     )
 
 
@@ -114,7 +112,9 @@ def test_acp_resource_link_image_file_is_inlined_as_image_url(tmp_path):
     assert content[1]["type"] == "text"
     assert "[Attached image: shot.png]" in content[1]["text"]
     assert content[2]["type"] == "image_url"
-    expected_url = "data:image/png;base64," + base64.b64encode(_ONE_PX_PNG).decode("ascii")
+    expected_url = "data:image/png;base64," + base64.b64encode(_ONE_PX_PNG).decode(
+        "ascii"
+    )
     assert content[2]["image_url"]["url"] == expected_url
 
 

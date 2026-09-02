@@ -46,7 +46,7 @@ class TestBuildToolPreview:
             "terminal",
             {
                 "command": (
-                    'cd /Users/brooklyn/www/bb-rainbows && pnpm run lint 2>&1 '
+                    "cd /Users/brooklyn/www/bb-rainbows && pnpm run lint 2>&1 "
                     '| tail -20; echo "lint_exit=${PIPESTATUS[0]}"'
                 )
             },
@@ -60,7 +60,7 @@ class TestBuildToolPreview:
                 "command": (
                     'which node pnpm corepack; node -v; echo "---"; '
                     'corepack --version 2>&1; echo "---pnpm via corepack---"; '
-                    'pnpm --version 2>&1 | tail -5'
+                    "pnpm --version 2>&1 | tail -5"
                 )
             },
         )
@@ -69,7 +69,9 @@ class TestBuildToolPreview:
     def test_execute_code_preview_uses_same_shell_summary(self):
         result = build_tool_preview(
             "execute_code",
-            {"code": 'cd /tmp/demo && python -m pytest -q 2>&1 | tail -5; echo "exit=$?"'},
+            {
+                "code": 'cd /tmp/demo && python -m pytest -q 2>&1 | tail -5; echo "exit=$?"'
+            },
         )
         assert result == "python -m pytest -q"
 
@@ -84,7 +86,9 @@ class TestBuildToolPreview:
         assert result == "test.py L1"
 
     def test_read_file_preview_includes_requested_line_range(self):
-        result = build_tool_preview("read_file", {"path": "./package.json", "offset": 1, "limit": 5})
+        result = build_tool_preview(
+            "read_file", {"path": "./package.json", "offset": 1, "limit": 5}
+        )
         assert result == "package.json L1-5"
 
     def test_browser_type_preview_redacts_api_key(self):
@@ -139,7 +143,9 @@ class TestBuildToolPreview:
         assert build_tool_preview("process", None) is None
 
     def test_process_tool_normal(self):
-        result = build_tool_preview("process", {"action": "poll", "session_id": "abc123"})
+        result = build_tool_preview(
+            "process", {"action": "poll", "session_id": "abc123"}
+        )
         assert result is not None
         assert "poll" in result
 
@@ -149,12 +155,16 @@ class TestBuildToolPreview:
         assert "reading" in result
 
     def test_todo_tool_with_todos(self):
-        result = build_tool_preview("todo", {"todos": [{"id": "1", "content": "test", "status": "pending"}]})
+        result = build_tool_preview(
+            "todo", {"todos": [{"id": "1", "content": "test", "status": "pending"}]}
+        )
         assert result is not None
         assert "1 task" in result
 
     def test_memory_tool_add(self):
-        result = build_tool_preview("memory", {"action": "add", "target": "user", "content": "test note"})
+        result = build_tool_preview(
+            "memory", {"action": "add", "target": "user", "content": "test note"}
+        )
         assert result is not None
         assert "user" in result
 
@@ -162,7 +172,9 @@ class TestBuildToolPreview:
         # Avoid empty quotes "" in the preview when old_text is missing/None.
         result = build_tool_preview("memory", {"action": "replace", "target": "memory"})
         assert result == '~memory: "<missing old_text>"'
-        result = build_tool_preview("memory", {"action": "remove", "target": "memory", "old_text": None})
+        result = build_tool_preview(
+            "memory", {"action": "remove", "target": "memory", "old_text": None}
+        )
         assert result == '-memory: "<missing old_text>"'
 
     def test_session_search_preview(self):
@@ -211,7 +223,10 @@ class TestCuteToolMessagePreviewLength:
 
         line = get_cute_tool_message("terminal", {"command": command}, 0.1)
 
-        assert "curl -s http://localhost:9222/json/list | jq -r '.[] | select(.type==\"page\")'" in line
+        assert (
+            "curl -s http://localhost:9222/json/list | jq -r '.[] | select(.type==\"page\")'"
+            in line
+        )
         assert "head -5" not in line
         assert "..." not in line
 
@@ -221,13 +236,18 @@ class TestCuteToolMessagePreviewLength:
 
         line = get_cute_tool_message("terminal", {"command": command}, 0.1)
 
-        assert "curl -s http://localhost:9222/json/list | jq -r '.[] | select(.type==\"page\")'" in line
+        assert (
+            "curl -s http://localhost:9222/json/list | jq -r '.[] | select(.type==\"page\")'"
+            in line
+        )
         assert "..." not in line
         assert "head -5" not in line
 
     def test_search_files_preview_uses_positive_configured_limit_not_default(self):
         set_tool_preview_max_len(80)
-        pattern = "function.formatToolCall.context.preview.compactPreview.maxLength.truncate"
+        pattern = (
+            "function.formatToolCall.context.preview.compactPreview.maxLength.truncate"
+        )
 
         line = get_cute_tool_message("search_files", {"pattern": pattern}, 0.1)
 
@@ -249,7 +269,9 @@ class TestCuteToolMessagePreviewLength:
             "lint": {"status": "error", "output": "SyntaxError: invalid syntax"},
         })
 
-        line = get_cute_tool_message("write_file", {"path": "/tmp/a.py"}, 0.1, result=result)
+        line = get_cute_tool_message(
+            "write_file", {"path": "/tmp/a.py"}, 0.1, result=result
+        )
 
         assert "[error]" not in line
 
@@ -298,7 +320,9 @@ class TestCuteToolMessagePreviewLength:
 
 class TestEditDiffPreview:
     def test_extract_edit_diff_for_patch(self):
-        diff = extract_edit_diff("patch", '{"success": true, "diff": "--- a/x\\n+++ b/x\\n"}')
+        diff = extract_edit_diff(
+            "patch", '{"success": true, "diff": "--- a/x\\n+++ b/x\\n"}'
+        )
         assert diff is not None
         assert "+++ b/x" in diff
 
@@ -369,7 +393,10 @@ class TestEditDiffPreview:
     def test_render_edit_diff_with_delta_handles_renderer_errors(self, monkeypatch):
         printer = MagicMock()
 
-        monkeypatch.setattr("agent.display._summarize_rendered_diff_sections", MagicMock(side_effect=RuntimeError("boom")))
+        monkeypatch.setattr(
+            "agent.display._summarize_rendered_diff_sections",
+            MagicMock(side_effect=RuntimeError("boom")),
+        )
 
         rendered = render_edit_diff_with_delta(
             "patch",
@@ -390,8 +417,7 @@ class TestEditDiffPreview:
 
     def test_summarize_rendered_diff_sections_limits_file_count(self):
         diff = "".join(
-            f"--- a/file{i}.py\n+++ b/file{i}.py\n+line{i}\n"
-            for i in range(8)
+            f"--- a/file{i}.py\n+++ b/file{i}.py\n+line{i}\n" for i in range(8)
         )
 
         rendered = _summarize_rendered_diff_sections(diff, max_files=3, max_lines=50)

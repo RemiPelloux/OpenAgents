@@ -5,6 +5,7 @@ interpolation) rather than mocking it, proving the property that matters: two
 profiles with different keys never see each other's, and an unscoped read in
 multiplex mode fails closed instead of leaking.
 """
+
 import pytest
 
 from agent import secret_scope as ss
@@ -22,6 +23,7 @@ class TestRuntimeProviderUsesScope:
 
     def test_getenv_reads_scope_under_multiplex(self, monkeypatch):
         from openagents_cli.runtime_provider import _getenv
+
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-global-leak")
         ss.set_multiplex_active(True)
         tok = ss.set_secret_scope({"ANTHROPIC_API_KEY": "sk-profileA"})
@@ -32,6 +34,7 @@ class TestRuntimeProviderUsesScope:
 
     def test_getenv_two_profiles_isolated(self, monkeypatch):
         from openagents_cli.runtime_provider import _getenv
+
         ss.set_multiplex_active(True)
 
         tok_a = ss.set_secret_scope({"OPENAI_API_KEY": "sk-A"})
@@ -48,6 +51,7 @@ class TestRuntimeProviderUsesScope:
 
     def test_getenv_fails_closed_unscoped(self, monkeypatch):
         from openagents_cli.runtime_provider import _getenv
+
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-leak")
         ss.set_multiplex_active(True)
         with pytest.raises(ss.UnscopedSecretError):
@@ -55,6 +59,7 @@ class TestRuntimeProviderUsesScope:
 
     def test_getenv_global_var_still_reads_environ(self, monkeypatch):
         from openagents_cli.runtime_provider import _getenv
+
         monkeypatch.setenv("HERMES_MAX_ITERATIONS", "42")
         ss.set_multiplex_active(True)
         # global var: no scope needed, no raise
@@ -66,6 +71,7 @@ class TestMcpInterpolationUsesScope:
 
     def test_interpolation_reads_scope(self, monkeypatch):
         from tools.mcp_tool import _interpolate_env_vars
+
         monkeypatch.setenv("MY_MCP_TOKEN", "global-token")
         ss.set_multiplex_active(True)
         tok = ss.set_secret_scope({"MY_MCP_TOKEN": "profile-token"})
@@ -77,12 +83,14 @@ class TestMcpInterpolationUsesScope:
 
     def test_interpolation_unset_keeps_placeholder(self, monkeypatch):
         from tools.mcp_tool import _interpolate_env_vars
+
         monkeypatch.delenv("UNSET_MCP_VAR", raising=False)
         # multiplex off: unset var keeps literal placeholder (legacy behavior)
         assert _interpolate_env_vars("${UNSET_MCP_VAR}") == "${UNSET_MCP_VAR}"
 
     def test_interpolation_off_reads_environ(self, monkeypatch):
         from tools.mcp_tool import _interpolate_env_vars
+
         monkeypatch.setenv("MY_MCP_TOKEN", "env-token")
         # multiplex off: legacy os.environ resolution
         assert _interpolate_env_vars("${MY_MCP_TOKEN}") == "env-token"

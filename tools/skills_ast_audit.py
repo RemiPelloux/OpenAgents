@@ -35,41 +35,67 @@ def _scan_source(content: str, rel_path: str) -> List[Finding]:
             f = node.func
             # importlib.import_module(...)
             if isinstance(f, ast.Attribute) and f.attr == "import_module":
-                findings.append((rel_path, node.lineno, "dynamic_import",
-                                 "importlib.import_module() — loads arbitrary modules at runtime"))
+                findings.append((
+                    rel_path,
+                    node.lineno,
+                    "dynamic_import",
+                    "importlib.import_module() — loads arbitrary modules at runtime",
+                ))
             # __import__(<computed>)
             elif isinstance(f, ast.Name) and f.id == "__import__":
                 if node.args and not isinstance(node.args[0], ast.Constant):
-                    findings.append((rel_path, node.lineno, "dynamic_import_computed",
-                                     "__import__ with non-literal module name"))
+                    findings.append((
+                        rel_path,
+                        node.lineno,
+                        "dynamic_import_computed",
+                        "__import__ with non-literal module name",
+                    ))
             # getattr(obj, <computed>)
             elif isinstance(f, ast.Name) and f.id == "getattr":
                 if len(node.args) >= 2 and not isinstance(node.args[1], ast.Constant):
-                    findings.append((rel_path, node.lineno, "dynamic_getattr",
-                                     "getattr with non-literal attribute name"))
+                    findings.append((
+                        rel_path,
+                        node.lineno,
+                        "dynamic_getattr",
+                        "getattr with non-literal attribute name",
+                    ))
             self.generic_visit(node)
 
         def visit_Subscript(self, node):
             # obj.__dict__[<computed>]
-            if (isinstance(node.value, ast.Attribute)
-                    and node.value.attr == "__dict__"
-                    and not isinstance(node.slice, ast.Constant)):
-                findings.append((rel_path, node.lineno, "dict_access",
-                                 "__dict__[<computed>] — dynamic attribute access"))
+            if (
+                isinstance(node.value, ast.Attribute)
+                and node.value.attr == "__dict__"
+                and not isinstance(node.slice, ast.Constant)
+            ):
+                findings.append((
+                    rel_path,
+                    node.lineno,
+                    "dict_access",
+                    "__dict__[<computed>] — dynamic attribute access",
+                ))
             self.generic_visit(node)
 
         def visit_Import(self, node):
             for a in node.names:
                 if a.name == "importlib" or a.name.startswith("importlib."):
-                    findings.append((rel_path, node.lineno, "importlib_import",
-                                     f"import {a.name} — enables dynamic module loading"))
+                    findings.append((
+                        rel_path,
+                        node.lineno,
+                        "importlib_import",
+                        f"import {a.name} — enables dynamic module loading",
+                    ))
             self.generic_visit(node)
 
         def visit_ImportFrom(self, node):
             m = node.module or ""
             if m == "importlib" or m.startswith("importlib."):
-                findings.append((rel_path, node.lineno, "importlib_import",
-                                 f"from {m} import ... — enables dynamic module loading"))
+                findings.append((
+                    rel_path,
+                    node.lineno,
+                    "importlib_import",
+                    f"from {m} import ... — enables dynamic module loading",
+                ))
             self.generic_visit(node)
 
     try:

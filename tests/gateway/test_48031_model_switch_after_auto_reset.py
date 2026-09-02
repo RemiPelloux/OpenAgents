@@ -18,6 +18,7 @@ The fix consumes `was_auto_reset` at two sites:
 These are AST invariants — load-bearing pins that fail if either consume is
 removed (mirrors test_35809_auto_reset_clean_context.py's approach).
 """
+
 from __future__ import annotations
 
 import ast
@@ -56,11 +57,7 @@ def test_run_consumes_was_auto_reset_in_cleanup_block():
     for node in ast.walk(tree):
         if not isinstance(node, ast.If):
             continue
-        names = {
-            n.attr
-            for n in ast.walk(node)
-            if isinstance(n, ast.Attribute)
-        }
+        names = {n.attr for n in ast.walk(node) if isinstance(n, ast.Attribute)}
         calls = {
             n.func.attr
             for n in ast.walk(node)
@@ -68,7 +65,9 @@ def test_run_consumes_was_auto_reset_in_cleanup_block():
         }
         # The cleanup block references the reasoning-override setter and pops
         # pending model notes — fingerprint of the transient-state cleanup.
-        if "_set_session_reasoning_override" in calls and _assigns_false(node, "was_auto_reset"):
+        if "_set_session_reasoning_override" in calls and _assigns_false(
+            node, "was_auto_reset"
+        ):
             found = True
             break
     assert found, (

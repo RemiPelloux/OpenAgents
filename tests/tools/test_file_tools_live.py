@@ -11,8 +11,6 @@ asserts zero contamination from shell noise via _assert_clean().
 import pytest
 
 
-
-
 import os
 import sys
 from pathlib import Path
@@ -45,8 +43,7 @@ def _assert_clean(text: str, context: str = "output"):
         return
     for noise in _ALL_NOISE_PATTERNS:
         assert noise not in text, (
-            f"Shell noise leaked into {context}: found {noise!r} in:\n"
-            f"{text[:500]}"
+            f"Shell noise leaked into {context}: found {noise!r} in:\n{text[:500]}"
         )
 
 
@@ -56,7 +53,9 @@ def _assert_clean(text: str, context: str = "output"):
 # so any unexpected text in results is immediately caught.
 SIMPLE_CONTENT = "alpha\nbravo\ncharlie\n"
 NUMBERED_CONTENT = "\n".join(f"LINE_{i:04d}" for i in range(1, 51)) + "\n"
-SPECIAL_CONTENT = "single 'quotes' and \"doubles\" and $VARS and `backticks` and \\backslash\n"
+SPECIAL_CONTENT = (
+    "single 'quotes' and \"doubles\" and $VARS and `backticks` and \\backslash\n"
+)
 MULTIFILE_A = "def func_alpha():\n    return 42\n"
 MULTIFILE_B = "def func_bravo():\n    return 99\n"
 MULTIFILE_C = "nothing relevant here\n"
@@ -85,6 +84,7 @@ def populated_dir(tmp_path):
 
 
 # ── LocalEnvironment.execute() ───────────────────────────────────────────
+
 
 class TestLocalEnvironmentExecute:
     def test_echo_exact_output(self, env):
@@ -146,6 +146,7 @@ class TestLocalEnvironmentExecute:
 
 # ── _has_command ─────────────────────────────────────────────────────────
 
+
 class TestHasCommand:
     def test_finds_echo(self, ops):
         assert ops._has_command("echo") is True
@@ -166,11 +167,13 @@ class TestHasCommand:
         assert ops._has_command("nonexistent_tool_xyz_abc_999") is False
 
     def test_rg_or_grep_available(self, ops):
-        assert ops._has_command("rg") or ops._has_command("grep"), \
+        assert ops._has_command("rg") or ops._has_command("grep"), (
             "Neither rg nor grep found -- search_files will break"
+        )
 
 
 # ── read_file ────────────────────────────────────────────────────────────
+
 
 class TestReadFile:
     def test_exact_content(self, ops, tmp_path):
@@ -230,6 +233,7 @@ class TestReadFile:
 
 # ── write_file ───────────────────────────────────────────────────────────
 
+
 class TestWriteFile:
     def test_write_and_verify(self, ops, tmp_path):
         path = str(tmp_path / "written.txt")
@@ -278,6 +282,7 @@ class TestWriteFile:
 
 # ── patch_replace ────────────────────────────────────────────────────────
 
+
 class TestPatchReplace:
     def test_exact_replacement(self, ops, tmp_path):
         path = str(tmp_path / "patch.txt")
@@ -302,6 +307,7 @@ class TestPatchReplace:
 
 
 # ── search ───────────────────────────────────────────────────────────────
+
 
 class TestSearch:
     def test_content_search_finds_exact_match(self, ops, populated_dir):
@@ -342,7 +348,9 @@ class TestSearch:
             assert Path(f).exists(), f"Search returned non-existent path: {f}"
 
     def test_content_search_with_glob_filter(self, ops, populated_dir):
-        result = ops.search("return", str(populated_dir), target="content", file_glob="*.py")
+        result = ops.search(
+            "return", str(populated_dir), target="content", file_glob="*.py"
+        )
         assert result.error is None
         for m in result.matches:
             assert m.path.endswith(".py"), f"Non-py file in results: {m.path}"
@@ -359,6 +367,7 @@ class TestSearch:
 
 
 # ── _expand_path ─────────────────────────────────────────────────────────
+
 
 class TestExpandPath:
     def test_tilde_exact(self, ops):
@@ -398,6 +407,7 @@ class TestExpandPath:
 
 
 # ── Terminal output cleanliness ──────────────────────────────────────────
+
 
 class TestTerminalOutputCleanliness:
     """Every command the agent might run must produce noise-free output."""

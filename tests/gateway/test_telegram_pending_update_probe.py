@@ -7,6 +7,7 @@ CLOSE-WAIT heartbeat is blind to it. ``_probe_pending_updates`` watches
 ``get_webhook_info().pending_update_count`` and escalates to the existing
 network-error recovery ladder after two consecutive stuck probes.
 """
+
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 

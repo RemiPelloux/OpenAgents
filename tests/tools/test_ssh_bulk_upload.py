@@ -11,8 +11,9 @@ from tools.environments.file_sync import quoted_mkdir_command, unique_parent_dir
 from tools.environments.ssh import SSHEnvironment
 
 
-def _mock_proc(*, returncode=0, poll_return=0, communicate_return=(b"", b""),
-               stderr_read=b""):
+def _mock_proc(
+    *, returncode=0, poll_return=0, communicate_return=(b"", b""), stderr_read=b""
+):
     """Create a MagicMock mimicking subprocess.Popen for tar/ssh pipes."""
     m = MagicMock()
     m.stdout = MagicMock()
@@ -28,12 +29,19 @@ def _mock_proc(*, returncode=0, poll_return=0, communicate_return=(b"", b""),
 def mock_env(monkeypatch):
     """Create an SSHEnvironment with mocked connection/sync."""
     monkeypatch.setattr(ssh_env.shutil, "which", lambda _name: "/usr/bin/ssh")
-    monkeypatch.setattr(ssh_env.SSHEnvironment, "_establish_connection", lambda self: None)
-    monkeypatch.setattr(ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/testuser")
-    monkeypatch.setattr(ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None)
+    monkeypatch.setattr(
+        ssh_env.SSHEnvironment, "_establish_connection", lambda self: None
+    )
+    monkeypatch.setattr(
+        ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/testuser"
+    )
+    monkeypatch.setattr(
+        ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None
+    )
     monkeypatch.setattr(ssh_env.SSHEnvironment, "init_session", lambda self: None)
     monkeypatch.setattr(
-        ssh_env, "FileSyncManager",
+        ssh_env,
+        "FileSyncManager",
         lambda **kw: type("M", (), {"sync": lambda self, **k: None})(),
     )
     return SSHEnvironment(host="example.com", user="testuser")
@@ -44,8 +52,10 @@ class TestSSHBulkUpload:
 
     def test_empty_files_is_noop(self, mock_env):
         """Empty file list should not spawn any subprocesses."""
-        with patch.object(subprocess, "run") as mock_run, \
-             patch.object(subprocess, "Popen") as mock_popen:
+        with (
+            patch.object(subprocess, "run") as mock_run,
+            patch.object(subprocess, "Popen") as mock_popen,
+        ):
             mock_env._ssh_bulk_upload([])
             mock_run.assert_not_called()
             mock_popen.assert_not_called()
@@ -76,8 +86,10 @@ class TestSSHBulkUpload:
             m.stderr.read.return_value = b""
             return m
 
-        with patch.object(subprocess, "run", mock_run), \
-             patch.object(subprocess, "Popen", side_effect=make_proc):
+        with (
+            patch.object(subprocess, "run", mock_run),
+            patch.object(subprocess, "Popen", side_effect=make_proc),
+        ):
             mock_env._ssh_bulk_upload(files)
 
         # Exactly one subprocess.run call for mkdir
@@ -128,9 +140,12 @@ class TestSSHBulkUpload:
             mock.stderr.read.return_value = b""
             return mock
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=capture_tar_cmd):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=capture_tar_cmd),
+        ):
             mock_env._ssh_bulk_upload(files)
 
         assert len(staging_paths) == 1, "tar command should have been called"
@@ -155,9 +170,12 @@ class TestSSHBulkUpload:
             mock.stderr.read.return_value = b""
             return mock
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=capture_popen):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=capture_popen),
+        ):
             mock_env._ssh_bulk_upload(files)
 
         assert len(popen_cmds) == 2, "Should spawn tar + ssh processes"
@@ -202,9 +220,12 @@ class TestSSHBulkUpload:
             mock.stderr.read.return_value = b""
             return mock
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=capture_tar_cmd):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=capture_tar_cmd),
+        ):
             mock_env._ssh_bulk_upload(files)
 
     def test_mkdir_failure_raises(self, mock_env, tmp_path):
@@ -241,9 +262,12 @@ class TestSSHBulkUpload:
                 return mock_tar
             return mock_ssh
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=popen_side_effect):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=popen_side_effect),
+        ):
             with pytest.raises(RuntimeError, match="tar create failed"):
                 mock_env._ssh_bulk_upload(files)
 
@@ -270,9 +294,12 @@ class TestSSHBulkUpload:
                 return mock_tar
             return mock_ssh
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=popen_side_effect):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=popen_side_effect),
+        ):
             with pytest.raises(RuntimeError, match="tar extract over SSH failed"):
                 mock_env._ssh_bulk_upload(files)
 
@@ -295,9 +322,12 @@ class TestSSHBulkUpload:
             mock.stderr.read.return_value = b""
             return mock
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=capture_popen):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=capture_popen),
+        ):
             mock_env._ssh_bulk_upload(files)
 
         # The SSH command (second Popen call) should include ControlPath
@@ -307,12 +337,19 @@ class TestSSHBulkUpload:
     def test_custom_port_and_key_in_ssh_command(self, monkeypatch, tmp_path):
         """Bulk upload SSH command should include custom port and key."""
         monkeypatch.setattr(ssh_env.shutil, "which", lambda _name: "/usr/bin/ssh")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_establish_connection", lambda self: None)
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/u")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None)
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_establish_connection", lambda self: None
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/u"
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None
+        )
         monkeypatch.setattr(ssh_env.SSHEnvironment, "init_session", lambda self: None)
         monkeypatch.setattr(
-            ssh_env, "FileSyncManager",
+            ssh_env,
+            "FileSyncManager",
             lambda **kw: type("M", (), {"sync": lambda self, **k: None})(),
         )
         env = SSHEnvironment(host="h", user="u", port=2222, key_path="/my/key")
@@ -339,8 +376,10 @@ class TestSSHBulkUpload:
             mock.stderr.read.return_value = b""
             return mock
 
-        with patch.object(subprocess, "run", side_effect=capture_run), \
-             patch.object(subprocess, "Popen", side_effect=capture_popen):
+        with (
+            patch.object(subprocess, "run", side_effect=capture_run),
+            patch.object(subprocess, "Popen", side_effect=capture_popen),
+        ):
             env._ssh_bulk_upload(files)
 
         # Check mkdir SSH call includes port and key
@@ -385,8 +424,10 @@ class TestSSHBulkUpload:
             mock.stderr.read.return_value = b""
             return mock
 
-        with patch.object(subprocess, "run", side_effect=capture_run), \
-             patch.object(subprocess, "Popen", side_effect=make_mock_proc):
+        with (
+            patch.object(subprocess, "run", side_effect=capture_run),
+            patch.object(subprocess, "Popen", side_effect=make_mock_proc),
+        ):
             mock_env._ssh_bulk_upload(files)
 
         # Only one mkdir call
@@ -417,9 +458,12 @@ class TestSSHBulkUpload:
             mock.stderr.read.return_value = b""
             return mock
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=make_proc):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=make_proc),
+        ):
             mock_env._ssh_bulk_upload(files)
 
         mock_tar_stdout.close.assert_called_once()
@@ -444,9 +488,12 @@ class TestSSHBulkUpload:
                 return mock_tar
             return mock_ssh
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=make_proc):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=make_proc),
+        ):
             with pytest.raises(RuntimeError, match="SSH bulk upload timed out"):
                 mock_env._ssh_bulk_upload(files)
 
@@ -460,9 +507,15 @@ class TestSSHBulkUploadWiring:
     def test_filesyncmanager_receives_bulk_upload_fn(self, monkeypatch):
         """SSHEnvironment should pass _ssh_bulk_upload to FileSyncManager."""
         monkeypatch.setattr(ssh_env.shutil, "which", lambda _name: "/usr/bin/ssh")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_establish_connection", lambda self: None)
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/root")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None)
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_establish_connection", lambda self: None
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/root"
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None
+        )
         monkeypatch.setattr(ssh_env.SSHEnvironment, "init_session", lambda self: None)
 
         captured_kwargs = {}
@@ -542,9 +595,12 @@ class TestSSHBulkUploadEdgeCases:
                 return mock_tar  # tar Popen succeeds
             raise OSError("SSH binary not found")
 
-        with patch.object(subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 0)), \
-             patch.object(subprocess, "Popen", side_effect=failing_ssh_popen):
+        with (
+            patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+            ),
+            patch.object(subprocess, "Popen", side_effect=failing_ssh_popen),
+        ):
             with pytest.raises(OSError, match="SSH binary not found"):
                 mock_env._ssh_bulk_upload(files)
 

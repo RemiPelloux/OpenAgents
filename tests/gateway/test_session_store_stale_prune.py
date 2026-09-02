@@ -19,6 +19,7 @@ from gateway.session import SessionEntry, SessionStore
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_entry(key: str, session_id: str) -> SessionEntry:
     now = datetime.now()
     return SessionEntry(
@@ -51,6 +52,7 @@ def _db_returning(rows: dict) -> MagicMock:
 # ---------------------------------------------------------------------------
 # Core behaviour
 # ---------------------------------------------------------------------------
+
 
 class TestPruneStaleSessionsLocked:
     def test_prunes_ended_session(self, tmp_path):
@@ -129,7 +131,9 @@ class TestPruneStaleSessionsLocked:
         assert "key" in store._entries  # safe fallback — keep on error
 
     def test_sessions_json_rewritten_after_pruning(self, tmp_path):
-        db = _db_returning({"sid_stale": {"end_reason": "agent_close", "id": "sid_stale"}})
+        db = _db_returning({
+            "sid_stale": {"end_reason": "agent_close", "id": "sid_stale"}
+        })
         store = _make_store_with_db(tmp_path, db)
         store._entries["stale_key"] = _make_entry("stale_key", "sid_stale")
 
@@ -151,13 +155,16 @@ class TestPruneStaleSessionsLocked:
 # Integration: _ensure_loaded_locked calls _prune_stale_sessions_locked
 # ---------------------------------------------------------------------------
 
+
 class TestEnsureLoadedCallsPrune:
     def test_stale_entry_pruned_during_load(self, tmp_path):
         entry = _make_entry("dm_key", "sid_stale")
         (tmp_path / "sessions.json").write_text(
             json.dumps({"dm_key": entry.to_dict()}, indent=2), encoding="utf-8"
         )
-        db = _db_returning({"sid_stale": {"end_reason": "agent_close", "id": "sid_stale"}})
+        db = _db_returning({
+            "sid_stale": {"end_reason": "agent_close", "id": "sid_stale"}
+        })
         config = GatewayConfig(default_reset_policy=SessionResetPolicy(mode="none"))
         store = SessionStore(sessions_dir=tmp_path, config=config)
         store._db = db

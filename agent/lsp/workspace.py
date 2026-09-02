@@ -15,6 +15,7 @@ Two concerns live here:
    walks up from a starting path looking for any of a list of marker
    files, optionally bailing if an exclude marker shows up first.
 """
+
 from __future__ import annotations
 
 import logging

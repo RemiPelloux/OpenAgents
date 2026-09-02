@@ -12,6 +12,7 @@ DB during startup. These tests cover the round-trip:
   task body  →  kanban_db.get_task  →  extract_image_refs  →
   build_native_content_parts  →  multimodal user turn
 """
+
 from __future__ import annotations
 
 import base64
@@ -76,8 +77,7 @@ class TestExtractFromTaskBody:
         img = tmp_path / "screenshot.png"
         img.write_bytes(_PNG)
         tid = _add_task_with_body(
-            f"Please review the screenshot at {img} and confirm "
-            "the alignment is right."
+            f"Please review the screenshot at {img} and confirm the alignment is right."
         )
 
         body = _read_body(tid)

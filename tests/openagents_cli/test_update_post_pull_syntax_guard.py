@@ -24,6 +24,7 @@ from openagents_cli import main as hermes_main
 # _capture_head_sha
 # ---------------------------------------------------------------------------
 
+
 def test_capture_head_sha_returns_stripped_sha(monkeypatch, tmp_path):
     def fake_run(cmd, **kwargs):
         assert cmd[-2:] == ["rev-parse", "HEAD"]
@@ -57,6 +58,7 @@ def test_capture_head_sha_returns_none_on_empty_output(monkeypatch, tmp_path):
 # ---------------------------------------------------------------------------
 # _validate_critical_files_syntax
 # ---------------------------------------------------------------------------
+
 
 def _populate_critical_tree(root: Path, *, broken_file: str | None = None) -> None:
     """Create stub files for every entry in ``_UPDATE_CRITICAL_FILES``.
@@ -100,7 +102,9 @@ def test_validate_critical_files_syntax_detects_conflict_markers(tmp_path):
     ok, failing_path, error = hermes_main._validate_critical_files_syntax(tmp_path)
 
     assert ok is False
-    assert failing_path is not None and failing_path.endswith("openagents_cli/config.py")
+    assert failing_path is not None and failing_path.endswith(
+        "openagents_cli/config.py"
+    )
     assert error is not None
     # The error mentions either the syntax error itself or the file path —
     # either is enough proof we caught the bad commit.
@@ -140,6 +144,7 @@ def test_validate_critical_files_syntax_tolerates_missing_files(tmp_path):
 # release; if a future ``hermes update`` would brick users, this test fails
 # in CI first.
 # ---------------------------------------------------------------------------
+
 
 def test_production_tree_passes_syntax_guard():
     """The repo itself must always satisfy the guard the update command runs."""

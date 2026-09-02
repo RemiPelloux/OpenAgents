@@ -104,7 +104,9 @@ def test_turn_route_injects_priority_processing_without_changing_runtime():
         "credential_pool": None,
     }
 
-    route = gateway_run.GatewayRunner._resolve_turn_agent_config(runner, "hi", "gpt-5.4", runtime_kwargs)
+    route = gateway_run.GatewayRunner._resolve_turn_agent_config(
+        runner, "hi", "gpt-5.4", runtime_kwargs
+    )
 
     assert route["runtime"]["provider"] == "openrouter"
     assert route["runtime"]["api_mode"] == "chat_completions"
@@ -124,7 +126,9 @@ def test_turn_route_skips_priority_processing_for_unsupported_models():
         "credential_pool": None,
     }
 
-    route = gateway_run.GatewayRunner._resolve_turn_agent_config(runner, "hi", "gpt-5.3-codex", runtime_kwargs)
+    route = gateway_run.GatewayRunner._resolve_turn_agent_config(
+        runner, "hi", "gpt-5.3-codex", runtime_kwargs
+    )
 
     assert route["request_overrides"] == {}
 
@@ -135,7 +139,9 @@ async def test_handle_fast_command_persists_config(monkeypatch, tmp_path):
 
     monkeypatch.setattr(gateway_run, "_hermes_home", tmp_path)
     monkeypatch.setattr(gateway_run, "_load_gateway_config", lambda: {})
-    monkeypatch.setattr(gateway_run, "_resolve_gateway_model", lambda config=None: "gpt-5.4")
+    monkeypatch.setattr(
+        gateway_run, "_resolve_gateway_model", lambda config=None: "gpt-5.4"
+    )
 
     response = await runner._handle_fast_command(_make_event("/fast fast"))
 
@@ -147,11 +153,15 @@ async def test_handle_fast_command_persists_config(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_run_agent_passes_priority_processing_to_gateway_agent(monkeypatch, tmp_path):
+async def test_run_agent_passes_priority_processing_to_gateway_agent(
+    monkeypatch, tmp_path
+):
     _install_fake_agent(monkeypatch)
     runner = _make_runner()
 
-    (tmp_path / "config.yaml").write_text("agent:\n  service_tier: fast\n", encoding="utf-8")
+    (tmp_path / "config.yaml").write_text(
+        "agent:\n  service_tier: fast\n", encoding="utf-8"
+    )
     monkeypatch.setattr(gateway_run, "_hermes_home", tmp_path)
     monkeypatch.setattr(gateway_run, "_env_path", tmp_path / ".env")
     monkeypatch.setattr(gateway_run, "load_dotenv", lambda *args, **kwargs: None)
@@ -165,7 +175,9 @@ async def test_run_agent_passes_priority_processing_to_gateway_agent(monkeypatch
         "_load_gateway_runtime_config",
         lambda: {"agent": {"service_tier": "fast"}},
     )
-    monkeypatch.setattr(gateway_run, "_resolve_gateway_model", lambda config=None: "gpt-5.4")
+    monkeypatch.setattr(
+        gateway_run, "_resolve_gateway_model", lambda config=None: "gpt-5.4"
+    )
     monkeypatch.setattr(
         gateway_run,
         "_resolve_runtime_agent_kwargs",
@@ -178,7 +190,10 @@ async def test_run_agent_passes_priority_processing_to_gateway_agent(monkeypatch
     )
 
     import openagents_cli.tools_config as tools_config
-    monkeypatch.setattr(tools_config, "_get_platform_tools", lambda user_config, platform_key: {"core"})
+
+    monkeypatch.setattr(
+        tools_config, "_get_platform_tools", lambda user_config, platform_key: {"core"}
+    )
 
     _CapturingAgent.last_init = None
     result = await runner._run_agent(
@@ -192,4 +207,6 @@ async def test_run_agent_passes_priority_processing_to_gateway_agent(monkeypatch
 
     assert result["final_response"] == "ok"
     assert _CapturingAgent.last_init["service_tier"] == "priority"
-    assert _CapturingAgent.last_init["request_overrides"] == {"service_tier": "priority"}
+    assert _CapturingAgent.last_init["request_overrides"] == {
+        "service_tier": "priority"
+    }

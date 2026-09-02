@@ -60,6 +60,7 @@ def _check_feishu():
     # evaluation.  Correctness is preserved because the actual tool
     # handler still does the real import when invoked.
     import importlib.util
+
     try:
         return importlib.util.find_spec("lark_oapi") is not None
     except (ImportError, ValueError):
@@ -73,7 +74,9 @@ def _handle_feishu_doc_read(args: dict, **kwargs) -> str:
 
     client = get_client()
     if client is None:
-        return tool_error("Feishu client not available (not in a Feishu comment context)")
+        return tool_error(
+            "Feishu client not available (not in a Feishu comment context)"
+        )
 
     try:
         from lark_oapi import AccessTokenType

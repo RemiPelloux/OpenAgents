@@ -23,6 +23,7 @@ def fresh_constants(monkeypatch, tmp_path):
     """Import openagents_constants fresh and reset the one-shot warn flag."""
     import importlib
     import openagents_constants
+
     importlib.reload(openagents_constants)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     monkeypatch.delenv("OPENAGENTS_HOME", raising=False)
@@ -38,9 +39,7 @@ class TestGetHermesHomeProfileWarning:
         assert result == tmp_path / ".hermes"
         assert "OPENAGENTS_HOME fallback" not in capsys.readouterr().err
 
-    def test_default_active_profile_no_warning(
-        self, fresh_constants, tmp_path, capsys
-    ):
+    def test_default_active_profile_no_warning(self, fresh_constants, tmp_path, capsys):
         """active_profile=default → still no warning, returns ~/.openagents."""
         hermes_dir = tmp_path / ".hermes"
         hermes_dir.mkdir()
@@ -102,9 +101,7 @@ class TestGetHermesHomeProfileWarning:
         # Shouldn't crash; shouldn't warn either (can't tell what profile was intended)
         assert "OPENAGENTS_HOME fallback" not in capsys.readouterr().err
 
-    def test_empty_active_profile_no_warning(
-        self, fresh_constants, tmp_path, capsys
-    ):
+    def test_empty_active_profile_no_warning(self, fresh_constants, tmp_path, capsys):
         """Empty active_profile file → treated as default, no warning."""
         hermes_dir = tmp_path / ".hermes"
         hermes_dir.mkdir()

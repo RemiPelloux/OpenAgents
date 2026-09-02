@@ -7,6 +7,7 @@ Without this, a concurrent `hermes kanban boards switch` from another session
 can flip the global current-board file mid-turn and silently divert the
 shell calls to a different DB.
 """
+
 import importlib
 import os
 
@@ -37,6 +38,7 @@ def test_pin_writes_resolved_board_when_env_unset(monkeypatch):
     main_mod = importlib.import_module("openagents_cli.main")
 
     import openagents_cli.kanban_db as kdb
+
     monkeypatch.setattr(kdb, "get_current_board", lambda: "space")
 
     main_mod._pin_kanban_board_env()

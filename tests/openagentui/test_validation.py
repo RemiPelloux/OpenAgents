@@ -23,7 +23,9 @@ def test_valid_linear_workflow():
 
 
 def test_missing_start():
-    wf = _wf(nodes=[{"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}}])
+    wf = _wf(
+        nodes=[{"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}}]
+    )
     assert any("start" in err for err in validate_workflow(wf))
 
 

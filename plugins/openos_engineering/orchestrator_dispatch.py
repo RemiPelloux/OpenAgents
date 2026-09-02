@@ -51,7 +51,9 @@ def _envelope_signing_bytes(envelope: Mapping[str, Any]) -> bytes:
     canonical = _canonicalize_json(unsigned)
     # Match TypeScript JSON.stringify: emit Unicode characters directly rather
     # than escaping them as ASCII, otherwise signed prompts fail verification.
-    return json.dumps(canonical, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return json.dumps(
+        canonical, separators=(",", ":"), sort_keys=True, ensure_ascii=False
+    ).encode("utf-8")
 
 
 def _dev_keys_relaxed() -> bool:
@@ -76,7 +78,9 @@ def _verify_envelope_signature(envelope: Mapping[str, Any]) -> None:
     expected_signer = _normalize_party_identity(str(envelope.get("producer", "")))
     signer_id = signature.get("signer_id")
     if signer_id != expected_signer:
-        raise ValueError(f"signer mismatch: expected {expected_signer}, got {signer_id}")
+        raise ValueError(
+            f"signer mismatch: expected {expected_signer}, got {signer_id}"
+        )
 
     public_key_b64 = MESH_IDENTITIES.get(str(signer_id))
     if not public_key_b64:
@@ -88,7 +92,9 @@ def _verify_envelope_signature(envelope: Mapping[str, Any]) -> None:
     except ImportError as exc:
         if _dev_keys_relaxed():
             return
-        raise ValueError("PyNaCl required for OPENCONTRACT signature verification") from exc
+        raise ValueError(
+            "PyNaCl required for OPENCONTRACT signature verification"
+        ) from exc
 
     verify_key = VerifyKey(base64.b64decode(public_key_b64))
     sig = base64.b64decode(str(signature.get("value", "")))

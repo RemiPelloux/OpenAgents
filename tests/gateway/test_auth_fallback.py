@@ -47,6 +47,7 @@ class TestResolveRuntimeAgentKwargsAuthFallback:
             side_effect=_mock_resolve,
         ):
             from gateway.run import _resolve_runtime_agent_kwargs
+
             result = _resolve_runtime_agent_kwargs()
 
         assert result["provider"] == "openrouter"
@@ -68,10 +69,13 @@ class TestResolveRuntimeAgentKwargsAuthFallback:
             side_effect=AuthError("token expired"),
         ):
             from gateway.run import _resolve_runtime_agent_kwargs
+
             with pytest.raises(RuntimeError):
                 _resolve_runtime_agent_kwargs()
 
-    def test_legacy_fallback_is_appended_after_fallback_providers(self, tmp_path, monkeypatch):
+    def test_legacy_fallback_is_appended_after_fallback_providers(
+        self, tmp_path, monkeypatch
+    ):
         """When both keys exist, the legacy entry still participates in resolution."""
         config_path = tmp_path / "config.yaml"
         config_path.write_text(

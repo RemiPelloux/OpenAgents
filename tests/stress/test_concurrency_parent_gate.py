@@ -16,6 +16,7 @@ Run as a script (`python tests/stress/test_concurrency_parent_gate.py`)
 or via `pytest --run-stress`. The default pytest collection in
 tests/stress/conftest.py ignores *.py globs, so this is a script.
 """
+
 from __future__ import annotations
 
 import os
@@ -49,9 +50,7 @@ def run() -> int:
     conn = kb.connect()
     try:
         for i in range(10):
-            parent_ids.append(
-                kb.create_task(conn, title=f"parent-{i}", assignee="a")
-            )
+            parent_ids.append(kb.create_task(conn, title=f"parent-{i}", assignee="a"))
     finally:
         conn.close()
 
@@ -74,7 +73,10 @@ def run() -> int:
                 parents = random.sample(parent_ids, k=2)
                 # Step 1: insert child WITHOUT parents (ends up ready).
                 child = kb.create_task(
-                    conn, title="child", assignee="a", parents=[],
+                    conn,
+                    title="child",
+                    assignee="a",
+                    parents=[],
                 )
                 # Tiny delay so worker threads get a chance to see the
                 # ready row before the links are inserted.
@@ -129,8 +131,7 @@ def run() -> int:
             conn.close()
 
     creator = threading.Thread(target=racy_creator, daemon=True)
-    workers = [threading.Thread(target=worker_loop, daemon=True)
-               for _ in range(4)]
+    workers = [threading.Thread(target=worker_loop, daemon=True) for _ in range(4)]
     creator.start()
     for w in workers:
         w.start()

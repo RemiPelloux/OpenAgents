@@ -21,7 +21,9 @@ def server():
         "sys.modules",
         {
             "openagents_constants": MagicMock(
-                get_openagents_home=MagicMock(return_value="/tmp/hermes_test_compaction")
+                get_openagents_home=MagicMock(
+                    return_value="/tmp/hermes_test_compaction"
+                )
             ),
             "openagents_cli.env_loader": MagicMock(),
             "openagents_cli.banner": MagicMock(),

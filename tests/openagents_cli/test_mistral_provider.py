@@ -1,7 +1,11 @@
 """Mistral provider registration in OpenAgents auth/models."""
 
 from openagents_cli.auth import PROVIDER_REGISTRY
-from openagents_cli.models import CANONICAL_PROVIDERS, _PROVIDER_MODELS, get_default_model_for_provider
+from openagents_cli.models import (
+    CANONICAL_PROVIDERS,
+    _PROVIDER_MODELS,
+    get_default_model_for_provider,
+)
 
 
 def test_mistral_in_provider_registry():

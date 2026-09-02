@@ -94,7 +94,9 @@ def _has_production_build(app_dir: Path) -> bool:
     return (app_dir / ".next" / "BUILD_ID").is_file()
 
 
-def _dashboard_listening(host: str = DEFAULT_DASHBOARD_HOST, port: int = DEFAULT_DASHBOARD_PORT) -> bool:
+def _dashboard_listening(
+    host: str = DEFAULT_DASHBOARD_HOST, port: int = DEFAULT_DASHBOARD_PORT
+) -> bool:
     import socket
 
     try:
@@ -120,14 +122,24 @@ def _ensure_dashboard_online(
             "Start it in another terminal: `openagents dashboard --no-open`"
         )
 
-    cmd = [openagents_bin, "dashboard", "--no-open", "--host", host, "--port", str(port)]
+    cmd = [
+        openagents_bin,
+        "dashboard",
+        "--no-open",
+        "--host",
+        host,
+        "--port",
+        str(port),
+    ]
     web_dist = Path(__file__).resolve().parent / "web_dist" / "index.html"
     if web_dist.is_file():
         cmd.append("--skip-build")
 
     log_file = _log_path().parent / "dashboard-autostart.log"
     log_handle = log_file.open("a", encoding="utf-8")
-    log_handle.write(f"\n--- dashboard autostart {time.strftime('%Y-%m-%dT%H:%M:%SZ')} ---\n")
+    log_handle.write(
+        f"\n--- dashboard autostart {time.strftime('%Y-%m-%dT%H:%M:%SZ')} ---\n"
+    )
     log_handle.flush()
 
     kwargs: Dict[str, Any] = {
@@ -174,12 +186,18 @@ def start_openagentui(
         url = f"http://127.0.0.1:{state.get('port', port)}"
         if open_browser:
             webbrowser.open(url)
-        lines = [line for line in (dashboard_note, f"OpenAgentUI already running at {url}") if line]
+        lines = [
+            line
+            for line in (dashboard_note, f"OpenAgentUI already running at {url}")
+            if line
+        ]
         return OpenAgentUiCommandResult(text="\n".join(lines))
 
     npm = _npm_command()
     if npm is None:
-        return OpenAgentUiCommandResult(text="npm not found on PATH — required to run the OpenAgentUI frontend.")
+        return OpenAgentUiCommandResult(
+            text="npm not found on PATH — required to run the OpenAgentUI frontend."
+        )
 
     if not (app_dir / "node_modules").is_dir():
         return OpenAgentUiCommandResult(
@@ -192,10 +210,16 @@ def start_openagentui(
 
     log_file = _log_path()
     log_handle = log_file.open("a", encoding="utf-8")
-    log_handle.write(f"\n--- OpenAgentUI launch {time.strftime('%Y-%m-%dT%H:%M:%SZ')} ---\n")
+    log_handle.write(
+        f"\n--- OpenAgentUI launch {time.strftime('%Y-%m-%dT%H:%M:%SZ')} ---\n"
+    )
     log_handle.flush()
 
-    kwargs: Dict[str, Any] = {"cwd": str(app_dir), "stdout": log_handle, "stderr": log_handle}
+    kwargs: Dict[str, Any] = {
+        "cwd": str(app_dir),
+        "stdout": log_handle,
+        "stderr": log_handle,
+    }
     if sys.platform == "win32":
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     else:
@@ -212,7 +236,12 @@ def start_openagentui(
             text=f"OpenAgentUI exited immediately (code {proc.returncode}) — see {log_file}"
         )
 
-    _write_state({"pid": proc.pid, "port": port, "mode": script, "started_at": time.time()})
+    _write_state({
+        "pid": proc.pid,
+        "port": port,
+        "mode": script,
+        "started_at": time.time(),
+    })
     url = f"http://127.0.0.1:{port}"
     if open_browser:
         webbrowser.open(url)
@@ -240,7 +269,9 @@ def stop_openagentui() -> OpenAgentUiCommandResult:
     try:
         os.kill(pid, signal.SIGTERM)
     except OSError as exc:
-        return OpenAgentUiCommandResult(text=f"Failed to stop OpenAgentUI (pid {pid}): {exc}")
+        return OpenAgentUiCommandResult(
+            text=f"Failed to stop OpenAgentUI (pid {pid}): {exc}"
+        )
     _state_path().unlink(missing_ok=True)
     return OpenAgentUiCommandResult(text=f"OpenAgentUI stopped (pid {pid}).")
 

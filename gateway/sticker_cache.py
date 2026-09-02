@@ -39,9 +39,7 @@ def _load_cache() -> dict:
 def _save_cache(cache: dict) -> None:
     """Save the sticker cache to disk atomically."""
     CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(
-        dir=str(CACHE_PATH.parent), suffix=".tmp"
-    )
+    fd, tmp_path = tempfile.mkstemp(dir=str(CACHE_PATH.parent), suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(cache, f, indent=2, ensure_ascii=False)
@@ -105,11 +103,11 @@ def build_sticker_injection(
     """
     context = ""
     if set_name and emoji:
-        context = f" {emoji} from \"{set_name}\""
+        context = f' {emoji} from "{set_name}"'
     elif emoji:
         context = f" {emoji}"
 
-    return f"[The user sent a sticker{context}~ It shows: \"{description}\" (=^.w.^=)]"
+    return f'[The user sent a sticker{context}~ It shows: "{description}" (=^.w.^=)]'
 
 
 def build_animated_sticker_injection(emoji: str = "") -> str:

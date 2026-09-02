@@ -51,10 +51,13 @@ class _PostRecorder:
         self.calls: List[Dict[str, Any]] = []
 
     def __call__(self, url, *, headers=None, data=None, timeout=None, **kw):
-        self.calls.append(
-            {"url": url, "headers": headers or {}, "data": data or {},
-             "timeout": timeout, "extra": kw}
-        )
+        self.calls.append({
+            "url": url,
+            "headers": headers or {},
+            "data": data or {},
+            "timeout": timeout,
+            "extra": kw,
+        })
         return self.response
 
 
@@ -70,15 +73,13 @@ def _err_response(status: int, body: str) -> httpx.Response:
 def post_recorder(monkeypatch):
     """Default: 200 response with a full xAI token payload."""
     recorder = _PostRecorder(
-        _ok_response(
-            {
-                "access_token": "AT-fresh",
-                "refresh_token": "RT-fresh",
-                "id_token": "ID",
-                "expires_in": 3600,
-                "token_type": "Bearer",
-            }
-        )
+        _ok_response({
+            "access_token": "AT-fresh",
+            "refresh_token": "RT-fresh",
+            "id_token": "ID",
+            "expires_in": 3600,
+            "token_type": "Bearer",
+        })
     )
     monkeypatch.setattr("openagents_cli.auth.httpx.post", recorder)
     return recorder
@@ -239,7 +240,10 @@ def test_non_200_response_surfaces_status_and_body(monkeypatch):
     code (to tell 400 from 401 from 403 at a glance) and the response
     body (the actual server-side reason)."""
     recorder = _PostRecorder(
-        _err_response(400, '{"error":"invalid_grant","error_description":"code_challenge is required"}')
+        _err_response(
+            400,
+            '{"error":"invalid_grant","error_description":"code_challenge is required"}',
+        )
     )
     monkeypatch.setattr("openagents_cli.auth.httpx.post", recorder)
     with pytest.raises(AuthError) as exc_info:
@@ -328,8 +332,13 @@ def test_wire_format_is_form_urlencoded_with_all_pkce_fields(monkeypatch):
             captured["content_type"] = request.headers.get("content-type", "")
             return httpx.Response(
                 200,
-                json={"access_token": "AT", "refresh_token": "RT",
-                      "id_token": "", "expires_in": 60, "token_type": "Bearer"},
+                json={
+                    "access_token": "AT",
+                    "refresh_token": "RT",
+                    "id_token": "",
+                    "expires_in": 60,
+                    "token_type": "Bearer",
+                },
             )
 
     real_post = httpx.post

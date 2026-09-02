@@ -28,10 +28,13 @@ def curator_env(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     import openagents_constants
+
     importlib.reload(openagents_constants)
     from agent import curator
+
     importlib.reload(curator)
     from openagents_cli import main as hermes_main
+
     importlib.reload(hermes_main)
 
     yield {

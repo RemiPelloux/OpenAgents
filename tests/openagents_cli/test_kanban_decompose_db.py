@@ -38,8 +38,18 @@ def test_decompose_creates_children_and_promotes_root(kanban_home):
         assert kb.get_task(conn, tid).status == "triage"
 
     children = [
-        {"title": "research", "body": "look at prior art", "assignee": "researcher", "parents": []},
-        {"title": "build it", "body": "write code", "assignee": "engineer", "parents": [0]},
+        {
+            "title": "research",
+            "body": "look at prior art",
+            "assignee": "researcher",
+            "parents": [],
+        },
+        {
+            "title": "build it",
+            "body": "write code",
+            "assignee": "engineer",
+            "parents": [0],
+        },
     ]
     with kb.connect() as conn:
         child_ids = kb.decompose_triage_task(
@@ -173,11 +183,17 @@ def test_decompose_children_inherit_dir_workspace(kanban_home):
     proj = "/home/teknium/myproject"
     with kb.connect() as conn:
         tid = kb.create_task(
-            conn, title="codegen root", assignee="worker",
-            workspace_kind="dir", workspace_path=proj, triage=True,
+            conn,
+            title="codegen root",
+            assignee="worker",
+            workspace_kind="dir",
+            workspace_path=proj,
+            triage=True,
         )
         child_ids = kb.decompose_triage_task(
-            conn, tid, root_assignee="orchestrator",
+            conn,
+            tid,
+            root_assignee="orchestrator",
             children=[{"title": "part A"}, {"title": "part B", "parents": [0]}],
             author="decomposer",
         )
@@ -193,12 +209,18 @@ def test_decompose_children_stay_scratch_when_root_scratch(kanban_home):
     """No regression: a scratch root still fans out into scratch children."""
     with kb.connect() as conn:
         tid = kb.create_task(
-            conn, title="scratch root", assignee="worker",
-            workspace_kind="scratch", triage=True,
+            conn,
+            title="scratch root",
+            assignee="worker",
+            workspace_kind="scratch",
+            triage=True,
         )
         child_ids = kb.decompose_triage_task(
-            conn, tid, root_assignee="orchestrator",
-            children=[{"title": "s1"}], author="decomposer",
+            conn,
+            tid,
+            root_assignee="orchestrator",
+            children=[{"title": "s1"}],
+            author="decomposer",
         )
     with kb.connect() as conn:
         t = kb.get_task(conn, child_ids[0])
@@ -211,14 +233,23 @@ def test_decompose_per_child_workspace_override(kanban_home):
     proj = "/home/teknium/myproject"
     with kb.connect() as conn:
         tid = kb.create_task(
-            conn, title="root", assignee="worker",
-            workspace_kind="dir", workspace_path=proj, triage=True,
+            conn,
+            title="root",
+            assignee="worker",
+            workspace_kind="dir",
+            workspace_path=proj,
+            triage=True,
         )
         child_ids = kb.decompose_triage_task(
-            conn, tid, root_assignee="orchestrator",
+            conn,
+            tid,
+            root_assignee="orchestrator",
             children=[
-                {"title": "override", "workspace_kind": "dir",
-                 "workspace_path": "/other/repo"},
+                {
+                    "title": "override",
+                    "workspace_kind": "dir",
+                    "workspace_path": "/other/repo",
+                },
                 {"title": "inherit"},
             ],
             author="decomposer",

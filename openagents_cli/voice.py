@@ -274,6 +274,7 @@ def _play_beep(frequency: int, count: int = 1) -> None:
     except Exception as e:
         _debug(f"beep {frequency}Hz failed: {e}")
 
+
 # ── Push-to-talk state ───────────────────────────────────────────────
 _recorder = None
 _recorder_lock = threading.Lock()
@@ -607,9 +608,7 @@ def _continuous_on_silence() -> None:
     # the VAD firing — tells us at a glance whether the mic was too quiet
     # for SILENCE_RMS_THRESHOLD (200) or the VAD + peak checks disagree.
     peak_rms = getattr(rec, "_peak_rms", -1)
-    _debug(
-        f"_continuous_on_silence: rec.stop -> {wav_path!r} (peak_rms={peak_rms})"
-    )
+    _debug(f"_continuous_on_silence: rec.stop -> {wav_path!r} (peak_rms={peak_rms})")
 
     # CLI parity: double 660 Hz beep after the stream stops (safe from the
     # CoreAudio conflict that blocks pre-start beeps).
@@ -691,6 +690,7 @@ def _continuous_on_silence() -> None:
         _debug("_continuous_on_silence: waiting for TTS to finish")
         _tts_playing.wait(timeout=60)
         import time as _time
+
         _time.sleep(0.3)
 
         # User may have stopped the loop during the wait.
@@ -782,16 +782,20 @@ def speak_text(text: str) -> None:
         from tools.tts_tool import text_to_speech_tool
 
         tts_text = text[:4000] if len(text) > 4000 else text
-        tts_text = re.sub(r'```[\s\S]*?```', ' ', tts_text)             # fenced code blocks
-        tts_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', tts_text)    # [text](url) → text
-        tts_text = re.sub(r'https?://\S+', '', tts_text)                # bare URLs
-        tts_text = re.sub(r'\*\*(.+?)\*\*', r'\1', tts_text)            # bold
-        tts_text = re.sub(r'\*(.+?)\*', r'\1', tts_text)                # italic
-        tts_text = re.sub(r'`(.+?)`', r'\1', tts_text)                  # inline code
-        tts_text = re.sub(r'^#+\s*', '', tts_text, flags=re.MULTILINE)  # headers
-        tts_text = re.sub(r'^\s*[-*]\s+', '', tts_text, flags=re.MULTILINE)  # list bullets
-        tts_text = re.sub(r'---+', '', tts_text)                        # horizontal rules
-        tts_text = re.sub(r'\n{3,}', '\n\n', tts_text)                  # excess newlines
+        tts_text = re.sub(r"```[\s\S]*?```", " ", tts_text)  # fenced code blocks
+        tts_text = re.sub(
+            r"\[([^\]]+)\]\([^)]+\)", r"\1", tts_text
+        )  # [text](url) → text
+        tts_text = re.sub(r"https?://\S+", "", tts_text)  # bare URLs
+        tts_text = re.sub(r"\*\*(.+?)\*\*", r"\1", tts_text)  # bold
+        tts_text = re.sub(r"\*(.+?)\*", r"\1", tts_text)  # italic
+        tts_text = re.sub(r"`(.+?)`", r"\1", tts_text)  # inline code
+        tts_text = re.sub(r"^#+\s*", "", tts_text, flags=re.MULTILINE)  # headers
+        tts_text = re.sub(
+            r"^\s*[-*]\s+", "", tts_text, flags=re.MULTILINE
+        )  # list bullets
+        tts_text = re.sub(r"---+", "", tts_text)  # horizontal rules
+        tts_text = re.sub(r"\n{3,}", "\n\n", tts_text)  # excess newlines
         tts_text = tts_text.strip()
         if not tts_text:
             return
@@ -810,7 +814,9 @@ def speak_text(text: str) -> None:
         text_to_speech_tool(text=tts_text, output_path=mp3_path)
 
         if os.path.isfile(mp3_path) and os.path.getsize(mp3_path) > 0:
-            _debug(f"speak_text: playing {mp3_path} ({os.path.getsize(mp3_path)} bytes)")
+            _debug(
+                f"speak_text: playing {mp3_path} ({os.path.getsize(mp3_path)} bytes)"
+            )
             play_audio_file(mp3_path)
             try:
                 os.unlink(mp3_path)
@@ -841,6 +847,4 @@ def speak_text(text: str) -> None:
                         )
                         _debug("speak_text: recording resumed after TTS")
                     except Exception as e:
-                        logger.warning(
-                            "failed to resume recorder after TTS: %s", e
-                        )
+                        logger.warning("failed to resume recorder after TTS: %s", e)

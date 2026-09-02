@@ -53,6 +53,7 @@ def _callback_api():
         set_approval_callback,
         set_sudo_password_callback,
     )
+
     return (
         _get_approval_callback,
         _get_sudo_password_callback,

@@ -51,7 +51,9 @@ class TestNormalizeVoiceRecordKeyForPromptToolkit:
         from openagents_cli.voice import normalize_voice_record_key_for_prompt_toolkit
 
         assert normalize_voice_record_key_for_prompt_toolkit("control+o") == "c-o"
-        assert normalize_voice_record_key_for_prompt_toolkit("option+space") == "a-space"
+        assert (
+            normalize_voice_record_key_for_prompt_toolkit("option+space") == "a-space"
+        )
         assert normalize_voice_record_key_for_prompt_toolkit("opt+enter") == "a-enter"
 
     def test_case_insensitive(self):
@@ -93,7 +95,10 @@ class TestNormalizeVoiceRecordKeyForPromptToolkit:
         from openagents_cli.voice import normalize_voice_record_key_for_prompt_toolkit
 
         assert normalize_voice_record_key_for_prompt_toolkit("ctrl + b") == "c-b"
-        assert normalize_voice_record_key_for_prompt_toolkit("  option + space  ") == "a-space"
+        assert (
+            normalize_voice_record_key_for_prompt_toolkit("  option + space  ")
+            == "a-space"
+        )
 
     def test_named_key_aliases_collapse_to_prompt_toolkit_canonical(self):
         """TUI accepts ``return`` / ``esc`` / ``bs`` / ``del`` etc.;
@@ -185,7 +190,10 @@ class TestVoiceRecordKeyFromConfig:
     def test_dict_voice_with_string_record_key(self):
         from openagents_cli.voice import voice_record_key_from_config
 
-        assert voice_record_key_from_config({"voice": {"record_key": "ctrl+o"}}) == "ctrl+o"
+        assert (
+            voice_record_key_from_config({"voice": {"record_key": "ctrl+o"}})
+            == "ctrl+o"
+        )
 
     def test_non_dict_config_root(self):
         from openagents_cli.voice import voice_record_key_from_config
@@ -452,7 +460,9 @@ class TestContinuousLoopSimulation:
 
         voice.stop_continuous()
 
-    def test_auto_restart_false_stops_after_first_transcript(self, fake_recorder, monkeypatch):
+    def test_auto_restart_false_stops_after_first_transcript(
+        self, fake_recorder, monkeypatch
+    ):
         import openagents_cli.voice as voice
 
         monkeypatch.setattr(
@@ -503,7 +513,9 @@ class TestContinuousLoopSimulation:
         assert voice.is_continuous_active() is False
         assert fake_recorder.start_calls == 3
 
-    def test_force_transcribe_stop_delivers_current_buffer(self, fake_recorder, monkeypatch):
+    def test_force_transcribe_stop_delivers_current_buffer(
+        self, fake_recorder, monkeypatch
+    ):
         import openagents_cli.voice as voice
 
         class ImmediateThread:
@@ -650,7 +662,9 @@ class TestContinuousLoopSimulation:
         assert statuses == ["listening", "transcribing", "idle"]
         assert voice.is_continuous_active() is False
 
-    def test_silent_limit_halts_loop_after_three_strikes(self, fake_recorder, monkeypatch):
+    def test_silent_limit_halts_loop_after_three_strikes(
+        self, fake_recorder, monkeypatch
+    ):
         import openagents_cli.voice as voice
 
         # Transcription returns no speech — fake_recorder.stop() returns the
@@ -679,7 +693,9 @@ class TestContinuousLoopSimulation:
         assert voice.is_continuous_active() is False
         assert fake_recorder.cancelled >= 1
 
-    def test_stop_during_transcription_discards_restart(self, fake_recorder, monkeypatch):
+    def test_stop_during_transcription_discards_restart(
+        self, fake_recorder, monkeypatch
+    ):
         """User hits Ctrl+B mid-transcription: the in-flight transcript must
         still fire (it's a real utterance), but the loop must NOT restart."""
         import openagents_cli.voice as voice

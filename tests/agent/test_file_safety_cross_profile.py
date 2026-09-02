@@ -10,6 +10,7 @@ accidentally edited skills under both ~/.openagents/profiles/hermes-security/ski
 AND ~/.openagents/skills/ (the default profile's skills), realizing only
 afterwards that the second path belonged to a different profile.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,17 +28,17 @@ import pytest
 def fake_hermes(tmp_path, monkeypatch):
     """Build a fake OpenAgents layout:
 
-        <tmp>/
-          skills/foo/SKILL.md           # default profile
-          plugins/foo/__init__.py
-          cron/<state>
-          memories/MEMORY.md
-          profiles/
-            hermes-security/
-              skills/foo/SKILL.md       # named profile
-              plugins/...
-            coder/
-              skills/foo/SKILL.md       # another named profile
+    <tmp>/
+      skills/foo/SKILL.md           # default profile
+      plugins/foo/__init__.py
+      cron/<state>
+      memories/MEMORY.md
+      profiles/
+        hermes-security/
+          skills/foo/SKILL.md       # named profile
+          plugins/...
+        coder/
+          skills/foo/SKILL.md       # another named profile
     """
     root = tmp_path / "fake-hermes"
     (root / "skills" / "foo").mkdir(parents=True)
@@ -58,10 +59,14 @@ def fake_hermes(tmp_path, monkeypatch):
     # Monkeypatch the resolver functions used by file_safety so each test
     # can choose which profile is "active".
     import openagents_constants
-    monkeypatch.setattr(openagents_constants, "get_default_openagents_root", lambda: root)
+
+    monkeypatch.setattr(
+        openagents_constants, "get_default_openagents_root", lambda: root
+    )
 
     # The reloads below ensure get_cross_profile_warning/classify see the patched root.
     import agent.file_safety as fs
+
     monkeypatch.setattr(fs, "_hermes_root_path", lambda: root)
 
     return {
@@ -75,6 +80,7 @@ def fake_hermes(tmp_path, monkeypatch):
 def _set_active_home(monkeypatch, hermes_home: Path):
     """Point file_safety._hermes_home_path at a specific profile dir."""
     import agent.file_safety as fs
+
     monkeypatch.setattr(fs, "_hermes_home_path", lambda: hermes_home)
 
 
@@ -87,14 +93,18 @@ class TestResolveActiveProfileName:
     def test_default_when_home_is_root(self, fake_hermes, monkeypatch):
         _set_active_home(monkeypatch, fake_hermes["default_home"])
         from agent.file_safety import _resolve_active_profile_name
+
         assert _resolve_active_profile_name() == "default"
 
     def test_named_profile(self, fake_hermes, monkeypatch):
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import _resolve_active_profile_name
+
         assert _resolve_active_profile_name() == "hermes-security"
 
-    def test_falls_back_to_default_on_resolution_failure(self, fake_hermes, monkeypatch):
+    def test_falls_back_to_default_on_resolution_failure(
+        self, fake_hermes, monkeypatch
+    ):
         """If OPENAGENTS_HOME resolution raises, return 'default' rather than crashing the tool."""
         import agent.file_safety as fs
 
@@ -115,6 +125,7 @@ class TestClassifyCrossProfileTarget:
     def test_same_profile_write_returns_none(self, fake_hermes, monkeypatch):
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import classify_cross_profile_target
+
         result = classify_cross_profile_target(
             str(fake_hermes["security_home"] / "skills" / "foo" / "SKILL.md")
         )
@@ -124,6 +135,7 @@ class TestClassifyCrossProfileTarget:
         """The exact incident from May 2026."""
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import classify_cross_profile_target
+
         result = classify_cross_profile_target(
             str(fake_hermes["default_home"] / "skills" / "foo" / "SKILL.md")
         )
@@ -136,6 +148,7 @@ class TestClassifyCrossProfileTarget:
         """Inverse direction — default-profile session reaching into a named profile."""
         _set_active_home(monkeypatch, fake_hermes["default_home"])
         from agent.file_safety import classify_cross_profile_target
+
         result = classify_cross_profile_target(
             str(fake_hermes["security_home"] / "skills" / "foo" / "SKILL.md")
         )
@@ -146,6 +159,7 @@ class TestClassifyCrossProfileTarget:
     def test_named_to_named_cross_profile(self, fake_hermes, monkeypatch):
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import classify_cross_profile_target
+
         result = classify_cross_profile_target(
             str(fake_hermes["coder_home"] / "skills" / "foo" / "SKILL.md")
         )
@@ -156,6 +170,7 @@ class TestClassifyCrossProfileTarget:
     def test_all_profile_scoped_areas_classified(self, fake_hermes, monkeypatch, area):
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import classify_cross_profile_target
+
         target = fake_hermes["default_home"] / area / "foo.txt"
         result = classify_cross_profile_target(str(target))
         assert result is not None
@@ -164,14 +179,18 @@ class TestClassifyCrossProfileTarget:
     def test_non_hermes_path_returns_none(self, fake_hermes, monkeypatch, tmp_path):
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import classify_cross_profile_target
+
         # Path outside any OpenAgents root
         assert classify_cross_profile_target(str(tmp_path / "random.txt")) is None
 
-    def test_hermes_config_not_classified_as_cross_profile(self, fake_hermes, monkeypatch):
+    def test_hermes_config_not_classified_as_cross_profile(
+        self, fake_hermes, monkeypatch
+    ):
         """Files under <root>/config.yaml or <root>/.env are NOT profile-scoped
         (already covered by build_write_denied_paths). Don't double-warn."""
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import classify_cross_profile_target
+
         # config.yaml at root level is not in PROFILE_SCOPED_AREAS
         result = classify_cross_profile_target(
             str(fake_hermes["default_home"] / "config.yaml")
@@ -188,13 +207,18 @@ class TestGetCrossProfileWarning:
     def test_in_profile_returns_none(self, fake_hermes, monkeypatch):
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import get_cross_profile_warning
-        assert get_cross_profile_warning(
-            str(fake_hermes["security_home"] / "skills" / "foo" / "SKILL.md")
-        ) is None
+
+        assert (
+            get_cross_profile_warning(
+                str(fake_hermes["security_home"] / "skills" / "foo" / "SKILL.md")
+            )
+            is None
+        )
 
     def test_cross_profile_warning_names_both_profiles(self, fake_hermes, monkeypatch):
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import get_cross_profile_warning
+
         warn = get_cross_profile_warning(
             str(fake_hermes["default_home"] / "skills" / "foo" / "SKILL.md")
         )
@@ -210,6 +234,7 @@ class TestGetCrossProfileWarning:
     def test_warning_is_defense_in_depth_not_boundary(self, fake_hermes, monkeypatch):
         _set_active_home(monkeypatch, fake_hermes["security_home"])
         from agent.file_safety import get_cross_profile_warning
+
         warn = get_cross_profile_warning(
             str(fake_hermes["default_home"] / "skills" / "foo" / "SKILL.md")
         )

@@ -44,15 +44,11 @@ def _stuck_todo(conn, *, parents_done=True, n_parents=1):
         kb.create_task(conn, title=f"parent{i}", assignee="setup")
         for i in range(n_parents)
     ]
-    child_id = kb.create_task(
-        conn, title="child", parents=parent_ids, assignee="setup"
-    )
+    child_id = kb.create_task(conn, title="child", parents=parent_ids, assignee="setup")
     assert kb.get_task(conn, child_id).status == "todo"
     if parents_done:
         for pid in parent_ids:
-            conn.execute(
-                "UPDATE tasks SET status='done' WHERE id=?", (pid,)
-            )
+            conn.execute("UPDATE tasks SET status='done' WHERE id=?", (pid,))
     return child_id, parent_ids
 
 
@@ -152,9 +148,7 @@ def test_promote_rejects_unknown_task(conn):
 def test_promote_blocked_task_works(conn):
     tid = kb.create_task(conn, title="t")
     conn.execute("UPDATE tasks SET status='blocked' WHERE id=?", (tid,))
-    ok, err = kb.promote_task(
-        conn, tid, actor="tester", reason="ready now"
-    )
+    ok, err = kb.promote_task(conn, tid, actor="tester", reason="ready now")
     assert ok and err is None
     assert kb.get_task(conn, tid).status == "ready"
 
@@ -165,8 +159,9 @@ def test_promote_blocked_task_works(conn):
 # ---------------------------------------------------------------------------
 
 
-def _promote_ns(task_id, *, ids=None, reason=None, force=False,
-                dry_run=False, as_json=False):
+def _promote_ns(
+    task_id, *, ids=None, reason=None, force=False, dry_run=False, as_json=False
+):
     return argparse.Namespace(
         task_id=task_id,
         reason=list(reason or []),
@@ -181,8 +176,7 @@ def test_cli_promote_bulk_ids_promotes_all(kanban_home, capsys):
     with kb.connect() as conn:
         parent = kb.create_task(conn, title="parent")
         children = [
-            kb.create_task(conn, title=f"c{i}", parents=[parent])
-            for i in range(3)
+            kb.create_task(conn, title=f"c{i}", parents=[parent]) for i in range(3)
         ]
         conn.execute("UPDATE tasks SET status='done' WHERE id=?", (parent,))
     rc = kb_cli._cmd_promote(_promote_ns(children[0], ids=children[1:]))

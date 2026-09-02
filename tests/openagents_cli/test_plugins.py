@@ -32,9 +32,14 @@ from openagents_cli.middleware import (
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 
-def _make_plugin_dir(base: Path, name: str, *, register_body: str = "pass",
-                     manifest_extra: dict | None = None,
-                     auto_enable: bool = True) -> Path:
+def _make_plugin_dir(
+    base: Path,
+    name: str,
+    *,
+    register_body: str = "pass",
+    manifest_extra: dict | None = None,
+    auto_enable: bool = True,
+) -> Path:
     """Create a minimal plugin directory with plugin.yaml + __init__.py.
 
     If *auto_enable* is True (default), also write the plugin's name into
@@ -63,6 +68,7 @@ def _make_plugin_dir(base: Path, name: str, *, register_body: str = "pass",
         # Config is always read from OPENAGENTS_HOME (not from the project
         # dir for project plugins), so that's where we opt in.
         import os
+
         hermes_home_str = os.environ.get("OPENAGENTS_HOME")
         if hermes_home_str:
             hermes_home = Path(hermes_home_str)
@@ -122,7 +128,10 @@ class TestPluginDiscovery:
 
         assert "llm_request" in VALID_MIDDLEWARE
         assert "tool_request" in VALID_MIDDLEWARE
-        assert set(mgr._plugins["mw_plugin"].middleware_registered) == {"llm_request", "tool_request"}
+        assert set(mgr._plugins["mw_plugin"].middleware_registered) == {
+            "llm_request",
+            "tool_request",
+        }
         assert mgr.invoke_middleware("llm_request", request={"messages": []}) == [
             {"request": {"messages": [], "mw": True}}
         ]
@@ -138,7 +147,9 @@ class TestPluginDiscovery:
             return kwargs["next_call"](kwargs["args"])
 
         manager = types.SimpleNamespace(_middleware={"tool_execution": [middleware]})
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         def terminal(args):
             calls.append(args)
@@ -151,7 +162,9 @@ class TestPluginDiscovery:
 
     def test_middleware_helpers_skip_no_listener_work(self, monkeypatch):
         manager = types.SimpleNamespace(_middleware={})
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         request = {"messages": []}
         args = {"path": "README.md"}
@@ -167,18 +180,27 @@ class TestPluginDiscovery:
         assert tool_result.original_payload is args
         assert tool_result.changed is False
         assert tool_result.trace == []
-        assert run_tool_execution_middleware("terminal", args, lambda payload: payload) is args
+        assert (
+            run_tool_execution_middleware("terminal", args, lambda payload: payload)
+            is args
+        )
         assert has_middleware("tool_request") is False
 
-    def test_request_middleware_changed_tracks_trace_not_deep_equality(self, monkeypatch):
+    def test_request_middleware_changed_tracks_trace_not_deep_equality(
+        self, monkeypatch
+    ):
         def same_payload_middleware(**kwargs):
             return {"args": kwargs["args"], "source": "same-payload"}
 
         manager = types.SimpleNamespace(
             _middleware={"tool_request": [same_payload_middleware]},
-            invoke_middleware=lambda kind, **kwargs: [same_payload_middleware(**kwargs)],
+            invoke_middleware=lambda kind, **kwargs: [
+                same_payload_middleware(**kwargs)
+            ],
         )
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         args = {"path": "README.md"}
         result = apply_tool_request_middleware("read_file", args)
@@ -188,7 +210,9 @@ class TestPluginDiscovery:
         assert result.changed is True
         assert result.trace == [{"source": "same-payload"}]
 
-    def test_execution_middleware_post_next_call_error_does_not_retry(self, monkeypatch):
+    def test_execution_middleware_post_next_call_error_does_not_retry(
+        self, monkeypatch
+    ):
         calls = []
 
         def middleware(**kwargs):
@@ -196,18 +220,24 @@ class TestPluginDiscovery:
             raise RuntimeError(f"post-processing failed after {result}")
 
         manager = types.SimpleNamespace(_middleware={"tool_execution": [middleware]})
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         def terminal(args):
             calls.append(args)
             return "terminal-result"
 
-        result = run_tool_execution_middleware("terminal", {"command": "printf ok"}, terminal)
+        result = run_tool_execution_middleware(
+            "terminal", {"command": "printf ok"}, terminal
+        )
 
         assert result == "terminal-result"
         assert calls == [{"command": "printf ok"}]
 
-    def test_execution_middleware_pre_next_call_error_fails_open_to_remaining_chain(self, monkeypatch):
+    def test_execution_middleware_pre_next_call_error_fails_open_to_remaining_chain(
+        self, monkeypatch
+    ):
         calls = []
 
         def failing_middleware(**kwargs):
@@ -218,19 +248,31 @@ class TestPluginDiscovery:
             calls.append("downstream")
             return kwargs["next_call"]({**kwargs["args"], "rewritten": True})
 
-        manager = types.SimpleNamespace(_middleware={"tool_execution": [failing_middleware, downstream_middleware]})
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        manager = types.SimpleNamespace(
+            _middleware={"tool_execution": [failing_middleware, downstream_middleware]}
+        )
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         def terminal(args):
             calls.append(("terminal", args))
             return args
 
-        result = run_tool_execution_middleware("terminal", {"command": "printf ok"}, terminal)
+        result = run_tool_execution_middleware(
+            "terminal", {"command": "printf ok"}, terminal
+        )
 
         assert result == {"command": "printf ok", "rewritten": True}
-        assert calls == ["failing", "downstream", ("terminal", {"command": "printf ok", "rewritten": True})]
+        assert calls == [
+            "failing",
+            "downstream",
+            ("terminal", {"command": "printf ok", "rewritten": True}),
+        ]
 
-    def test_execution_middleware_translated_downstream_failure_is_not_masked(self, monkeypatch):
+    def test_execution_middleware_translated_downstream_failure_is_not_masked(
+        self, monkeypatch
+    ):
         calls = []
 
         def middleware(**kwargs):
@@ -240,39 +282,53 @@ class TestPluginDiscovery:
                 raise RuntimeError(f"translated downstream failure: {exc}") from exc
 
         manager = types.SimpleNamespace(_middleware={"tool_execution": [middleware]})
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         def terminal(args):
             calls.append(args)
             raise RuntimeError("terminal failed")
 
-        with pytest.raises(RuntimeError, match="translated downstream failure: terminal failed"):
+        with pytest.raises(
+            RuntimeError, match="translated downstream failure: terminal failed"
+        ):
             run_tool_execution_middleware("terminal", {"command": "false"}, terminal)
 
         assert calls == [{"command": "false"}]
 
-    def test_execution_middleware_downstream_base_exception_is_not_wrapped(self, monkeypatch):
+    def test_execution_middleware_downstream_base_exception_is_not_wrapped(
+        self, monkeypatch
+    ):
         calls = []
 
         def middleware(**kwargs):
             try:
                 return kwargs["next_call"](kwargs["args"])
             except Exception as exc:
-                raise RuntimeError(f"middleware should not catch base exception: {exc}") from exc
+                raise RuntimeError(
+                    f"middleware should not catch base exception: {exc}"
+                ) from exc
 
         manager = types.SimpleNamespace(_middleware={"tool_execution": [middleware]})
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         def terminal(args):
             calls.append(args)
             raise KeyboardInterrupt()
 
         with pytest.raises(KeyboardInterrupt):
-            run_tool_execution_middleware("terminal", {"command": "interrupt"}, terminal)
+            run_tool_execution_middleware(
+                "terminal", {"command": "interrupt"}, terminal
+            )
 
         assert calls == [{"command": "interrupt"}]
 
-    def test_execution_middleware_double_next_call_does_not_run_terminal_twice(self, monkeypatch):
+    def test_execution_middleware_double_next_call_does_not_run_terminal_twice(
+        self, monkeypatch
+    ):
         calls = []
 
         def middleware(**kwargs):
@@ -284,13 +340,17 @@ class TestPluginDiscovery:
             return first
 
         manager = types.SimpleNamespace(_middleware={"tool_execution": [middleware]})
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         def terminal(args):
             calls.append(args)
             return "terminal-result"
 
-        result = run_tool_execution_middleware("terminal", {"command": "printf ok"}, terminal)
+        result = run_tool_execution_middleware(
+            "terminal", {"command": "printf ok"}, terminal
+        )
 
         assert result == "terminal-result"
         assert calls == [{"command": "printf ok"}]
@@ -308,7 +368,9 @@ class TestPluginDiscovery:
             _middleware={"tool_request": [middleware]},
             invoke_middleware=lambda kind, **kwargs: [middleware(**kwargs)],
         )
-        monkeypatch.setattr("openagents_cli.plugins.get_plugin_manager", lambda: manager)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.get_plugin_manager", lambda: manager
+        )
 
         # threading.Lock is not deepcopyable; a hard deepcopy would raise.
         args = {"command": "noop", "lock": threading.Lock()}
@@ -360,8 +422,7 @@ class TestPluginDiscovery:
 
         # Filter out bundled plugins — they're always discovered.
         non_bundled = {
-            n: p for n, p in mgr._plugins.items()
-            if p.manifest.source != "bundled"
+            n: p for n, p in mgr._plugins.items() if p.manifest.source != "bundled"
         }
         assert len(non_bundled) == 1
 
@@ -394,8 +455,7 @@ class TestPluginDiscovery:
         mgr.discover_and_load()
         assert mgr._discovered is True
         non_bundled = {
-            n: p for n, p in mgr._plugins.items()
-            if p.manifest.source != "bundled"
+            n: p for n, p in mgr._plugins.items() if p.manifest.source != "bundled"
         }
         assert len(non_bundled) == 1
 
@@ -410,8 +470,7 @@ class TestPluginDiscovery:
 
         # Filter out bundled plugins — they're always discovered.
         non_bundled = {
-            n: p for n, p in mgr._plugins.items()
-            if p.manifest.source != "bundled"
+            n: p for n, p in mgr._plugins.items() if p.manifest.source != "bundled"
         }
         assert len(non_bundled) == 0
 
@@ -467,7 +526,9 @@ class TestPluginDiscovery:
         mgr._slack_action_handlers.append(("aid", lambda **_: None, "p"))
         mgr._discovered = True
 
-        monkeypatch.setattr(PluginManager, "_discover_and_load_inner", lambda self_inner: None)
+        monkeypatch.setattr(
+            PluginManager, "_discover_and_load_inner", lambda self_inner: None
+        )
         mgr.discover_and_load(force=True)
 
         assert mgr._plugins == {}
@@ -638,7 +699,8 @@ class TestPluginHooks:
         """pre_gateway_dispatch callbacks return action dicts (skip/rewrite/allow)."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "predispatch_plugin",
+            plugins_dir,
+            "predispatch_plugin",
             register_body=(
                 'ctx.register_hook("pre_gateway_dispatch", '
                 'lambda **kw: {"action": "skip", "reason": "test"})'
@@ -662,7 +724,8 @@ class TestPluginHooks:
         """Registered hooks are called on invoke_hook()."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "hook_plugin",
+            plugins_dir,
+            "hook_plugin",
             register_body='ctx.register_hook("pre_tool_call", lambda **kw: None)',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -697,7 +760,8 @@ class TestPluginHooks:
         """A hook callback that raises does NOT crash the caller."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "bad_hook",
+            plugins_dir,
+            "bad_hook",
             register_body='ctx.register_hook("post_tool_call", lambda **kw: 1/0)',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -706,13 +770,16 @@ class TestPluginHooks:
         mgr.discover_and_load()
 
         # Should not raise despite 1/0
-        mgr.invoke_hook("post_tool_call", tool_name="x", args={}, result="r", task_id="")
+        mgr.invoke_hook(
+            "post_tool_call", tool_name="x", args={}, result="r", task_id=""
+        )
 
     def test_hook_return_values_collected(self, tmp_path, monkeypatch):
         """invoke_hook() collects non-None return values from callbacks."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "ctx_plugin",
+            plugins_dir,
+            "ctx_plugin",
             register_body=(
                 'ctx.register_hook("pre_llm_call", '
                 'lambda **kw: {"context": "memory from plugin"})'
@@ -723,8 +790,14 @@ class TestPluginHooks:
         mgr = PluginManager()
         mgr.discover_and_load()
 
-        results = mgr.invoke_hook("pre_llm_call", session_id="s1", user_message="hi",
-                                  conversation_history=[], is_first_turn=True, model="test")
+        results = mgr.invoke_hook(
+            "pre_llm_call",
+            session_id="s1",
+            user_message="hi",
+            conversation_history=[],
+            is_first_turn=True,
+            model="test",
+        )
         assert len(results) == 1
         assert results[0] == {"context": "memory from plugin"}
 
@@ -732,7 +805,8 @@ class TestPluginHooks:
         """invoke_hook() excludes None returns from the result list."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "none_hook",
+            plugins_dir,
+            "none_hook",
             register_body='ctx.register_hook("post_llm_call", lambda **kw: None)',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -740,14 +814,20 @@ class TestPluginHooks:
         mgr = PluginManager()
         mgr.discover_and_load()
 
-        results = mgr.invoke_hook("post_llm_call", session_id="s1",
-                                  user_message="hi", assistant_response="bye", model="test")
+        results = mgr.invoke_hook(
+            "post_llm_call",
+            session_id="s1",
+            user_message="hi",
+            assistant_response="bye",
+            model="test",
+        )
         assert results == []
 
     def test_request_hooks_are_invokeable(self, tmp_path, monkeypatch):
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "request_hook",
+            plugins_dir,
+            "request_hook",
             register_body=(
                 'ctx.register_hook("pre_api_request", '
                 'lambda **kw: {"seen": kw.get("api_call_count"), '
@@ -775,13 +855,16 @@ class TestPluginHooks:
         )
         assert results == [{"seen": 2, "mc": 5, "tc": 3}]
 
-    def test_transform_terminal_output_hook_can_be_registered_and_invoked(self, tmp_path, monkeypatch):
+    def test_transform_terminal_output_hook_can_be_registered_and_invoked(
+        self, tmp_path, monkeypatch
+    ):
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "transform_hook",
+            plugins_dir,
+            "transform_hook",
             register_body=(
                 'ctx.register_hook("transform_terminal_output", '
-                'lambda **kw: f"{kw[\'command\']}|{kw[\'returncode\']}|{kw[\'env_type\']}|{kw[\'task_id\']}|{len(kw[\'output\'])}")'
+                "lambda **kw: f\"{kw['command']}|{kw['returncode']}|{kw['env_type']}|{kw['task_id']}|{len(kw['output'])}\")"
             ),
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -803,7 +886,8 @@ class TestPluginHooks:
         """Registering an unknown hook name logs a warning."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "warn_plugin",
+            plugins_dir,
+            "warn_plugin",
             register_body='ctx.register_hook("on_banana", lambda **kw: None)',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -814,27 +898,33 @@ class TestPluginHooks:
 
         assert any("on_banana" in record.message for record in caplog.records)
 
+
 class TestPreToolCallBlocking:
     """Tests for the pre_tool_call block directive helper."""
 
     def test_block_message_returned_for_valid_directive(self, monkeypatch):
         monkeypatch.setattr(
             "openagents_cli.plugins.invoke_hook",
-            lambda hook_name, **kwargs: [{"action": "block", "message": "blocked by plugin"}],
+            lambda hook_name, **kwargs: [
+                {"action": "block", "message": "blocked by plugin"}
+            ],
         )
-        assert get_pre_tool_call_block_message("todo", {}, task_id="t1") == "blocked by plugin"
+        assert (
+            get_pre_tool_call_block_message("todo", {}, task_id="t1")
+            == "blocked by plugin"
+        )
 
     def test_invalid_returns_are_ignored(self, monkeypatch):
         """Various malformed hook returns should not trigger a block."""
         monkeypatch.setattr(
             "openagents_cli.plugins.invoke_hook",
             lambda hook_name, **kwargs: [
-                "block",                                 # not a dict
-                123,                                     # not a dict
-                {"action": "block"},                     # missing message
-                {"action": "deny", "message": "nope"},   # wrong action
-                {"message": "missing action"},            # no action key
-                {"action": "block", "message": 123},     # message not str
+                "block",  # not a dict
+                123,  # not a dict
+                {"action": "block"},  # missing message
+                {"action": "deny", "message": "nope"},  # wrong action
+                {"message": "missing action"},  # no action key
+                {"action": "block", "message": 123},  # message not str
             ],
         )
         assert get_pre_tool_call_block_message("todo", {}, task_id="t1") is None
@@ -887,9 +977,7 @@ class TestThreadToolWhitelist:
             "openagents_cli.plugins.invoke_hook",
             lambda hook_name, **kwargs: [],
         )
-        set_thread_tool_whitelist(
-            {"memory"}, deny_msg_fmt="denied: {tool_name}"
-        )
+        set_thread_tool_whitelist({"memory"}, deny_msg_fmt="denied: {tool_name}")
         try:
             msg = get_pre_tool_call_block_message("terminal", {})
             assert msg == "denied: terminal"
@@ -940,9 +1028,7 @@ class TestThreadToolWhitelist:
             t = threading.Thread(target=worker)
             t.start()
             t.join()
-            assert result["msg"] is None, (
-                "thread-local whitelist leaked across threads"
-            )
+            assert result["msg"] is None, "thread-local whitelist leaked across threads"
         finally:
             clear_thread_tool_whitelist()
 
@@ -960,13 +1046,13 @@ class TestPluginContext:
         plugin_dir.mkdir(parents=True)
         (plugin_dir / "plugin.yaml").write_text(yaml.dump({"name": "tool_plugin"}))
         (plugin_dir / "__init__.py").write_text(
-            'def register(ctx):\n'
-            '    ctx.register_tool(\n'
+            "def register(ctx):\n"
+            "    ctx.register_tool(\n"
             '        name="plugin_echo",\n'
             '        toolset="plugin_tool_plugin",\n'
             '        schema={"name": "plugin_echo", "description": "Echo", "parameters": {"type": "object", "properties": {}}},\n'
             '        handler=lambda args, **kw: "echo",\n'
-            '    )\n'
+            "    )\n"
         )
         hermes_home = tmp_path / "hermes_test"
         (hermes_home / "config.yaml").write_text(
@@ -980,9 +1066,12 @@ class TestPluginContext:
         assert "plugin_echo" in mgr._plugin_tool_names
 
         from tools.registry import registry
+
         assert "plugin_echo" in registry._tools
 
-    def test_register_tool_rejects_shadow_without_override(self, tmp_path, monkeypatch, caplog):
+    def test_register_tool_rejects_shadow_without_override(
+        self, tmp_path, monkeypatch, caplog
+    ):
         """Without override=True, registering a tool name claimed by a different toolset is rejected."""
         from tools.registry import registry
 
@@ -990,7 +1079,11 @@ class TestPluginContext:
         registry.register(
             name="shadow_target",
             toolset="terminal",
-            schema={"name": "shadow_target", "description": "Built-in", "parameters": {"type": "object", "properties": {}}},
+            schema={
+                "name": "shadow_target",
+                "description": "Built-in",
+                "parameters": {"type": "object", "properties": {}},
+            },
             handler=lambda args, **kw: "built-in",
         )
         original_handler = registry._tools["shadow_target"].handler
@@ -998,15 +1091,17 @@ class TestPluginContext:
             plugins_dir = tmp_path / "hermes_test" / "plugins"
             plugin_dir = plugins_dir / "shadow_plugin"
             plugin_dir.mkdir(parents=True)
-            (plugin_dir / "plugin.yaml").write_text(yaml.dump({"name": "shadow_plugin"}))
+            (plugin_dir / "plugin.yaml").write_text(
+                yaml.dump({"name": "shadow_plugin"})
+            )
             (plugin_dir / "__init__.py").write_text(
-                'def register(ctx):\n'
-                '    ctx.register_tool(\n'
+                "def register(ctx):\n"
+                "    ctx.register_tool(\n"
                 '        name="shadow_target",\n'
                 '        toolset="plugin_shadow_plugin",\n'
                 '        schema={"name": "shadow_target", "description": "Plugin", "parameters": {"type": "object", "properties": {}}},\n'
                 '        handler=lambda args, **kw: "plugin",\n'
-                '    )\n'
+                "    )\n"
             )
             hermes_home = tmp_path / "hermes_test"
             (hermes_home / "config.yaml").write_text(
@@ -1026,30 +1121,38 @@ class TestPluginContext:
         finally:
             registry.deregister("shadow_target")
 
-    def test_register_tool_override_replaces_existing(self, tmp_path, monkeypatch, caplog):
+    def test_register_tool_override_replaces_existing(
+        self, tmp_path, monkeypatch, caplog
+    ):
         """override=True lets a plugin replace an existing built-in tool."""
         from tools.registry import registry
 
         registry.register(
             name="override_target",
             toolset="terminal",
-            schema={"name": "override_target", "description": "Built-in", "parameters": {"type": "object", "properties": {}}},
+            schema={
+                "name": "override_target",
+                "description": "Built-in",
+                "parameters": {"type": "object", "properties": {}},
+            },
             handler=lambda args, **kw: "built-in",
         )
         try:
             plugins_dir = tmp_path / "hermes_test" / "plugins"
             plugin_dir = plugins_dir / "override_plugin"
             plugin_dir.mkdir(parents=True)
-            (plugin_dir / "plugin.yaml").write_text(yaml.dump({"name": "override_plugin"}))
+            (plugin_dir / "plugin.yaml").write_text(
+                yaml.dump({"name": "override_plugin"})
+            )
             (plugin_dir / "__init__.py").write_text(
-                'def register(ctx):\n'
-                '    ctx.register_tool(\n'
+                "def register(ctx):\n"
+                "    ctx.register_tool(\n"
                 '        name="override_target",\n'
                 '        toolset="plugin_override_plugin",\n'
                 '        schema={"name": "override_target", "description": "Plugin", "parameters": {"type": "object", "properties": {}}},\n'
                 '        handler=lambda args, **kw: "plugin",\n'
-                '        override=True,\n'
-                '    )\n'
+                "        override=True,\n"
+                "    )\n"
             )
             hermes_home = tmp_path / "hermes_test"
             (hermes_home / "config.yaml").write_text(
@@ -1062,8 +1165,15 @@ class TestPluginContext:
                 mgr.discover_and_load()
 
             # Plugin handler replaced the built-in one.
-            assert registry._tools["override_target"].toolset == "plugin_override_plugin"
-            assert registry._tools["override_target"].handler({}, ) == "plugin"
+            assert (
+                registry._tools["override_target"].toolset == "plugin_override_plugin"
+            )
+            assert (
+                registry._tools["override_target"].handler(
+                    {},
+                )
+                == "plugin"
+            )
             # Override is audit-logged at INFO.
             assert any(
                 "overriding existing" in r.message and "override_target" in r.message
@@ -1074,23 +1184,27 @@ class TestPluginContext:
         finally:
             registry.deregister("override_target")
 
-    def test_register_tool_override_on_new_name_is_noop_path(self, tmp_path, monkeypatch):
+    def test_register_tool_override_on_new_name_is_noop_path(
+        self, tmp_path, monkeypatch
+    ):
         """override=True on a brand-new name still registers cleanly (no existing entry to replace)."""
         from tools.registry import registry
 
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         plugin_dir = plugins_dir / "new_override_plugin"
         plugin_dir.mkdir(parents=True)
-        (plugin_dir / "plugin.yaml").write_text(yaml.dump({"name": "new_override_plugin"}))
+        (plugin_dir / "plugin.yaml").write_text(
+            yaml.dump({"name": "new_override_plugin"})
+        )
         (plugin_dir / "__init__.py").write_text(
-            'def register(ctx):\n'
-            '    ctx.register_tool(\n'
+            "def register(ctx):\n"
+            "    ctx.register_tool(\n"
             '        name="brand_new_override_tool",\n'
             '        toolset="plugin_new_override_plugin",\n'
             '        schema={"name": "brand_new_override_tool", "description": "New", "parameters": {"type": "object", "properties": {}}},\n'
             '        handler=lambda args, **kw: "ok",\n'
-            '        override=True,\n'
-            '    )\n'
+            "        override=True,\n"
+            "    )\n"
         )
         hermes_home = tmp_path / "hermes_test"
         (hermes_home / "config.yaml").write_text(
@@ -1121,13 +1235,13 @@ class TestPluginToolVisibility:
         plugin_dir.mkdir(parents=True)
         (plugin_dir / "plugin.yaml").write_text(yaml.dump({"name": "vis_plugin"}))
         (plugin_dir / "__init__.py").write_text(
-            'def register(ctx):\n'
-            '    ctx.register_tool(\n'
+            "def register(ctx):\n"
+            "    ctx.register_tool(\n"
             '        name="vis_tool",\n'
             '        toolset="plugin_vis_plugin",\n'
             '        schema={"name": "vis_tool", "description": "Visible", "parameters": {"type": "object", "properties": {}}},\n'
             '        handler=lambda args, **kw: "ok",\n'
-            '    )\n'
+            "    )\n"
         )
         hermes_home = tmp_path / "hermes_test"
         (hermes_home / "config.yaml").write_text(
@@ -1142,7 +1256,9 @@ class TestPluginToolVisibility:
         from model_tools import get_tool_definitions
 
         # Plugin tools are included when their toolset is explicitly enabled
-        tools = get_tool_definitions(enabled_toolsets=["terminal", "plugin_vis_plugin"], quiet_mode=True)
+        tools = get_tool_definitions(
+            enabled_toolsets=["terminal", "plugin_vis_plugin"], quiet_mode=True
+        )
         tool_names = [t["function"]["name"] for t in tools]
         assert "vis_tool" in tool_names
 
@@ -1215,11 +1331,13 @@ class TestPluginManagerList:
         """
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "first_hooker",
+            plugins_dir,
+            "first_hooker",
             register_body='ctx.register_hook("post_tool_call", lambda **kw: None)',
         )
         _make_plugin_dir(
-            plugins_dir, "second_hooker",
+            plugins_dir,
+            "second_hooker",
             register_body='ctx.register_hook("post_tool_call", lambda **kw: None)',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -1234,7 +1352,6 @@ class TestPluginManagerList:
         )
 
 
-
 class TestPreLlmCallTargetRouting:
     """Tests for pre_llm_call hook return format with target-aware routing.
 
@@ -1246,7 +1363,8 @@ class TestPreLlmCallTargetRouting:
     def _make_pre_llm_plugin(self, plugins_dir, name, return_expr):
         """Create a plugin that returns a specific value from pre_llm_call."""
         _make_plugin_dir(
-            plugins_dir, name,
+            plugins_dir,
+            name,
             register_body=(
                 f'ctx.register_hook("pre_llm_call", lambda **kw: {return_expr})'
             ),
@@ -1256,7 +1374,8 @@ class TestPreLlmCallTargetRouting:
         """Plugin returning a context dict is collected by invoke_hook."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         self._make_pre_llm_plugin(
-            plugins_dir, "basic_plugin",
+            plugins_dir,
+            "basic_plugin",
             '{"context": "basic context"}',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -1265,8 +1384,12 @@ class TestPreLlmCallTargetRouting:
         mgr.discover_and_load()
 
         results = mgr.invoke_hook(
-            "pre_llm_call", session_id="s1", user_message="hi",
-            conversation_history=[], is_first_turn=True, model="test",
+            "pre_llm_call",
+            session_id="s1",
+            user_message="hi",
+            conversation_history=[],
+            is_first_turn=True,
+            model="test",
         )
         assert len(results) == 1
         assert results[0]["context"] == "basic context"
@@ -1276,7 +1399,8 @@ class TestPreLlmCallTargetRouting:
         """Plain string returns are collected as-is (routing treats them as user_message)."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         self._make_pre_llm_plugin(
-            plugins_dir, "str_plugin",
+            plugins_dir,
+            "str_plugin",
             '"plain string context"',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -1285,8 +1409,12 @@ class TestPreLlmCallTargetRouting:
         mgr.discover_and_load()
 
         results = mgr.invoke_hook(
-            "pre_llm_call", session_id="s1", user_message="hi",
-            conversation_history=[], is_first_turn=True, model="test",
+            "pre_llm_call",
+            session_id="s1",
+            user_message="hi",
+            conversation_history=[],
+            is_first_turn=True,
+            model="test",
         )
         assert len(results) == 1
         assert results[0] == "plain string context"
@@ -1295,11 +1423,13 @@ class TestPreLlmCallTargetRouting:
         """Multiple plugins returning context are all collected."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         self._make_pre_llm_plugin(
-            plugins_dir, "aaa_memory",
+            plugins_dir,
+            "aaa_memory",
             '{"context": "memory context"}',
         )
         self._make_pre_llm_plugin(
-            plugins_dir, "bbb_guardrail",
+            plugins_dir,
+            "bbb_guardrail",
             '{"context": "guardrail text"}',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -1308,8 +1438,12 @@ class TestPreLlmCallTargetRouting:
         mgr.discover_and_load()
 
         results = mgr.invoke_hook(
-            "pre_llm_call", session_id="s1", user_message="hi",
-            conversation_history=[], is_first_turn=True, model="test",
+            "pre_llm_call",
+            session_id="s1",
+            user_message="hi",
+            conversation_history=[],
+            is_first_turn=True,
+            model="test",
         )
         assert len(results) == 2
         contexts = [r["context"] for r in results]
@@ -1324,15 +1458,18 @@ class TestPreLlmCallTargetRouting:
         """
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         self._make_pre_llm_plugin(
-            plugins_dir, "aaa_mem",
+            plugins_dir,
+            "aaa_mem",
             '{"context": "memory A"}',
         )
         self._make_pre_llm_plugin(
-            plugins_dir, "bbb_guard",
+            plugins_dir,
+            "bbb_guard",
             '{"context": "rule B"}',
         )
         self._make_pre_llm_plugin(
-            plugins_dir, "ccc_plain",
+            plugins_dir,
+            "ccc_plain",
             '"plain text C"',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
@@ -1341,8 +1478,12 @@ class TestPreLlmCallTargetRouting:
         mgr.discover_and_load()
 
         results = mgr.invoke_hook(
-            "pre_llm_call", session_id="s1", user_message="hi",
-            conversation_history=[], is_first_turn=True, model="test",
+            "pre_llm_call",
+            session_id="s1",
+            user_message="hi",
+            conversation_history=[],
+            is_first_turn=True,
+            model="test",
         )
 
         # Replicate run_agent.py routing logic — everything goes to user msg
@@ -1482,7 +1623,9 @@ class TestPluginCommands:
             assert "cmd-b" in cmds
             assert cmds["cmd-a"]["description"] == "A"
 
-    def test_get_plugin_command_handler_discovers_plugins_lazily(self, tmp_path, monkeypatch):
+    def test_get_plugin_command_handler_discovers_plugins_lazily(
+        self, tmp_path, monkeypatch
+    ):
         """Handler lookup should work before any explicit discover_plugins() call."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
@@ -1516,7 +1659,9 @@ class TestPluginCommands:
             assert "lazycmd" in cmds
             assert cmds["lazycmd"]["description"] == "Lazy"
 
-    def test_get_plugin_context_engine_discovers_plugins_lazily(self, tmp_path, monkeypatch):
+    def test_get_plugin_context_engine_discovers_plugins_lazily(
+        self, tmp_path, monkeypatch
+    ):
         """Context engine lookup should work before any explicit discover_plugins() call."""
         hermes_home = tmp_path / "hermes_test"
         plugins_dir = hermes_home / "plugins"
@@ -1561,7 +1706,8 @@ class TestPluginCommands:
         """Commands registered during discover_and_load() are tracked on LoadedPlugin."""
         plugins_dir = tmp_path / "hermes_test" / "plugins"
         _make_plugin_dir(
-            plugins_dir, "cmd-plugin",
+            plugins_dir,
+            "cmd-plugin",
             register_body=(
                 'ctx.register_command("mycmd", lambda a: "ok", description="Test")'
             ),
@@ -1582,7 +1728,8 @@ class TestPluginCommands:
         # the right config.yaml.
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "hermes_test"))
         _make_plugin_dir(
-            plugins_dir, "cmd-plugin",
+            plugins_dir,
+            "cmd-plugin",
             register_body=(
                 'ctx.register_command("mycmd", lambda a: "ok", description="Test")'
             ),
@@ -1617,7 +1764,9 @@ class TestPluginCommands:
         for plugin_name, cmd_name in [("plugin-a", "cmd-a"), ("plugin-b", "cmd-b")]:
             manifest = PluginManifest(name=plugin_name, source="user")
             ctx = PluginContext(manifest, mgr)
-            ctx.register_command(cmd_name, lambda a: a, description=f"From {plugin_name}")
+            ctx.register_command(
+                cmd_name, lambda a: a, description=f"From {plugin_name}"
+            )
 
         assert "cmd-a" in mgr._plugin_commands
         assert "cmd-b" in mgr._plugin_commands
@@ -1642,7 +1791,9 @@ class TestPluginCommandResultResolution:
         async def _handler():
             return "threaded-ok"
 
-        monkeypatch.setattr("openagents_cli.plugins.asyncio.get_running_loop", lambda: _Loop())
+        monkeypatch.setattr(
+            "openagents_cli.plugins.asyncio.get_running_loop", lambda: _Loop()
+        )
         assert resolve_plugin_command_result(_handler()) == "threaded-ok"
 
     def test_running_loop_timeout_does_not_hang_forever(self, monkeypatch):
@@ -1656,8 +1807,12 @@ class TestPluginCommandResultResolution:
             await _asyncio.sleep(10)
             return "should-not-reach"
 
-        monkeypatch.setattr("openagents_cli.plugins.asyncio.get_running_loop", lambda: _Loop())
-        monkeypatch.setattr("openagents_cli.plugins._PLUGIN_COMMAND_AWAIT_TIMEOUT_SECS", 0.1)
+        monkeypatch.setattr(
+            "openagents_cli.plugins.asyncio.get_running_loop", lambda: _Loop()
+        )
+        monkeypatch.setattr(
+            "openagents_cli.plugins._PLUGIN_COMMAND_AWAIT_TIMEOUT_SECS", 0.1
+        )
 
         with pytest.raises(TimeoutError):
             resolve_plugin_command_result(_slow_handler())
@@ -1678,7 +1833,10 @@ class TestPluginDispatchTool:
         mock_registry = MagicMock()
         mock_registry.dispatch.return_value = '{"result": "ok"}'
 
-        with patch("openagents_cli.plugins.PluginContext.dispatch_tool.__module__", "openagents_cli.plugins"):
+        with patch(
+            "openagents_cli.plugins.PluginContext.dispatch_tool.__module__",
+            "openagents_cli.plugins",
+        ):
             with patch.dict("sys.modules", {}):
                 with patch("tools.registry.registry", mock_registry):
                     result = ctx.dispatch_tool("web_search", {"query": "test"})
@@ -1758,7 +1916,9 @@ class TestPluginDispatchTool:
         mock_registry.dispatch.return_value = '{"ok": true}'
 
         with patch("tools.registry.registry", mock_registry):
-            ctx.dispatch_tool("delegate_task", {"goal": "test"}, parent_agent=explicit_agent)
+            ctx.dispatch_tool(
+                "delegate_task", {"goal": "test"}, parent_agent=explicit_agent
+            )
 
         call_kwargs = mock_registry.dispatch.call_args
         assert call_kwargs[1]["parent_agent"] is explicit_agent
@@ -1923,8 +2083,11 @@ class TestDispatchToolWithoutCliRef:
         registry.register(
             name="_test_dispatch_probe",
             toolset="debugging",
-            schema={"name": "_test_dispatch_probe", "description": "probe",
-                    "parameters": {"type": "object", "properties": {}}},
+            schema={
+                "name": "_test_dispatch_probe",
+                "description": "probe",
+                "parameters": {"type": "object", "properties": {}},
+            },
             handler=lambda args, **kw: calls.append((args, kw)) or '{"ok": true}',
         )
         try:

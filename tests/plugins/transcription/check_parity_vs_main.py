@@ -44,7 +44,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 def _resolve_main_dir() -> Path:
     candidate = REPO_ROOT.parent.parent
-    if (candidate / "tools" / "transcription_tools.py").exists() and candidate != REPO_ROOT:
+    if (
+        candidate / "tools" / "transcription_tools.py"
+    ).exists() and candidate != REPO_ROOT:
         return candidate
     sibling = REPO_ROOT.parent / "openagents-main"
     if (sibling / "tools" / "transcription_tools.py").exists():
@@ -221,9 +223,7 @@ def _cmd_yaml(provider_name: str, transcript: str) -> str:
     # the python -c body so we don't have to YAML-escape inner double
     # quotes. Single quotes inside the body are not needed; the body uses
     # double quotes for module references and string literals.
-    payload = (
-        f"import sys; open(sys.argv[1], 'w').write('{transcript}')"
-    )
+    payload = f"import sys; open(sys.argv[1], 'w').write('{transcript}')"
     command = f'{interp} -c "{payload}" {{output_path}}'
     # YAML-escape: double-quote the whole thing, escape inner " and \.
     yaml_escaped = command.replace("\\", "\\\\").replace('"', '\\"')
@@ -252,7 +252,12 @@ SCENARIOS: list[tuple[str, str, dict[str, str], str]] = [
     ("plugin-installed", "stt:\n  provider: openrouter\n", {}, "yes"),
     # Unknown name + plugin reports unavailable → main: no_provider_error,
     # PR: plugin_unavailable (cleaner envelope, names the plugin)
-    ("plugin-installed-unavailable", "stt:\n  provider: openrouter\n", {}, "unavailable"),
+    (
+        "plugin-installed-unavailable",
+        "stt:\n  provider: openrouter\n",
+        {},
+        "unavailable",
+    ),
     # Built-in name + plugin tries to shadow → both: built-in
     ("explicit-openai-with-plugin-registered", "stt:\n  provider: openai\n", {}, "yes"),
     # NEW (this PR): stt.providers.<name>: type: command registry.
@@ -295,7 +300,9 @@ SCENARIOS: list[tuple[str, str, dict[str, str], str]] = [
 # main has no registry for stt.providers.<name>.
 
 
-def _run_scenario(repo_path: Path, label: str, config_yaml: str, env: dict, plugin_register: str) -> dict:
+def _run_scenario(
+    repo_path: Path, label: str, config_yaml: str, env: dict, plugin_register: str
+) -> dict:
     venv_python = repo_path / ".venv" / "bin" / "python"
     if not venv_python.exists():
         venv_python = MAIN_DIR / ".venv" / "bin" / "python"
@@ -396,7 +403,9 @@ def main() -> int:
             print(f"  [DIFF] {label}: no_provider_error → plugin — expected")
             intentional_diffs.append((label, main_reduced, pr_reduced))
         elif no_provider_to_unavailable:
-            print(f"  [DIFF] {label}: no_provider_error → plugin_unavailable — expected")
+            print(
+                f"  [DIFF] {label}: no_provider_error → plugin_unavailable — expected"
+            )
             intentional_diffs.append((label, main_reduced, pr_reduced))
         elif no_provider_to_command:
             print(f"  [DIFF] {label}: no_provider_error → command_provider — expected")

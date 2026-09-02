@@ -25,19 +25,33 @@ _WINDOWS_BROWSER_GROUPS = (
     (("chrome.exe", "chrome"), (("Google", "Chrome", "Application", "chrome.exe"),)),
     (
         ("chromium.exe", "chromium"),
-        (("Chromium", "Application", "chrome.exe"), ("Chromium", "Application", "chromium.exe")),
+        (
+            ("Chromium", "Application", "chrome.exe"),
+            ("Chromium", "Application", "chromium.exe"),
+        ),
     ),
-    (("brave.exe", "brave"), (("BraveSoftware", "Brave-Browser", "Application", "brave.exe"),)),
+    (
+        ("brave.exe", "brave"),
+        (("BraveSoftware", "Brave-Browser", "Application", "brave.exe"),),
+    ),
     (("msedge.exe", "msedge"), (("Microsoft", "Edge", "Application", "msedge.exe"),)),
 )
 
-_WINDOWS_BIN_NAMES = tuple(name for names, _ in _WINDOWS_BROWSER_GROUPS for name in names)
-_WINDOWS_INSTALL_PARTS = tuple(parts for _, group in _WINDOWS_BROWSER_GROUPS for parts in group)
+_WINDOWS_BIN_NAMES = tuple(
+    name for names, _ in _WINDOWS_BROWSER_GROUPS for name in names
+)
+_WINDOWS_INSTALL_PARTS = tuple(
+    parts for _, group in _WINDOWS_BROWSER_GROUPS for parts in group
+)
 
 _LINUX_BROWSER_GROUPS = (
     (
         ("google-chrome", "google-chrome-stable"),
-        ("/opt/google/chrome/chrome", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable"),
+        (
+            "/opt/google/chrome/chrome",
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+        ),
     ),
     (
         ("chromium-browser", "chromium"),
@@ -67,7 +81,9 @@ _LINUX_BROWSER_GROUPS = (
 )
 
 _LINUX_BIN_NAMES = tuple(name for names, _ in _LINUX_BROWSER_GROUPS for name in names)
-_LINUX_INSTALL_PATHS = tuple(path for _, paths in _LINUX_BROWSER_GROUPS for path in paths)
+_LINUX_INSTALL_PATHS = tuple(
+    path for _, paths in _LINUX_BROWSER_GROUPS for path in paths
+)
 
 
 def get_chrome_debug_candidates(system: str) -> list[str]:
@@ -116,7 +132,9 @@ def get_chrome_debug_candidates(system: str) -> list[str]:
             add(shutil.which(name))
         for path in paths:
             add(path)
-    add_windows_install_paths(("/mnt/c/Program Files", "/mnt/c/Program Files (x86)"), _WINDOWS_BROWSER_GROUPS)
+    add_windows_install_paths(
+        ("/mnt/c/Program Files", "/mnt/c/Program Files (x86)"), _WINDOWS_BROWSER_GROUPS
+    )
     return candidates
 
 
@@ -169,13 +187,17 @@ def is_browser_debug_ready(url: str, timeout: float = 1.0) -> bool:
     return False
 
 
-def manual_chrome_debug_command(port: int = DEFAULT_BROWSER_CDP_PORT, system: str | None = None) -> str | None:
+def manual_chrome_debug_command(
+    port: int = DEFAULT_BROWSER_CDP_PORT, system: str | None = None
+) -> str | None:
     system = system or platform.system()
     candidates = get_chrome_debug_candidates(system)
 
     if candidates:
         argv = [candidates[0], *_chrome_debug_args(port)]
-        return subprocess.list2cmdline(argv) if system == "Windows" else shlex.join(argv)
+        return (
+            subprocess.list2cmdline(argv) if system == "Windows" else shlex.join(argv)
+        )
 
     if system == "Darwin":
         data_dir = chrome_debug_data_dir()
@@ -196,7 +218,9 @@ def _detach_kwargs(system: str) -> dict:
     return {"creationflags": flags} if flags else {}
 
 
-def try_launch_chrome_debug(port: int = DEFAULT_BROWSER_CDP_PORT, system: str | None = None) -> bool:
+def try_launch_chrome_debug(
+    port: int = DEFAULT_BROWSER_CDP_PORT, system: str | None = None
+) -> bool:
     system = system or platform.system()
     candidates = get_chrome_debug_candidates(system)
     if not candidates:

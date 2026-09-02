@@ -74,12 +74,17 @@ def test_length_guard_rejects_long_strings():
 
 # --- Integration through DeliveryRouter ------------------------------------
 
+
 class RecordingAdapter:
     def __init__(self):
         self.calls = []
 
     async def send(self, chat_id, content, metadata=None):
-        self.calls.append({"chat_id": chat_id, "content": content, "metadata": metadata})
+        self.calls.append({
+            "chat_id": chat_id,
+            "content": content,
+            "metadata": metadata,
+        })
         return {"success": True}
 
 
@@ -185,6 +190,7 @@ async def test_local_delivery_not_filtered(tmp_path, monkeypatch):
 
 
 # --- Config round-trip ------------------------------------------------------
+
 
 def test_config_flag_defaults_true():
     assert GatewayConfig().filter_silence_narration is True

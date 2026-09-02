@@ -36,7 +36,11 @@ class TestCleanForDisplay:
 
     def test_media_tag_with_quotes(self):
         """MEDIA: tags wrapped in quotes or backticks are removed."""
-        for wrapper in ['`MEDIA:/path/file.png`', '"MEDIA:/path/file.png"', "'MEDIA:/path/file.png'"]:
+        for wrapper in [
+            "`MEDIA:/path/file.png`",
+            '"MEDIA:/path/file.png"',
+            "'MEDIA:/path/file.png'",
+        ]:
             text = f"Result: {wrapper}"
             result = GatewayStreamConsumer._clean_for_display(text)
             assert "MEDIA:" not in result, f"Failed for wrapper: {wrapper}"
@@ -105,9 +109,12 @@ class TestFinalizeCapabilityGate:
         # Adapter without finalize requirement — should skip identical edit.
         plain = MagicMock()
         plain.REQUIRES_EDIT_FINALIZE = False
-        plain.send = AsyncMock(return_value=SimpleNamespace(
-            success=True, message_id="m1",
-        ))
+        plain.send = AsyncMock(
+            return_value=SimpleNamespace(
+                success=True,
+                message_id="m1",
+            )
+        )
         plain.edit_message = AsyncMock()
         plain.MAX_MESSAGE_LENGTH = 4096
         c1 = GatewayStreamConsumer(plain, "chat_1")
@@ -118,12 +125,18 @@ class TestFinalizeCapabilityGate:
         # Adapter that requires finalize — must still fire the edit.
         picky = MagicMock()
         picky.REQUIRES_EDIT_FINALIZE = True
-        picky.send = AsyncMock(return_value=SimpleNamespace(
-            success=True, message_id="m1",
-        ))
-        picky.edit_message = AsyncMock(return_value=SimpleNamespace(
-            success=True, message_id="m1",
-        ))
+        picky.send = AsyncMock(
+            return_value=SimpleNamespace(
+                success=True,
+                message_id="m1",
+            )
+        )
+        picky.edit_message = AsyncMock(
+            return_value=SimpleNamespace(
+                success=True,
+                message_id="m1",
+            )
+        )
         picky.MAX_MESSAGE_LENGTH = 4096
         c2 = GatewayStreamConsumer(picky, "chat_1")
         await c2._send_or_edit("hello")
@@ -356,7 +369,9 @@ class TestStreamRunMediaStripping:
             all_calls.append(call[1].get("content", ""))
 
         for sent_text in all_calls:
-            assert "MEDIA:" not in sent_text, f"MEDIA: leaked into display: {sent_text!r}"
+            assert "MEDIA:" not in sent_text, (
+                f"MEDIA: leaked into display: {sent_text!r}"
+            )
 
         assert consumer.already_sent
 
@@ -403,8 +418,12 @@ class TestBeforeFinalizeHook:
         events = []
         adapter = MagicMock()
         adapter.REQUIRES_EDIT_FINALIZE = False
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg_1"))
-        adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg_1"))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg_1")
+        )
+        adapter.edit_message = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg_1")
+        )
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         consumer = GatewayStreamConsumer(
@@ -494,7 +513,9 @@ class TestSegmentBreakOnToolBoundary:
         adapter.edit_message = AsyncMock(return_value=edit_result)
         adapter.MAX_MESSAGE_LENGTH = 4096
 
-        config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5, cursor=" ▉")
+        config = StreamConsumerConfig(
+            edit_interval=0.01, buffer_threshold=5, cursor=" ▉"
+        )
         consumer = GatewayStreamConsumer(adapter, "chat_123", config)
 
         consumer.on_delta("Thinking...")
@@ -528,7 +549,9 @@ class TestSegmentBreakOnToolBoundary:
         adapter = MagicMock()
         msg_counter = iter(["msg_1", "msg_2", "msg_3"])
         adapter.send = AsyncMock(
-            side_effect=lambda **kw: SimpleNamespace(success=True, message_id=next(msg_counter))
+            side_effect=lambda **kw: SimpleNamespace(
+                success=True, message_id=next(msg_counter)
+            )
         )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
@@ -577,10 +600,14 @@ class TestSegmentBreakOnToolBoundary:
             SimpleNamespace(success=True, message_id="msg_2"),
         ]
         adapter.send = AsyncMock(side_effect=send_results)
-        adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=False, error="flood_control:6"))
+        adapter.edit_message = AsyncMock(
+            return_value=SimpleNamespace(success=False, error="flood_control:6")
+        )
         adapter.MAX_MESSAGE_LENGTH = 4096
 
-        config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5, cursor=" ▉")
+        config = StreamConsumerConfig(
+            edit_interval=0.01, buffer_threshold=5, cursor=" ▉"
+        )
         consumer = GatewayStreamConsumer(adapter, "chat_123", config)
 
         consumer.on_delta("Hello")
@@ -609,10 +636,14 @@ class TestSegmentBreakOnToolBoundary:
             SimpleNamespace(success=True, message_id="msg_3"),
         ]
         adapter.send = AsyncMock(side_effect=send_results)
-        adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=False, error="flood_control:6"))
+        adapter.edit_message = AsyncMock(
+            return_value=SimpleNamespace(success=False, error="flood_control:6")
+        )
         adapter.MAX_MESSAGE_LENGTH = 4096
 
-        config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5, cursor=" ▉")
+        config = StreamConsumerConfig(
+            edit_interval=0.01, buffer_threshold=5, cursor=" ▉"
+        )
         consumer = GatewayStreamConsumer(adapter, "chat_123", config)
 
         consumer.on_delta("Hello")
@@ -649,15 +680,25 @@ class TestSegmentBreakOnToolBoundary:
         # First two edits succeed, everything after fails with flood control
         # — simulating Telegram's "edit once then get rate-limited" pattern.
         edit_results = [
-            SimpleNamespace(success=True),   # "Hello world ▉"  — succeeds
-            SimpleNamespace(success=False, error="flood_control:6.0"),  # "Hello world more ▉" — flood triggered
-            SimpleNamespace(success=False, error="flood_control:6.0"),  # finalize edit at segment break
-            SimpleNamespace(success=False, error="flood_control:6.0"),  # cursor-strip attempt
+            SimpleNamespace(success=True),  # "Hello world ▉"  — succeeds
+            SimpleNamespace(
+                success=False, error="flood_control:6.0"
+            ),  # "Hello world more ▉" — flood triggered
+            SimpleNamespace(
+                success=False, error="flood_control:6.0"
+            ),  # finalize edit at segment break
+            SimpleNamespace(
+                success=False, error="flood_control:6.0"
+            ),  # cursor-strip attempt
         ]
-        adapter.edit_message = AsyncMock(side_effect=edit_results + [edit_results[-1]] * 10)
+        adapter.edit_message = AsyncMock(
+            side_effect=edit_results + [edit_results[-1]] * 10
+        )
         adapter.MAX_MESSAGE_LENGTH = 4096
 
-        config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5, cursor=" ▉")
+        config = StreamConsumerConfig(
+            edit_interval=0.01, buffer_threshold=5, cursor=" ▉"
+        )
         consumer = GatewayStreamConsumer(adapter, "chat_123", config)
 
         consumer.on_delta("Hello")
@@ -743,10 +784,12 @@ class TestSegmentBreakOnToolBoundary:
         suppresses the reset so all text accumulates and is sent once."""
         adapter = MagicMock()
         # No message_id on first send, then one more for the fallback final
-        adapter.send = AsyncMock(side_effect=[
-            SimpleNamespace(success=True, message_id=None),
-            SimpleNamespace(success=True, message_id=None),
-        ])
+        adapter.send = AsyncMock(
+            side_effect=[
+                SimpleNamespace(success=True, message_id=None),
+                SimpleNamespace(success=True, message_id=None),
+            ]
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
@@ -755,9 +798,9 @@ class TestSegmentBreakOnToolBoundary:
 
         # Simulate: text → tool boundary → text → tool boundary → text (3 segments)
         consumer.on_delta("Phase 1 text")
-        consumer.on_delta(None)   # tool call boundary
+        consumer.on_delta(None)  # tool call boundary
         consumer.on_delta("Phase 2 text")
-        consumer.on_delta(None)   # another tool call boundary
+        consumer.on_delta(None)  # another tool call boundary
         consumer.on_delta("Phase 3 text")
         consumer.finish()
 
@@ -778,15 +821,21 @@ class TestSegmentBreakOnToolBoundary:
     async def test_fallback_final_splits_long_continuation_without_dropping_text(self):
         """Long continuation tails should be chunked when fallback final-send runs."""
         adapter = MagicMock()
-        adapter.send = AsyncMock(side_effect=[
-            SimpleNamespace(success=True, message_id="msg_1"),
-            SimpleNamespace(success=True, message_id="msg_2"),
-            SimpleNamespace(success=True, message_id="msg_3"),
-        ])
-        adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=False, error="flood_control:6"))
+        adapter.send = AsyncMock(
+            side_effect=[
+                SimpleNamespace(success=True, message_id="msg_1"),
+                SimpleNamespace(success=True, message_id="msg_2"),
+                SimpleNamespace(success=True, message_id="msg_3"),
+            ]
+        )
+        adapter.edit_message = AsyncMock(
+            return_value=SimpleNamespace(success=False, error="flood_control:6")
+        )
         adapter.MAX_MESSAGE_LENGTH = 610
 
-        config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5, cursor=" ▉")
+        config = StreamConsumerConfig(
+            edit_interval=0.01, buffer_threshold=5, cursor=" ▉"
+        )
         consumer = GatewayStreamConsumer(adapter, "chat_123", config)
 
         prefix = "Hello world"
@@ -1012,10 +1061,12 @@ class TestFinalResponseDeliveryGuard:
         """Split-overflow path: if at least one chunk lands on done frame,
         we did deliver the final answer — _final_response_sent must be True."""
         adapter = MagicMock()
-        adapter.send = AsyncMock(side_effect=[
-            SimpleNamespace(success=True, message_id="msg_1"),
-            SimpleNamespace(success=True, message_id="msg_2"),
-        ])
+        adapter.send = AsyncMock(
+            side_effect=[
+                SimpleNamespace(success=True, message_id="msg_1"),
+                SimpleNamespace(success=True, message_id="msg_2"),
+            ]
+        )
         adapter.edit_message = AsyncMock(
             return_value=SimpleNamespace(success=True),
         )
@@ -1060,10 +1111,12 @@ class TestFinalContentDeliveredGuard:
         # fails, so no path has confirmed the complete final response reached
         # the user.
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=False))
-        adapter.send = AsyncMock(side_effect=[
-            SimpleNamespace(success=True, message_id="msg_1"),
-            SimpleNamespace(success=False, error="network down"),
-        ])
+        adapter.send = AsyncMock(
+            side_effect=[
+                SimpleNamespace(success=True, message_id="msg_1"),
+                SimpleNamespace(success=False, error="network down"),
+            ]
+        )
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5)
@@ -1180,24 +1233,30 @@ class TestEditOverflowSplitAndDeliver:
         # Simulate edit_message split-and-deliver: success=True with the
         # final continuation's id and a populated continuation_message_ids
         # tuple (the new SendResult contract).
-        adapter.edit_message = AsyncMock(return_value=SimpleNamespace(
-            success=True,
-            message_id="msg_continuation_2",
-            continuation_message_ids=("msg_continuation_1", "msg_continuation_2"),
-        ))
+        adapter.edit_message = AsyncMock(
+            return_value=SimpleNamespace(
+                success=True,
+                message_id="msg_continuation_2",
+                continuation_message_ids=("msg_continuation_1", "msg_continuation_2"),
+            )
+        )
         adapter.send = AsyncMock(
             return_value=SimpleNamespace(success=True, message_id="msg_initial"),
         )
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         config = StreamConsumerConfig(
-            edit_interval=0.01, buffer_threshold=5, cursor="",
+            edit_interval=0.01,
+            buffer_threshold=5,
+            cursor="",
         )
         consumer = GatewayStreamConsumer(adapter, "chat_999", config)
 
         # Track on_new_message firings.
         new_msg_count = [0]
-        consumer._on_new_message = lambda: new_msg_count.__setitem__(0, new_msg_count[0] + 1)
+        consumer._on_new_message = lambda: new_msg_count.__setitem__(
+            0, new_msg_count[0] + 1
+        )
 
         # Seed the consumer as if a first send succeeded already.
         consumer._message_id = "msg_initial"
@@ -1221,10 +1280,12 @@ class TestInterimCommentaryMessages:
     @pytest.mark.asyncio
     async def test_commentary_message_stays_separate_from_final_stream(self):
         adapter = MagicMock()
-        adapter.send = AsyncMock(side_effect=[
-            SimpleNamespace(success=True, message_id="msg_1"),
-            SimpleNamespace(success=True, message_id="msg_2"),
-        ])
+        adapter.send = AsyncMock(
+            side_effect=[
+                SimpleNamespace(success=True, message_id="msg_1"),
+                SimpleNamespace(success=True, message_id="msg_2"),
+            ]
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
@@ -1247,7 +1308,9 @@ class TestInterimCommentaryMessages:
     @pytest.mark.asyncio
     async def test_failed_final_send_does_not_mark_final_response_sent(self):
         adapter = MagicMock()
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=False, message_id=None))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=False, message_id=None)
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
@@ -1268,10 +1331,12 @@ class TestInterimCommentaryMessages:
     @pytest.mark.asyncio
     async def test_success_without_message_id_marks_visible_and_sends_only_tail(self):
         adapter = MagicMock()
-        adapter.send = AsyncMock(side_effect=[
-            SimpleNamespace(success=True, message_id=None),
-            SimpleNamespace(success=True, message_id=None),
-        ])
+        adapter.send = AsyncMock(
+            side_effect=[
+                SimpleNamespace(success=True, message_id=None),
+                SimpleNamespace(success=True, message_id=None),
+            ]
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
@@ -1311,9 +1376,7 @@ class TestCancelledConsumerSetsFlags:
         adapter.send = AsyncMock(
             return_value=SimpleNamespace(success=True, message_id="msg_1")
         )
-        adapter.edit_message = AsyncMock(
-            return_value=SimpleNamespace(success=True)
-        )
+        adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         consumer = GatewayStreamConsumer(
@@ -1347,9 +1410,7 @@ class TestCancelledConsumerSetsFlags:
         adapter.send = AsyncMock(
             return_value=SimpleNamespace(success=False, message_id=None)
         )
-        adapter.edit_message = AsyncMock(
-            return_value=SimpleNamespace(success=True)
-        )
+        adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         consumer = GatewayStreamConsumer(
@@ -1427,17 +1488,13 @@ class TestFilterAndAccumulate:
     def test_multiple_think_blocks(self):
         c = _make_consumer()
         # Consecutive blocks with no text between them — both stripped
-        c._filter_and_accumulate(
-            "<think>block1</think><think>block2</think>visible"
-        )
+        c._filter_and_accumulate("<think>block1</think><think>block2</think>visible")
         assert c._accumulated == "visible"
 
     def test_multiple_think_blocks_with_text_between(self):
         """Think tag after non-whitespace is NOT a boundary (prose safety)."""
         c = _make_consumer()
-        c._filter_and_accumulate(
-            "<think>block1</think>A<think>block2</think>B"
-        )
+        c._filter_and_accumulate("<think>block1</think>A<think>block2</think>B")
         # Second <think> follows 'A' (not a block boundary) — treated as prose
         assert "A" in c._accumulated
         assert "B" in c._accumulated
@@ -1539,9 +1596,7 @@ class TestFilterAndAccumulateIntegration:
         adapter.send = AsyncMock(
             return_value=SimpleNamespace(success=True, message_id="msg_1")
         )
-        adapter.edit_message = AsyncMock(
-            return_value=SimpleNamespace(success=True)
-        )
+        adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         consumer = GatewayStreamConsumer(
@@ -1587,10 +1642,14 @@ class TestBufferOnlyMode:
         """Time-based and size-based edits are skipped; only got_done flushes."""
         adapter = MagicMock()
         adapter.MAX_MESSAGE_LENGTH = 4096
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg1"))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg1")
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
 
-        cfg = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5, cursor="", buffer_only=True)
+        cfg = StreamConsumerConfig(
+            edit_interval=0.01, buffer_threshold=5, cursor="", buffer_only=True
+        )
         consumer = GatewayStreamConsumer(adapter, "!room:server", config=cfg)
 
         for word in ["Hello", " world", ", this", " is", " a", " test"]:
@@ -1601,20 +1660,27 @@ class TestBufferOnlyMode:
 
         adapter.send.assert_called_once()
         adapter.edit_message.assert_not_called()
-        assert "Hello world, this is a test" in adapter.send.call_args_list[0][1]["content"]
+        assert (
+            "Hello world, this is a test"
+            in adapter.send.call_args_list[0][1]["content"]
+        )
 
     @pytest.mark.asyncio
     async def test_flushes_on_segment_break(self):
         """A segment break (tool call boundary) flushes accumulated text."""
         adapter = MagicMock()
         adapter.MAX_MESSAGE_LENGTH = 4096
-        adapter.send = AsyncMock(side_effect=[
-            SimpleNamespace(success=True, message_id="msg1"),
-            SimpleNamespace(success=True, message_id="msg2"),
-        ])
+        adapter.send = AsyncMock(
+            side_effect=[
+                SimpleNamespace(success=True, message_id="msg1"),
+                SimpleNamespace(success=True, message_id="msg2"),
+            ]
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
 
-        cfg = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5, cursor="", buffer_only=True)
+        cfg = StreamConsumerConfig(
+            edit_interval=0.01, buffer_threshold=5, cursor="", buffer_only=True
+        )
         consumer = GatewayStreamConsumer(adapter, "!room:server", config=cfg)
 
         consumer.on_delta("Before tool call")
@@ -1634,14 +1700,18 @@ class TestBufferOnlyMode:
         """An interim commentary message flushes in buffer_only mode."""
         adapter = MagicMock()
         adapter.MAX_MESSAGE_LENGTH = 4096
-        adapter.send = AsyncMock(side_effect=[
-            SimpleNamespace(success=True, message_id="msg1"),
-            SimpleNamespace(success=True, message_id="msg2"),
-            SimpleNamespace(success=True, message_id="msg3"),
-        ])
+        adapter.send = AsyncMock(
+            side_effect=[
+                SimpleNamespace(success=True, message_id="msg1"),
+                SimpleNamespace(success=True, message_id="msg2"),
+                SimpleNamespace(success=True, message_id="msg3"),
+            ]
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
 
-        cfg = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5, cursor="", buffer_only=True)
+        cfg = StreamConsumerConfig(
+            edit_interval=0.01, buffer_threshold=5, cursor="", buffer_only=True
+        )
         consumer = GatewayStreamConsumer(adapter, "!room:server", config=cfg)
 
         consumer.on_delta("Working on it...")
@@ -1660,7 +1730,9 @@ class TestBufferOnlyMode:
         """Regression: buffer_only=False (default) still does progressive edits."""
         adapter = MagicMock()
         adapter.MAX_MESSAGE_LENGTH = 4096
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg1"))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg1")
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
 
         # buffer_threshold=5 means any 5+ chars triggers an early edit
@@ -1700,7 +1772,8 @@ class TestCursorStrippingOnFallback:
         )
 
         consumer = GatewayStreamConsumer(
-            adapter, "chat-1",
+            adapter,
+            "chat-1",
             config=StreamConsumerConfig(cursor=" ▉"),
         )
         consumer._message_id = "msg-1"
@@ -1724,7 +1797,8 @@ class TestCursorStrippingOnFallback:
         adapter.edit_message = AsyncMock()
 
         consumer = GatewayStreamConsumer(
-            adapter, "chat-1",
+            adapter,
+            "chat-1",
             config=StreamConsumerConfig(cursor=""),
         )
         consumer._message_id = "msg-1"
@@ -1747,7 +1821,8 @@ class TestCursorStrippingOnFallback:
         )
 
         consumer = GatewayStreamConsumer(
-            adapter, "chat-1",
+            adapter,
+            "chat-1",
             config=StreamConsumerConfig(cursor=" ▉"),
         )
         consumer._message_id = "msg-1"
@@ -1782,14 +1857,18 @@ class TestOnNewMessageCallback:
     async def test_callback_fires_on_first_send(self):
         """First-send of a new content bubble fires on_new_message."""
         adapter = MagicMock()
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg_1"))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg_1")
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         events = []
         config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=1)
         consumer = GatewayStreamConsumer(
-            adapter, "chat", config,
+            adapter,
+            "chat",
+            config,
             on_new_message=lambda: events.append("reset"),
         )
 
@@ -1805,7 +1884,9 @@ class TestOnNewMessageCallback:
         adapter = MagicMock()
         msg_counter = iter(["msg_1", "msg_2", "msg_3"])
         adapter.send = AsyncMock(
-            side_effect=lambda **kw: SimpleNamespace(success=True, message_id=next(msg_counter))
+            side_effect=lambda **kw: SimpleNamespace(
+                success=True, message_id=next(msg_counter)
+            )
         )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
@@ -1813,7 +1894,9 @@ class TestOnNewMessageCallback:
         events = []
         config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=1)
         consumer = GatewayStreamConsumer(
-            adapter, "chat", config,
+            adapter,
+            "chat",
+            config,
             on_new_message=lambda: events.append("reset"),
         )
 
@@ -1832,14 +1915,18 @@ class TestOnNewMessageCallback:
     async def test_callback_not_fired_on_edit(self):
         """Subsequent edits of the same bubble do NOT fire the callback."""
         adapter = MagicMock()
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg_1"))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg_1")
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         events = []
         config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=1)
         consumer = GatewayStreamConsumer(
-            adapter, "chat", config,
+            adapter,
+            "chat",
+            config,
             on_new_message=lambda: events.append("reset"),
         )
 
@@ -1860,14 +1947,18 @@ class TestOnNewMessageCallback:
     async def test_callback_fires_on_commentary(self):
         """Commentary messages are fresh bubbles too — fire the callback."""
         adapter = MagicMock()
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg_1"))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg_1")
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
         events = []
         config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=1)
         consumer = GatewayStreamConsumer(
-            adapter, "chat", config,
+            adapter,
+            "chat",
+            config,
             on_new_message=lambda: events.append("reset"),
         )
 
@@ -1881,7 +1972,9 @@ class TestOnNewMessageCallback:
     async def test_callback_error_swallowed(self):
         """Exceptions in the callback do not crash the consumer."""
         adapter = MagicMock()
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg_1"))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg_1")
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
@@ -1890,7 +1983,9 @@ class TestOnNewMessageCallback:
 
         config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=1)
         consumer = GatewayStreamConsumer(
-            adapter, "chat", config,
+            adapter,
+            "chat",
+            config,
             on_new_message=raiser,
         )
 
@@ -1904,7 +1999,9 @@ class TestOnNewMessageCallback:
     async def test_no_callback_when_none(self):
         """Consumer works correctly when on_new_message is None (default)."""
         adapter = MagicMock()
-        adapter.send = AsyncMock(return_value=SimpleNamespace(success=True, message_id="msg_1"))
+        adapter.send = AsyncMock(
+            return_value=SimpleNamespace(success=True, message_id="msg_1")
+        )
         adapter.edit_message = AsyncMock(return_value=SimpleNamespace(success=True))
         adapter.MAX_MESSAGE_LENGTH = 4096
 
@@ -1961,7 +2058,10 @@ class TestUtf16OverflowDetection:
         )
         # truncate_message: emit two halves so we can assert the split fired
         adapter.truncate_message = MagicMock(
-            side_effect=lambda text, limit, **kw: [text[:len(text)//2], text[len(text)//2:]],
+            side_effect=lambda text, limit, **kw: [
+                text[: len(text) // 2],
+                text[len(text) // 2 :],
+            ],
         )
 
         config = StreamConsumerConfig(edit_interval=0.01, buffer_threshold=5)
@@ -1988,8 +2088,9 @@ class TestUtf16OverflowDetection:
         # truncate_message to split. Without the fix, len() would return
         # 2200 (under 4096) and no split would fire — Telegram would then
         # reject the send or render \x00 artifacts.
-        adapter.truncate_message.assert_called(), (
-            "UTF-16 overflow not detected — emoji text bypassed split path"
+        (
+            adapter.truncate_message.assert_called(),
+            ("UTF-16 overflow not detected — emoji text bypassed split path"),
         )
         # truncate_message must have been called with len_fn=utf16_len
         call_kwargs = adapter.truncate_message.call_args[1]
@@ -2061,12 +2162,11 @@ class TestFreshFinalRespectsAdapterDecline:
         adapter.edit_message.assert_called()  # Finalize edit
         # Verify edit was called with finalize=True
         edit_calls = [
-            c for c in adapter.edit_message.call_args_list
+            c
+            for c in adapter.edit_message.call_args_list
             if c.kwargs.get("finalize") or (len(c.args) > 3 and c.args[3])
         ]
-        assert len(edit_calls) >= 1, (
-            "Expected finalize=True edit call, got none"
-        )
+        assert len(edit_calls) >= 1, "Expected finalize=True edit call, got none"
 
     @pytest.mark.asyncio
     async def test_no_hook_adapter_uses_time_threshold(self):
@@ -2111,4 +2211,3 @@ class TestFreshFinalRespectsAdapterDecline:
         assert adapter.send.call_count == 2, (
             f"Expected 2 send calls (initial + fresh-final), got {adapter.send.call_count}"
         )
-

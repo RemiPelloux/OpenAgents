@@ -128,12 +128,14 @@ class TestLoadConfigParseFailure:
         # Reset the dedup cache so this test isn't affected by other tests
         # that may have warned about a different broken config.
         from openagents_cli import config as cfg_mod
+
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
             (tmp_path / "config.yaml").write_text("\tbroken tab indent:\n")
 
             import logging
+
             with caplog.at_level(logging.WARNING, logger="openagents_cli.config"):
                 config = load_config()
 
@@ -155,6 +157,7 @@ class TestLoadConfigParseFailure:
 
     def test_dedup_on_repeated_load_same_file(self, tmp_path, capsys):
         from openagents_cli import config as cfg_mod
+
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
@@ -166,11 +169,14 @@ class TestLoadConfigParseFailure:
 
             load_config()
             second = capsys.readouterr().err
-            assert second == "", "second load should NOT re-warn (same file, same mtime)"
+            assert second == "", (
+                "second load should NOT re-warn (same file, same mtime)"
+            )
 
     def test_rewarns_after_file_edit(self, tmp_path, capsys):
         import time
         from openagents_cli import config as cfg_mod
+
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
@@ -193,6 +199,7 @@ class TestLoadConfigParseFailure:
         adapted: we back up but deliberately do NOT reset config.yaml.
         """
         from openagents_cli import config as cfg_mod
+
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
@@ -215,6 +222,7 @@ class TestLoadConfigParseFailure:
         """Don't churn backups: if a corrupt backup of the same size already
         exists (same corruption already preserved), skip making another."""
         from openagents_cli import config as cfg_mod
+
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
@@ -228,15 +236,19 @@ class TestLoadConfigParseFailure:
             load_config()
 
             baks = list(tmp_path.glob("config.yaml.corrupt.*.bak"))
-            assert len(baks) == 1, f"should not add a second same-size backup, got {baks}"
+            assert len(baks) == 1, (
+                f"should not add a second same-size backup, got {baks}"
+            )
 
     def test_corrupt_symlink_config_not_backed_up(self, tmp_path):
         """Symlinked config.yaml is not copied (mirrors Gemini #21541 lstat
         guard) — avoids clobbering whatever the symlink points at."""
         import sys as _sys
+
         if _sys.platform == "win32":
             pytest.skip("symlink creation requires privileges on Windows")
         from openagents_cli import config as cfg_mod
+
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
@@ -297,7 +309,9 @@ class TestSaveAndLoadRoundtrip:
                 raw=True,
             )
 
-            saved = yaml.safe_load((tmp_path / "config.yaml").read_text(encoding="utf-8"))
+            saved = yaml.safe_load(
+                (tmp_path / "config.yaml").read_text(encoding="utf-8")
+            )
             assert saved["model"] == "test/custom-model"
             assert saved["platforms"]["email"]["unauthorized_dm_behavior"] == "pair"
 
@@ -373,7 +387,9 @@ class TestSaveEnvValueSecure:
             assert parsed["ANTHROPIC_TOKEN"] == token
             assert load_env()["ANTHROPIC_TOKEN"] == token
 
-    def test_save_env_value_hash_value_round_trips_quotes_and_backslashes(self, tmp_path):
+    def test_save_env_value_hash_value_round_trips_quotes_and_backslashes(
+        self, tmp_path
+    ):
         from dotenv import dotenv_values
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}, clear=False):
@@ -411,7 +427,9 @@ class TestRemoveEnvValue:
     def test_removes_key_from_env_file(self, tmp_path):
         env_path = tmp_path / ".env"
         env_path.write_text("KEY_A=value_a\nKEY_B=value_b\nKEY_C=value_c\n")
-        with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path), "KEY_B": "value_b"}):
+        with patch.dict(
+            os.environ, {"OPENAGENTS_HOME": str(tmp_path), "KEY_B": "value_b"}
+        ):
             result = remove_env_value("KEY_B")
             assert result is True
             content = env_path.read_text()
@@ -422,7 +440,9 @@ class TestRemoveEnvValue:
     def test_clears_os_environ(self, tmp_path):
         env_path = tmp_path / ".env"
         env_path.write_text("MY_KEY=my_value\n")
-        with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path), "MY_KEY": "my_value"}):
+        with patch.dict(
+            os.environ, {"OPENAGENTS_HOME": str(tmp_path), "MY_KEY": "my_value"}
+        ):
             remove_env_value("MY_KEY")
             assert "MY_KEY" not in os.environ
 
@@ -436,7 +456,9 @@ class TestRemoveEnvValue:
             assert env_path.read_text() == "OTHER_KEY=value\n"
 
     def test_handles_missing_env_file(self, tmp_path):
-        with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path), "GHOST_KEY": "ghost"}):
+        with patch.dict(
+            os.environ, {"OPENAGENTS_HOME": str(tmp_path), "GHOST_KEY": "ghost"}
+        ):
             result = remove_env_value("GHOST_KEY")
             assert result is False
             # os.environ should still be cleared
@@ -445,7 +467,9 @@ class TestRemoveEnvValue:
     def test_clears_os_environ_even_when_not_in_file(self, tmp_path):
         env_path = tmp_path / ".env"
         env_path.write_text("OTHER=stuff\n")
-        with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path), "ORPHAN_KEY": "orphan"}):
+        with patch.dict(
+            os.environ, {"OPENAGENTS_HOME": str(tmp_path), "ORPHAN_KEY": "orphan"}
+        ):
             remove_env_value("ORPHAN_KEY")
             assert "ORPHAN_KEY" not in os.environ
 
@@ -536,7 +560,9 @@ class TestSanitizeEnvLines:
 
     def test_splits_concatenated_keys(self):
         """Two KEY=VALUE pairs jammed on one line get split."""
-        lines = ["ANTHROPIC_API_KEY=sk-ant-xxxOPENAI_BASE_URL=https://api.openai.com/v1\n"]
+        lines = [
+            "ANTHROPIC_API_KEY=sk-ant-xxxOPENAI_BASE_URL=https://api.openai.com/v1\n"
+        ]
         result = _sanitize_env_lines(lines)
         assert result == [
             "ANTHROPIC_API_KEY=sk-ant-xxx\n",
@@ -590,7 +616,9 @@ class TestSanitizeEnvLines:
 
     def test_value_ending_with_digits_still_splits(self):
         """Concatenation is detected even when value ends with digits."""
-        lines = ["OPENROUTER_API_KEY=sk-or-v1-abc123OPENAI_BASE_URL=https://api.openai.com/v1\n"]
+        lines = [
+            "OPENROUTER_API_KEY=sk-or-v1-abc123OPENAI_BASE_URL=https://api.openai.com/v1\n"
+        ]
         result = _sanitize_env_lines(lines)
         assert len(result) == 2
         assert result[0].startswith("OPENROUTER_API_KEY=")
@@ -603,7 +631,9 @@ class TestSanitizeEnvLines:
             "GLM_BASE_URL=https://api.z.ai/api/paas/v4\n",
         ]
         result = _sanitize_env_lines(lines)
-        assert result == lines, f"GLM_* lines were corrupted by suffix collision: {result}"
+        assert result == lines, (
+            f"GLM_* lines were corrupted by suffix collision: {result}"
+        )
 
     def test_suffix_collision_does_not_break_real_concatenation(self):
         """A genuine concatenation that happens to start with a suffix-superset key still splits."""
@@ -635,8 +665,7 @@ class TestSanitizeEnvLines:
         """sanitize_env_file reports how many entries were fixed."""
         env_file = tmp_path / ".env"
         env_file.write_text(
-            "FAL_KEY=good\n"
-            "OPENROUTER_API_KEY=valFIRECRAWL_API_KEY=val2\n"
+            "FAL_KEY=good\nOPENROUTER_API_KEY=valFIRECRAWL_API_KEY=val2\n"
         )
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
             fixes = sanitize_env_file()
@@ -662,26 +691,33 @@ class TestOptionalEnvVarsRegistry:
     def test_tavily_api_key_registered(self):
         """TAVILY_API_KEY is listed in OPTIONAL_ENV_VARS."""
         from openagents_cli.config import OPTIONAL_ENV_VARS
+
         assert "TAVILY_API_KEY" in OPTIONAL_ENV_VARS
 
     def test_tavily_api_key_is_tool_category(self):
         """TAVILY_API_KEY is in the 'tool' category."""
         from openagents_cli.config import OPTIONAL_ENV_VARS
+
         assert OPTIONAL_ENV_VARS["TAVILY_API_KEY"]["category"] == "tool"
 
     def test_tavily_api_key_is_password(self):
         """TAVILY_API_KEY is marked as password."""
         from openagents_cli.config import OPTIONAL_ENV_VARS
+
         assert OPTIONAL_ENV_VARS["TAVILY_API_KEY"]["password"] is True
 
     def test_tavily_api_key_has_url(self):
         """TAVILY_API_KEY has a URL."""
         from openagents_cli.config import OPTIONAL_ENV_VARS
-        assert OPTIONAL_ENV_VARS["TAVILY_API_KEY"]["url"] == "https://app.tavily.com/home"
+
+        assert (
+            OPTIONAL_ENV_VARS["TAVILY_API_KEY"]["url"] == "https://app.tavily.com/home"
+        )
 
     def test_tavily_in_env_vars_by_version(self):
         """TAVILY_API_KEY is listed in ENV_VARS_BY_VERSION."""
         from openagents_cli.config import ENV_VARS_BY_VERSION
+
         all_vars = []
         for vars_list in ENV_VARS_BY_VERSION.values():
             all_vars.extend(vars_list)
@@ -697,6 +733,7 @@ class TestOptionalEnvVarsRegistry:
         fallback in the gateway/CLI, never a promoted write target.
         """
         from openagents_cli.config import OPTIONAL_ENV_VARS
+
         assert "HERMES_MAX_ITERATIONS" not in OPTIONAL_ENV_VARS
 
 
@@ -724,21 +761,27 @@ class TestMemoryProviderEnvVarsRegistry:
 
     def test_memory_provider_keys_are_catalogued(self):
         from openagents_cli.config import OPTIONAL_ENV_VARS
+
         missing = [k for k in self.MEMORY_PROVIDER_KEYS if k not in OPTIONAL_ENV_VARS]
-        assert not missing, f"memory provider keys missing from OPTIONAL_ENV_VARS: {missing}"
+        assert not missing, (
+            f"memory provider keys missing from OPTIONAL_ENV_VARS: {missing}"
+        )
 
     def test_memory_provider_keys_are_tool_category(self):
         from openagents_cli.config import OPTIONAL_ENV_VARS
+
         for key in self.MEMORY_PROVIDER_KEYS:
             assert OPTIONAL_ENV_VARS[key]["category"] == "tool", key
 
     def test_memory_provider_keys_are_password_masked(self):
         from openagents_cli.config import OPTIONAL_ENV_VARS
+
         for key in self.MEMORY_PROVIDER_KEYS:
             assert OPTIONAL_ENV_VARS[key].get("password") is True, key
 
     def test_memory_provider_keys_advertise_their_tool(self):
         from openagents_cli.config import OPTIONAL_ENV_VARS
+
         for key, tool in self.MEMORY_PROVIDER_KEYS.items():
             assert tool in OPTIONAL_ENV_VARS[key].get("tools", []), key
 
@@ -767,6 +810,7 @@ class TestConfigMigrationSecretPrompts:
             if required_only
             else [],
         )
+
         def fake_masked_secret_prompt(prompt):
             saved["prompt"] = prompt
             return "secret"
@@ -801,7 +845,9 @@ class TestConfigVersionDetection:
             assert check_config_version() == (latest, latest)
 
     def test_check_config_version_does_not_migrate_invalid_yaml(self, tmp_path):
-        (tmp_path / "config.yaml").write_text("model: [unterminated\n", encoding="utf-8")
+        (tmp_path / "config.yaml").write_text(
+            "model: [unterminated\n", encoding="utf-8"
+        )
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
             latest = DEFAULT_CONFIG["_config_version"]
@@ -814,16 +860,20 @@ class TestAnthropicTokenMigration:
     def _write_config_version(self, tmp_path, version):
         config_path = tmp_path / "config.yaml"
         import yaml
+
         config_path.write_text(yaml.safe_dump({"_config_version": version}))
 
     def test_clears_token_on_upgrade_to_v9(self, tmp_path):
         """ANTHROPIC_TOKEN is cleared unconditionally when upgrading to v9."""
         self._write_config_version(tmp_path, 8)
         (tmp_path / ".env").write_text("ANTHROPIC_TOKEN=old-token\n")
-        with patch.dict(os.environ, {
-            "OPENAGENTS_HOME": str(tmp_path),
-            "ANTHROPIC_TOKEN": "old-token",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "OPENAGENTS_HOME": str(tmp_path),
+                "ANTHROPIC_TOKEN": "old-token",
+            },
+        ):
             migrate_config(interactive=False, quiet=True)
             assert load_env().get("ANTHROPIC_TOKEN") == ""
 
@@ -831,10 +881,13 @@ class TestAnthropicTokenMigration:
         """Already at v9 — ANTHROPIC_TOKEN is not touched."""
         self._write_config_version(tmp_path, 9)
         (tmp_path / ".env").write_text("ANTHROPIC_TOKEN=current-token\n")
-        with patch.dict(os.environ, {
-            "OPENAGENTS_HOME": str(tmp_path),
-            "ANTHROPIC_TOKEN": "current-token",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "OPENAGENTS_HOME": str(tmp_path),
+                "ANTHROPIC_TOKEN": "current-token",
+            },
+        ):
             migrate_config(interactive=False, quiet=True)
             assert load_env().get("ANTHROPIC_TOKEN") == "current-token"
 
@@ -845,27 +898,25 @@ class TestCustomProviderCompatibility:
     def test_v11_upgrade_moves_custom_providers_into_providers(self, tmp_path):
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": 11,
-                    "model": {
-                        "default": "openai/gpt-5.4",
-                        "provider": "openrouter",
-                    },
-                    "custom_providers": [
-                        {
-                            "name": "OpenAI Direct",
-                            "base_url": "https://api.openai.com/v1",
-                            "api_key": "test-key",
-                            "api_mode": "codex_responses",
-                            "model": "gpt-5-mini",
-                        }
-                    ],
-                    "fallback_providers": [
-                        {"provider": "openai-direct", "model": "gpt-5-mini"}
-                    ],
-                }
-            ),
+            yaml.safe_dump({
+                "_config_version": 11,
+                "model": {
+                    "default": "openai/gpt-5.4",
+                    "provider": "openrouter",
+                },
+                "custom_providers": [
+                    {
+                        "name": "OpenAI Direct",
+                        "base_url": "https://api.openai.com/v1",
+                        "api_key": "test-key",
+                        "api_mode": "codex_responses",
+                        "model": "gpt-5-mini",
+                    }
+                ],
+                "fallback_providers": [
+                    {"provider": "openai-direct", "model": "gpt-5-mini"}
+                ],
+            }),
             encoding="utf-8",
         )
 
@@ -874,6 +925,7 @@ class TestCustomProviderCompatibility:
             raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
         from openagents_cli.config import DEFAULT_CONFIG
+
         assert raw["_config_version"] == DEFAULT_CONFIG["_config_version"]
         assert raw["providers"]["openai-direct"] == {
             "api": "https://api.openai.com/v1",
@@ -892,32 +944,30 @@ class TestCustomProviderCompatibility:
             "moonshotai/Kimi-K2.6-ACED": {"context_length": 131072},
         }
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": 11,
-                    "custom_providers": [
-                        {
-                            "name": "Kimi Coding Plan",
-                            "base_url": "https://api.kimi.example.com/coding",
-                            "api_key_env": "KIMI_CODING_API_KEY",
-                            "api_mode": "anthropic_messages",
-                            "model": "kimi-k2.6",
-                            "models": model_map,
-                            "context_length": 262144,
-                            "rate_limit_delay": 0.25,
-                            "discover_models": False,
-                            "extra_body": {
-                                "chat_template_kwargs": {"enable_thinking": False}
-                            },
+            yaml.safe_dump({
+                "_config_version": 11,
+                "custom_providers": [
+                    {
+                        "name": "Kimi Coding Plan",
+                        "base_url": "https://api.kimi.example.com/coding",
+                        "api_key_env": "KIMI_CODING_API_KEY",
+                        "api_mode": "anthropic_messages",
+                        "model": "kimi-k2.6",
+                        "models": model_map,
+                        "context_length": 262144,
+                        "rate_limit_delay": 0.25,
+                        "discover_models": False,
+                        "extra_body": {
+                            "chat_template_kwargs": {"enable_thinking": False}
                         },
-                        {
-                            "name": "List Models",
-                            "base_url": "https://list.example.com/v1",
-                            "models": ["alpha", "beta"],
-                        },
-                    ],
-                }
-            ),
+                    },
+                    {
+                        "name": "List Models",
+                        "base_url": "https://list.example.com/v1",
+                        "models": ["alpha", "beta"],
+                    },
+                ],
+            }),
             encoding="utf-8",
         )
 
@@ -955,20 +1005,18 @@ class TestCustomProviderCompatibility:
         still finds entries from the providers dict."""
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": 17,
-                    "providers": {
-                        "openai-direct": {
-                            "api": "https://api.openai.com/v1",
-                            "api_key": "test-key",
-                            "default_model": "gpt-5-mini",
-                            "name": "OpenAI Direct",
-                            "transport": "codex_responses",
-                        }
-                    },
-                }
-            ),
+            yaml.safe_dump({
+                "_config_version": 17,
+                "providers": {
+                    "openai-direct": {
+                        "api": "https://api.openai.com/v1",
+                        "api_key": "test-key",
+                        "default_model": "gpt-5-mini",
+                        "name": "OpenAI Direct",
+                        "transport": "codex_responses",
+                    }
+                },
+            }),
             encoding="utf-8",
         )
 
@@ -981,23 +1029,23 @@ class TestCustomProviderCompatibility:
         assert compatible[0]["provider_key"] == "openai-direct"
         assert compatible[0]["api_mode"] == "codex_responses"
 
-    def test_compatible_custom_providers_prefers_base_url_then_url_then_api(self, tmp_path):
+    def test_compatible_custom_providers_prefers_base_url_then_url_then_api(
+        self, tmp_path
+    ):
         """URL field precedence is base_url > url > api (PR #9332)."""
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": 17,
-                    "providers": {
-                        "my-provider": {
-                            "name": "My Provider",
-                            "api": "https://api.example.com/v1",
-                            "url": "https://url.example.com/v1",
-                            "base_url": "https://base.example.com/v1",
-                        }
-                    },
-                }
-            ),
+            yaml.safe_dump({
+                "_config_version": 17,
+                "providers": {
+                    "my-provider": {
+                        "name": "My Provider",
+                        "api": "https://api.example.com/v1",
+                        "url": "https://url.example.com/v1",
+                        "base_url": "https://base.example.com/v1",
+                    }
+                },
+            }),
             encoding="utf-8",
         )
 
@@ -1016,25 +1064,23 @@ class TestCustomProviderCompatibility:
         """Same name+url in both schemas should not produce duplicates."""
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": 17,
-                    "custom_providers": [
-                        {
-                            "name": "OpenAI Direct",
-                            "base_url": "https://api.openai.com/v1",
-                            "api_key": "legacy-key",
-                        }
-                    ],
-                    "providers": {
-                        "openai-direct": {
-                            "api": "https://api.openai.com/v1",
-                            "api_key": "new-key",
-                            "name": "OpenAI Direct",
-                        }
-                    },
-                }
-            ),
+            yaml.safe_dump({
+                "_config_version": 17,
+                "custom_providers": [
+                    {
+                        "name": "OpenAI Direct",
+                        "base_url": "https://api.openai.com/v1",
+                        "api_key": "legacy-key",
+                    }
+                ],
+                "providers": {
+                    "openai-direct": {
+                        "api": "https://api.openai.com/v1",
+                        "api_key": "new-key",
+                        "name": "OpenAI Direct",
+                    }
+                },
+            }),
             encoding="utf-8",
         )
 
@@ -1049,16 +1095,26 @@ class TestCustomProviderCompatibility:
         """Entries with same name+URL but different models must not be collapsed."""
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": 17,
-                    "custom_providers": [
-                        {"name": "Ollama Cloud", "base_url": "https://ollama.com/v1", "model": "qwen3-coder"},
-                        {"name": "Ollama Cloud", "base_url": "https://ollama.com/v1", "model": "glm-5.1"},
-                        {"name": "Ollama Cloud", "base_url": "https://ollama.com/v1", "model": "kimi-k2.5"},
-                    ],
-                }
-            ),
+            yaml.safe_dump({
+                "_config_version": 17,
+                "custom_providers": [
+                    {
+                        "name": "Ollama Cloud",
+                        "base_url": "https://ollama.com/v1",
+                        "model": "qwen3-coder",
+                    },
+                    {
+                        "name": "Ollama Cloud",
+                        "base_url": "https://ollama.com/v1",
+                        "model": "glm-5.1",
+                    },
+                    {
+                        "name": "Ollama Cloud",
+                        "base_url": "https://ollama.com/v1",
+                        "model": "kimi-k2.5",
+                    },
+                ],
+            }),
             encoding="utf-8",
         )
 
@@ -1079,7 +1135,10 @@ class TestInterimAssistantMessageConfig:
     def test_migrate_to_v15_adds_interim_assistant_message_gate(self, tmp_path):
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump({"_config_version": 14, "display": {"tool_progress": "off"}}),
+            yaml.safe_dump({
+                "_config_version": 14,
+                "display": {"tool_progress": "off"},
+            }),
             encoding="utf-8",
         )
 
@@ -1088,6 +1147,7 @@ class TestInterimAssistantMessageConfig:
             raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
         from openagents_cli.config import DEFAULT_CONFIG
+
         assert raw["_config_version"] == DEFAULT_CONFIG["_config_version"]
         assert raw["display"]["tool_progress"] == "off"
         assert raw["display"]["interim_assistant_messages"] is True
@@ -1120,6 +1180,7 @@ class TestDiscordChannelPromptsConfig:
             raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
         from openagents_cli.config import DEFAULT_CONFIG
+
         assert raw["_config_version"] == DEFAULT_CONFIG["_config_version"]
         assert raw["discord"]["auto_thread"] is True
         # channel_prompts is a DEFAULT_CONFIG value that should NOT be expanded
@@ -1141,8 +1202,11 @@ class TestDiscordChannelPromptsConfig:
                 "_config_version": 3,
                 "model": {"default": "test-model", "provider": "openrouter"},
                 "custom_providers": [
-                    {"name": "local-llm", "base_url": "http://localhost:8080/v1",
-                     "models": {"test": {}}}
+                    {
+                        "name": "local-llm",
+                        "base_url": "http://localhost:8080/v1",
+                        "models": {"test": {}},
+                    }
                 ],
             }),
             encoding="utf-8",
@@ -1303,9 +1367,11 @@ class TestWriteApprovalMigration:
 
     def test_approve_maps_to_true(self, tmp_path):
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
-            self._write(tmp_path,
-                        "_config_version: 28\nmemory:\n  write_mode: approve\n"
-                        "skills:\n  write_mode: approve\n")
+            self._write(
+                tmp_path,
+                "_config_version: 28\nmemory:\n  write_mode: approve\n"
+                "skills:\n  write_mode: approve\n",
+            )
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load((tmp_path / "config.yaml").read_text())
             assert raw["memory"]["write_approval"] is True
@@ -1317,9 +1383,11 @@ class TestWriteApprovalMigration:
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
             # YAML 1.1 parses bare on/off as bools — write_mode could be either
             # the string or the bool; both legacy "not gating" values → False.
-            self._write(tmp_path,
-                        "_config_version: 28\nmemory:\n  write_mode: 'on'\n"
-                        "skills:\n  write_mode: 'off'\n")
+            self._write(
+                tmp_path,
+                "_config_version: 28\nmemory:\n  write_mode: 'on'\n"
+                "skills:\n  write_mode: 'off'\n",
+            )
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load((tmp_path / "config.yaml").read_text())
             assert raw["memory"]["write_approval"] is False
@@ -1327,7 +1395,9 @@ class TestWriteApprovalMigration:
 
     def test_unset_key_defaults_to_false(self, tmp_path):
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
-            self._write(tmp_path, "_config_version: 28\nmemory:\n  memory_enabled: true\n")
+            self._write(
+                tmp_path, "_config_version: 28\nmemory:\n  memory_enabled: true\n"
+            )
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load((tmp_path / "config.yaml").read_text())
             # No write_mode was persisted, so the rename is a no-op; the missing-
@@ -1345,7 +1415,9 @@ class TestVerifyOnStopMigration:
 
     def test_auto_sentinel_flipped_to_false(self, tmp_path):
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
-            self._write(tmp_path, "_config_version: 30\nagent:\n  verify_on_stop: auto\n")
+            self._write(
+                tmp_path, "_config_version: 30\nagent:\n  verify_on_stop: auto\n"
+            )
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load((tmp_path / "config.yaml").read_text())
             assert raw["agent"]["verify_on_stop"] is False
@@ -1360,21 +1432,27 @@ class TestVerifyOnStopMigration:
 
     def test_no_agent_section_seeded_false(self, tmp_path):
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
-            self._write(tmp_path, "_config_version: 30\nmodel:\n  provider: openrouter\n")
+            self._write(
+                tmp_path, "_config_version: 30\nmodel:\n  provider: openrouter\n"
+            )
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load((tmp_path / "config.yaml").read_text())
             assert raw["agent"]["verify_on_stop"] is False
 
     def test_explicit_true_preserved(self, tmp_path):
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
-            self._write(tmp_path, "_config_version: 30\nagent:\n  verify_on_stop: true\n")
+            self._write(
+                tmp_path, "_config_version: 30\nagent:\n  verify_on_stop: true\n"
+            )
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load((tmp_path / "config.yaml").read_text())
             assert raw["agent"]["verify_on_stop"] is True
 
     def test_explicit_false_preserved(self, tmp_path):
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
-            self._write(tmp_path, "_config_version: 30\nagent:\n  verify_on_stop: false\n")
+            self._write(
+                tmp_path, "_config_version: 30\nagent:\n  verify_on_stop: false\n"
+            )
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load((tmp_path / "config.yaml").read_text())
             assert raw["agent"]["verify_on_stop"] is False
@@ -1392,18 +1470,17 @@ class TestVerifyOnStopMigration:
             raw = yaml.safe_load((tmp_path / "config.yaml").read_text())
             assert raw["agent"]["verify_on_stop"] is True
 
+
 class TestConfigNormalizationDoesNotOverwriteUserValues:
     """Regression tests for #27354."""
 
     def test_save_config_does_not_inject_max_turns_when_unset(self, tmp_path):
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": DEFAULT_CONFIG["_config_version"],
-                    "memory": {"user_char_limit": 2200},
-                }
-            ),
+            yaml.safe_dump({
+                "_config_version": DEFAULT_CONFIG["_config_version"],
+                "memory": {"user_char_limit": 2200},
+            }),
             encoding="utf-8",
         )
 
@@ -1417,13 +1494,11 @@ class TestConfigNormalizationDoesNotOverwriteUserValues:
     def test_save_config_preserves_explicit_default_values(self, tmp_path):
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": DEFAULT_CONFIG["_config_version"],
-                    "approvals": {"mode": "manual"},
-                    "memory": {"user_char_limit": 2200},
-                }
-            ),
+            yaml.safe_dump({
+                "_config_version": DEFAULT_CONFIG["_config_version"],
+                "approvals": {"mode": "manual"},
+                "memory": {"user_char_limit": 2200},
+            }),
             encoding="utf-8",
         )
 
@@ -1434,7 +1509,9 @@ class TestConfigNormalizationDoesNotOverwriteUserValues:
         assert raw["approvals"]["mode"] == "manual"
         assert raw["memory"]["user_char_limit"] == 2200
 
-    def test_save_config_preserves_config_version_when_raw_version_missing(self, tmp_path):
+    def test_save_config_preserves_config_version_when_raw_version_missing(
+        self, tmp_path
+    ):
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
             yaml.safe_dump({"memory": {"user_char_limit": 2200}}),
@@ -1448,16 +1525,16 @@ class TestConfigNormalizationDoesNotOverwriteUserValues:
         assert raw["_config_version"] == DEFAULT_CONFIG["_config_version"]
         assert raw["memory"]["user_char_limit"] == 2200
 
-    def test_save_config_does_not_materialize_defaults_for_empty_sections(self, tmp_path):
+    def test_save_config_does_not_materialize_defaults_for_empty_sections(
+        self, tmp_path
+    ):
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump(
-                {
-                    "_config_version": DEFAULT_CONFIG["_config_version"],
-                    "memory": {},
-                    "display": {},
-                }
-            ),
+            yaml.safe_dump({
+                "_config_version": DEFAULT_CONFIG["_config_version"],
+                "memory": {},
+                "display": {},
+            }),
             encoding="utf-8",
         )
 
@@ -1476,7 +1553,9 @@ class TestConfigNormalizationDoesNotOverwriteUserValues:
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(tmp_path)}):
             config = load_config()
-            config.setdefault("agent", {})["max_turns"] = DEFAULT_CONFIG["agent"]["max_turns"]
+            config.setdefault("agent", {})["max_turns"] = DEFAULT_CONFIG["agent"][
+                "max_turns"
+            ]
             save_config(config, preserve_keys={("agent", "max_turns")})
             raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
@@ -1484,9 +1563,9 @@ class TestConfigNormalizationDoesNotOverwriteUserValues:
         assert raw["agent"]["max_turns"] == DEFAULT_CONFIG["agent"]["max_turns"]
 
     def test_normalize_max_turns_does_not_inject_default(self):
-        result = _normalize_max_turns_config(
-            {"_config_version": DEFAULT_CONFIG["_config_version"]}
-        )
+        result = _normalize_max_turns_config({
+            "_config_version": DEFAULT_CONFIG["_config_version"]
+        })
         assert "max_turns" not in result.get("agent", {})
 
     def test_explicit_config_paths_from_raw_before_normalization(self, tmp_path):

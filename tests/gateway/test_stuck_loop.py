@@ -22,7 +22,6 @@ def runner_with_home(tmp_path, monkeypatch):
 
 
 class TestStuckLoopDetection:
-
     def test_increment_creates_file(self, runner_with_home):
         runner, home = runner_with_home
         runner._increment_restart_failure_counts({"session:a", "session:b"})

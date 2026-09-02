@@ -190,6 +190,7 @@ def strip_markdown_preserving_urls(text: str) -> str:
     # Code blocks first — keep the inner content, drop the fences.
     def _unfence(m: re.Match) -> str:
         return m.group(1).rstrip("\n")
+
     text = _MD_CODE_BLOCK_RE.sub(_unfence, text)
 
     # Inline code: keep content, drop backticks.
@@ -255,6 +256,7 @@ def split_for_line(text: str, max_chars: int = LINE_SAFE_BUBBLE_CHARS) -> List[s
 # Webhook signature verification
 # ---------------------------------------------------------------------------
 
+
 def verify_line_signature(body: bytes, signature: str, channel_secret: str) -> bool:
     """Verify a LINE webhook's ``X-Line-Signature`` header.
 
@@ -280,11 +282,12 @@ def verify_line_signature(body: bytes, signature: str, channel_secret: str) -> b
 # Cache state machine — slow-LLM postback flow
 # ---------------------------------------------------------------------------
 
+
 class State(enum.Enum):
     PENDING = "pending"  # button sent, LLM still running
-    READY = "ready"      # LLM done, response cached, waiting for postback tap
+    READY = "ready"  # LLM done, response cached, waiting for postback tap
     DELIVERED = "delivered"
-    ERROR = "error"      # LLM raised / interrupted; cached error text waiting
+    ERROR = "error"  # LLM raised / interrupted; cached error text waiting
 
 
 @dataclass
@@ -370,6 +373,7 @@ class RequestCache:
 # Inbound dedup
 # ---------------------------------------------------------------------------
 
+
 class _MessageDeduplicator:
     """Bounded LRU of LINE webhook event IDs to ignore at-least-once retries."""
 
@@ -393,6 +397,7 @@ class _MessageDeduplicator:
 # ---------------------------------------------------------------------------
 # Source / chat-id resolution
 # ---------------------------------------------------------------------------
+
 
 def _resolve_chat(source: Dict[str, Any]) -> Tuple[str, str]:
     """Return ``(chat_id, chat_type)`` from a LINE event ``source`` block.
@@ -442,6 +447,7 @@ def _allowed_for_source(
 # LINE Reply / Push HTTP client
 # ---------------------------------------------------------------------------
 
+
 class _LineClient:
     """Thin async wrapper around the LINE Messaging API.
 
@@ -460,6 +466,7 @@ class _LineClient:
 
     async def reply(self, reply_token: str, messages: List[Dict[str, Any]]) -> None:
         import aiohttp
+
         timeout = aiohttp.ClientTimeout(total=self._timeout)
         async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
             async with session.post(
@@ -473,6 +480,7 @@ class _LineClient:
 
     async def push(self, chat_id: str, messages: List[Dict[str, Any]]) -> None:
         import aiohttp
+
         timeout = aiohttp.ClientTimeout(total=self._timeout)
         async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
             async with session.post(
@@ -489,11 +497,14 @@ class _LineClient:
         if not chat_id or not chat_id.startswith("U"):
             return
         import aiohttp
+
         # LINE caps loadingSeconds in 5-step increments, max 60.
         clamped = max(5, min(60, (seconds // 5) * 5 or 5))
         try:
             timeout = aiohttp.ClientTimeout(total=5.0)
-            async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
+            async with aiohttp.ClientSession(
+                timeout=timeout, trust_env=True
+            ) as session:
                 await session.post(
                     LINE_LOADING_URL,
                     headers=self._headers,
@@ -505,10 +516,13 @@ class _LineClient:
     async def fetch_content(self, message_id: str) -> bytes:
         """Download an inbound media message's binary content."""
         import aiohttp
+
         url = LINE_CONTENT_URL_FMT.format(message_id=message_id)
         timeout = aiohttp.ClientTimeout(total=30.0)
         async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
-            async with session.get(url, headers={"Authorization": f"Bearer {self._token}"}) as resp:
+            async with session.get(
+                url, headers={"Authorization": f"Bearer {self._token}"}
+            ) as resp:
                 if resp.status >= 400:
                     raise RuntimeError(f"LINE content {resp.status}")
                 return await resp.read()
@@ -516,10 +530,15 @@ class _LineClient:
     async def get_bot_user_id(self) -> Optional[str]:
         """Fetch this channel's own userId so we can filter self-messages."""
         import aiohttp
+
         timeout = aiohttp.ClientTimeout(total=10.0)
         try:
-            async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
-                async with session.get(LINE_BOT_INFO_URL, headers=self._headers) as resp:
+            async with aiohttp.ClientSession(
+                timeout=timeout, trust_env=True
+            ) as session:
+                async with session.get(
+                    LINE_BOT_INFO_URL, headers=self._headers
+                ) as resp:
                     if resp.status >= 400:
                         return None
                     data = await resp.json()
@@ -532,6 +551,7 @@ class _LineClient:
 # Message builders
 # ---------------------------------------------------------------------------
 
+
 def _text_message(text: str) -> Dict[str, Any]:
     """Build a LINE text message object, capped to per-bubble max."""
     if len(text) > LINE_PER_BUBBLE_CHARS:
@@ -539,7 +559,9 @@ def _text_message(text: str) -> Dict[str, Any]:
     return {"type": "text", "text": text}
 
 
-def _image_message(original_url: str, preview_url: Optional[str] = None) -> Dict[str, Any]:
+def _image_message(
+    original_url: str, preview_url: Optional[str] = None
+) -> Dict[str, Any]:
     return {
         "type": "image",
         "originalContentUrl": original_url,
@@ -586,9 +608,10 @@ def build_postback_button_message(
                 {
                     "type": "postback",
                     "label": button_label[:20] or "Get answer",
-                    "data": json.dumps(
-                        {"action": "show_response", "request_id": request_id}
-                    ),
+                    "data": json.dumps({
+                        "action": "show_response",
+                        "request_id": request_id,
+                    }),
                     "displayText": button_label[:300] or "Get answer",
                 }
             ],
@@ -618,6 +641,7 @@ def _is_system_bypass(content: str) -> bool:
 # Configuration helpers
 # ---------------------------------------------------------------------------
 
+
 def _csv_set(value: str) -> Set[str]:
     if not value:
         return set()
@@ -635,6 +659,7 @@ def _truthy_env(name: str, default: bool = False) -> bool:
 # Adapter
 # ---------------------------------------------------------------------------
 
+
 class LineAdapter(BasePlatformAdapter):
     """LINE Messaging API gateway adapter."""
 
@@ -648,13 +673,11 @@ class LineAdapter(BasePlatformAdapter):
         extra = getattr(config, "extra", {}) or {}
 
         # Credentials
-        self.channel_access_token = (
-            os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-            or extra.get("channel_access_token", "")
+        self.channel_access_token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN") or extra.get(
+            "channel_access_token", ""
         )
-        self.channel_secret = (
-            os.getenv("LINE_CHANNEL_SECRET")
-            or extra.get("channel_secret", "")
+        self.channel_secret = os.getenv("LINE_CHANNEL_SECRET") or extra.get(
+            "channel_secret", ""
         )
 
         # Webhook server
@@ -670,24 +693,22 @@ class LineAdapter(BasePlatformAdapter):
         # Public base URL — required for media sending when bind isn't
         # publicly reachable.
         self.public_base_url = (
-            os.getenv("LINE_PUBLIC_URL")
-            or extra.get("public_url", "")
-            or ""
+            os.getenv("LINE_PUBLIC_URL") or extra.get("public_url", "") or ""
         ).rstrip("/")
 
         # Three-allowlist gating
         self.allow_all = _truthy_env(
             "LINE_ALLOW_ALL_USERS", bool(extra.get("allow_all_users", False))
         )
-        self.allowed_users = _csv_set(
-            os.getenv("LINE_ALLOWED_USERS", "")
-        ) | set(extra.get("allowed_users", []))
-        self.allowed_groups = _csv_set(
-            os.getenv("LINE_ALLOWED_GROUPS", "")
-        ) | set(extra.get("allowed_groups", []))
-        self.allowed_rooms = _csv_set(
-            os.getenv("LINE_ALLOWED_ROOMS", "")
-        ) | set(extra.get("allowed_rooms", []))
+        self.allowed_users = _csv_set(os.getenv("LINE_ALLOWED_USERS", "")) | set(
+            extra.get("allowed_users", [])
+        )
+        self.allowed_groups = _csv_set(os.getenv("LINE_ALLOWED_GROUPS", "")) | set(
+            extra.get("allowed_groups", [])
+        )
+        self.allowed_rooms = _csv_set(os.getenv("LINE_ALLOWED_ROOMS", "")) | set(
+            extra.get("allowed_rooms", [])
+        )
 
         # Slow-LLM postback button threshold
         try:
@@ -699,21 +720,17 @@ class LineAdapter(BasePlatformAdapter):
             self.slow_response_threshold = DEFAULT_SLOW_RESPONSE_THRESHOLD
 
         # User-overridable copy
-        self.pending_text = (
-            os.getenv("LINE_PENDING_TEXT")
-            or extra.get("pending_text", DEFAULT_PENDING_REPLY_TEXT)
+        self.pending_text = os.getenv("LINE_PENDING_TEXT") or extra.get(
+            "pending_text", DEFAULT_PENDING_REPLY_TEXT
         )
-        self.button_label = (
-            os.getenv("LINE_BUTTON_LABEL")
-            or extra.get("button_label", DEFAULT_BUTTON_LABEL)
+        self.button_label = os.getenv("LINE_BUTTON_LABEL") or extra.get(
+            "button_label", DEFAULT_BUTTON_LABEL
         )
-        self.delivered_text = (
-            os.getenv("LINE_DELIVERED_TEXT")
-            or extra.get("delivered_text", DEFAULT_DELIVERED_TEXT)
+        self.delivered_text = os.getenv("LINE_DELIVERED_TEXT") or extra.get(
+            "delivered_text", DEFAULT_DELIVERED_TEXT
         )
-        self.interrupted_text = (
-            os.getenv("LINE_INTERRUPTED_TEXT")
-            or extra.get("interrupted_text", DEFAULT_INTERRUPTED_TEXT)
+        self.interrupted_text = os.getenv("LINE_INTERRUPTED_TEXT") or extra.get(
+            "interrupted_text", DEFAULT_INTERRUPTED_TEXT
         )
 
         # Runtime state
@@ -721,7 +738,9 @@ class LineAdapter(BasePlatformAdapter):
         self._app = None  # aiohttp.web.Application
         self._runner = None  # aiohttp.web.AppRunner
         self._site = None  # aiohttp.web.TCPSite
-        self._reply_tokens: Dict[str, Tuple[str, float]] = {}  # chat_id → (token, expiry)
+        self._reply_tokens: Dict[
+            str, Tuple[str, float]
+        ] = {}  # chat_id → (token, expiry)
         self._cache = RequestCache()
         self._dedup = _MessageDeduplicator()
         self._bot_user_id: Optional[str] = None
@@ -752,8 +771,11 @@ class LineAdapter(BasePlatformAdapter):
         # Prevent two profiles from running on the same channel access token.
         try:
             from gateway.status import acquire_scoped_lock
+
             # Use a hash of the token so we don't write the secret to disk.
-            tok_hash = hashlib.sha256(self.channel_access_token.encode()).hexdigest()[:16]
+            tok_hash = hashlib.sha256(self.channel_access_token.encode()).hexdigest()[
+                :16
+            ]
             if not acquire_scoped_lock("line", tok_hash):
                 self._set_fatal_error(
                     "lock_conflict",
@@ -850,6 +872,7 @@ class LineAdapter(BasePlatformAdapter):
         if self._lock_key:
             try:
                 from gateway.status import release_scoped_lock
+
                 release_scoped_lock("line", self._lock_key)
             except Exception:
                 pass
@@ -861,6 +884,7 @@ class LineAdapter(BasePlatformAdapter):
 
     async def _handle_health(self, request) -> Any:
         from aiohttp import web
+
         return web.json_response({"status": "ok", "platform": "line"})
 
     async def _handle_webhook(self, request) -> Any:
@@ -1025,7 +1049,9 @@ class LineAdapter(BasePlatformAdapter):
                 self._cache.mark_delivered(request_id)
                 self._pending_buttons.pop(chat_id, None)
             except Exception as exc:
-                logger.warning("LINE: postback reply failed (%s); falling back to push", exc)
+                logger.warning(
+                    "LINE: postback reply failed (%s); falling back to push", exc
+                )
                 try:
                     await self._client.push(chat_id, messages)
                     self._cache.mark_delivered(request_id)
@@ -1042,13 +1068,17 @@ class LineAdapter(BasePlatformAdapter):
                 logger.warning("LINE: postback ERROR reply failed: %s", exc)
         elif entry.state is State.DELIVERED:
             try:
-                await self._client.reply(reply_token, [_text_message(self.delivered_text)])
+                await self._client.reply(
+                    reply_token, [_text_message(self.delivered_text)]
+                )
             except Exception:
                 pass
         elif entry.state is State.PENDING:
             # Still working — re-issue the wait notice.
             try:
-                await self._client.reply(reply_token, [_text_message(self.pending_text)])
+                await self._client.reply(
+                    reply_token, [_text_message(self.pending_text)]
+                )
             except Exception:
                 pass
 
@@ -1058,7 +1088,9 @@ class LineAdapter(BasePlatformAdapter):
         try:
             data = await self._client.fetch_content(message_id)
         except Exception as exc:
-            logger.warning("LINE: failed to fetch %s content for %s: %s", msg_type, message_id, exc)
+            logger.warning(
+                "LINE: failed to fetch %s content for %s: %s", msg_type, message_id, exc
+            )
             return None
         ext = {
             "image": ".jpg",
@@ -1122,7 +1154,9 @@ class LineAdapter(BasePlatformAdapter):
                 await self._client.reply(token, messages)
                 return SendResult(success=True, message_id=token)
             except Exception as exc:
-                logger.info("LINE: reply token rejected (%s); falling back to push", exc)
+                logger.info(
+                    "LINE: reply token rejected (%s); falling back to push", exc
+                )
                 # fall through to push
 
         try:
@@ -1177,11 +1211,7 @@ class LineAdapter(BasePlatformAdapter):
         responsible for the typing-indicator heartbeat, while *this*
         wrapper layers in the slow-LLM postback bubble at threshold.
         """
-        if (
-            self.slow_response_threshold <= 0
-            or not self._client
-            or not chat_id
-        ):
+        if self.slow_response_threshold <= 0 or not self._client or not chat_id:
             await super()._keep_typing(chat_id, *args, **kwargs)
             return
 
@@ -1207,7 +1237,11 @@ class LineAdapter(BasePlatformAdapter):
             )
             try:
                 await self._client.reply(token, [msg])
-                logger.info("LINE: sent slow-LLM postback button for chat %s (rid=%s)", chat_id, rid)
+                logger.info(
+                    "LINE: sent slow-LLM postback button for chat %s (rid=%s)",
+                    chat_id,
+                    rid,
+                )
             except Exception as exc:
                 logger.warning("LINE: postback button send failed: %s", exc)
                 self._pending_buttons.pop(chat_id, None)
@@ -1297,6 +1331,7 @@ class LineAdapter(BasePlatformAdapter):
 
         try:
             from openagents_constants import get_openagents_home
+
             hermes_home = Path(get_openagents_home()).resolve()
         except Exception:
             hermes_home = Path.home().joinpath(".hermes").resolve()
@@ -1308,7 +1343,9 @@ class LineAdapter(BasePlatformAdapter):
         }
         resolved = path.resolve()
         if not any(_is_relative_to(resolved, r) for r in allowed_roots):
-            logger.warning("LINE: refusing to serve outside allowed roots: %s", resolved)
+            logger.warning(
+                "LINE: refusing to serve outside allowed roots: %s", resolved
+            )
             return web.Response(status=403, text="forbidden")
 
         content_type, _ = mimetypes.guess_type(str(path))
@@ -1326,7 +1363,9 @@ class LineAdapter(BasePlatformAdapter):
     ) -> SendResult:
         path = Path(image_path)
         if not path.exists() or not path.is_file():
-            return SendResult(success=False, error=f"image file not found: {image_path}")
+            return SendResult(
+                success=False, error=f"image file not found: {image_path}"
+            )
         if path.stat().st_size > LINE_IMAGE_MAX_BYTES:
             return SendResult(success=False, error="image exceeds 10 MB LINE limit")
         if not self._client:
@@ -1341,7 +1380,9 @@ class LineAdapter(BasePlatformAdapter):
         token = self._register_media(str(path.resolve()))
         url = self._media_url(token, path.name)
         if not url.lower().startswith("https://"):
-            return SendResult(success=False, error=f"LINE image URL must be HTTPS: {url}")
+            return SendResult(
+                success=False, error=f"LINE image URL must be HTTPS: {url}"
+            )
         msgs: List[Dict[str, Any]] = [_image_message(url)]
         if caption:
             msgs.append(_text_message(caption))
@@ -1356,7 +1397,9 @@ class LineAdapter(BasePlatformAdapter):
     ) -> SendResult:
         path = Path(audio_path)
         if not path.exists() or not path.is_file():
-            return SendResult(success=False, error=f"audio file not found: {audio_path}")
+            return SendResult(
+                success=False, error=f"audio file not found: {audio_path}"
+            )
         if path.stat().st_size > LINE_AV_MAX_BYTES:
             return SendResult(success=False, error="audio exceeds 200 MB LINE limit")
         if not self._client:
@@ -1380,7 +1423,9 @@ class LineAdapter(BasePlatformAdapter):
     ) -> SendResult:
         path = Path(video_path)
         if not path.exists() or not path.is_file():
-            return SendResult(success=False, error=f"video file not found: {video_path}")
+            return SendResult(
+                success=False, error=f"video file not found: {video_path}"
+            )
         if path.stat().st_size > LINE_AV_MAX_BYTES:
             return SendResult(success=False, error="video exceeds 200 MB LINE limit")
         if not self._client:
@@ -1414,7 +1459,9 @@ class LineAdapter(BasePlatformAdapter):
         video_token = self._register_media(str(path.resolve()))
         video_url = self._media_url(video_token, path.name)
         preview_url = self._media_url(preview_token, preview_filename)
-        return await self._send_messages(chat_id, [_video_message(video_url, preview_url)])
+        return await self._send_messages(
+            chat_id, [_video_message(video_url, preview_url)]
+        )
 
     async def _send_messages(
         self,
@@ -1436,7 +1483,9 @@ class LineAdapter(BasePlatformAdapter):
             try:
                 await self._client.reply(token, first_batch)
             except Exception as exc:
-                logger.info("LINE: reply token rejected (%s); falling back to push", exc)
+                logger.info(
+                    "LINE: reply token rejected (%s); falling back to push", exc
+                )
                 try:
                     await self._client.push(chat_id, first_batch)
                 except Exception as exc2:
@@ -1477,6 +1526,7 @@ def _is_relative_to(child: Path, parent: Path) -> bool:
 # Plugin entry-point hooks
 # ---------------------------------------------------------------------------
 
+
 def check_requirements() -> bool:
     """Plugin gate: require credentials AND aiohttp at runtime."""
     if not os.getenv("LINE_CHANNEL_ACCESS_TOKEN"):
@@ -1495,9 +1545,7 @@ def validate_config(config) -> bool:
     has_token = bool(
         os.getenv("LINE_CHANNEL_ACCESS_TOKEN") or extra.get("channel_access_token")
     )
-    has_secret = bool(
-        os.getenv("LINE_CHANNEL_SECRET") or extra.get("channel_secret")
-    )
+    has_secret = bool(os.getenv("LINE_CHANNEL_SECRET") or extra.get("channel_secret"))
     return has_token and has_secret
 
 
@@ -1513,7 +1561,9 @@ def _env_enablement() -> Optional[Dict[str, Any]]:
     in ``.env`` without a ``platforms.line`` block in ``config.yaml``.
     Mirrors the IRC plugin's pattern.
     """
-    if not (os.getenv("LINE_CHANNEL_ACCESS_TOKEN") and os.getenv("LINE_CHANNEL_SECRET")):
+    if not (
+        os.getenv("LINE_CHANNEL_ACCESS_TOKEN") and os.getenv("LINE_CHANNEL_SECRET")
+    ):
         return None
     seeded: Dict[str, Any] = {}
     if os.getenv("LINE_PORT"):
@@ -1552,9 +1602,8 @@ async def _standalone_send(
     server, so we send a text reference instead.
     """
     extra = getattr(pconfig, "extra", {}) or {}
-    token = (
-        os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-        or extra.get("channel_access_token", "")
+    token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN") or extra.get(
+        "channel_access_token", ""
     )
     if not token or not chat_id:
         return {"error": "LINE standalone send: missing token or chat_id"}
@@ -1564,7 +1613,11 @@ async def _standalone_send(
     messages = [_text_message(c) for c in chunks][:LINE_MAX_MESSAGES_PER_CALL]
     if media_files:
         # Tack on a hint so the recipient knows media was generated but not delivered.
-        messages.append(_text_message(f"[{len(media_files)} attachment(s) generated; not deliverable from cron]"))
+        messages.append(
+            _text_message(
+                f"[{len(media_files)} attachment(s) generated; not deliverable from cron]"
+            )
+        )
         messages = messages[:LINE_MAX_MESSAGES_PER_CALL]
 
     client = _LineClient(token)
@@ -1591,7 +1644,9 @@ def interactive_setup() -> None:
     try:
         from openagents_cli.config import get_env_var, set_env_var
     except ImportError:
-        print("openagents_cli.config not available; set LINE_* vars manually in ~/.openagents/.env")
+        print(
+            "openagents_cli.config not available; set LINE_* vars manually in ~/.openagents/.env"
+        )
         return
 
     def _prompt(var: str, prompt: str, *, secret: bool = False) -> None:
@@ -1600,6 +1655,7 @@ def interactive_setup() -> None:
         try:
             if secret:
                 from openagents_cli.secret_prompt import masked_secret_prompt
+
                 value = masked_secret_prompt(f"{prompt}{suffix}: ")
             else:
                 value = input(f"{prompt}{suffix}: ").strip()
@@ -1611,10 +1667,15 @@ def interactive_setup() -> None:
 
     _prompt("LINE_CHANNEL_ACCESS_TOKEN", "Channel access token", secret=True)
     _prompt("LINE_CHANNEL_SECRET", "Channel secret", secret=True)
-    _prompt("LINE_PUBLIC_URL", "Public HTTPS base URL (optional, e.g. https://my-tunnel.example.com)")
+    _prompt(
+        "LINE_PUBLIC_URL",
+        "Public HTTPS base URL (optional, e.g. https://my-tunnel.example.com)",
+    )
     _prompt("LINE_ALLOWED_USERS", "Allowed user IDs (comma-separated; blank=skip)")
-    print("Done. Set the webhook URL in the LINE console to "
-          "<your-public-url>/line/webhook and enable 'Use webhook'.")
+    print(
+        "Done. Set the webhook URL in the LINE console to "
+        "<your-public-url>/line/webhook and enable 'Use webhook'."
+    )
 
 
 def register(ctx) -> None:

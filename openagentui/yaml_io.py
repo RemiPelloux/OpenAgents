@@ -13,7 +13,11 @@ def workflow_to_yaml_dict(workflow: Workflow) -> Dict[str, Any]:
     """Serialize a workflow to a YAML-friendly dict (no React Flow positions required)."""
     nodes: List[Dict[str, Any]] = []
     for node in workflow.nodes:
-        entry: Dict[str, Any] = {"id": node.id, "type": node.type, "data": dict(node.data or {})}
+        entry: Dict[str, Any] = {
+            "id": node.id,
+            "type": node.type,
+            "data": dict(node.data or {}),
+        }
         if node.position:
             entry["position"] = node.position
         nodes.append(entry)
@@ -42,7 +46,9 @@ def workflow_to_yaml_dict(workflow: Workflow) -> Dict[str, Any]:
 
 
 def workflow_to_yaml_text(workflow: Workflow) -> str:
-    return yaml.safe_dump(workflow_to_yaml_dict(workflow), sort_keys=False, allow_unicode=True)
+    return yaml.safe_dump(
+        workflow_to_yaml_dict(workflow), sort_keys=False, allow_unicode=True
+    )
 
 
 def parse_workflow_yaml(text: str) -> Dict[str, Any]:

@@ -39,18 +39,26 @@ from plugins.memory.hindsight import (
 def _clean_env(monkeypatch):
     """Ensure no stale env vars leak between tests."""
     for key in (
-        "HINDSIGHT_API_KEY", "HINDSIGHT_API_URL", "HINDSIGHT_BANK_ID",
-        "HINDSIGHT_BUDGET", "HINDSIGHT_MODE", "HINDSIGHT_TIMEOUT",
-        "HINDSIGHT_IDLE_TIMEOUT", "HINDSIGHT_LLM_API_KEY",
-        "HINDSIGHT_RETAIN_TAGS", "HINDSIGHT_RETAIN_OBSERVATION_SCOPES",
+        "HINDSIGHT_API_KEY",
+        "HINDSIGHT_API_URL",
+        "HINDSIGHT_BANK_ID",
+        "HINDSIGHT_BUDGET",
+        "HINDSIGHT_MODE",
+        "HINDSIGHT_TIMEOUT",
+        "HINDSIGHT_IDLE_TIMEOUT",
+        "HINDSIGHT_LLM_API_KEY",
+        "HINDSIGHT_RETAIN_TAGS",
+        "HINDSIGHT_RETAIN_OBSERVATION_SCOPES",
         "HINDSIGHT_RETAIN_SOURCE",
-        "HINDSIGHT_RETAIN_USER_PREFIX", "HINDSIGHT_RETAIN_ASSISTANT_PREFIX",
+        "HINDSIGHT_RETAIN_USER_PREFIX",
+        "HINDSIGHT_RETAIN_ASSISTANT_PREFIX",
     ):
         monkeypatch.delenv(key, raising=False)
 
 
 def _make_mock_client():
     """Create a mock Hindsight client with async methods."""
+
     async def _aretain(
         bank_id,
         content,
@@ -75,9 +83,7 @@ def _make_mock_client():
             ]
         )
     )
-    client.areflect = AsyncMock(
-        return_value=SimpleNamespace(text="Synthesized answer")
-    )
+    client.areflect = AsyncMock(return_value=SimpleNamespace(text="Synthesized answer"))
     client.aretain_batch = AsyncMock()
     client.aclose = AsyncMock()
     return client
@@ -102,7 +108,9 @@ def _provider_for_mode(tmp_path, monkeypatch, mode: str):
     )
 
     provider = HindsightMemoryProvider()
-    provider.initialize(session_id="test-session", hermes_home=str(tmp_path), platform="cli")
+    provider.initialize(
+        session_id="test-session", hermes_home=str(tmp_path), platform="cli"
+    )
     return provider
 
 
@@ -179,6 +187,7 @@ def provider(tmp_path, monkeypatch):
 @pytest.fixture()
 def provider_with_config(tmp_path, monkeypatch):
     """Create a provider factory that accepts custom config overrides."""
+
     def _make(**overrides):
         config = {
             "mode": "cloud",
@@ -198,14 +207,19 @@ def provider_with_config(tmp_path, monkeypatch):
         )
 
         p = HindsightMemoryProvider()
-        p.initialize(session_id="test-session", hermes_home=str(tmp_path), platform="cli")
+        p.initialize(
+            session_id="test-session", hermes_home=str(tmp_path), platform="cli"
+        )
         p._client = _make_mock_client()
         return p
+
     return _make
 
 
 def test_normalize_retain_tags_accepts_csv_and_dedupes():
-    assert _normalize_retain_tags("agent:fakeassistantname, source_system:openagents, agent:fakeassistantname") == [
+    assert _normalize_retain_tags(
+        "agent:fakeassistantname, source_system:openagents, agent:fakeassistantname"
+    ) == [
         "agent:fakeassistantname",
         "source_system:openagents",
     ]
@@ -213,7 +227,10 @@ def test_normalize_retain_tags_accepts_csv_and_dedupes():
 
 def test_normalize_retain_tags_accepts_json_array_string():
     value = json.dumps(["agent:fakeassistantname", "source_system:openagents"])
-    assert _normalize_retain_tags(value) == ["agent:fakeassistantname", "source_system:openagents"]
+    assert _normalize_retain_tags(value) == [
+        "agent:fakeassistantname",
+        "source_system:openagents",
+    ]
 
 
 def test_normalize_observation_scopes_empty_is_none():
@@ -292,10 +309,16 @@ class TestSchemas:
 
 
 class TestConfig:
-    def test_cloud_client_lazy_installs_dependency_before_import(self, tmp_path, monkeypatch):
-        _assert_cloud_client_lazy_installed_before_import(tmp_path, monkeypatch, "cloud")
+    def test_cloud_client_lazy_installs_dependency_before_import(
+        self, tmp_path, monkeypatch
+    ):
+        _assert_cloud_client_lazy_installed_before_import(
+            tmp_path, monkeypatch, "cloud"
+        )
 
-    def test_local_external_client_lazy_installs_dependency_before_import(self, tmp_path, monkeypatch):
+    def test_local_external_client_lazy_installs_dependency_before_import(
+        self, tmp_path, monkeypatch
+    ):
         _assert_cloud_client_lazy_installed_before_import(
             tmp_path, monkeypatch, "local_external"
         )
@@ -315,7 +338,9 @@ class TestConfig:
         assert provider._recall_types == ["observation"]
         assert provider._bank_mission == ""
         assert provider._bank_retain_mission is None
-        assert provider._retain_context == "conversation between OpenAgents and the User"
+        assert (
+            provider._retain_context == "conversation between OpenAgents and the User"
+        )
 
     def test_recall_types_default_is_observation_only(self, provider):
         """Auto-recall must filter to observation by default."""
@@ -340,9 +365,7 @@ class TestConfig:
         assert p._observation_scopes == "per_tag"
 
     def test_observation_scopes_custom_list_config(self, provider_with_config):
-        p = provider_with_config(
-            observation_scopes=[["user:alice"], ["team:eng"]]
-        )
+        p = provider_with_config(observation_scopes=[["user:alice"], ["team:eng"]])
         assert p._observation_scopes == [["user:alice"], ["team:eng"]]
 
     def test_custom_config_values(self, provider_with_config):
@@ -424,8 +447,14 @@ class TestConfig:
             def __init__(self, **kwargs):
                 captured.update(kwargs)
 
-        monkeypatch.setitem(sys.modules, "hindsight", SimpleNamespace(HindsightEmbedded=FakeHindsightEmbedded))
-        monkeypatch.setattr("plugins.memory.hindsight._check_local_runtime", lambda: (True, ""))
+        monkeypatch.setitem(
+            sys.modules,
+            "hindsight",
+            SimpleNamespace(HindsightEmbedded=FakeHindsightEmbedded),
+        )
+        monkeypatch.setattr(
+            "plugins.memory.hindsight._check_local_runtime", lambda: (True, "")
+        )
 
         p = HindsightMemoryProvider()
         p._mode = "local_embedded"
@@ -450,16 +479,27 @@ class TestPostSetup:
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
-        monkeypatch.setattr("plugins.memory.hindsight.get_openagents_home", lambda: hermes_home)
+        monkeypatch.setattr(
+            "plugins.memory.hindsight.get_openagents_home", lambda: hermes_home
+        )
 
         save_config = MagicMock()
         which = MagicMock(return_value="/usr/bin/uv")
         run = MagicMock()
-        monkeypatch.setattr("openagents_cli.memory_setup._curses_select", lambda *args, **kwargs: _CANCELLED)
+        monkeypatch.setattr(
+            "openagents_cli.memory_setup._curses_select",
+            lambda *args, **kwargs: _CANCELLED,
+        )
         monkeypatch.setattr("shutil.which", which)
         monkeypatch.setattr("subprocess.run", run)
-        monkeypatch.setattr("builtins.input", MagicMock(side_effect=AssertionError("prompt should not run")))
-        monkeypatch.setattr("getpass.getpass", MagicMock(side_effect=AssertionError("prompt should not run")))
+        monkeypatch.setattr(
+            "builtins.input",
+            MagicMock(side_effect=AssertionError("prompt should not run")),
+        )
+        monkeypatch.setattr(
+            "getpass.getpass",
+            MagicMock(side_effect=AssertionError("prompt should not run")),
+        )
         monkeypatch.setattr("openagents_cli.config.save_config", save_config)
 
         provider = HindsightMemoryProvider()
@@ -472,22 +512,35 @@ class TestPostSetup:
         assert not (hermes_home / "hindsight" / "config.json").exists()
         assert not (user_home / ".hindsight" / "profiles" / "hermes.env").exists()
 
-    def test_local_embedded_setup_cancel_at_llm_picker_writes_nothing(self, tmp_path, monkeypatch):
+    def test_local_embedded_setup_cancel_at_llm_picker_writes_nothing(
+        self, tmp_path, monkeypatch
+    ):
         hermes_home = tmp_path / "hermes-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
-        monkeypatch.setattr("plugins.memory.hindsight.get_openagents_home", lambda: hermes_home)
+        monkeypatch.setattr(
+            "plugins.memory.hindsight.get_openagents_home", lambda: hermes_home
+        )
 
         selections = iter([1, _CANCELLED])  # local_embedded, then cancel LLM picker
         save_config = MagicMock()
         which = MagicMock(return_value="/usr/bin/uv")
         run = MagicMock()
-        monkeypatch.setattr("openagents_cli.memory_setup._curses_select", lambda *args, **kwargs: next(selections))
+        monkeypatch.setattr(
+            "openagents_cli.memory_setup._curses_select",
+            lambda *args, **kwargs: next(selections),
+        )
         monkeypatch.setattr("shutil.which", which)
         monkeypatch.setattr("subprocess.run", run)
-        monkeypatch.setattr("builtins.input", MagicMock(side_effect=AssertionError("prompt should not run")))
-        monkeypatch.setattr("getpass.getpass", MagicMock(side_effect=AssertionError("prompt should not run")))
+        monkeypatch.setattr(
+            "builtins.input",
+            MagicMock(side_effect=AssertionError("prompt should not run")),
+        )
+        monkeypatch.setattr(
+            "getpass.getpass",
+            MagicMock(side_effect=AssertionError("prompt should not run")),
+        )
         monkeypatch.setattr("openagents_cli.config.save_config", save_config)
 
         provider = HindsightMemoryProvider()
@@ -507,13 +560,19 @@ class TestPostSetup:
         monkeypatch.setenv("HOME", str(user_home))
 
         selections = iter([1, 0])  # local_embedded, openai
-        monkeypatch.setattr("openagents_cli.memory_setup._curses_select", lambda *args, **kwargs: next(selections))
+        monkeypatch.setattr(
+            "openagents_cli.memory_setup._curses_select",
+            lambda *args, **kwargs: next(selections),
+        )
         monkeypatch.setattr("shutil.which", lambda name: None)
         monkeypatch.setattr("builtins.input", lambda prompt="": "")
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
         monkeypatch.setattr("getpass.getpass", lambda prompt="": "sk-local-test")
         saved_configs = []
-        monkeypatch.setattr("openagents_cli.config.save_config", lambda cfg: saved_configs.append(cfg.copy()))
+        monkeypatch.setattr(
+            "openagents_cli.config.save_config",
+            lambda cfg: saved_configs.append(cfg.copy()),
+        )
 
         provider = HindsightMemoryProvider()
         provider.post_setup(str(hermes_home), {"memory": {}})
@@ -534,14 +593,19 @@ class TestPostSetup:
             "HINDSIGHT_EMBED_DAEMON_IDLE_TIMEOUT=300\n"
         )
 
-    def test_local_embedded_setup_respects_existing_profile_name(self, tmp_path, monkeypatch):
+    def test_local_embedded_setup_respects_existing_profile_name(
+        self, tmp_path, monkeypatch
+    ):
         hermes_home = tmp_path / "hermes-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
 
         selections = iter([1, 0])  # local_embedded, openai
-        monkeypatch.setattr("openagents_cli.memory_setup._curses_select", lambda *args, **kwargs: next(selections))
+        monkeypatch.setattr(
+            "openagents_cli.memory_setup._curses_select",
+            lambda *args, **kwargs: next(selections),
+        )
         monkeypatch.setattr("shutil.which", lambda name: None)
         monkeypatch.setattr("builtins.input", lambda prompt="": "")
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
@@ -557,14 +621,19 @@ class TestPostSetup:
         assert coder_env.exists()
         assert not hermes_env.exists()
 
-    def test_local_embedded_setup_preserves_existing_key_when_input_left_blank(self, tmp_path, monkeypatch):
+    def test_local_embedded_setup_preserves_existing_key_when_input_left_blank(
+        self, tmp_path, monkeypatch
+    ):
         hermes_home = tmp_path / "hermes-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
 
         selections = iter([1, 0])  # local_embedded, openai
-        monkeypatch.setattr("openagents_cli.memory_setup._curses_select", lambda *args, **kwargs: next(selections))
+        monkeypatch.setattr(
+            "openagents_cli.memory_setup._curses_select",
+            lambda *args, **kwargs: next(selections),
+        )
         monkeypatch.setattr("shutil.which", lambda name: None)
         monkeypatch.setattr("builtins.input", lambda prompt="": "")
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
@@ -582,14 +651,17 @@ class TestPostSetup:
         assert profile_env.exists()
         assert "HINDSIGHT_API_LLM_API_KEY=existing-key\n" in profile_env.read_text()
 
-
-    def test_local_embedded_setup_blank_inputs_preserve_existing_config(self, tmp_path, monkeypatch):
+    def test_local_embedded_setup_blank_inputs_preserve_existing_config(
+        self, tmp_path, monkeypatch
+    ):
         """Pressing Enter through setup should keep existing Hindsight values."""
         hermes_home = tmp_path / "hermes-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
-        monkeypatch.setattr("plugins.memory.hindsight.get_openagents_home", lambda: hermes_home)
+        monkeypatch.setattr(
+            "plugins.memory.hindsight.get_openagents_home", lambda: hermes_home
+        )
 
         existing_config = {
             "mode": "local_embedded",
@@ -609,7 +681,10 @@ class TestPostSetup:
 
         # Simulate pressing Enter at the mode and LLM-provider pickers, which
         # should select their current values, and pressing Enter at text prompts.
-        monkeypatch.setattr("openagents_cli.memory_setup._curses_select", lambda *args, **kwargs: kwargs.get("default", 0))
+        monkeypatch.setattr(
+            "openagents_cli.memory_setup._curses_select",
+            lambda *args, **kwargs: kwargs.get("default", 0),
+        )
         monkeypatch.setattr("shutil.which", lambda name: None)
         monkeypatch.setattr("builtins.input", lambda prompt="": "")
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
@@ -631,7 +706,6 @@ class TestPostSetup:
         assert saved["timeout"] == 120
 
 
-
 # ---------------------------------------------------------------------------
 # Tool handler tests
 # ---------------------------------------------------------------------------
@@ -639,9 +713,11 @@ class TestPostSetup:
 
 class TestToolHandlers:
     def test_retain_success(self, provider):
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_retain", {"content": "user likes dark mode"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call(
+                "hindsight_retain", {"content": "user likes dark mode"}
+            )
+        )
         assert result["result"] == "Memory stored successfully."
         provider._client.aretain_batch.assert_called_once()
         call_kwargs = provider._client.aretain_batch.call_args.kwargs
@@ -684,15 +760,13 @@ class TestToolHandlers:
         assert "observation_scopes" not in item
 
     def test_retain_missing_content(self, provider):
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_retain", {}
-        ))
+        result = json.loads(provider.handle_tool_call("hindsight_retain", {}))
         assert "error" in result
 
     def test_recall_success(self, provider):
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_recall", {"query": "dark mode"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("hindsight_recall", {"query": "dark mode"})
+        )
         assert "Memory 1" in result["result"]
         assert "Memory 2" in result["result"]
 
@@ -717,53 +791,51 @@ class TestToolHandlers:
 
     def test_recall_no_results(self, provider):
         provider._client.arecall.return_value = SimpleNamespace(results=[])
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_recall", {"query": "test"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("hindsight_recall", {"query": "test"})
+        )
         assert result["result"] == "No relevant memories found."
 
     def test_recall_missing_query(self, provider):
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_recall", {}
-        ))
+        result = json.loads(provider.handle_tool_call("hindsight_recall", {}))
         assert "error" in result
 
     def test_reflect_success(self, provider):
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_reflect", {"query": "summarize"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("hindsight_reflect", {"query": "summarize"})
+        )
         assert result["result"] == "Synthesized answer"
 
     def test_reflect_missing_query(self, provider):
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_reflect", {}
-        ))
+        result = json.loads(provider.handle_tool_call("hindsight_reflect", {}))
         assert "error" in result
 
     def test_unknown_tool(self, provider):
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_unknown", {}
-        ))
+        result = json.loads(provider.handle_tool_call("hindsight_unknown", {}))
         assert "error" in result
 
     def test_retain_error_handling(self, provider):
         provider._client.aretain_batch.side_effect = RuntimeError("connection failed")
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_retain", {"content": "test"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("hindsight_retain", {"content": "test"})
+        )
         assert "error" in result
         assert "connection failed" in result["error"]
 
     def test_recall_error_handling(self, provider):
         provider._client.arecall.side_effect = RuntimeError("timeout")
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_recall", {"query": "test"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("hindsight_recall", {"query": "test"})
+        )
         assert "error" in result
 
-    def test_local_embedded_recall_reconnects_after_idle_shutdown(self, provider, monkeypatch):
+    def test_local_embedded_recall_reconnects_after_idle_shutdown(
+        self, provider, monkeypatch
+    ):
         first_client = _make_mock_client()
-        first_client.arecall.side_effect = RuntimeError("Cannot connect to host 127.0.0.1:8888")
+        first_client.arecall.side_effect = RuntimeError(
+            "Cannot connect to host 127.0.0.1:8888"
+        )
         second_client = _make_mock_client()
         second_client.arecall.return_value = SimpleNamespace(
             results=[SimpleNamespace(text="Recovered memory")]
@@ -774,9 +846,9 @@ class TestToolHandlers:
         provider._client = first_client
         monkeypatch.setattr(provider, "_get_client", lambda: next(clients))
 
-        result = json.loads(provider.handle_tool_call(
-            "hindsight_recall", {"query": "test"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("hindsight_recall", {"query": "test"})
+        )
 
         assert result["result"] == "1. Recovered memory"
         assert provider._client is second_client
@@ -912,8 +984,14 @@ class TestSyncTurn:
         assert item["metadata"]["agent_identity"] == "fakeassistantname"
         assert item["metadata"]["turn_index"] == "1"
         assert item["metadata"]["message_count"] == "2"
-        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?\+00:00", content[0][0]["timestamp"])
-        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", item["metadata"]["retained_at"])
+        assert re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?\+00:00",
+            content[0][0]["timestamp"],
+        )
+        assert re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z",
+            item["metadata"]["retained_at"],
+        )
 
     def test_sync_turn_skipped_when_auto_retain_off(self, provider_with_config):
         p = provider_with_config(auto_retain=False)
@@ -939,7 +1017,10 @@ class TestSyncTurn:
         assert call_kwargs["document_id"].startswith("test-session-")
         assert call_kwargs["retain_async"] is True
         assert len(call_kwargs["items"]) == 1
-        assert call_kwargs["items"][0]["context"] == "conversation between OpenAgents and the User"
+        assert (
+            call_kwargs["items"][0]["context"]
+            == "conversation between OpenAgents and the User"
+        )
 
     def test_sync_turn_custom_context(self, provider_with_config):
         p = provider_with_config(retain_context="my-agent")
@@ -970,7 +1051,9 @@ class TestSyncTurn:
         assert item["metadata"]["turn_index"] == "3"
         assert item["metadata"]["message_count"] == "6"
 
-    def test_sync_turn_accumulates_full_session_without_append_support(self, provider_with_config):
+    def test_sync_turn_accumulates_full_session_without_append_support(
+        self, provider_with_config
+    ):
         """Legacy/overwrite APIs (no update_mode=append) resend the ENTIRE session each retain."""
         p = provider_with_config(retain_every_n_turns=2)
 
@@ -992,13 +1075,19 @@ class TestSyncTurn:
         assert "turn3-user" in content
         assert "turn4-user" in content
 
-    def test_sync_turn_appends_only_delta_when_append_supported(self, provider_with_config, monkeypatch):
+    def test_sync_turn_appends_only_delta_when_append_supported(
+        self, provider_with_config, monkeypatch
+    ):
         """On append-capable APIs each retain ships only the new turns, not the whole session."""
         monkeypatch.setattr(
             "plugins.memory.hindsight._fetch_hindsight_api_version",
             lambda *a, **kw: "0.5.6",
         )
-        from plugins.memory.hindsight import _append_capability_cache, _append_capability_lock
+        from plugins.memory.hindsight import (
+            _append_capability_cache,
+            _append_capability_lock,
+        )
+
         # Clear before AND after: the capability cache is module-global and keyed
         # per api_url, so a stale entry would leak into other tests.
         with _append_capability_lock:
@@ -1054,17 +1143,24 @@ class TestSyncTurn:
         config_path = tmp_path / "hindsight" / "config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(json.dumps(config))
-        monkeypatch.setattr("plugins.memory.hindsight.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "plugins.memory.hindsight.get_openagents_home", lambda: tmp_path
+        )
 
         p1 = HindsightMemoryProvider()
-        p1.initialize(session_id="resumed-session", hermes_home=str(tmp_path), platform="cli")
+        p1.initialize(
+            session_id="resumed-session", hermes_home=str(tmp_path), platform="cli"
+        )
 
         # Sleep just enough that the microsecond timestamp differs
         import time
+
         time.sleep(0.001)
 
         p2 = HindsightMemoryProvider()
-        p2.initialize(session_id="resumed-session", hermes_home=str(tmp_path), platform="cli")
+        p2.initialize(
+            session_id="resumed-session", hermes_home=str(tmp_path), platform="cli"
+        )
 
         # Same session, but each process gets its own document_id
         assert p1._document_id != p2._document_id
@@ -1084,7 +1180,9 @@ class TestSyncTurn:
         config_path = tmp_path / "hindsight" / "config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(json.dumps(config))
-        monkeypatch.setattr("plugins.memory.hindsight.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "plugins.memory.hindsight.get_openagents_home", lambda: tmp_path
+        )
 
         p = HindsightMemoryProvider()
         p.initialize(
@@ -1339,7 +1437,11 @@ class TestSessionSwitchBufferFlush:
 
 class TestUpdateModeAppendCapability:
     def _clear_capability_cache(self):
-        from plugins.memory.hindsight import _append_capability_cache, _append_capability_lock
+        from plugins.memory.hindsight import (
+            _append_capability_cache,
+            _append_capability_lock,
+        )
+
         with _append_capability_lock:
             _append_capability_cache.clear()
 
@@ -1398,6 +1500,7 @@ class TestUpdateModeAppendCapability:
     def test_legacy_warning_emitted_once(self, provider, monkeypatch, caplog):
         """One-time WARN nudges users to upgrade Hindsight."""
         import logging
+
         self._clear_capability_cache()
         monkeypatch.setattr(
             "plugins.memory.hindsight._fetch_hindsight_api_version",
@@ -1408,9 +1511,11 @@ class TestUpdateModeAppendCapability:
             provider._retain_queue.join()
             provider.sync_turn("c", "d")
             provider._retain_queue.join()
-        warns = [r for r in caplog.records
-                 if r.levelno == logging.WARNING
-                 and "older than 0.5.0" in r.getMessage()]
+        warns = [
+            r
+            for r in caplog.records
+            if r.levelno == logging.WARNING and "older than 0.5.0" in r.getMessage()
+        ]
         # Cache hit on the second call → no second warn.
         assert len(warns) == 1
 
@@ -1471,15 +1576,32 @@ class TestConfigSchema:
         schema = provider.get_config_schema()
         keys = {f["key"] for f in schema}
         expected_keys = {
-            "mode", "api_url", "api_key", "llm_provider", "llm_api_key",
-            "llm_model", "bank_id", "bank_id_template", "bank_mission", "bank_retain_mission",
-            "recall_budget", "memory_mode", "recall_prefetch_method",
-            "retain_tags", "retain_source",
-            "retain_user_prefix", "retain_assistant_prefix",
-            "recall_tags", "recall_tags_match",
-            "auto_recall", "auto_retain",
-            "retain_every_n_turns", "retain_async", "retain_context",
-            "recall_max_tokens", "recall_max_input_chars",
+            "mode",
+            "api_url",
+            "api_key",
+            "llm_provider",
+            "llm_api_key",
+            "llm_model",
+            "bank_id",
+            "bank_id_template",
+            "bank_mission",
+            "bank_retain_mission",
+            "recall_budget",
+            "memory_mode",
+            "recall_prefetch_method",
+            "retain_tags",
+            "retain_source",
+            "retain_user_prefix",
+            "retain_assistant_prefix",
+            "recall_tags",
+            "recall_tags_match",
+            "auto_recall",
+            "auto_retain",
+            "retain_every_n_turns",
+            "retain_async",
+            "retain_context",
+            "recall_max_tokens",
+            "recall_max_input_chars",
             "recall_prompt_preamble",
         }
         assert expected_keys.issubset(keys), f"Missing: {expected_keys - keys}"
@@ -1505,15 +1627,18 @@ class TestBankIdTemplate:
         assert _sanitize_bank_segment(None) == ""
 
     def test_resolve_empty_template_uses_fallback(self):
-        result = _resolve_bank_id_template(
-            "", fallback="openagents", profile="coder"
-        )
+        result = _resolve_bank_id_template("", fallback="openagents", profile="coder")
         assert result == "openagents"
 
     def test_resolve_with_profile(self):
         result = _resolve_bank_id_template(
-            "hermes-{profile}", fallback="openagents",
-            profile="coder", workspace="", platform="", user="", session="",
+            "hermes-{profile}",
+            fallback="openagents",
+            profile="coder",
+            workspace="",
+            platform="",
+            user="",
+            session="",
         )
         assert result == "hermes-coder"
 
@@ -1521,47 +1646,74 @@ class TestBankIdTemplate:
         result = _resolve_bank_id_template(
             "{workspace}-{profile}-{platform}",
             fallback="openagents",
-            profile="coder", workspace="myorg", platform="cli",
-            user="", session="",
+            profile="coder",
+            workspace="myorg",
+            platform="cli",
+            user="",
+            session="",
         )
         assert result == "myorg-coder-cli"
 
     def test_resolve_collapses_empty_placeholders(self):
         # When user is empty, "hermes-{user}" becomes "hermes-" -> trimmed to "openagents"
         result = _resolve_bank_id_template(
-            "hermes-{user}", fallback="default",
-            profile="", workspace="", platform="", user="", session="",
+            "hermes-{user}",
+            fallback="default",
+            profile="",
+            workspace="",
+            platform="",
+            user="",
+            session="",
         )
         assert result == "openagents"
 
     def test_resolve_collapses_double_dashes(self):
         # Two empty placeholders with a dash between them should collapse
         result = _resolve_bank_id_template(
-            "{workspace}-{profile}-{user}", fallback="fallback",
-            profile="coder", workspace="", platform="", user="", session="",
+            "{workspace}-{profile}-{user}",
+            fallback="fallback",
+            profile="coder",
+            workspace="",
+            platform="",
+            user="",
+            session="",
         )
         assert result == "coder"
 
     def test_resolve_empty_rendered_falls_back(self):
         result = _resolve_bank_id_template(
-            "{user}-{profile}", fallback="fallback",
-            profile="", workspace="", platform="", user="", session="",
+            "{user}-{profile}",
+            fallback="fallback",
+            profile="",
+            workspace="",
+            platform="",
+            user="",
+            session="",
         )
         assert result == "fallback"
 
     def test_resolve_sanitizes_placeholder_values(self):
         result = _resolve_bank_id_template(
-            "user-{user}", fallback="openagents",
-            profile="", workspace="", platform="",
-            user="josh@example.com", session="",
+            "user-{user}",
+            fallback="openagents",
+            profile="",
+            workspace="",
+            platform="",
+            user="josh@example.com",
+            session="",
         )
         assert result == "user-josh-example-com"
 
     def test_resolve_invalid_template_returns_fallback(self):
         # Unknown placeholder should fall back without raising
         result = _resolve_bank_id_template(
-            "hermes-{unknown}", fallback="openagents",
-            profile="", workspace="", platform="", user="", session="",
+            "hermes-{unknown}",
+            fallback="openagents",
+            profile="",
+            workspace="",
+            platform="",
+            user="",
+            session="",
         )
         assert result == "openagents"
 
@@ -1576,7 +1728,9 @@ class TestBankIdTemplate:
         config_path = tmp_path / "hindsight" / "config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(json.dumps(config))
-        monkeypatch.setattr("plugins.memory.hindsight.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "plugins.memory.hindsight.get_openagents_home", lambda: tmp_path
+        )
 
         p = HindsightMemoryProvider()
         p.initialize(
@@ -1599,7 +1753,9 @@ class TestBankIdTemplate:
         config_path = tmp_path / "hindsight" / "config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(json.dumps(config))
-        monkeypatch.setattr("plugins.memory.hindsight.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "plugins.memory.hindsight.get_openagents_home", lambda: tmp_path
+        )
 
         p = HindsightMemoryProvider()
         p.initialize(
@@ -1610,7 +1766,9 @@ class TestBankIdTemplate:
         )
         assert p._bank_id == "my-static-bank"
 
-    def test_provider_template_with_missing_profile_falls_back(self, tmp_path, monkeypatch):
+    def test_provider_template_with_missing_profile_falls_back(
+        self, tmp_path, monkeypatch
+    ):
         config = {
             "mode": "cloud",
             "apiKey": "k",
@@ -1621,7 +1779,9 @@ class TestBankIdTemplate:
         config_path = tmp_path / "hindsight" / "config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(json.dumps(config))
-        monkeypatch.setattr("plugins.memory.hindsight.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "plugins.memory.hindsight.get_openagents_home", lambda: tmp_path
+        )
 
         p = HindsightMemoryProvider()
         # No agent_identity passed — template renders to "hermes-" which collapses to "openagents"
@@ -1668,10 +1828,12 @@ class TestAvailability:
     def test_available_with_snake_case_api_key_in_config(self, tmp_path, monkeypatch):
         config_path = tmp_path / "hindsight" / "config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text(json.dumps({
-            "mode": "cloud",
-            "api_key": "***",
-        }))
+        config_path.write_text(
+            json.dumps({
+                "mode": "cloud",
+                "api_key": "***",
+            })
+        )
         monkeypatch.setattr(
             "plugins.memory.hindsight.get_openagents_home",
             lambda: tmp_path,
@@ -1681,7 +1843,9 @@ class TestAvailability:
 
         assert p.is_available()
 
-    def test_local_mode_unavailable_when_runtime_import_fails(self, tmp_path, monkeypatch):
+    def test_local_mode_unavailable_when_runtime_import_fails(
+        self, tmp_path, monkeypatch
+    ):
         monkeypatch.setattr(
             "plugins.memory.hindsight.get_openagents_home",
             lambda: tmp_path / "nonexistent",
@@ -1700,7 +1864,9 @@ class TestAvailability:
         p = HindsightMemoryProvider()
         assert not p.is_available()
 
-    def test_initialize_disables_local_mode_when_runtime_import_fails(self, tmp_path, monkeypatch):
+    def test_initialize_disables_local_mode_when_runtime_import_fails(
+        self, tmp_path, monkeypatch
+    ):
         config = {"mode": "local_embedded"}
         config_path = tmp_path / "hindsight" / "config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1718,7 +1884,9 @@ class TestAvailability:
         )
 
         p = HindsightMemoryProvider()
-        p.initialize(session_id="test-session", hermes_home=str(tmp_path), platform="cli")
+        p.initialize(
+            session_id="test-session", hermes_home=str(tmp_path), platform="cli"
+        )
         assert p._mode == "disabled"
 
 
@@ -1793,7 +1961,9 @@ class TestSharedEventLoopLifecycle:
 
 
 class TestShutdown:
-    def test_local_embedded_shutdown_closes_inner_async_client_on_shared_loop(self, provider):
+    def test_local_embedded_shutdown_closes_inner_async_client_on_shared_loop(
+        self, provider
+    ):
         inner_client = _make_mock_client()
         embedded = MagicMock()
         embedded._client = inner_client

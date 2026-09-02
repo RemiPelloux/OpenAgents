@@ -28,7 +28,9 @@ class TestResolveHermesBin:
     def test_falls_back_to_path_which(self, monkeypatch):
         monkeypatch.setattr(sys, "argv", ["-c"])  # not a real path
         monkeypatch.setattr(
-            relaunch_mod.shutil, "which", lambda name: "/usr/bin/hermes" if name == "openagents" else None
+            relaunch_mod.shutil,
+            "which",
+            lambda name: "/usr/bin/hermes" if name == "openagents" else None,
         )
         assert relaunch_mod.resolve_hermes_bin() == "/usr/bin/hermes"
 
@@ -68,7 +70,13 @@ class TestExtractInheritedFlags:
 
     def test_preserves_multiple_skills(self):
         argv = ["-s", "foo", "-s", "bar", "--tui"]
-        assert relaunch_mod._extract_inherited_flags(argv) == ["-s", "foo", "-s", "bar", "--tui"]
+        assert relaunch_mod._extract_inherited_flags(argv) == [
+            "-s",
+            "foo",
+            "-s",
+            "bar",
+            "--tui",
+        ]
 
 
 class TestInheritedFlagTable:
@@ -86,7 +94,13 @@ class TestInheritedFlagTable:
 
     def test_store_true_flags_do_not_take_value(self):
         table = dict(relaunch_mod._INHERITED_FLAGS_TABLE)
-        for flag in ["--tui", "--dev", "--yolo", "--ignore-user-config", "--ignore-rules"]:
+        for flag in [
+            "--tui",
+            "--dev",
+            "--yolo",
+            "--ignore-user-config",
+            "--ignore-rules",
+        ]:
             assert table[flag] is False, f"{flag} should not take a value"
 
     def test_value_flags_take_value(self):
@@ -99,13 +113,23 @@ class TestInheritedFlagTable:
         # --worktree creates a new worktree per process; inheriting would
         # orphan the parent's. Chat-only flags (--quiet/-Q, --verbose/-v,
         # --source) can't be in argv at the existing relaunch callsites.
-        for flag in ["-w", "--worktree", "-Q", "--quiet", "-v", "--verbose", "--source"]:
+        for flag in [
+            "-w",
+            "--worktree",
+            "-Q",
+            "--quiet",
+            "-v",
+            "--verbose",
+            "--source",
+        ]:
             assert flag not in table, f"{flag} should not be inherited"
 
 
 class TestBuildRelaunchArgv:
     def test_uses_bin_when_available(self, monkeypatch):
-        monkeypatch.setattr(relaunch_mod, "resolve_hermes_bin", lambda: "/usr/bin/hermes")
+        monkeypatch.setattr(
+            relaunch_mod, "resolve_hermes_bin", lambda: "/usr/bin/hermes"
+        )
         argv = relaunch_mod.build_relaunch_argv(["--resume", "abc"])
         assert argv[0] == "/usr/bin/hermes"
 
@@ -115,9 +139,13 @@ class TestBuildRelaunchArgv:
         assert argv == [sys.executable, "-m", "openagents_cli.main", "--resume", "abc"]
 
     def test_preserves_inherited_flags(self, monkeypatch):
-        monkeypatch.setattr(relaunch_mod, "resolve_hermes_bin", lambda: "/usr/bin/hermes")
+        monkeypatch.setattr(
+            relaunch_mod, "resolve_hermes_bin", lambda: "/usr/bin/hermes"
+        )
         original = ["--tui", "--dev", "--profile", "work", "sessions", "browse"]
-        argv = relaunch_mod.build_relaunch_argv(["--resume", "abc"], original_argv=original)
+        argv = relaunch_mod.build_relaunch_argv(
+            ["--resume", "abc"], original_argv=original
+        )
         assert "--tui" in argv
         assert "--dev" in argv
         assert "--profile" in argv
@@ -129,7 +157,9 @@ class TestBuildRelaunchArgv:
         assert "browse" not in argv
 
     def test_can_disable_preserve(self, monkeypatch):
-        monkeypatch.setattr(relaunch_mod, "resolve_hermes_bin", lambda: "/usr/bin/hermes")
+        monkeypatch.setattr(
+            relaunch_mod, "resolve_hermes_bin", lambda: "/usr/bin/hermes"
+        )
         original = ["--tui", "chat"]
         argv = relaunch_mod.build_relaunch_argv(
             ["--resume", "abc"], preserve_inherited=False, original_argv=original
@@ -147,7 +177,9 @@ class TestRelaunch:
             raise SystemExit(0)
 
         monkeypatch.setattr(relaunch_mod.os, "execvp", fake_execvp)
-        monkeypatch.setattr(relaunch_mod, "resolve_hermes_bin", lambda: "/usr/bin/hermes")
+        monkeypatch.setattr(
+            relaunch_mod, "resolve_hermes_bin", lambda: "/usr/bin/hermes"
+        )
 
         with pytest.raises(SystemExit):
             relaunch_mod.relaunch(["--resume", "abc"])
@@ -160,7 +192,9 @@ class TestRelaunch:
         hermes).  relaunch() must detect win32 and use subprocess.run +
         sys.exit instead."""
         monkeypatch.setattr(relaunch_mod.sys, "platform", "win32")
-        monkeypatch.setattr(relaunch_mod, "resolve_hermes_bin", lambda: r"C:\Users\test\hermes.exe")
+        monkeypatch.setattr(
+            relaunch_mod, "resolve_hermes_bin", lambda: r"C:\Users\test\hermes.exe"
+        )
 
         import subprocess as _subprocess
 
@@ -168,8 +202,10 @@ class TestRelaunch:
 
         def fake_subprocess_run(argv, **kwargs):
             captured_argv.append(list(argv))
+
             class _Result:
                 returncode = 0
+
             return _Result()
 
         monkeypatch.setattr(_subprocess, "run", fake_subprocess_run)
@@ -193,13 +229,16 @@ class TestRelaunch:
     def test_windows_propagates_child_exit_code(self, monkeypatch):
         """A non-zero exit from the child should flow through to sys.exit."""
         monkeypatch.setattr(relaunch_mod.sys, "platform", "win32")
-        monkeypatch.setattr(relaunch_mod, "resolve_hermes_bin", lambda: r"C:\hermes.exe")
+        monkeypatch.setattr(
+            relaunch_mod, "resolve_hermes_bin", lambda: r"C:\hermes.exe"
+        )
 
         import subprocess as _subprocess
 
         def fake_run(argv, **kwargs):
             class _Result:
                 returncode = 42
+
             return _Result()
 
         monkeypatch.setattr(_subprocess, "run", fake_run)
@@ -214,7 +253,9 @@ class TestRelaunch:
         we must NOT let it bubble up as a cryptic traceback — print a
         user-readable hint and sys.exit(1)."""
         monkeypatch.setattr(relaunch_mod.sys, "platform", "win32")
-        monkeypatch.setattr(relaunch_mod, "resolve_hermes_bin", lambda: r"C:\missing.exe")
+        monkeypatch.setattr(
+            relaunch_mod, "resolve_hermes_bin", lambda: r"C:\missing.exe"
+        )
 
         import subprocess as _subprocess
 
@@ -240,7 +281,9 @@ class TestResolveHermesBinWindowsPyGuard:
     would fail with the cryptic "%1 is not a valid Win32 application" error.
     """
 
-    def test_windows_rejects_py_argv0_falls_through_to_path(self, monkeypatch, tmp_path):
+    def test_windows_rejects_py_argv0_falls_through_to_path(
+        self, monkeypatch, tmp_path
+    ):
         """On Windows, if sys.argv[0] is a .py file, we must skip the
         argv[0] fast-path and fall through to PATH / python -m."""
         # Build a fake .py script that "passes" the isfile + X_OK checks.
@@ -252,8 +295,11 @@ class TestResolveHermesBinWindowsPyGuard:
         # Force PATH lookup to return a hermes.exe so the test doesn't
         # exercise the None-fallback path (that's a separate test).
         monkeypatch.setattr(
-            relaunch_mod.shutil, "which",
-            lambda name: r"C:\venv\Scripts\hermes.exe" if name == "openagents" else None,
+            relaunch_mod.shutil,
+            "which",
+            lambda name: r"C:\venv\Scripts\hermes.exe"
+            if name == "openagents"
+            else None,
         )
 
         bin_path = relaunch_mod.resolve_hermes_bin()
@@ -272,7 +318,9 @@ class TestResolveHermesBinWindowsPyGuard:
         monkeypatch.setattr(relaunch_mod.sys, "argv", [str(script), "chat"])
         assert relaunch_mod.resolve_hermes_bin() == str(script)
 
-    def test_windows_py_argv0_with_no_hermes_on_path_returns_none(self, monkeypatch, tmp_path):
+    def test_windows_py_argv0_with_no_hermes_on_path_returns_none(
+        self, monkeypatch, tmp_path
+    ):
         """Bulletproof fallback: if argv0 is .py on Windows AND hermes.exe
         isn't on PATH, return None so the caller falls back to
         python -m openagents_cli.main."""

@@ -33,6 +33,7 @@ class TestGetExternalSkillsDirs:
         (hermes_home / "config.yaml").write_text("skills:\n  external_dirs: []\n")
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             from agent.skill_utils import get_external_skills_dirs
+
             result = get_external_skills_dirs()
         assert result == []
 
@@ -42,6 +43,7 @@ class TestGetExternalSkillsDirs:
         )
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             from agent.skill_utils import get_external_skills_dirs
+
             result = get_external_skills_dirs()
         assert result == []
 
@@ -51,6 +53,7 @@ class TestGetExternalSkillsDirs:
         )
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             from agent.skill_utils import get_external_skills_dirs
+
             result = get_external_skills_dirs()
         assert len(result) == 1
         assert result[0] == external_skills_dir.resolve()
@@ -61,6 +64,7 @@ class TestGetExternalSkillsDirs:
         )
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             from agent.skill_utils import get_external_skills_dirs
+
             result = get_external_skills_dirs()
         assert len(result) == 1
 
@@ -71,6 +75,7 @@ class TestGetExternalSkillsDirs:
         )
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             from agent.skill_utils import get_external_skills_dirs
+
             result = get_external_skills_dirs()
         assert result == []
 
@@ -78,6 +83,7 @@ class TestGetExternalSkillsDirs:
         # No config.yaml at all
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             from agent.skill_utils import get_external_skills_dirs
+
             result = get_external_skills_dirs()
         assert result == []
 
@@ -87,6 +93,7 @@ class TestGetExternalSkillsDirs:
         )
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             from agent.skill_utils import get_external_skills_dirs
+
             result = get_external_skills_dirs()
         assert len(result) == 1
 
@@ -98,6 +105,7 @@ class TestGetAllSkillsDirs:
         )
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             from agent.skill_utils import get_all_skills_dirs
+
             result = get_all_skills_dirs()
         assert result[0] == hermes_home / "skills"
         assert result[1] == external_skills_dir.resolve()
@@ -114,6 +122,7 @@ class TestExternalSkillsInFindAll:
             patch("tools.skills_tool.SKILLS_DIR", local_skills),
         ):
             from tools.skills_tool import _find_all_skills
+
             skills = _find_all_skills()
         names = [s["name"] for s in skills]
         assert "my-external-skill" in names
@@ -134,6 +143,7 @@ class TestExternalSkillsInFindAll:
             patch("tools.skills_tool.SKILLS_DIR", local_skills),
         ):
             from tools.skills_tool import _find_all_skills
+
             skills = _find_all_skills()
         matching = [s for s in skills if s["name"] == "my-external-skill"]
         assert len(matching) == 1
@@ -151,6 +161,7 @@ class TestExternalSkillView:
             patch("tools.skills_tool.SKILLS_DIR", local_skills),
         ):
             from tools.skills_tool import skill_view
+
             result = json.loads(skill_view("my-external-skill"))
         assert result["success"] is True
         assert "external things" in result["content"]

@@ -57,9 +57,7 @@ def test_save_auth_store_writes_0o600_with_0o700_parent(tmp_path, monkeypatch):
     mode = stat.S_IMODE(auth_path.stat().st_mode)
     parent_mode = stat.S_IMODE(auth_path.parent.stat().st_mode)
 
-    assert mode == 0o600, (
-        f"auth.json mode 0o{mode:o} != 0o600 — TOCTOU race regressed"
-    )
+    assert mode == 0o600, f"auth.json mode 0o{mode:o} != 0o600 — TOCTOU race regressed"
     assert parent_mode == 0o700, (
         f"auth.json parent dir mode 0o{parent_mode:o} != 0o700 — siblings can traverse"
     )
@@ -177,9 +175,10 @@ def test_save_auth_store_uses_os_open_with_0o600_mode(tmp_path, monkeypatch):
     with patch.object(os, "open", spying_os_open):
         from openagents_cli import auth as auth_mod
 
-        auth_mod._save_auth_store(
-            {"version": auth_mod.AUTH_STORE_VERSION, "providers": {}}
-        )
+        auth_mod._save_auth_store({
+            "version": auth_mod.AUTH_STORE_VERSION,
+            "providers": {},
+        })
 
     auth_tmp_opens = [
         (p, fl, m) for (p, fl, m) in observed_opens if "auth.json.tmp" in p

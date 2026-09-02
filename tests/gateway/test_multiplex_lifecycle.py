@@ -1,4 +1,5 @@
 """Phase 4: lifecycle guard + per-profile observability."""
+
 import pytest
 
 
@@ -7,6 +8,7 @@ class TestServedProfilesStatus:
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         import importlib
         import gateway.status as status
+
         importlib.reload(status)
         try:
             status.write_runtime_status(
@@ -21,6 +23,7 @@ class TestServedProfilesStatus:
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         import importlib
         import gateway.status as status
+
         importlib.reload(status)
         try:
             status.write_runtime_status(gateway_state="running")
@@ -35,18 +38,21 @@ class TestNamedProfileMultiplexerGuard:
 
     def test_inert_for_default_profile(self, monkeypatch):
         from openagents_cli import gateway as gw
+
         monkeypatch.setattr(gw, "_profile_suffix", lambda: "")
         # Should return without raising (default profile => guard N/A).
         gw._guard_named_profile_under_multiplexer(force=False)
 
     def test_force_bypasses(self, monkeypatch):
         from openagents_cli import gateway as gw
+
         # Even if it looks like a named profile, force returns immediately.
         monkeypatch.setattr(gw, "_profile_suffix", lambda: "coder")
         gw._guard_named_profile_under_multiplexer(force=True)
 
     def test_inert_when_no_default_gateway_running(self, monkeypatch, tmp_path):
         from openagents_cli import gateway as gw
+
         monkeypatch.setattr(gw, "_profile_suffix", lambda: "coder")
         monkeypatch.setattr(
             "openagents_constants.get_default_openagents_root", lambda: tmp_path

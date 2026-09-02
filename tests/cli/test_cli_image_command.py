@@ -49,7 +49,9 @@ class TestImageCommand:
             cli_obj._handle_image_command(f"/image {file_path}")
 
         assert cli_obj._attached_images == []
-        rendered = " ".join(str(arg) for call in mock_print.call_args_list for arg in call.args)
+        rendered = " ".join(
+            str(arg) for call in mock_print.call_args_list for arg in call.args
+        )
         assert "Not a supported image file" in rendered
 
 
@@ -75,14 +77,18 @@ class TestCollectQueryImages:
         img = _make_image(home / "storage" / "shared" / "Pictures" / "cat.png")
         monkeypatch.setenv("HOME", str(home))
 
-        message, images = _collect_query_images("describe this", "~/storage/shared/Pictures/cat.png")
+        message, images = _collect_query_images(
+            "describe this", "~/storage/shared/Pictures/cat.png"
+        )
 
         assert message == "describe this"
         assert images == [img]
 
 
 class TestTermuxImageHints:
-    def test_termux_example_image_path_prefers_real_shared_storage_root(self, monkeypatch):
+    def test_termux_example_image_path_prefers_real_shared_storage_root(
+        self, monkeypatch
+    ):
         existing = {"/sdcard", "/storage/emulated/0"}
         monkeypatch.setattr("cli.os.path.isdir", lambda path: path in existing)
 
@@ -104,6 +110,8 @@ class TestImageBadgeFormatting:
         img1 = _make_image(tmp_path / "one.png")
         img2 = _make_image(tmp_path / "two.png")
 
-        badges = _format_image_attachment_badges([img1, img2], image_counter=2, width=45)
+        badges = _format_image_attachment_badges(
+            [img1, img2], image_counter=2, width=45
+        )
 
         assert badges == "[📎 2 images attached]"

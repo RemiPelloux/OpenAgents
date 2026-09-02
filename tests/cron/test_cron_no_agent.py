@@ -30,10 +30,13 @@ def hermes_env(tmp_path, monkeypatch):
     # Reload modules that cache get_openagents_home() at import time.
     import importlib
     import openagents_constants
+
     importlib.reload(openagents_constants)
     import cron.jobs
+
     importlib.reload(cron.jobs)
     import cron.scheduler
+
     importlib.reload(cron.scheduler)
 
     return home
@@ -82,7 +85,9 @@ def test_update_job_roundtrips_no_agent_flag(hermes_env):
 
     script_path = hermes_env / "scripts" / "w.sh"
     script_path.write_text("echo hi\n")
-    job = create_job(prompt=None, schedule="every 5m", script="w.sh", no_agent=True, deliver="local")
+    job = create_job(
+        prompt=None, schedule="every 5m", script="w.sh", no_agent=True, deliver="local"
+    )
 
     update_job(job["id"], {"no_agent": False})
     reloaded = get_job(job["id"])
@@ -145,7 +150,9 @@ def test_cronjob_tool_update_toggles_no_agent(hermes_env):
     )
     job_id = created["job_id"]
 
-    off = json.loads(cronjob(action="update", job_id=job_id, no_agent=False, prompt="run"))
+    off = json.loads(
+        cronjob(action="update", job_id=job_id, no_agent=False, prompt="run")
+    )
     assert off["success"] is True
     assert off["job"].get("no_agent") in {False, None}
 
@@ -159,7 +166,9 @@ def test_cronjob_tool_update_no_agent_without_script_errors(hermes_env):
     from tools.cronjob_tools import cronjob
 
     created = json.loads(
-        cronjob(action="create", schedule="every 5m", prompt="do a thing", deliver="local")
+        cronjob(
+            action="create", schedule="every 5m", prompt="do a thing", deliver="local"
+        )
     )
     job_id = created["job_id"]
 
@@ -201,7 +210,11 @@ def test_run_job_no_agent_success_returns_script_stdout(hermes_env):
     script_path.write_text("#!/bin/bash\necho 'RAM 92% on host'\n")
 
     job = create_job(
-        prompt=None, schedule="every 5m", script="alert.sh", no_agent=True, deliver="local"
+        prompt=None,
+        schedule="every 5m",
+        script="alert.sh",
+        no_agent=True,
+        deliver="local",
     )
     success, doc, final_response, error = run_job(job)
     assert success is True
@@ -219,7 +232,11 @@ def test_run_job_no_agent_empty_output_is_silent(hermes_env):
     script_path.write_text("#!/bin/bash\n# nothing to say\n")
 
     job = create_job(
-        prompt=None, schedule="every 5m", script="quiet.sh", no_agent=True, deliver="local"
+        prompt=None,
+        schedule="every 5m",
+        script="quiet.sh",
+        no_agent=True,
+        deliver="local",
     )
     success, doc, final_response, error = run_job(job)
     assert success is True
@@ -233,10 +250,14 @@ def test_run_job_no_agent_wake_gate_is_silent(hermes_env):
     from cron.scheduler import run_job, SILENT_MARKER
 
     script_path = hermes_env / "scripts" / "gated.sh"
-    script_path.write_text('#!/bin/bash\necho \'{"wakeAgent": false}\'\n')
+    script_path.write_text("#!/bin/bash\necho '{\"wakeAgent\": false}'\n")
 
     job = create_job(
-        prompt=None, schedule="every 5m", script="gated.sh", no_agent=True, deliver="local"
+        prompt=None,
+        schedule="every 5m",
+        script="gated.sh",
+        no_agent=True,
+        deliver="local",
     )
     success, doc, final_response, error = run_job(job)
     assert success is True
@@ -252,7 +273,11 @@ def test_run_job_no_agent_script_failure_delivers_error(hermes_env):
     script_path.write_text("#!/bin/bash\necho oops >&2\nexit 3\n")
 
     job = create_job(
-        prompt=None, schedule="every 5m", script="broken.sh", no_agent=True, deliver="local"
+        prompt=None,
+        schedule="every 5m",
+        script="broken.sh",
+        no_agent=True,
+        deliver="local",
     )
     success, doc, final_response, error = run_job(job)
     assert success is False
@@ -269,7 +294,11 @@ def test_run_job_no_agent_never_invokes_aiagent(hermes_env):
     script_path.write_text("#!/bin/bash\necho alert\n")
 
     job = create_job(
-        prompt=None, schedule="every 5m", script="alert.sh", no_agent=True, deliver="local"
+        prompt=None,
+        schedule="every 5m",
+        script="alert.sh",
+        no_agent=True,
+        deliver="local",
     )
 
     with patch("run_agent.AIAgent") as ai_mock:

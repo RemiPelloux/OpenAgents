@@ -38,6 +38,7 @@ def _isolate_env(tmp_path, monkeypatch):
 # Module loading
 # ---------------------------------------------------------------------------
 
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -77,6 +78,7 @@ def _load_plugin_init():
 # patterns.py data integrity
 # ---------------------------------------------------------------------------
 
+
 class TestPatternsData:
     def test_has_at_least_one_rule(self):
         p = _load_patterns()
@@ -115,6 +117,7 @@ class TestPatternsData:
 # ---------------------------------------------------------------------------
 # _scan_content
 # ---------------------------------------------------------------------------
+
 
 class TestScanContent:
     def test_pickle_load_in_py_warns(self):
@@ -185,6 +188,7 @@ class TestScanContent:
 # ---------------------------------------------------------------------------
 # Hooks
 # ---------------------------------------------------------------------------
+
 
 class TestTransformToolResultHook:
     def test_warns_on_write_file_with_dangerous_content(self):
@@ -308,6 +312,7 @@ class TestPreToolCallHook:
 # ---------------------------------------------------------------------------
 # Bundled-plugin discovery
 # ---------------------------------------------------------------------------
+
 
 class TestPluginDiscovery:
     def test_loads_via_plugin_manager(self, _isolate_env, monkeypatch):

@@ -5,6 +5,7 @@ interrupting the current tool call. The agent sees the note inline with
 tool output on its next iteration, preserving message-role alternation
 and prompt-cache integrity.
 """
+
 from __future__ import annotations
 
 import threading
@@ -216,9 +217,13 @@ class TestPreApiCallSteerDrain:
         # Simulate messages after a tool batch completed
         messages = [
             {"role": "user", "content": "do something"},
-            {"role": "assistant", "content": "ok", "tool_calls": [
-                {"id": "tc1", "function": {"name": "terminal", "arguments": "{}"}}
-            ]},
+            {
+                "role": "assistant",
+                "content": "ok",
+                "tool_calls": [
+                    {"id": "tc1", "function": {"name": "terminal", "arguments": "{}"}}
+                ],
+            },
             {"role": "tool", "content": "output here", "tool_call_id": "tc1"},
         ]
         # Steer arrives during API call (set after tool execution)
@@ -263,9 +268,13 @@ class TestPreApiCallSteerDrain:
         agent = _bare_agent()
         messages = [
             {"role": "user", "content": "do something"},
-            {"role": "assistant", "content": "let me check", "tool_calls": [
-                {"id": "tc1", "function": {"name": "web_search", "arguments": "{}"}}
-            ]},
+            {
+                "role": "assistant",
+                "content": "let me check",
+                "tool_calls": [
+                    {"id": "tc1", "function": {"name": "web_search", "arguments": "{}"}}
+                ],
+            },
             {"role": "tool", "content": "search results", "tool_call_id": "tc1"},
         ]
         agent.steer("change approach")
@@ -287,7 +296,10 @@ class TestSteerMarkerContract:
 
         emitted = format_steer_marker("hi")
         assert STEER_MARKER_OPEN in emitted and STEER_MARKER_CLOSE in emitted
-        assert STEER_MARKER_OPEN in STEER_CHANNEL_NOTE and STEER_MARKER_CLOSE in STEER_CHANNEL_NOTE
+        assert (
+            STEER_MARKER_OPEN in STEER_CHANNEL_NOTE
+            and STEER_MARKER_CLOSE in STEER_CHANNEL_NOTE
+        )
 
     def test_marker_no_longer_uses_the_distrusted_label(self):
         """Regression: the bare 'User guidance:' line read as tool content and
@@ -314,7 +326,10 @@ class TestSteerCommandRegistry:
         handler. Otherwise it would be queued as user text and only
         delivered at turn end — defeating the whole point.
         """
-        from openagents_cli.commands import ACTIVE_SESSION_BYPASS_COMMANDS, should_bypass_active_session
+        from openagents_cli.commands import (
+            ACTIVE_SESSION_BYPASS_COMMANDS,
+            should_bypass_active_session,
+        )
 
         assert "steer" in ACTIVE_SESSION_BYPASS_COMMANDS
         assert should_bypass_active_session("steer") is True

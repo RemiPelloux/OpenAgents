@@ -9,7 +9,6 @@ import os
 from unittest.mock import patch
 
 
-
 class TestDiscordThreadPersistence:
     """Thread IDs are saved to disk and reloaded on init."""
 
@@ -93,6 +92,7 @@ class TestDiscordThreadPersistence:
         fake_home = tmp_path / "nonexistent" / "deep"
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(fake_home)}):
             from gateway.platforms.helpers import ThreadParticipationTracker
+
             # ThreadParticipationTracker should return empty set, not crash
             tracker = ThreadParticipationTracker("discord")
             assert "$test" not in tracker

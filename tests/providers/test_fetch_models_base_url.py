@@ -104,6 +104,7 @@ class TestCustomProviderBaseUrlPassthrough:
         server, port = _start_server([{"id": "ollama-model"}])
         try:
             from plugins.model_providers.custom import CustomProfile
+
             profile = CustomProfile(
                 name="custom",
                 base_url="http://127.0.0.1:1",  # wrong port
@@ -129,10 +130,16 @@ class TestModelPickerBaseUrlIntegration:
 
         with (
             patch("providers.get_provider_profile", return_value=mock_profile),
-            patch("openagents_cli.auth.resolve_api_key_provider_credentials",
-                  return_value={"api_key": "sk-test", "base_url": "https://custom.proxy.com"}),
+            patch(
+                "openagents_cli.auth.resolve_api_key_provider_credentials",
+                return_value={
+                    "api_key": "sk-test",
+                    "base_url": "https://custom.proxy.com",
+                },
+            ),
         ):
             from openagents_cli.models import provider_model_ids
+
             result = provider_model_ids("test-provider")
             # Verify fetch_models was called with base_url
             mock_profile.fetch_models.assert_called_once()

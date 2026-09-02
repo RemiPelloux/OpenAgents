@@ -14,46 +14,46 @@ INSTRUCTION_PATTERN = re.compile(
     r"reveal (?:the )?(?:prompt|secret|api key)|call (?:the )?tool)\b",
     re.IGNORECASE,
 )
-GENERIC_IDENTITIES = frozenset(
-    {
-        "admin",
-        "creator",
-        "emploi",
-        "jobs",
-        "job",
-        "officiel",
-        "official",
-        "recrutement",
-        "recruiter",
-        "rh",
-        "tiktok",
-        "user",
-    }
-)
-PERSONAL_EMAIL_DOMAINS = frozenset(
-    {
-        "gmail.com",
-        "hotmail.com",
-        "icloud.com",
-        "live.com",
-        "outlook.com",
-        "proton.me",
-        "protonmail.com",
-        "yahoo.com",
-        "yahoo.fr",
-    }
-)
+GENERIC_IDENTITIES = frozenset({
+    "admin",
+    "creator",
+    "emploi",
+    "jobs",
+    "job",
+    "officiel",
+    "official",
+    "recrutement",
+    "recruiter",
+    "rh",
+    "tiktok",
+    "user",
+})
+PERSONAL_EMAIL_DOMAINS = frozenset({
+    "gmail.com",
+    "hotmail.com",
+    "icloud.com",
+    "live.com",
+    "outlook.com",
+    "proton.me",
+    "protonmail.com",
+    "yahoo.com",
+    "yahoo.fr",
+})
 
 _STRONG_HIRING_PATTERNS = {
     "hiring": re.compile(r"\b(?:hiring|now hiring|we are hiring|we're hiring)\b"),
-    "recruiting": re.compile(r"\b(?:recrute|recrutons|recrutement|embauche|recruiting)\b"),
+    "recruiting": re.compile(
+        r"\b(?:recrute|recrutons|recrutement|embauche|recruiting)\b"
+    ),
     "open_position": re.compile(
         r"\b(?:poste a pourvoir|offre d emploi|job opening|open position|join (?:our|the) team|"
         r"rejoignez (?:notre|l )equipe)\b"
     ),
 }
 _SUPPORTING_HIRING_PATTERNS = {
-    "employment_type": re.compile(r"\b(?:cdi|cdd|alternance|apprentissage|internship|stage)\b"),
+    "employment_type": re.compile(
+        r"\b(?:cdi|cdd|alternance|apprentissage|internship|stage)\b"
+    ),
     "application": re.compile(
         r"\b(?:candidature|candidatez|postule|postulez|apply now|send (?:us )?your cv|envoyez (?:nous )?votre cv)\b"
     ),
@@ -107,7 +107,13 @@ def _safe_http_url(value: Any) -> str | None:
         return None
     if parsed.username or parsed.password:
         return None
-    return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), parsed.path, parsed.query, ""))
+    return urlunsplit((
+        parsed.scheme.lower(),
+        parsed.netloc.lower(),
+        parsed.path,
+        parsed.query,
+        "",
+    ))
 
 
 def normalize_tiktok_url(value: Any) -> str | None:
@@ -131,7 +137,9 @@ def normalize_tiktok_profile_url(value: Any) -> str | None:
     parsed = urlsplit(url)
     hostname = (parsed.hostname or "").lower().rstrip(".")
     path = parsed.path.rstrip("/")
-    if (hostname != "tiktok.com" and not hostname.endswith(".tiktok.com")) or not path.startswith("/@"):
+    if (
+        hostname != "tiktok.com" and not hostname.endswith(".tiktok.com")
+    ) or not path.startswith("/@"):
         return None
     return urlunsplit(("https", "www.tiktok.com", path, "", ""))
 
@@ -151,7 +159,9 @@ def extract_emails(text: str) -> List[str]:
 
 def extract_email_from_lead(lead: Dict[str, Any]) -> Optional[str]:
     raw = lead.get("raw") if isinstance(lead.get("raw"), dict) else {}
-    author_meta = raw.get("authorMeta") if isinstance(raw.get("authorMeta"), dict) else {}
+    author_meta = (
+        raw.get("authorMeta") if isinstance(raw.get("authorMeta"), dict) else {}
+    )
     for chunk in (
         lead.get("email"),
         lead.get("description"),
@@ -164,14 +174,18 @@ def extract_email_from_lead(lead: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _identity_candidate(value: Any, source: str, confidence: float) -> dict[str, Any] | None:
+def _identity_candidate(
+    value: Any, source: str, confidence: float
+) -> dict[str, Any] | None:
     name = re.sub(r"\s+", " ", _text(value, 255)).strip(" @|,;:-")
     if not name or name.lower() in GENERIC_IDENTITIES or name.isdigit():
         return None
     return {"name": name, "source": source, "confidence": confidence}
 
 
-def _company_candidates(lead: Dict[str, Any], raw: Dict[str, Any], author: Dict[str, Any]) -> list[dict[str, Any]]:
+def _company_candidates(
+    lead: Dict[str, Any], raw: Dict[str, Any], author: Dict[str, Any]
+) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     values = (
         (lead.get("company_name"), "lead.company_name", 1.0),
@@ -188,7 +202,11 @@ def _company_candidates(lead: Dict[str, Any], raw: Dict[str, Any], author: Dict[
             seen.add(candidate["name"].casefold())
             candidates.append(candidate)
 
-    handle = _first((lead.get("account"), raw.get("author"), author.get("name"))).lstrip("@")
+    handle = _first((
+        lead.get("account"),
+        raw.get("author"),
+        author.get("name"),
+    )).lstrip("@")
     handle_name = re.sub(r"[._-]+", " ", handle)
     handle_candidate = _identity_candidate(handle_name, "author.handle", 0.65)
     if handle_candidate and handle_candidate["name"].casefold() not in seen:
@@ -196,7 +214,9 @@ def _company_candidates(lead: Dict[str, Any], raw: Dict[str, Any], author: Dict[
     return candidates
 
 
-def _hiring_evidence(lead: Dict[str, Any], raw: Dict[str, Any], author: Dict[str, Any]) -> dict[str, Any]:
+def _hiring_evidence(
+    lead: Dict[str, Any], raw: Dict[str, Any], author: Dict[str, Any]
+) -> dict[str, Any]:
     source_text = "\n".join(
         filter(
             None,
@@ -208,8 +228,16 @@ def _hiring_evidence(lead: Dict[str, Any], raw: Dict[str, Any], author: Dict[str
         )
     )
     normalized = _normalized_text(source_text)
-    strong = [name for name, pattern in _STRONG_HIRING_PATTERNS.items() if pattern.search(normalized)]
-    supporting = [name for name, pattern in _SUPPORTING_HIRING_PATTERNS.items() if pattern.search(normalized)]
+    strong = [
+        name
+        for name, pattern in _STRONG_HIRING_PATTERNS.items()
+        if pattern.search(normalized)
+    ]
+    supporting = [
+        name
+        for name, pattern in _SUPPORTING_HIRING_PATTERNS.items()
+        if pattern.search(normalized)
+    ]
     negative = bool(_NEGATIVE_HIRING_PATTERN.search(normalized))
     credible = not negative and (bool(strong) or len(supporting) >= 2)
     return {
@@ -236,12 +264,10 @@ def analyze_tiktok_lead(lead: Dict[str, Any]) -> dict[str, Any]:
     email_domain = email.rsplit("@", 1)[1] if email else None
     website = _safe_http_url(author.get("bioLink"))
     website_domain = (urlsplit(website).hostname or "").lower() if website else None
-    location = _first(
-        (
-            lead.get("city"),
-            _nested(raw, "locationMeta", "city"),
-        )
-    )
+    location = _first((
+        lead.get("city"),
+        _nested(raw, "locationMeta", "city"),
+    ))
     location_source = next(
         (
             source
@@ -253,17 +279,17 @@ def analyze_tiktok_lead(lead: Dict[str, Any]) -> dict[str, Any]:
         ),
         None,
     )
-    country = _first(
-        (
-            _nested(raw, "locationMeta", "countryCode"),
-            raw.get("locationCreated"),
-            author.get("region"),
-        )
-    )
+    country = _first((
+        _nested(raw, "locationMeta", "countryCode"),
+        raw.get("locationCreated"),
+        author.get("region"),
+    ))
     hiring = _hiring_evidence(lead, raw, author)
-    content = "\n".join(
-        (_text(lead.get("description")), _text(raw.get("text")), _text(author.get("signature")))
-    )
+    content = "\n".join((
+        _text(lead.get("description")),
+        _text(raw.get("text")),
+        _text(author.get("signature")),
+    ))
     injection_detected = bool(INSTRUCTION_PATTERN.search(content))
     identity_confidence = float(company["confidence"]) if company else 0.0
     strong_video_identity = bool(video_url)
@@ -278,13 +304,19 @@ def analyze_tiktok_lead(lead: Dict[str, Any]) -> dict[str, Any]:
     score = 0
     score += 20 if video_url else 0
     score += 5 if strong_video_identity else 0
-    score += 25 if identity_confidence >= 0.8 else 15 if identity_confidence >= 0.65 else 0
+    score += (
+        25 if identity_confidence >= 0.8 else 15 if identity_confidence >= 0.65 else 0
+    )
     score += 30 if hiring["credible"] else 0
     score += 10 if email else 0
     score += 5 if website_domain else 0
     score += 5 if location else 0
     preflight_pass = not blockers and score >= 60
-    commerce = author.get("commerceUserInfo") if isinstance(author.get("commerceUserInfo"), dict) else {}
+    commerce = (
+        author.get("commerceUserInfo")
+        if isinstance(author.get("commerceUserInfo"), dict)
+        else {}
+    )
 
     result = {
         "preflight_pass": preflight_pass,
@@ -312,7 +344,9 @@ def analyze_tiktok_lead(lead: Dict[str, Any]) -> dict[str, Any]:
         "contact_evidence": {
             "email_source_provided": bool(email),
             "email_domain_type": (
-                "personal_provider" if email_domain in PERSONAL_EMAIL_DOMAINS else "organization_domain"
+                "personal_provider"
+                if email_domain in PERSONAL_EMAIL_DOMAINS
+                else "organization_domain"
             )
             if email_domain
             else None,
@@ -336,18 +370,16 @@ def analyze_tiktok_lead(lead: Dict[str, Any]) -> dict[str, Any]:
         "source": {"video_url": source_video_url or None},
     }
     result["brief"] = build_company_brief(lead, email, analysis=result)
-    result.update(
-        {
-            "email": email,
-            "account": result["normalized"]["account"],
-            "video_url": result["normalized"]["video_url"],
-            "source_video_url": source_video_url or None,
-            "profile_url": result["normalized"]["profile_url"],
-            "company_name": result["normalized"]["company_name"],
-            "city": result["normalized"]["city"],
-            "description": _text(lead.get("description"), 1_000),
-        }
-    )
+    result.update({
+        "email": email,
+        "account": result["normalized"]["account"],
+        "video_url": result["normalized"]["video_url"],
+        "source_video_url": source_video_url or None,
+        "profile_url": result["normalized"]["profile_url"],
+        "company_name": result["normalized"]["company_name"],
+        "city": result["normalized"]["city"],
+        "description": _text(lead.get("description"), 1_000),
+    })
     return result
 
 
@@ -359,12 +391,19 @@ def filter_tiktok_leads(leads: list[Any]) -> dict[str, Any]:
 
     for index, lead in enumerate(leads[:100]):
         if not isinstance(lead, dict):
-            rejected.append({"index": index, "rejection_reasons": ["invalid_lead_object"]})
+            rejected.append({
+                "index": index,
+                "rejection_reasons": ["invalid_lead_object"],
+            })
             continue
         analysis = analyze_tiktok_lead(lead)
         video_url = analysis["normalized"]["video_url"]
         if video_url and video_url in seen_urls:
-            duplicates.append({"index": index, "video_url": video_url, "reason": "duplicate_video_url"})
+            duplicates.append({
+                "index": index,
+                "video_url": video_url,
+                "reason": "duplicate_video_url",
+            })
             continue
         if video_url:
             seen_urls.add(video_url)
@@ -396,8 +435,12 @@ def build_company_brief(
     account = _text(normalized.get("account") or lead.get("account")).lstrip("@")
     description = _text(lead.get("description"), 1_000)
     parts = [
-        f"TikTok source account: @{account}" if account else "TikTok source account: unknown",
-        f"Company candidate: {normalized.get('company_name')}" if normalized.get("company_name") else "",
+        f"TikTok source account: @{account}"
+        if account
+        else "TikTok source account: unknown",
+        f"Company candidate: {normalized.get('company_name')}"
+        if normalized.get("company_name")
+        else "",
         description,
         f"Video: {normalized.get('video_url') or lead.get('video_url', '')}",
     ]

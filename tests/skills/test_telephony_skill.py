@@ -37,7 +37,9 @@ def test_save_twilio_writes_env_and_state(tmp_path: Path, monkeypatch):
     )
 
     env_text = (tmp_path / ".hermes" / ".env").read_text(encoding="utf-8")
-    state = json.loads((tmp_path / ".hermes" / "telephony_state.json").read_text(encoding="utf-8"))
+    state = json.loads(
+        (tmp_path / ".hermes" / "telephony_state.json").read_text(encoding="utf-8")
+    )
 
     assert result["success"] is True
     assert "TWILIO_ACCOUNT_SID=AC123" in env_text
@@ -51,7 +53,9 @@ def test_save_twilio_writes_env_and_state(tmp_path: Path, monkeypatch):
 def test_upsert_env_updates_existing_values(tmp_path: Path):
     mod = load_module()
     env_path = tmp_path / ".env"
-    env_path.write_text("TWILIO_PHONE_NUMBER=+15550000000\nOTHER=keep\n", encoding="utf-8")
+    env_path.write_text(
+        "TWILIO_PHONE_NUMBER=+15550000000\nOTHER=keep\n", encoding="utf-8"
+    )
 
     mod._upsert_env_file(
         {
@@ -76,7 +80,9 @@ def test_messages_after_checkpoint_returns_only_newer_items():
     ]
 
     assert mod._messages_after_checkpoint(messages, "") == messages
-    assert mod._messages_after_checkpoint(messages, "SM2") == [{"sid": "SM3", "body": "newest"}]
+    assert mod._messages_after_checkpoint(messages, "SM2") == [
+        {"sid": "SM3", "body": "newest"}
+    ]
     assert mod._messages_after_checkpoint(messages, "SM3") == []
 
 
@@ -157,7 +163,9 @@ def test_twilio_inbox_marks_seen_checkpoint(tmp_path: Path):
         ]
     }
 
-    result = mod._twilio_inbox(limit=10, since_last=True, mark_seen=True, state_path=state_path)
+    result = mod._twilio_inbox(
+        limit=10, since_last=True, mark_seen=True, state_path=state_path
+    )
     state = json.loads(state_path.read_text(encoding="utf-8"))
 
     assert result["count"] == 1
@@ -178,9 +186,11 @@ def test_vapi_import_twilio_number_saves_phone_number_id(tmp_path: Path):
         friendly_name="Main",
         capabilities={"voice": True, "sms": True},
     )
-    mod._json_request = lambda method, url, headers=None, params=None, form=None, json_body=None: {
-        "id": "vapi-phone-xyz"
-    }
+    mod._json_request = (
+        lambda method, url, headers=None, params=None, form=None, json_body=None: {
+            "id": "vapi-phone-xyz"
+        }
+    )
 
     result = mod._vapi_import_twilio_number(
         save_env=True,

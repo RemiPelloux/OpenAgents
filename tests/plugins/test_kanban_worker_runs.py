@@ -27,6 +27,7 @@ from openagents_cli import kanban_db as kb
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _load_plugin_router():
     """Dynamically load plugins/kanban/dashboard/plugin_api.py and return its router."""
     repo_root = Path(__file__).resolve().parents[2]
@@ -82,6 +83,7 @@ def _insert_run(conn, task_id, *, worker_pid=None, ended_at=None):
 # GET /workers/active
 # ---------------------------------------------------------------------------
 
+
 def test_workers_active_empty_board(client):
     """Board with no running tasks returns an empty workers list."""
     r = client.get("/api/plugins/kanban/workers/active")
@@ -98,7 +100,8 @@ def test_workers_active_with_running_task(client):
     try:
         task_id = kb.create_task(conn, title="active-worker", assignee="alice")
         conn.execute(
-            "UPDATE tasks SET status='running' WHERE id=?", (task_id,),
+            "UPDATE tasks SET status='running' WHERE id=?",
+            (task_id,),
         )
         _insert_run(conn, task_id, worker_pid=12345)
     finally:
@@ -150,6 +153,7 @@ def test_workers_active_excludes_runs_without_pid(client):
 # GET /runs/{run_id}
 # ---------------------------------------------------------------------------
 
+
 def test_get_run_404_unknown_id(client):
     """Non-existent run_id returns 404."""
     r = client.get("/api/plugins/kanban/runs/999999")
@@ -181,6 +185,7 @@ def test_get_run_ok(client):
 # GET /runs/{run_id}/inspect
 # ---------------------------------------------------------------------------
 
+
 def test_inspect_run_404(client):
     """Non-existent run_id returns 404."""
     r = client.get("/api/plugins/kanban/runs/888888/inspect")
@@ -192,7 +197,9 @@ def test_inspect_run_already_ended(client):
     conn = kb.connect()
     try:
         task_id = kb.create_task(conn, title="ended", assignee="eve")
-        run_id = _insert_run(conn, task_id, worker_pid=11111, ended_at=int(time.time()) - 10)
+        run_id = _insert_run(
+            conn, task_id, worker_pid=11111, ended_at=int(time.time()) - 10
+        )
     finally:
         conn.close()
 
@@ -306,6 +313,7 @@ def test_inspect_run_live_pid(client, monkeypatch):
 # POST /runs/{run_id}/terminate
 # ---------------------------------------------------------------------------
 
+
 def _setup_running_task_with_run(conn, *, title, assignee, worker_pid):
     """Create a task in 'running' state with a matching open task_runs row.
 
@@ -347,7 +355,10 @@ def test_terminate_run_409_already_ended(client):
     try:
         task_id = kb.create_task(conn, title="ended-terminate", assignee="ivy")
         run_id = _insert_run(
-            conn, task_id, worker_pid=22222, ended_at=int(time.time()) - 30,
+            conn,
+            task_id,
+            worker_pid=22222,
+            ended_at=int(time.time()) - 30,
         )
     finally:
         conn.close()
@@ -365,7 +376,10 @@ def test_terminate_run_ok(client, monkeypatch):
     conn = kb.connect()
     try:
         task_id, run_id = _setup_running_task_with_run(
-            conn, title="kill-me", assignee="jane", worker_pid=33333,
+            conn,
+            title="kill-me",
+            assignee="jane",
+            worker_pid=33333,
         )
     finally:
         conn.close()

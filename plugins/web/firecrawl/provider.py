@@ -154,9 +154,12 @@ def _is_tool_gateway_ready() -> bool:
     """
     import tools.web_tools as _wt
 
-    return _wt.resolve_managed_tool_gateway(
-        "firecrawl", token_reader=_wt._peek_nous_access_token
-    ) is not None
+    return (
+        _wt.resolve_managed_tool_gateway(
+            "firecrawl", token_reader=_wt._peek_nous_access_token
+        )
+        is not None
+    )
 
 
 def _has_direct_firecrawl_config() -> bool:
@@ -465,19 +468,17 @@ class FirecrawlWebSearchProvider(WebSearchProvider):
                     blocked["host"],
                     blocked["rule"],
                 )
-                results.append(
-                    {
-                        "url": url,
-                        "title": "",
-                        "content": "",
-                        "error": blocked["message"],
-                        "blocked_by_policy": {
-                            "host": blocked["host"],
-                            "rule": blocked["rule"],
-                            "source": blocked["source"],
-                        },
-                    }
-                )
+                results.append({
+                    "url": url,
+                    "title": "",
+                    "content": "",
+                    "error": blocked["message"],
+                    "blocked_by_policy": {
+                        "host": blocked["host"],
+                        "rule": blocked["rule"],
+                        "source": blocked["source"],
+                    },
+                })
                 continue
 
             try:
@@ -493,17 +494,15 @@ class FirecrawlWebSearchProvider(WebSearchProvider):
                     )
                 except asyncio.TimeoutError:
                     logger.warning("Firecrawl scrape timed out for %s", url)
-                    results.append(
-                        {
-                            "url": url,
-                            "title": "",
-                            "content": "",
-                            "error": (
-                                "Scrape timed out after 60s — page may be too large "
-                                "or unresponsive. Try browser_navigate instead."
-                            ),
-                        }
-                    )
+                    results.append({
+                        "url": url,
+                        "title": "",
+                        "content": "",
+                        "error": (
+                            "Scrape timed out after 60s — page may be too large "
+                            "or unresponsive. Try browser_navigate instead."
+                        ),
+                    })
                     continue
 
                 scrape_payload = _extract_scrape_payload(scrape_result)
@@ -531,20 +530,18 @@ class FirecrawlWebSearchProvider(WebSearchProvider):
                         final_blocked["host"],
                         final_blocked["rule"],
                     )
-                    results.append(
-                        {
-                            "url": final_url,
-                            "title": title,
-                            "content": "",
-                            "raw_content": "",
-                            "error": final_blocked["message"],
-                            "blocked_by_policy": {
-                                "host": final_blocked["host"],
-                                "rule": final_blocked["rule"],
-                                "source": final_blocked["source"],
-                            },
-                        }
-                    )
+                    results.append({
+                        "url": final_url,
+                        "title": title,
+                        "content": "",
+                        "raw_content": "",
+                        "error": final_blocked["message"],
+                        "blocked_by_policy": {
+                            "host": final_blocked["host"],
+                            "rule": final_blocked["rule"],
+                            "source": final_blocked["source"],
+                        },
+                    })
                     continue
 
                 # Choose markdown vs html according to the requested format
@@ -553,26 +550,22 @@ class FirecrawlWebSearchProvider(WebSearchProvider):
                 else:
                     chosen_content = content_html or content_markdown or ""
 
-                results.append(
-                    {
-                        "url": final_url,
-                        "title": title,
-                        "content": chosen_content,
-                        "raw_content": chosen_content,
-                        "metadata": metadata,
-                    }
-                )
+                results.append({
+                    "url": final_url,
+                    "title": title,
+                    "content": chosen_content,
+                    "raw_content": chosen_content,
+                    "metadata": metadata,
+                })
             except Exception as scrape_err:  # noqa: BLE001
                 logger.debug("Firecrawl scrape failed for %s: %s", url, scrape_err)
-                results.append(
-                    {
-                        "url": url,
-                        "title": "",
-                        "content": "",
-                        "raw_content": "",
-                        "error": str(scrape_err),
-                    }
-                )
+                results.append({
+                    "url": url,
+                    "title": "",
+                    "content": "",
+                    "raw_content": "",
+                    "error": str(scrape_err),
+                })
 
         return results
 

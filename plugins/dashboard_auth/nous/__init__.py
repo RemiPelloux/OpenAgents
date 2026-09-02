@@ -291,9 +291,7 @@ class NousDashboardAuthProvider(DashboardAuthProvider):
                 timeout=_TOKEN_ENDPOINT_TIMEOUT_SEC,
             )
         except httpx.RequestError as exc:
-            raise ProviderError(
-                f"Portal token endpoint unreachable: {exc}"
-            ) from exc
+            raise ProviderError(f"Portal token endpoint unreachable: {exc}") from exc
 
         # A 400 on refresh means the RT is expired / revoked / reuse-detected;
         # surface as RefreshExpiredError so middleware forces re-login.
@@ -346,7 +344,6 @@ class NousDashboardAuthProvider(DashboardAuthProvider):
             refresh_token = ""
         return self._session_from_claims(access_token, refresh_token, claims)
 
-
     def verify_session(self, *, access_token: str) -> Optional[Session]:
         # Contract: returns None on expiry/invalidity (the middleware then
         # tries refresh_session with the RT cookie, falling back to
@@ -393,9 +390,7 @@ class NousDashboardAuthProvider(DashboardAuthProvider):
         """
         parsed = urllib.parse.urlparse(redirect_uri)
         if parsed.scheme not in ("https", "http"):
-            raise ProviderError(
-                f"redirect_uri must be http(s), got {redirect_uri!r}"
-            )
+            raise ProviderError(f"redirect_uri must be http(s), got {redirect_uri!r}")
         if not parsed.path or not parsed.path.endswith("/auth/callback"):
             raise ProviderError(
                 "redirect_uri path must end with '/auth/callback', "
@@ -429,9 +424,7 @@ class NousDashboardAuthProvider(DashboardAuthProvider):
         import jwt
 
         try:
-            signing_key = self._get_jwks_client().get_signing_key_from_jwt(
-                access_token
-            )
+            signing_key = self._get_jwks_client().get_signing_key_from_jwt(access_token)
         except jwt.PyJWKClientError as exc:
             raise ProviderError(f"JWKS lookup failed: {exc}") from exc
         except Exception as exc:  # pragma: no cover - defensive
@@ -592,9 +585,7 @@ def _resolve_portal_url() -> str:
     env = os.environ.get("HERMES_DASHBOARD_PORTAL_URL", "").strip()
     if env:
         return env
-    cfg_value = str(
-        _load_config_oauth_section().get("portal_url", "")
-    ).strip()
+    cfg_value = str(_load_config_oauth_section().get("portal_url", "")).strip()
     return cfg_value or _DEFAULT_PORTAL_URL
 
 
@@ -651,9 +642,7 @@ def register(ctx) -> None:
         return
 
     try:
-        provider = NousDashboardAuthProvider(
-            client_id=client_id, portal_url=portal_url
-        )
+        provider = NousDashboardAuthProvider(client_id=client_id, portal_url=portal_url)
     except ValueError as exc:
         LAST_SKIP_REASON = f"NousDashboardAuthProvider construction failed: {exc}"
         logger.warning("dashboard-auth-nous: %s", LAST_SKIP_REASON)

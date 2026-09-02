@@ -11,14 +11,12 @@ DISTRIBUTION_REPO_HTTPS = "https://github.com/RemiPelloux/OpenAgents.git"
 DISTRIBUTION_REPO_SSH = "git@github.com:RemiPelloux/OpenAgents.git"
 DISTRIBUTION_REPO_CANONICAL = "github.com/remipelloux/openagents"
 
-DISTRIBUTION_REPO_URLS = frozenset(
-    {
-        DISTRIBUTION_REPO_HTTPS,
-        DISTRIBUTION_REPO_SSH,
-        "https://github.com/RemiPelloux/OpenAgents",
-        "git@github.com:RemiPelloux/OpenAgents",
-    }
-)
+DISTRIBUTION_REPO_URLS = frozenset({
+    DISTRIBUTION_REPO_HTTPS,
+    DISTRIBUTION_REPO_SSH,
+    "https://github.com/RemiPelloux/OpenAgents",
+    "git@github.com:RemiPelloux/OpenAgents",
+})
 
 # Hermes Agent — source of truth for feature releases (maintainer sync only).
 HERMES_UPSTREAM_REPO_HTTPS = "https://github.com/NousResearch/Hermes-agent.git"

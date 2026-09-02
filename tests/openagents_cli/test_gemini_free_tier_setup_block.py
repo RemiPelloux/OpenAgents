@@ -1,4 +1,5 @@
 """Tests for the Gemini free-tier block in the setup wizard."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -38,15 +39,20 @@ class TestGeminiSetupFreeTierBlock:
         from openagents_cli.config import load_config
 
         # Mock the probe to claim this is a free-tier key
-        with patch(
-            "agent.gemini_native_adapter.probe_gemini_tier",
-            return_value="free",
-        ), patch(
-            "openagents_cli.auth._prompt_model_selection",
-            return_value="gemini-2.5-flash",
-        ), patch(
-            "openagents_cli.auth.deactivate_provider",
-        ), patch("builtins.input", return_value=""):
+        with (
+            patch(
+                "agent.gemini_native_adapter.probe_gemini_tier",
+                return_value="free",
+            ),
+            patch(
+                "openagents_cli.auth._prompt_model_selection",
+                return_value="gemini-2.5-flash",
+            ),
+            patch(
+                "openagents_cli.auth.deactivate_provider",
+            ),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "gemini", "old-model")
 
         output = capsys.readouterr().out
@@ -56,6 +62,7 @@ class TestGeminiSetupFreeTierBlock:
 
         # Config must NOT show gemini as the provider
         import yaml
+
         cfg = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
         model = cfg.get("model")
         if isinstance(model, dict):
@@ -71,15 +78,20 @@ class TestGeminiSetupFreeTierBlock:
         from openagents_cli.main import _model_flow_api_key_provider
         from openagents_cli.config import load_config
 
-        with patch(
-            "agent.gemini_native_adapter.probe_gemini_tier",
-            return_value="paid",
-        ), patch(
-            "openagents_cli.auth._prompt_model_selection",
-            return_value="gemini-2.5-flash",
-        ), patch(
-            "openagents_cli.auth.deactivate_provider",
-        ), patch("builtins.input", return_value=""):
+        with (
+            patch(
+                "agent.gemini_native_adapter.probe_gemini_tier",
+                return_value="paid",
+            ),
+            patch(
+                "openagents_cli.auth._prompt_model_selection",
+                return_value="gemini-2.5-flash",
+            ),
+            patch(
+                "openagents_cli.auth.deactivate_provider",
+            ),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "gemini", "old-model")
 
         output = capsys.readouterr().out
@@ -87,6 +99,7 @@ class TestGeminiSetupFreeTierBlock:
         assert "Not saving Gemini" not in output
 
         import yaml
+
         cfg = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
         model = cfg.get("model")
         assert isinstance(model, dict), f"model should be dict, got {type(model)}"
@@ -100,15 +113,20 @@ class TestGeminiSetupFreeTierBlock:
         from openagents_cli.main import _model_flow_api_key_provider
         from openagents_cli.config import load_config
 
-        with patch(
-            "agent.gemini_native_adapter.probe_gemini_tier",
-            return_value="unknown",
-        ), patch(
-            "openagents_cli.auth._prompt_model_selection",
-            return_value="gemini-2.5-flash",
-        ), patch(
-            "openagents_cli.auth.deactivate_provider",
-        ), patch("builtins.input", return_value=""):
+        with (
+            patch(
+                "agent.gemini_native_adapter.probe_gemini_tier",
+                return_value="unknown",
+            ),
+            patch(
+                "openagents_cli.auth._prompt_model_selection",
+                return_value="gemini-2.5-flash",
+            ),
+            patch(
+                "openagents_cli.auth.deactivate_provider",
+            ),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "gemini", "old-model")
 
         output = capsys.readouterr().out
@@ -116,6 +134,7 @@ class TestGeminiSetupFreeTierBlock:
         assert "Not saving Gemini" not in output
 
         import yaml
+
         cfg = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
         model = cfg.get("model")
         assert isinstance(model, dict)
@@ -128,14 +147,19 @@ class TestGeminiSetupFreeTierBlock:
         from openagents_cli.main import _model_flow_api_key_provider
         from openagents_cli.config import load_config
 
-        with patch(
-            "agent.gemini_native_adapter.probe_gemini_tier",
-        ) as mock_probe, patch(
-            "openagents_cli.auth._prompt_model_selection",
-            return_value="deepseek-chat",
-        ), patch(
-            "openagents_cli.auth.deactivate_provider",
-        ), patch("builtins.input", return_value=""):
+        with (
+            patch(
+                "agent.gemini_native_adapter.probe_gemini_tier",
+            ) as mock_probe,
+            patch(
+                "openagents_cli.auth._prompt_model_selection",
+                return_value="deepseek-chat",
+            ),
+            patch(
+                "openagents_cli.auth.deactivate_provider",
+            ),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "deepseek", "old-model")
 
         mock_probe.assert_not_called()

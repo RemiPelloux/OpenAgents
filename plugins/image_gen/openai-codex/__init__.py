@@ -149,20 +149,24 @@ def _build_responses_payload(*, prompt: str, size: str, quality: str) -> Dict[st
         "model": _CODEX_CHAT_MODEL,
         "store": False,
         "instructions": _CODEX_INSTRUCTIONS,
-        "input": [{
-            "type": "message",
-            "role": "user",
-            "content": [{"type": "input_text", "text": prompt}],
-        }],
-        "tools": [{
-            "type": "image_generation",
-            "model": API_MODEL,
-            "size": size,
-            "quality": quality,
-            "output_format": "png",
-            "background": "opaque",
-            "partial_images": 1,
-        }],
+        "input": [
+            {
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": prompt}],
+            }
+        ],
+        "tools": [
+            {
+                "type": "image_generation",
+                "model": API_MODEL,
+                "size": size,
+                "quality": quality,
+                "output_format": "png",
+                "background": "opaque",
+                "partial_images": 1,
+            }
+        ],
         "tool_choice": {
             "type": "allowed_tools",
             "mode": "required",
@@ -233,16 +237,18 @@ def _iter_sse_json(response: Any):
         if line.startswith(":"):
             continue
         if line.startswith("event:"):
-            event_name = line[len("event:"):].strip()
+            event_name = line[len("event:") :].strip()
         elif line.startswith("data:"):
-            data_lines.append(line[len("data:"):].lstrip())
+            data_lines.append(line[len("data:") :].lstrip())
 
     payload = flush()
     if payload is not None:
         yield payload
 
 
-def _collect_image_b64(token: str, *, prompt: str, size: str, quality: str) -> Optional[str]:
+def _collect_image_b64(
+    token: str, *, prompt: str, size: str, quality: str
+) -> Optional[str]:
     """Stream a Codex Responses image_generation call and return the b64 image."""
     import httpx
     from agent.auxiliary_client import _codex_cloudflare_headers
@@ -258,7 +264,9 @@ def _collect_image_b64(token: str, *, prompt: str, size: str, quality: str) -> O
 
     image_b64: Optional[str] = None
     with httpx.Client(timeout=timeout, headers=headers) as http:
-        with http.stream("POST", f"{_CODEX_BASE_URL}/responses", json=payload) as response:
+        with http.stream(
+            "POST", f"{_CODEX_BASE_URL}/responses", json=payload
+        ) as response:
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError as exc:

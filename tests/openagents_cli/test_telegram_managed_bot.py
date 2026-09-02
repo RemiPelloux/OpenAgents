@@ -219,7 +219,9 @@ class TestPollForToken:
             "token": VALID_TOKEN,
         }
 
-        with patch("openagents_cli.telegram_managed_bot.httpx.get", return_value=mock_resp):
+        with patch(
+            "openagents_cli.telegram_managed_bot.httpx.get", return_value=mock_resp
+        ):
             with patch("openagents_cli.telegram_managed_bot.time.sleep"):
                 result = poll_for_setup_result(
                     "https://api.example.com", self.pairing(), timeout=5
@@ -241,7 +243,9 @@ class TestPollForToken:
             "token": VALID_TOKEN,
         }
 
-        with patch("openagents_cli.telegram_managed_bot.httpx.get", return_value=mock_resp):
+        with patch(
+            "openagents_cli.telegram_managed_bot.httpx.get", return_value=mock_resp
+        ):
             result = poll_for_setup_result(
                 "https://api.example.com", self.pairing(), timeout=5
             )
@@ -262,7 +266,9 @@ class TestPollForToken:
             "token": "not-a-real-token",
         }
 
-        with patch("openagents_cli.telegram_managed_bot.httpx.get", return_value=mock_resp):
+        with patch(
+            "openagents_cli.telegram_managed_bot.httpx.get", return_value=mock_resp
+        ):
             with patch("openagents_cli.telegram_managed_bot.time.sleep"):
                 with patch(
                     "openagents_cli.telegram_managed_bot.time.monotonic"
@@ -280,7 +286,9 @@ class TestPollForToken:
         mock_resp.status_code = 200
         mock_resp.json.return_value = {"status": "waiting"}
 
-        with patch("openagents_cli.telegram_managed_bot.httpx.get", return_value=mock_resp):
+        with patch(
+            "openagents_cli.telegram_managed_bot.httpx.get", return_value=mock_resp
+        ):
             with patch("openagents_cli.telegram_managed_bot.time.sleep"):
                 with patch(
                     "openagents_cli.telegram_managed_bot.time.monotonic"
@@ -309,7 +317,9 @@ class TestPollForToken:
                 return not_ready
             return ready
 
-        with patch("openagents_cli.telegram_managed_bot.httpx.get", side_effect=fake_get):
+        with patch(
+            "openagents_cli.telegram_managed_bot.httpx.get", side_effect=fake_get
+        ):
             with patch("openagents_cli.telegram_managed_bot.time.sleep"):
                 token = poll_for_token(
                     "https://api.example.com", self.pairing(), timeout=30
@@ -323,7 +333,9 @@ class TestSetupTelegramAuto:
 
         assert callable(_setup_telegram_auto)
 
-    def test_setup_result_passes_profile_name_for_profile_home(self, monkeypatch, tmp_path):
+    def test_setup_result_passes_profile_name_for_profile_home(
+        self, monkeypatch, tmp_path
+    ):
         from openagents_cli import setup
 
         seen = {}

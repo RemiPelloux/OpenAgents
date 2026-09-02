@@ -39,11 +39,11 @@ logger = logging.getLogger(__name__)
 
 
 _TOOLS = (
-    ("meet_join",       MEET_JOIN_SCHEMA,       handle_meet_join,       "📞"),
-    ("meet_status",     MEET_STATUS_SCHEMA,     handle_meet_status,     "🟢"),
+    ("meet_join", MEET_JOIN_SCHEMA, handle_meet_join, "📞"),
+    ("meet_status", MEET_STATUS_SCHEMA, handle_meet_status, "🟢"),
     ("meet_transcript", MEET_TRANSCRIPT_SCHEMA, handle_meet_transcript, "📝"),
-    ("meet_leave",      MEET_LEAVE_SCHEMA,      handle_meet_leave,      "👋"),
-    ("meet_say",        MEET_SAY_SCHEMA,        handle_meet_say,        "🗣️"),
+    ("meet_leave", MEET_LEAVE_SCHEMA, handle_meet_leave, "👋"),
+    ("meet_say", MEET_SAY_SCHEMA, handle_meet_say, "🗣️"),
 )
 
 

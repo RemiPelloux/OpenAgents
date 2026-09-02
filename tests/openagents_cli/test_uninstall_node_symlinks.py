@@ -155,9 +155,7 @@ def test_removes_fhs_symlinks_in_usr_local_bin(fake_home, tmp_path, monkeypatch)
             p.unlink()
 
     # Return only our fake FHS dir as a candidate.
-    monkeypatch.setattr(
-        uninstall, "_node_symlink_candidate_dirs", lambda: [fhs_bin]
-    )
+    monkeypatch.setattr(uninstall, "_node_symlink_candidate_dirs", lambda: [fhs_bin])
 
     removed = uninstall.remove_node_symlinks(hermes_home)
 

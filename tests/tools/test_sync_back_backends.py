@@ -20,16 +20,27 @@ from tools.environments.ssh import SSHEnvironment
 def ssh_mock_env(monkeypatch):
     """Create an SSHEnvironment with mocked connection/sync."""
     monkeypatch.setattr(ssh_env.shutil, "which", lambda _name: "/usr/bin/ssh")
-    monkeypatch.setattr(ssh_env.SSHEnvironment, "_establish_connection", lambda self: None)
-    monkeypatch.setattr(ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/testuser")
-    monkeypatch.setattr(ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None)
+    monkeypatch.setattr(
+        ssh_env.SSHEnvironment, "_establish_connection", lambda self: None
+    )
+    monkeypatch.setattr(
+        ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/testuser"
+    )
+    monkeypatch.setattr(
+        ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None
+    )
     monkeypatch.setattr(ssh_env.SSHEnvironment, "init_session", lambda self: None)
     monkeypatch.setattr(
-        ssh_env, "FileSyncManager",
-        lambda **kw: type("M", (), {
-            "sync": lambda self, **k: None,
-            "sync_back": lambda self: None,
-        })(),
+        ssh_env,
+        "FileSyncManager",
+        lambda **kw: type(
+            "M",
+            (),
+            {
+                "sync": lambda self, **k: None,
+                "sync_back": lambda self: None,
+            },
+        )(),
     )
     return SSHEnvironment(host="example.com", user="testuser")
 
@@ -107,7 +118,9 @@ class TestSSHBulkDownload:
         """subprocess.run command should include tar cf - over SSH."""
         dest = tmp_path / "backup.tar"
 
-        with patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as mock_run:
+        with patch.object(
+            subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+        ) as mock_run:
             # open() will be called to write stdout; mock it to avoid actual file I/O
             ssh_mock_env._ssh_bulk_download(dest)
 
@@ -124,7 +137,9 @@ class TestSSHBulkDownload:
         """subprocess.run should receive stdout=open(dest, 'wb')."""
         dest = tmp_path / "backup.tar"
 
-        with patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as mock_run:
+        with patch.object(
+            subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+        ) as mock_run:
             ssh_mock_env._ssh_bulk_download(dest)
 
         # The stdout kwarg should be a file object opened for writing
@@ -149,11 +164,16 @@ class TestSSHBulkDownload:
         """The subprocess.run call should use a 120s timeout."""
         dest = tmp_path / "backup.tar"
 
-        with patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as mock_run:
+        with patch.object(
+            subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+        ) as mock_run:
             ssh_mock_env._ssh_bulk_download(dest)
 
         call_kwargs = mock_run.call_args
-        assert call_kwargs.kwargs.get("timeout") == 120 or call_kwargs[1].get("timeout") == 120
+        assert (
+            call_kwargs.kwargs.get("timeout") == 120
+            or call_kwargs[1].get("timeout") == 120
+        )
 
 
 class TestSSHCleanup:
@@ -162,9 +182,15 @@ class TestSSHCleanup:
     def test_ssh_cleanup_calls_sync_back(self, monkeypatch):
         """cleanup() should call sync_back() before SSH control socket teardown."""
         monkeypatch.setattr(ssh_env.shutil, "which", lambda _name: "/usr/bin/ssh")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_establish_connection", lambda self: None)
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/u")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None)
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_establish_connection", lambda self: None
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/u"
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None
+        )
         monkeypatch.setattr(ssh_env.SSHEnvironment, "init_session", lambda self: None)
 
         call_order = []
@@ -192,9 +218,15 @@ class TestSSHCleanup:
     def test_ssh_cleanup_calls_sync_back_before_control_exit(self, monkeypatch):
         """sync_back() must run before the ControlMaster exit command."""
         monkeypatch.setattr(ssh_env.shutil, "which", lambda _name: "/usr/bin/ssh")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_establish_connection", lambda self: None)
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/u")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None)
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_establish_connection", lambda self: None
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/home/u"
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None
+        )
         monkeypatch.setattr(ssh_env.SSHEnvironment, "init_session", lambda self: None)
 
         call_order = []
@@ -215,6 +247,7 @@ class TestSSHCleanup:
 
         # Create a fake control socket so cleanup tries the SSH exit
         import tempfile
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".sock") as tmp:
             env.control_socket = Path(tmp.name)
 
@@ -413,9 +446,15 @@ class TestBulkDownloadWiring:
     def test_ssh_passes_bulk_download_fn(self, monkeypatch):
         """SSHEnvironment should pass _ssh_bulk_download to FileSyncManager."""
         monkeypatch.setattr(ssh_env.shutil, "which", lambda _name: "/usr/bin/ssh")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_establish_connection", lambda self: None)
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/root")
-        monkeypatch.setattr(ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None)
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_establish_connection", lambda self: None
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_detect_remote_home", lambda self: "/root"
+        )
+        monkeypatch.setattr(
+            ssh_env.SSHEnvironment, "_ensure_remote_dirs", lambda self: None
+        )
         monkeypatch.setattr(ssh_env.SSHEnvironment, "init_session", lambda self: None)
 
         captured_kwargs = {}
@@ -452,6 +491,7 @@ class TestBulkDownloadWiring:
 
         # Replicate the wiring done in __init__
         from tools.environments.file_sync import iter_sync_files
+
         env._sync_manager = modal_env.FileSyncManager(
             get_files_fn=lambda: iter_sync_files("/root/.hermes"),
             upload_fn=env._modal_upload,
@@ -483,6 +523,7 @@ class TestBulkDownloadWiring:
 
         # Replicate the wiring done in __init__
         from tools.environments.file_sync import iter_sync_files
+
         env._sync_manager = daytona_env.FileSyncManager(
             get_files_fn=lambda: iter_sync_files(f"{env._remote_home}/.hermes"),
             upload_fn=env._daytona_upload,

@@ -105,9 +105,7 @@ _PLATFORM_MAP = {
     "windows": "win32",
 }
 _ENV_VAR_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-_REMOTE_ENV_BACKENDS = frozenset(
-    {"docker", "singularity", "modal", "ssh", "daytona"}
-)
+_REMOTE_ENV_BACKENDS = frozenset({"docker", "singularity", "modal", "ssh", "daytona"})
 _secret_capture_callback = None
 
 
@@ -188,6 +186,7 @@ def skill_matches_platform(frontmatter: Dict[str, Any]) -> bool:
     as a public re-export so existing callers don't need updating.
     """
     from agent.skill_utils import skill_matches_platform as _impl
+
     return _impl(frontmatter)
 
 
@@ -200,6 +199,7 @@ def skill_matches_environment(frontmatter: Dict[str, Any]) -> bool:
     explicit skill loads bypass it.
     """
     from agent.skill_utils import skill_matches_environment as _impl
+
     return _impl(frontmatter)
 
 
@@ -321,13 +321,11 @@ def _get_required_environment_variables(
             _append_required(item)
 
     for item in setup["collect_secrets"]:
-        _append_required(
-            {
-                "name": item.get("env_var"),
-                "prompt": item.get("prompt"),
-                "help": item.get("provider_url") or setup.get("help"),
-            }
-        )
+        _append_required({
+            "name": item.get("env_var"),
+            "prompt": item.get("prompt"),
+            "help": item.get("provider_url") or setup.get("help"),
+        })
 
     if legacy_env_vars is None:
         legacy_env_vars, _ = _collect_prerequisite_values(frontmatter)
@@ -419,6 +417,7 @@ def _is_gateway_surface() -> bool:
     if env_var_enabled("HERMES_GATEWAY_SESSION"):
         return True
     from gateway.session_context import get_session_env
+
     return bool(get_session_env("HERMES_SESSION_PLATFORM"))
 
 
@@ -491,6 +490,7 @@ def _parse_frontmatter(content: str) -> Tuple[Dict[str, Any], str]:
     as a public re-export so existing callers don't need updating.
     """
     from agent.skill_utils import parse_frontmatter
+
     return parse_frontmatter(content)
 
 
@@ -506,6 +506,7 @@ def _get_category_from_path(skill_path: Path) -> Optional[str]:
     dirs_to_check = [SKILLS_DIR]
     try:
         from agent.skill_utils import get_external_skills_dirs
+
         dirs_to_check.extend(get_external_skills_dirs())
     except Exception:
         pass
@@ -550,7 +551,6 @@ def _parse_tags(tags_value) -> List[str]:
     return [t.strip().strip("\"'") for t in tags_value.split(",") if t.strip()]
 
 
-
 def _get_disabled_skill_names() -> Set[str]:
     """Load disabled skill names from config.
 
@@ -558,6 +558,7 @@ def _get_disabled_skill_names() -> Set[str]:
     as a public re-export so existing callers don't need updating.
     """
     from agent.skill_utils import get_disabled_skill_names
+
     return get_disabled_skill_names()
 
 
@@ -570,6 +571,7 @@ def _get_session_platform() -> str:
     """
     try:
         from gateway.session_context import get_session_env
+
         return get_session_env("HERMES_SESSION_PLATFORM") or ""
     except Exception:
         return ""
@@ -585,12 +587,17 @@ def _is_skill_disabled(name: str, platform: str = None) -> bool:
     """
     try:
         from openagents_cli.config import load_config
+
         config = load_config()
         skills_cfg = config.get("skills", {})
-        resolved_platform = platform or os.getenv("HERMES_PLATFORM") or _get_session_platform()
+        resolved_platform = (
+            platform or os.getenv("HERMES_PLATFORM") or _get_session_platform()
+        )
         global_disabled = skills_cfg.get("disabled", [])
         if resolved_platform:
-            platform_disabled = cfg_get(skills_cfg, "platform_disabled", resolved_platform)
+            platform_disabled = cfg_get(
+                skills_cfg, "platform_disabled", resolved_platform
+            )
             if platform_disabled is not None:
                 # A globally-disabled skill stays disabled on every platform;
                 # the platform list adds to it rather than replacing it. Keep
@@ -658,7 +665,7 @@ def _find_all_skills(*, skip_disabled: bool = False) -> List[Dict[str, Any]]:
                             break
 
                 if len(description) > MAX_DESCRIPTION_LENGTH:
-                    description = description[:MAX_DESCRIPTION_LENGTH - 3] + "..."
+                    description = description[: MAX_DESCRIPTION_LENGTH - 3] + "..."
 
                 category = _get_category_from_path(skill_md)
 
@@ -674,7 +681,10 @@ def _find_all_skills(*, skip_disabled: bool = False) -> List[Dict[str, Any]]:
                 continue
             except Exception as e:
                 logger.debug(
-                    "Skipping skill at %s: failed to parse: %s", skill_md, e, exc_info=True
+                    "Skipping skill at %s: failed to parse: %s",
+                    skill_md,
+                    e,
+                    exc_info=True,
                 )
                 continue
 
@@ -735,9 +745,9 @@ def skills_list(category: str = None, task_id: str = None) -> str:
         all_skills = _sort_skills(all_skills)
 
         # Extract unique categories
-        categories = sorted(
-            {s.get("category") for s in all_skills if s.get("category")}
-        )
+        categories = sorted({
+            s.get("category") for s in all_skills if s.get("category")
+        })
 
         return json.dumps(
             {
@@ -784,7 +794,10 @@ def _serve_plugin_skill(
         content = skill_md.read_text(encoding="utf-8")
     except Exception as e:
         return json.dumps(
-            {"success": False, "error": f"Failed to read skill '{namespace}:{bare}': {e}"},
+            {
+                "success": False,
+                "error": f"Failed to read skill '{namespace}:{bare}': {e}",
+            },
             ensure_ascii=False,
         )
 
@@ -808,7 +821,8 @@ def _serve_plugin_skill(
     if any(p in content.lower() for p in _INJECTION_PATTERNS):
         logger.warning(
             "Plugin skill '%s:%s' contains patterns that may indicate prompt injection",
-            namespace, bare,
+            namespace,
+            bare,
         )
 
     description = str(parsed_frontmatter.get("description", ""))
@@ -818,8 +832,7 @@ def _serve_plugin_skill(
     # Bundle context banner — tells the agent about sibling skills
     try:
         siblings = [
-            s for s in get_plugin_manager().list_plugin_skills(namespace)
-            if s != bare
+            s for s in get_plugin_manager().list_plugin_skills(namespace) if s != bare
         ]
         if siblings:
             sib_list = ", ".join(siblings)
@@ -829,7 +842,9 @@ def _serve_plugin_skill(
                 f"Use qualified form to invoke siblings (e.g. {namespace}:{siblings[0]}).]\n\n"
             )
         else:
-            banner = f"[Bundle context: This skill is part of the '{namespace}' plugin.]\n\n"
+            banner = (
+                f"[Bundle context: This skill is part of the '{namespace}' plugin.]\n\n"
+            )
     except Exception:
         banner = ""
 
@@ -845,7 +860,10 @@ def _serve_plugin_skill(
             )
         except Exception:
             logger.debug(
-                "Could not preprocess plugin skill %s:%s", namespace, bare, exc_info=True
+                "Could not preprocess plugin skill %s:%s",
+                namespace,
+                bare,
+                exc_info=True,
             )
 
     return json.dumps(
@@ -1076,16 +1094,16 @@ def skill_view(
             # are loaded through skill_view(skill, file_path=...) and must not
             # shadow or collide with real skills that share the same basename.
             for found_md in search_dir.rglob(f"{name}.md"):
-                if found_md.name != "SKILL.md" and not _is_skill_support_path(
-                    found_md
-                ):
+                if found_md.name != "SKILL.md" and not _is_skill_support_path(found_md):
                     _record(None, found_md)
 
         if len(candidates) > 1:
             paths = [str(smd) for _, smd in candidates]
             logging.getLogger(__name__).warning(
                 "Skill name collision for '%s': %d candidates — %s",
-                name, len(candidates), "; ".join(paths),
+                name,
+                len(candidates),
+                "; ".join(paths),
             )
             return json.dumps(
                 {
@@ -1156,10 +1174,16 @@ def skill_view(
         if _outside_skills_dir or _injection_detected:
             _warnings = []
             if _outside_skills_dir:
-                _warnings.append(f"skill file is outside the trusted skills directory (~/.openagents/skills/): {skill_md}")
+                _warnings.append(
+                    f"skill file is outside the trusted skills directory (~/.openagents/skills/): {skill_md}"
+                )
             if _injection_detected:
-                _warnings.append("skill content contains patterns that may indicate prompt injection")
-            logging.getLogger(__name__).warning("Skill security warning for '%s': %s", name, "; ".join(_warnings))
+                _warnings.append(
+                    "skill content contains patterns that may indicate prompt injection"
+                )
+            logging.getLogger(__name__).warning(
+                "Skill security warning for '%s': %s", name, "; ".join(_warnings)
+            )
 
         parsed_frontmatter: Dict[str, Any] = {}
         try:
@@ -1319,12 +1343,9 @@ def skill_view(
                     "*.tex",
                     "*.sh",
                 ]:
-                    template_files.extend(
-                        [
-                            str(f.relative_to(skill_dir))
-                            for f in templates_dir.rglob(ext)
-                        ]
-                    )
+                    template_files.extend([
+                        str(f.relative_to(skill_dir)) for f in templates_dir.rglob(ext)
+                    ])
 
             # assets/ — agentskills.io standard directory for supplementary files
             assets_dir = skill_dir / "assets"
@@ -1336,9 +1357,9 @@ def skill_view(
             scripts_dir = skill_dir / "scripts"
             if scripts_dir.exists():
                 for ext in ["*.py", "*.sh", "*.bash", "*.js", "*.ts", "*.rb"]:
-                    script_files.extend(
-                        [str(f.relative_to(skill_dir)) for f in scripts_dir.glob(ext)]
-                    )
+                    script_files.extend([
+                        str(f.relative_to(skill_dir)) for f in scripts_dir.glob(ext)
+                    ])
 
         # Read tags/related_skills with backward compat:
         # Check metadata.hermes.* first (agentskills.io convention), fall back to top-level
@@ -1367,7 +1388,11 @@ def skill_view(
             rel_path = str(skill_md.relative_to(SKILLS_DIR))
         except ValueError:
             # External skill — use path relative to the skill's own parent dir
-            rel_path = str(skill_md.relative_to(skill_md.parent.parent)) if skill_md.parent.parent else skill_md.name
+            rel_path = (
+                str(skill_md.relative_to(skill_md.parent.parent))
+                if skill_md.parent.parent
+                else skill_md.name
+            )
         skill_name = frontmatter.get(
             "name", skill_md.stem if not skill_dir else skill_dir.name
         )
@@ -1449,7 +1474,9 @@ def skill_view(
                 )
             except Exception:
                 logger.debug(
-                    "Could not preprocess skill content for %s", skill_name, exc_info=True
+                    "Could not preprocess skill content for %s",
+                    skill_name,
+                    exc_info=True,
                 )
 
         result = {
@@ -1487,9 +1514,7 @@ def skill_view(
         if setup_needed:
             missing_items = [
                 f"env ${env_name}" for env_name in remaining_missing_required_envs
-            ] + [
-                f"file {path}" for path in missing_cred_files
-            ]
+            ] + [f"file {path}" for path in missing_cred_files]
             setup_note = _build_setup_note(
                 SkillReadinessStatus.SETUP_NEEDED,
                 missing_items,
@@ -1510,8 +1535,6 @@ def skill_view(
 
     except Exception as e:
         return tool_error(str(e), success=False)
-
-
 
 
 if __name__ == "__main__":
@@ -1605,6 +1628,8 @@ registry.register(
     check_fn=check_skills_requirements,
     emoji="📚",
 )
+
+
 def _skill_view_with_bump(args, **kw):
     """Invoke skill_view, then bump view_count on success. Best-effort: a
     telemetry failure never breaks the tool call."""
@@ -1620,6 +1645,7 @@ def _skill_view_with_bump(args, **kw):
             resolved = parsed.get("name") or name
             if resolved:
                 from tools.skill_usage import bump_use, bump_view
+
                 bump_view(str(resolved))
                 # A skill_view tool call is the agent actively loading the skill
                 # to act on it — that counts as use, not just a browse/view.

@@ -18,6 +18,7 @@ import cli as cli_mod
 from cli import HermesCLI
 from rich.console import Console
 
+
 # Env-overridable so the integration test can drive sub-second timing.
 def _env_float(name: str, default: float) -> float:
     """Parse a float env knob, falling back to ``default`` on absent/malformed
@@ -110,8 +111,16 @@ def main():
         parent_create_time = 0.0
     _start_parent_death_watchdog(orig_ppid, parent_create_time)
 
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-        cli = HermesCLI(model=args.model or None, compact=True, resume=args.session_key, verbose=False)
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
+        cli = HermesCLI(
+            model=args.model or None,
+            compact=True,
+            resume=args.session_key,
+            verbose=False,
+        )
 
     for raw in sys.stdin:
         line = raw.strip()
@@ -127,7 +136,9 @@ def main():
             sys.stdout.write(json.dumps({"id": rid, "ok": True, "output": out}) + "\n")
             sys.stdout.flush()
         except Exception as e:
-            sys.stdout.write(json.dumps({"id": rid, "ok": False, "error": str(e)}) + "\n")
+            sys.stdout.write(
+                json.dumps({"id": rid, "ok": False, "error": str(e)}) + "\n"
+            )
             sys.stdout.flush()
         finally:
             _in_flight.clear()

@@ -4,6 +4,7 @@ Verifies the production helper in cli.py monkey-patches prompt_toolkit's
 Vt100Parser.feed() so the parser auto-escapes from bracketed-paste mode when
 the ESC[201~ end mark is never received.
 """
+
 import ast
 import importlib
 import logging

@@ -12,6 +12,7 @@ branch only covered ``openai-codex`` and ``xai-oauth``; ``nous`` fell through
 to a generic "Your API key was rejected... run hermes setup" message, which is
 the wrong advice for a pure-OAuth provider.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -27,13 +28,13 @@ def test_nous_provider_is_in_oauth_401_set():
 
     # Be flexible about set element ordering — assert all three are listed
     # near each other in the gating expression.
-    assert "\"openai-codex\"" in source
-    assert "\"xai-oauth\"" in source
-    assert "\"nous\"" in source
+    assert '"openai-codex"' in source
+    assert '"xai-oauth"' in source
+    assert '"nous"' in source
 
     # And the gate string itself must mention all three so future refactors
     # that split nous off into its own gate still get caught.
-    needle = "_provider in {\"openai-codex\", \"xai-oauth\", \"nous\"}"
+    needle = '_provider in {"openai-codex", "xai-oauth", "nous"}'
     assert needle in source, (
         "Expected nous to be co-gated with the other OAuth providers in the "
         "actionable-401-guidance branch of run_conversation."
@@ -66,6 +67,6 @@ def test_free_slug_hint_for_nous_provider():
     """
     source = inspect.getsource(conversation_loop.run_conversation)
 
-    assert "endswith(\":free\")" in source
+    assert 'endswith(":free")' in source
     assert "OpenRouter slug" in source
     assert "/model openrouter:" in source

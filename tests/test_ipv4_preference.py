@@ -4,10 +4,10 @@ import importlib
 import socket
 
 
-
 def _reload_constants():
     """Reload openagents_constants to get a fresh apply_ipv4_preference."""
     import openagents_constants
+
     importlib.reload(openagents_constants)
     return openagents_constants
 
@@ -26,6 +26,7 @@ class TestApplyIPv4Preference:
     def test_noop_when_force_false(self):
         """No patch when force=False."""
         from openagents_constants import apply_ipv4_preference
+
         original = socket.getaddrinfo
         apply_ipv4_preference(force=False)
         assert socket.getaddrinfo is original
@@ -33,6 +34,7 @@ class TestApplyIPv4Preference:
     def test_patches_getaddrinfo_when_forced(self):
         """Patches socket.getaddrinfo when force=True."""
         from openagents_constants import apply_ipv4_preference
+
         original = socket.getaddrinfo
         apply_ipv4_preference(force=True)
         assert socket.getaddrinfo is not original
@@ -41,6 +43,7 @@ class TestApplyIPv4Preference:
     def test_double_patch_is_safe(self):
         """Calling apply twice doesn't double-wrap."""
         from openagents_constants import apply_ipv4_preference
+
         apply_ipv4_preference(force=True)
         first_patch = socket.getaddrinfo
         apply_ipv4_preference(force=True)
@@ -108,5 +111,6 @@ class TestConfigDefault:
 
     def test_network_section_in_default_config(self):
         from openagents_cli.config import DEFAULT_CONFIG
+
         assert "network" in DEFAULT_CONFIG
         assert DEFAULT_CONFIG["network"]["force_ipv4"] is False

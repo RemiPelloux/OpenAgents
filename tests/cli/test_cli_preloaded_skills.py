@@ -36,14 +36,16 @@ def _make_real_cli(**kwargs):
         "prompt_toolkit.completion": MagicMock(),
         "prompt_toolkit.formatted_text": MagicMock(),
     }
-    with patch.dict(sys.modules, prompt_toolkit_stubs), patch.dict(
-        "os.environ", clean_env, clear=False
+    with (
+        patch.dict(sys.modules, prompt_toolkit_stubs),
+        patch.dict("os.environ", clean_env, clear=False),
     ):
         import cli as cli_mod
 
         cli_mod = importlib.reload(cli_mod)
-        with patch.object(cli_mod, "get_tool_definitions", return_value=[]), patch.dict(
-            cli_mod.__dict__, {"CLI_CONFIG": clean_config}
+        with (
+            patch.object(cli_mod, "get_tool_definitions", return_value=[]),
+            patch.dict(cli_mod.__dict__, {"CLI_CONFIG": clean_config}),
         ):
             return cli_mod.HermesCLI(**kwargs)
 
@@ -81,7 +83,11 @@ def test_main_applies_preloaded_skills_to_system_prompt(monkeypatch):
     monkeypatch.setattr(
         cli_mod,
         "build_preloaded_skills_prompt",
-        lambda skills, task_id=None: ("skill prompt", ["openagents-dev", "github-auth"], []),
+        lambda skills, task_id=None: (
+            "skill prompt",
+            ["openagents-dev", "github-auth"],
+            [],
+        ),
     )
 
     with pytest.raises(SystemExit):
@@ -112,8 +118,9 @@ def test_show_banner_does_not_print_skills():
     cli_obj.preloaded_skills = ["openagents-dev", "github-auth"]
     cli_obj.console = MagicMock()
 
-    with patch("cli.build_welcome_banner") as mock_banner, patch(
-        "shutil.get_terminal_size", return_value=os.terminal_size((120, 40))
+    with (
+        patch("cli.build_welcome_banner") as mock_banner,
+        patch("shutil.get_terminal_size", return_value=os.terminal_size((120, 40))),
     ):
         cli_obj.show_banner()
 

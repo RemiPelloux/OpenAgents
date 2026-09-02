@@ -69,7 +69,11 @@ def _extract_inherited_flags(argv: Sequence[str]) -> list[str]:
         for flag, takes_value in _INHERITED_FLAGS_TABLE:
             if arg == flag:
                 flags.append(arg)
-                if takes_value and i + 1 < len(argv) and not argv[i + 1].startswith("-"):
+                if (
+                    takes_value
+                    and i + 1 < len(argv)
+                    and not argv[i + 1].startswith("-")
+                ):
                     flags.append(argv[i + 1])
                     i += 1
                 break
@@ -184,6 +188,7 @@ def relaunch(
     if sys.platform == "win32":
         # Windows: subprocess + exit, because execvp can't swap to .cmd/.exe shims.
         import subprocess
+
         try:
             result = subprocess.run(new_argv)
             sys.exit(result.returncode)

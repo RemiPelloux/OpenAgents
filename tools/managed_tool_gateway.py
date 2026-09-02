@@ -185,8 +185,11 @@ def is_managed_tool_gateway_ready(
     gateway request should use :func:`resolve_managed_tool_gateway` (which
     still defaults to the refresh-aware :func:`read_nous_access_token`).
     """
-    return resolve_managed_tool_gateway(
-        vendor,
-        gateway_builder=gateway_builder,
-        token_reader=token_reader or peek_nous_access_token,
-    ) is not None
+    return (
+        resolve_managed_tool_gateway(
+            vendor,
+            gateway_builder=gateway_builder,
+            token_reader=token_reader or peek_nous_access_token,
+        )
+        is not None
+    )

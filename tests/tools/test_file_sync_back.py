@@ -24,6 +24,7 @@ from tools.environments.file_sync import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_tar(files: dict[str, bytes], dest: Path):
     """Write a tar archive containing the given arcname->content pairs."""
     with tarfile.open(dest, "w") as tar:
@@ -35,14 +36,17 @@ def _make_tar(files: dict[str, bytes], dest: Path):
 
 def _make_download_fn(files: dict[str, bytes]):
     """Return a bulk_download_fn that writes a tar of the given files."""
+
     def download(dest: Path):
         _make_tar(files, dest)
+
     return download
 
 
 def _sha256_bytes(data: bytes) -> str:
     """Compute SHA-256 hex digest of raw bytes (for test convenience)."""
     import hashlib
+
     return hashlib.sha256(data).hexdigest()
 
 
@@ -120,7 +124,9 @@ class TestSyncBackNoChanges:
             "root/.hermes/cred.json": host_content,
         })
 
-        mgr = _make_manager(tmp_path, file_mapping=mapping, bulk_download_fn=download_fn)
+        mgr = _make_manager(
+            tmp_path, file_mapping=mapping, bulk_download_fn=download_fn
+        )
         # Simulate that we already pushed this file with this hash
         mgr._pushed_hashes[remote_path] = _sha256_bytes(host_content)
 
@@ -146,7 +152,9 @@ class TestSyncBackAppliesChanged:
             "root/.hermes/skill.py": remote_content,
         })
 
-        mgr = _make_manager(tmp_path, file_mapping=mapping, bulk_download_fn=download_fn)
+        mgr = _make_manager(
+            tmp_path, file_mapping=mapping, bulk_download_fn=download_fn
+        )
         mgr._pushed_hashes[remote_path] = _sha256_bytes(original_content)
 
         mgr.sync_back(hermes_home=tmp_path / ".hermes")
@@ -169,7 +177,9 @@ class TestSyncBackNewRemoteFile:
             "root/.hermes/skills/new_skill.py": new_remote_content,
         })
 
-        mgr = _make_manager(tmp_path, file_mapping=mapping, bulk_download_fn=download_fn)
+        mgr = _make_manager(
+            tmp_path, file_mapping=mapping, bulk_download_fn=download_fn
+        )
         # No entry in _pushed_hashes for the new file
 
         mgr.sync_back(hermes_home=tmp_path / ".hermes")
@@ -200,7 +210,9 @@ class TestSyncBackConflict:
             "root/.hermes/config.json": remote_content,
         })
 
-        mgr = _make_manager(tmp_path, file_mapping=mapping, bulk_download_fn=download_fn)
+        mgr = _make_manager(
+            tmp_path, file_mapping=mapping, bulk_download_fn=download_fn
+        )
         mgr._pushed_hashes[remote_path] = _sha256_bytes(original_content)
 
         with caplog.at_level(logging.WARNING, logger="tools.environments.file_sync"):
@@ -252,7 +264,10 @@ class TestSyncBackRetries:
         assert mock_sleep.call_count == _SYNC_BACK_MAX_RETRIES - 1
 
         # Final "all attempts failed" warning was logged
-        assert any("all" in r.message.lower() and "failed" in r.message.lower() for r in caplog.records)
+        assert any(
+            "all" in r.message.lower() and "failed" in r.message.lower()
+            for r in caplog.records
+        )
 
 
 class TestPushedHashesPopulated:
@@ -389,9 +404,13 @@ class TestSyncBackSIGINT:
         handlers_seen = []
         original_getsignal = signal.getsignal
 
-        with patch("tools.environments.file_sync.signal.getsignal",
-                    side_effect=original_getsignal) as mock_get, \
-             patch("tools.environments.file_sync.signal.signal") as mock_set:
+        with (
+            patch(
+                "tools.environments.file_sync.signal.getsignal",
+                side_effect=original_getsignal,
+            ) as mock_get,
+            patch("tools.environments.file_sync.signal.signal") as mock_set,
+        ):
             mgr.sync_back(hermes_home=tmp_path / ".hermes")
 
         # signal.getsignal was called to save the original handler
@@ -411,9 +430,12 @@ class TestSyncBackSIGINT:
         def tracking_signal(*args):
             signal_called.append(args)
 
-        with patch("tools.environments.file_sync.signal.signal", side_effect=tracking_signal):
+        with patch(
+            "tools.environments.file_sync.signal.signal", side_effect=tracking_signal
+        ):
             # Run from a worker thread
             exc = []
+
             def run():
                 try:
                     mgr.sync_back(hermes_home=tmp_path / ".hermes")

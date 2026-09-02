@@ -54,10 +54,10 @@ GUARD_HINTS = (
     "getattr(os,",
     "getattr(signal,",
     "shutil.which(",
-    "if platform.system() != \"Windows\"",
+    'if platform.system() != "Windows"',
     "if platform.system() != 'Windows'",
-    "if sys.platform == \"win32\"",
-    "if sys.platform != \"win32\"",
+    'if sys.platform == "win32"',
+    'if sys.platform != "win32"',
     "if sys.platform == 'win32'",
     "if sys.platform != 'win32'",
     "IS_WINDOWS",
@@ -622,9 +622,7 @@ def main(argv: list[str]) -> int:
         )
         return 1
 
-    print(
-        f"✓ No Windows footguns found ({files_scanned} file(s) scanned)."
-    )
+    print(f"✓ No Windows footguns found ({files_scanned} file(s) scanned).")
     return 0
 
 

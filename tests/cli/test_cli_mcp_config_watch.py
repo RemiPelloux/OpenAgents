@@ -1,4 +1,5 @@
 """Tests for automatic MCP reload when config.yaml mcp_servers section changes."""
+
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -7,6 +8,7 @@ from unittest.mock import MagicMock, patch
 def _make_cli(tmp_path, mcp_servers=None):
     """Create a minimal HermesCLI instance with mocked config."""
     import cli as cli_mod
+
     obj = object.__new__(cli_mod.HermesCLI)
     obj.config = {"mcp_servers": mcp_servers or {}}
     obj._agent_running = False
@@ -27,7 +29,6 @@ def _make_cli(tmp_path, mcp_servers=None):
 
 
 class TestMCPConfigWatch:
-
     def test_no_change_does_not_reload(self, tmp_path):
         """If mtime and mcp_servers unchanged, _reload_mcp is NOT called."""
         obj, cfg_file = _make_cli(tmp_path)
@@ -40,6 +41,7 @@ class TestMCPConfigWatch:
     def test_mtime_change_with_same_mcp_servers_does_not_reload(self, tmp_path):
         """If file mtime changes but mcp_servers is identical, no reload."""
         import yaml
+
         obj, cfg_file = _make_cli(tmp_path, mcp_servers={"fs": {"command": "npx"}})
 
         # Write same mcp_servers but touch the file
@@ -55,10 +57,13 @@ class TestMCPConfigWatch:
     def test_new_mcp_server_triggers_reload(self, tmp_path):
         """Adding a new MCP server to config triggers auto-reload."""
         import yaml
+
         obj, cfg_file = _make_cli(tmp_path, mcp_servers={})
 
         # Simulate user adding a new MCP server to config.yaml
-        cfg_file.write_text(yaml.dump({"mcp_servers": {"github": {"url": "https://mcp.github.com"}}}))
+        cfg_file.write_text(
+            yaml.dump({"mcp_servers": {"github": {"url": "https://mcp.github.com"}}})
+        )
         obj._config_mtime = 0.0  # force stale mtime
 
         with patch("openagents_cli.config.get_config_path", return_value=cfg_file):
@@ -69,7 +74,10 @@ class TestMCPConfigWatch:
     def test_removed_mcp_server_triggers_reload(self, tmp_path):
         """Removing an MCP server from config triggers auto-reload."""
         import yaml
-        obj, cfg_file = _make_cli(tmp_path, mcp_servers={"github": {"url": "https://mcp.github.com"}})
+
+        obj, cfg_file = _make_cli(
+            tmp_path, mcp_servers={"github": {"url": "https://mcp.github.com"}}
+        )
 
         # Simulate user removing the server
         cfg_file.write_text(yaml.dump({"mcp_servers": {}}))
@@ -85,8 +93,10 @@ class TestMCPConfigWatch:
         obj, cfg_file = _make_cli(tmp_path)
         obj._last_config_check = time.monotonic()  # just checked
 
-        with patch("openagents_cli.config.get_config_path", return_value=cfg_file), \
-             patch.object(Path, "stat") as mock_stat:
+        with (
+            patch("openagents_cli.config.get_config_path", return_value=cfg_file),
+            patch.object(Path, "stat") as mock_stat,
+        ):
             obj._check_config_mcp_changes()
             mock_stat.assert_not_called()
 

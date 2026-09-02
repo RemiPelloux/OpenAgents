@@ -35,6 +35,7 @@ def _flatten(d, prefix="") -> dict:
 # falls back to English for those users and defeats the feature.
 # ---------------------------------------------------------------------------
 
+
 def test_all_locales_exist():
     """Every supported language must have a catalog file on disk."""
     for lang in i18n.SUPPORTED_LANGUAGES:
@@ -61,6 +62,7 @@ def test_catalog_placeholders_match_english(lang: str):
     value.  Pin parity at the test layer.
     """
     import re
+
     placeholder_re = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
     en_flat = _flatten(_load_raw("en"))
     lang_flat = _flatten(_load_raw(lang))
@@ -77,6 +79,7 @@ def test_catalog_placeholders_match_english(lang: str):
 # ---------------------------------------------------------------------------
 # Language resolution
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_lang_accepts_supported():
     assert i18n._normalize_lang("zh") == "zh"
@@ -129,6 +132,7 @@ def test_default_when_nothing_set(monkeypatch):
 # t() semantics
 # ---------------------------------------------------------------------------
 
+
 def test_t_explicit_lang():
     assert i18n.t("approval.denied", lang="en").endswith("Denied")
     assert i18n.t("approval.denied", lang="zh").endswith("已拒绝")
@@ -166,7 +170,9 @@ def test_t_missing_key_in_non_english_falls_back_to_english(tmp_path, monkeypatc
 
 def test_t_unknown_language_uses_english():
     """Unknown lang codes normalize to English, not to a key-path fallback."""
-    assert i18n.t("approval.denied", lang="klingon") == i18n.t("approval.denied", lang="en")
+    assert i18n.t("approval.denied", lang="klingon") == i18n.t(
+        "approval.denied", lang="en"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -174,6 +180,7 @@ def test_t_unknown_language_uses_english():
 # Sealed installs (Nix store venv, pip wheel) have no source tree next to
 # agent/, so _locales_dir must resolve via env override or the data scheme.
 # ---------------------------------------------------------------------------
+
 
 def test_locales_dir_env_override_used_when_dir_exists(tmp_path, monkeypatch):
     """HERMES_BUNDLED_LOCALES wins when it points at a real directory."""
@@ -225,5 +232,8 @@ def test_t_resolves_real_string_in_source_checkout():
     """Sanity: in the test environment (a source checkout) t() must return a
     human string, never the bare key path. Guards against catalog-load
     regressions independent of packaging."""
-    assert i18n.t("gateway.reset.header_default", lang="en") != "gateway.reset.header_default"
+    assert (
+        i18n.t("gateway.reset.header_default", lang="en")
+        != "gateway.reset.header_default"
+    )
     assert i18n.t("gateway.status.header", lang="en") != "gateway.status.header"

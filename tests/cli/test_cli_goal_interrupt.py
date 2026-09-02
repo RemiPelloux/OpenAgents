@@ -34,6 +34,7 @@ def hermes_home(tmp_path, monkeypatch):
 
     # Bust the goal module's DB cache so it re-resolves OPENAGENTS_HOME each test.
     from openagents_cli import goals
+
     goals._DB_CACHE.clear()
     yield home
     goals._DB_CACHE.clear()
@@ -155,7 +156,8 @@ class TestEmptyResponseSkip:
 
 class TestHealthyTurnStillRuns:
     def test_clean_response_enqueues_continuation_when_judge_says_continue(
-        self, hermes_home,
+        self,
+        hermes_home,
     ):
         """Sanity check: the hook still works in the happy path."""
         sid = f"sid-healthy-{uuid.uuid4().hex}"

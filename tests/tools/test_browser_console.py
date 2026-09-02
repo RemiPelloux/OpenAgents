@@ -52,7 +52,9 @@ class TestBrowserConsole:
         from tools.browser_tool import browser_console
 
         empty = {"success": True, "data": {"messages": [], "errors": []}}
-        with patch("tools.browser_tool._run_browser_command", return_value=empty) as mock_cmd:
+        with patch(
+            "tools.browser_tool._run_browser_command", return_value=empty
+        ) as mock_cmd:
             browser_console(clear=True, task_id="test")
 
         calls = mock_cmd.call_args_list
@@ -64,7 +66,9 @@ class TestBrowserConsole:
         from tools.browser_tool import browser_console
 
         empty = {"success": True, "data": {"messages": [], "errors": []}}
-        with patch("tools.browser_tool._run_browser_command", return_value=empty) as mock_cmd:
+        with patch(
+            "tools.browser_tool._run_browser_command", return_value=empty
+        ) as mock_cmd:
             browser_console(task_id="test")
 
         calls = mock_cmd.call_args_list
@@ -122,19 +126,23 @@ class TestBrowserConsoleToolsetWiring:
 
     def test_in_browser_toolset(self):
         from toolsets import TOOLSETS
+
         assert "browser_console" in TOOLSETS["browser"]["tools"]
 
     def test_in_hermes_core_tools(self):
         from toolsets import _HERMES_CORE_TOOLS
+
         assert "browser_console" in _HERMES_CORE_TOOLS
 
     def test_in_legacy_toolset_map(self):
         from model_tools import _LEGACY_TOOLSET_MAP
+
         assert "browser_console" in _LEGACY_TOOLSET_MAP["browser_tools"]
 
     def test_in_registry(self):
         from tools.registry import registry
         from tools import browser_tool  # noqa: F401
+
         assert "browser_console" in registry._tools
 
 
@@ -214,10 +222,20 @@ class TestBrowserVisionConfig:
         with (
             patch("openagents_constants.get_openagents_dir", return_value=shots_dir),
             patch("tools.browser_tool._cleanup_old_screenshots"),
-            patch("tools.browser_tool._run_browser_command", return_value={"success": True, "data": {"path": str(screenshot)}}),
+            patch(
+                "tools.browser_tool._run_browser_command",
+                return_value={"success": True, "data": {"path": str(screenshot)}},
+            ),
             patch("tools.browser_tool._get_vision_model", return_value="test-model"),
-            patch("openagents_cli.config.load_config", return_value={"auxiliary": {"vision": {"temperature": 1, "timeout": 45}}}),
-            patch("tools.browser_tool.call_llm", return_value=mock_response) as mock_llm,
+            patch(
+                "openagents_cli.config.load_config",
+                return_value={
+                    "auxiliary": {"vision": {"temperature": 1, "timeout": 45}}
+                },
+            ),
+            patch(
+                "tools.browser_tool.call_llm", return_value=mock_response
+            ) as mock_llm,
         ):
             result = json.loads(browser_vision("what is on the page?", task_id="test"))
 
@@ -238,10 +256,18 @@ class TestBrowserVisionConfig:
         with (
             patch("openagents_constants.get_openagents_dir", return_value=shots_dir),
             patch("tools.browser_tool._cleanup_old_screenshots"),
-            patch("tools.browser_tool._run_browser_command", return_value={"success": True, "data": {"path": str(screenshot)}}),
+            patch(
+                "tools.browser_tool._run_browser_command",
+                return_value={"success": True, "data": {"path": str(screenshot)}},
+            ),
             patch("tools.browser_tool._get_vision_model", return_value="test-model"),
-            patch("openagents_cli.config.load_config", return_value={"auxiliary": {"vision": {}}}),
-            patch("tools.browser_tool.call_llm", return_value=mock_response) as mock_llm,
+            patch(
+                "openagents_cli.config.load_config",
+                return_value={"auxiliary": {"vision": {}}},
+            ),
+            patch(
+                "tools.browser_tool.call_llm", return_value=mock_response
+            ) as mock_llm,
         ):
             result = json.loads(browser_vision("what is on the page?", task_id="test"))
 
@@ -260,7 +286,9 @@ class TestBrowserVisionConfig:
         set_runtime_main("brand-new-provider", "llava-v1.6")
         try:
             with (
-                patch("openagents_constants.get_openagents_dir", return_value=shots_dir),
+                patch(
+                    "openagents_constants.get_openagents_dir", return_value=shots_dir
+                ),
                 patch("tools.browser_tool._cleanup_old_screenshots"),
                 patch(
                     "tools.browser_tool._run_browser_command",
@@ -276,7 +304,9 @@ class TestBrowserVisionConfig:
                 patch("tools.browser_tool._get_vision_model") as mock_get_vision_model,
                 patch("tools.browser_tool.call_llm") as mock_llm,
             ):
-                result = browser_vision("what is on the page?", annotate=True, task_id="test")
+                result = browser_vision(
+                    "what is on the page?", annotate=True, task_id="test"
+                )
         finally:
             clear_runtime_main()
 
@@ -303,7 +333,9 @@ class TestBrowserVisionConfig:
         set_runtime_main("brand-new-provider", "llava-v1.6")
         try:
             with (
-                patch("openagents_constants.get_openagents_dir", return_value=shots_dir),
+                patch(
+                    "openagents_constants.get_openagents_dir", return_value=shots_dir
+                ),
                 patch("tools.browser_tool._cleanup_old_screenshots"),
                 patch(
                     "tools.browser_tool._run_browser_command",
@@ -316,10 +348,16 @@ class TestBrowserVisionConfig:
                         "model": {"supports_vision": True},
                     },
                 ),
-                patch("tools.browser_tool._get_vision_model", return_value="test-model"),
-                patch("tools.browser_tool.call_llm", return_value=mock_response) as mock_llm,
+                patch(
+                    "tools.browser_tool._get_vision_model", return_value="test-model"
+                ),
+                patch(
+                    "tools.browser_tool.call_llm", return_value=mock_response
+                ) as mock_llm,
             ):
-                result = json.loads(browser_vision("what is on the page?", task_id="test"))
+                result = json.loads(
+                    browser_vision("what is on the page?", task_id="test")
+                )
         finally:
             clear_runtime_main()
 
@@ -409,9 +447,7 @@ class TestDogfoodSkill:
         assert "annotate" in content
 
     def test_taxonomy_has_severity_levels(self):
-        with open(
-            os.path.join(self.skill_dir, "references", "issue-taxonomy.md")
-        ) as f:
+        with open(os.path.join(self.skill_dir, "references", "issue-taxonomy.md")) as f:
             content = f.read()
         assert "Critical" in content
         assert "High" in content
@@ -419,9 +455,7 @@ class TestDogfoodSkill:
         assert "Low" in content
 
     def test_taxonomy_has_categories(self):
-        with open(
-            os.path.join(self.skill_dir, "references", "issue-taxonomy.md")
-        ) as f:
+        with open(os.path.join(self.skill_dir, "references", "issue-taxonomy.md")) as f:
             content = f.read()
         assert "Functional" in content
         assert "Visual" in content

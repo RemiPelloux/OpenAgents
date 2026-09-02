@@ -64,7 +64,6 @@ _REFERENCE_SYSTEM_PROMPT = (
 )
 
 
-
 def _slot_label(slot: dict[str, str]) -> str:
     return f"{slot.get('provider', '').strip()}:{slot.get('model', '').strip()}"
 
@@ -110,7 +109,9 @@ def _slot_runtime(slot: dict[str, str]) -> dict[str, Any]:
         if rt.get("api_key"):
             out["api_key"] = rt["api_key"]
     except Exception as exc:  # pragma: no cover - defensive
-        logger.debug("MoA slot runtime resolution failed for %s: %s", _slot_label(slot), exc)
+        logger.debug(
+            "MoA slot runtime resolution failed for %s: %s", _slot_label(slot), exc
+        )
     return out
 
 
@@ -143,7 +144,10 @@ def _run_reference(
         # it is analyzing state for an aggregator, not acting on the task. The
         # trimmed view (_reference_messages) already strips the agent's own
         # system prompt, so this is the only system message the reference sees.
-        messages = [{"role": "system", "content": _REFERENCE_SYSTEM_PROMPT}, *ref_messages]
+        messages = [
+            {"role": "system", "content": _REFERENCE_SYSTEM_PROMPT},
+            *ref_messages,
+        ]
         response = call_llm(
             task="moa_reference",
             messages=messages,
@@ -203,7 +207,9 @@ def _run_references_parallel(
     return [r for r in results if r is not None]
 
 
-def _truncate_tool_result(text: str, budget: int = _REFERENCE_TOOL_RESULT_BUDGET) -> str:
+def _truncate_tool_result(
+    text: str, budget: int = _REFERENCE_TOOL_RESULT_BUDGET
+) -> str:
     """Head+tail preview of a tool result for the advisory view.
 
     Keeps the first and last halves of the budget with a ``[... N chars
@@ -227,7 +233,9 @@ def _render_tool_calls(tool_calls: Any) -> str:
     lines: list[str] = []
     for tc in tool_calls or []:
         fn = (tc.get("function") or {}) if isinstance(tc, dict) else {}
-        name = fn.get("name") or (tc.get("name") if isinstance(tc, dict) else "") or "tool"
+        name = (
+            fn.get("name") or (tc.get("name") if isinstance(tc, dict) else "") or "tool"
+        )
         args = fn.get("arguments")
         if isinstance(args, str):
             args_text = args
@@ -240,7 +248,11 @@ def _render_tool_calls(tool_calls: Any) -> str:
                 args_text = str(args)
         else:
             args_text = ""
-        lines.append(f"[called tool: {name}({args_text})]" if args_text else f"[called tool: {name}]")
+        lines.append(
+            f"[called tool: {name}({args_text})]"
+            if args_text
+            else f"[called tool: {name}]"
+        )
     return "\n".join(lines)
 
 
@@ -337,7 +349,6 @@ def _reference_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if msg.get("role") == "user" and isinstance(msg.get("content"), str):
                 return [{"role": "user", "content": msg["content"]}]
     return rendered
-
 
 
 def _extract_text(response: Any) -> str:
@@ -478,7 +489,10 @@ class MoAChatCompletions:
         # (it never caps by default), so a long aggregator synthesis is never
         # truncated and providers that reject max_tokens don't 400.
         temperature = float(preset.get("reference_temperature", 0.6) or 0.6)
-        aggregator_temperature = float(preset.get("aggregator_temperature", api_kwargs.get("temperature") or 0.4) or 0.4)
+        aggregator_temperature = float(
+            preset.get("aggregator_temperature", api_kwargs.get("temperature") or 0.4)
+            or 0.4
+        )
 
         # When the preset is disabled, skip the reference fan-out and let the
         # configured aggregator act alone — it is the preset's acting model, so
@@ -498,8 +512,14 @@ class MoAChatCompletions:
                 f"{m.get('role')}:{m.get('content')}" for m in ref_messages
             ).encode("utf-8", "replace")
         ).hexdigest()
-        _cache_key = (self.preset_name, _sig, tuple(_slot_label(s) for s in reference_models))
-        _refs_from_cache = _cache_key == self._ref_cache_key and bool(self._ref_cache_outputs)
+        _cache_key = (
+            self.preset_name,
+            _sig,
+            tuple(_slot_label(s) for s in reference_models),
+        )
+        _refs_from_cache = _cache_key == self._ref_cache_key and bool(
+            self._ref_cache_outputs
+        )
 
         if _refs_from_cache:
             reference_outputs = list(self._ref_cache_outputs)
@@ -583,4 +603,6 @@ class MoAChatCompletions:
 class MoAClient:
     def __init__(self, preset_name: str, reference_callback: Any = None):
         self.chat = type("_MoAChat", (), {})()
-        self.chat.completions = MoAChatCompletions(preset_name, reference_callback=reference_callback)
+        self.chat.completions = MoAChatCompletions(
+            preset_name, reference_callback=reference_callback
+        )

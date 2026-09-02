@@ -58,4 +58,5 @@ def test_session_id_contextvar_set():
         skip_memory=True,
     )
     from gateway.session_context import get_session_env
+
     assert get_session_env("HERMES_SESSION_ID") == custom_id

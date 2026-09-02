@@ -74,8 +74,6 @@ def test_guard_handles_absolute_cwd_path():
         sys.path[:] = ["/home/user/tg-ws-proxy", "/opt/hermes", "/usr/lib"]
         openagents_bootstrap.harden_import_path(src_root="/opt/hermes")
         assert sys.path[0] == "/opt/hermes"
-        assert sys.path.index("/opt/hermes") < sys.path.index(
-            "/home/user/tg-ws-proxy"
-        )
+        assert sys.path.index("/opt/hermes") < sys.path.index("/home/user/tg-ws-proxy")
     finally:
         sys.path[:] = original

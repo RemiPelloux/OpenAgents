@@ -56,7 +56,9 @@ class TestGenerateTitle:
             assert _title_language() == "French"
         with patch("openagents_cli.config.load_config", return_value={}):
             assert _title_language() == ""
-        with patch("openagents_cli.config.load_config", side_effect=RuntimeError("bad config")):
+        with patch(
+            "openagents_cli.config.load_config", side_effect=RuntimeError("bad config")
+        ):
             assert _title_language() == ""
 
     def test_strips_quotes(self):
@@ -96,7 +98,9 @@ class TestGenerateTitle:
             assert generate_title("question", "answer") is None
 
     def test_returns_none_on_exception(self):
-        with patch("agent.title_generator.call_llm", side_effect=RuntimeError("no provider")):
+        with patch(
+            "agent.title_generator.call_llm", side_effect=RuntimeError("no provider")
+        ):
             assert generate_title("question", "answer") is None
 
     def test_invokes_failure_callback_on_exception(self):
@@ -175,7 +179,9 @@ class TestAutoTitleSession:
         db = MagicMock()
         db.get_session_title.return_value = None
         seen = []
-        with patch("agent.title_generator.generate_title", return_value="Readable Session"):
+        with patch(
+            "agent.title_generator.generate_title", return_value="Readable Session"
+        ):
             auto_title_session(
                 db,
                 "sess-1",
@@ -214,6 +220,7 @@ class TestMaybeAutoTitle:
             maybe_auto_title(db, "sess-1", "third", "response 3", history)
             # Wait briefly for any thread to start
             import time
+
             time.sleep(0.1)
             mock_auto.assert_not_called()
 
@@ -230,6 +237,7 @@ class TestMaybeAutoTitle:
             maybe_auto_title(db, "sess-1", "hello", "hi there", history)
             # Wait for the daemon thread to complete
             import time
+
             time.sleep(0.3)
             mock_auto.assert_called_once_with(
                 db,
@@ -254,8 +262,11 @@ class TestMaybeAutoTitle:
             pass
 
         with patch("agent.title_generator.auto_title_session") as mock_auto:
-            maybe_auto_title(db, "sess-1", "hello", "hi there", history, failure_callback=_cb)
+            maybe_auto_title(
+                db, "sess-1", "hello", "hi there", history, failure_callback=_cb
+            )
             import time
+
             time.sleep(0.3)
             mock_auto.assert_called_once_with(
                 db,

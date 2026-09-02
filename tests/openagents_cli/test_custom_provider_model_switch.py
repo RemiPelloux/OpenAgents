@@ -44,10 +44,15 @@ class TestCustomProviderModelSwitch:
             "model": "model-A",  # already saved
         }
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["model-A", "model-B"]) as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="2"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["model-A", "model-B"],
+            ) as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="2"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         # fetch_api_models MUST be called even though model was saved
@@ -69,10 +74,15 @@ class TestCustomProviderModelSwitch:
             "model": "model-A",
         }
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["model-A", "model-B"]), \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="2"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["model-A", "model-B"],
+            ),
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="2"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
@@ -93,9 +103,11 @@ class TestCustomProviderModelSwitch:
         }
 
         # fetch returns empty list (probe failed), user presses Enter (empty input)
-        with patch("openagents_cli.models.fetch_api_models", return_value=[]), \
-             patch("builtins.input", return_value=""), \
-             patch("builtins.print"):
+        with (
+            patch("openagents_cli.models.fetch_api_models", return_value=[]),
+            patch("builtins.input", return_value=""),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
@@ -115,10 +127,12 @@ class TestCustomProviderModelSwitch:
             # no "model" key
         }
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["model-X"]), \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch("openagents_cli.models.fetch_api_models", return_value=["model-X"]),
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
@@ -139,10 +153,14 @@ class TestCustomProviderModelSwitch:
             "api_mode": "anthropic_messages",
         }
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["claude-3"]) as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models", return_value=["claude-3"]
+            ) as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         mock_fetch.assert_called_once_with(
@@ -172,10 +190,12 @@ class TestCustomProviderModelSwitch:
             "model": "llama-3",
         }
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["llama-3"]), \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch("openagents_cli.models.fetch_api_models", return_value=["llama-3"]),
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
@@ -183,7 +203,9 @@ class TestCustomProviderModelSwitch:
         assert isinstance(model, dict)
         assert "api_mode" not in model, "Stale api_mode should be removed"
 
-    def test_env_template_api_key_is_preserved_in_model_config(self, config_home, monkeypatch):
+    def test_env_template_api_key_is_preserved_in_model_config(
+        self, config_home, monkeypatch
+    ):
         """Selecting an env-backed custom provider must not inline the secret."""
         import yaml
         from openagents_cli.main import _model_flow_named_custom
@@ -209,10 +231,15 @@ class TestCustomProviderModelSwitch:
             "model": "qwen3.6-35b-fast",
         }
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["qwen3.6-35b-fast"]) as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["qwen3.6-35b-fast"],
+            ) as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         mock_fetch.assert_called_once_with(
@@ -225,7 +252,9 @@ class TestCustomProviderModelSwitch:
         assert config["custom_providers"][0]["api_key"] == "${EXAMPLE_PROVIDER_API_KEY}"
         assert "sk-live-example-provider" not in config_path.read_text()
 
-    def test_key_env_custom_provider_persists_reference_not_secret(self, config_home, monkeypatch):
+    def test_key_env_custom_provider_persists_reference_not_secret(
+        self, config_home, monkeypatch
+    ):
         """key_env custom providers should also avoid writing plaintext keys."""
         import yaml
         from openagents_cli.main import _model_flow_named_custom
@@ -250,10 +279,15 @@ class TestCustomProviderModelSwitch:
             "model": "qwen3.6-35b-fast",
         }
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["qwen3.6-35b-fast"]), \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["qwen3.6-35b-fast"],
+            ),
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         config = yaml.safe_load(config_path.read_text()) or {}
@@ -305,13 +339,19 @@ class TestCustomProviderModelSwitch:
                 f"NeuralWatt entry missing from provider menu: {labels}"
             )
 
-        with patch("openagents_cli.main._prompt_provider_choice",
-                   side_effect=_pick_neuralwatt), \
-             patch("openagents_cli.models.fetch_api_models",
-                   return_value=["qwen3.6-35b-fast"]) as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.main._prompt_provider_choice",
+                side_effect=_pick_neuralwatt,
+            ),
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["qwen3.6-35b-fast"],
+            ) as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             select_provider_and_model()
 
         # The live probe must still use the resolved secret.
@@ -372,9 +412,13 @@ class TestCustomProviderModelSwitch:
             captured["default"] = default
             return len(labels) - 1  # Leave unchanged
 
-        with patch("openagents_cli.main._prompt_provider_choice",
-                   side_effect=_capture_and_cancel), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.main._prompt_provider_choice",
+                side_effect=_capture_and_cancel,
+            ),
+            patch("builtins.print"),
+        ):
             select_provider_and_model()
 
         labels = captured["labels"]
@@ -383,8 +427,7 @@ class TestCustomProviderModelSwitch:
         assert "currently active" in default_label
         assert "Cerebras.ai" not in default_label
         assert not any(
-            "Cerebras.ai" in label and "currently active" in label
-            for label in labels
+            "Cerebras.ai" in label and "currently active" in label for label in labels
         )
 
     def test_named_custom_provider_selection_preserves_base_url_env_ref(
@@ -418,13 +461,19 @@ class TestCustomProviderModelSwitch:
                 f"NeuralWatt entry missing from provider menu: {labels}"
             )
 
-        with patch("openagents_cli.main._prompt_provider_choice",
-                   side_effect=_pick_neuralwatt), \
-             patch("openagents_cli.models.fetch_api_models",
-                   return_value=["qwen3.6-35b-fast"]) as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.main._prompt_provider_choice",
+                side_effect=_pick_neuralwatt,
+            ),
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["qwen3.6-35b-fast"],
+            ) as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             select_provider_and_model()
 
         mock_fetch.assert_called_once()
@@ -482,13 +531,15 @@ class TestCustomProviderModelSwitch:
             "api_key_ref": "",
         }
 
-        with patch(
-            "openagents_cli.models.fetch_api_models",
-            return_value=["claude-opus-4-7"],
-        ) as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["claude-opus-4-7"],
+            ) as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         # The /models probe must resolve the secret from the env var.
@@ -547,13 +598,15 @@ class TestCustomProviderModelSwitch:
             "api_key_ref": "${HERMES_CRS_HENKEE_KEY}",  # raw template preserved
         }
 
-        with patch(
-            "openagents_cli.models.fetch_api_models",
-            return_value=["claude-opus-4-7"],
-        ), \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["claude-opus-4-7"],
+            ),
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         saved_text = config_path.read_text()
@@ -584,10 +637,12 @@ class TestCustomProviderDiscoverModels:
             "model": "kimi-k2.5",
         }
 
-        with patch("openagents_cli.models.fetch_api_models") as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="2"), \
-             patch("builtins.print"):
+        with (
+            patch("openagents_cli.models.fetch_api_models") as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="2"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         # The live /models endpoint must NOT be probed when discovery is off.
@@ -607,10 +662,12 @@ class TestCustomProviderDiscoverModels:
             "model": "kimi-k2.5",
         }
 
-        with patch("openagents_cli.models.fetch_api_models") as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="2"), \
-             patch("builtins.print"):
+        with (
+            patch("openagents_cli.models.fetch_api_models") as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="2"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         mock_fetch.assert_not_called()
@@ -632,13 +689,15 @@ class TestCustomProviderDiscoverModels:
             "model": "subset-a",
         }
 
-        with patch(
-            "openagents_cli.models.fetch_api_models",
-            return_value=["live-a", "live-b", "live-c"],
-        ) as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["live-a", "live-b", "live-c"],
+            ) as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         # Probe MUST still run — configured models: alone does not whitelist.
@@ -662,10 +721,12 @@ class TestCustomProviderDiscoverModels:
             "model": "fallback-a",
         }
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=[]), \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="2"), \
-             patch("builtins.print"):
+        with (
+            patch("openagents_cli.models.fetch_api_models", return_value=[]),
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="2"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
@@ -686,10 +747,12 @@ class TestCustomProviderDiscoverModels:
             "model": "kimi-k2.5",
         }
 
-        with patch("openagents_cli.models.fetch_api_models") as mock_fetch, \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError), \
-             patch("builtins.input", return_value="1"), \
-             patch("builtins.print"):
+        with (
+            patch("openagents_cli.models.fetch_api_models") as mock_fetch,
+            patch("openagents_cli.curses_ui.curses_radiolist", side_effect=ImportError),
+            patch("builtins.input", return_value="1"),
+            patch("builtins.print"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         mock_fetch.assert_not_called()

@@ -31,6 +31,7 @@ def _session(agent=None, **extra):
 
 # ── _enqueue_prompt ────────────────────────────────────────────────────────
 
+
 def test_enqueue_pins_text_and_transport():
     session = _session()
     server._enqueue_prompt(session, "hello", "ws-1")
@@ -48,10 +49,13 @@ def test_enqueue_merges_second_arrival_losslessly():
 
 # ── _handle_busy_submit (policy) ───────────────────────────────────────────
 
+
 def test_busy_interrupt_mode_interrupts_and_queues(monkeypatch):
     monkeypatch.setattr(server, "_load_busy_input_mode", lambda: "interrupt")
     calls = {"interrupt": 0}
-    agent = types.SimpleNamespace(interrupt=lambda *a, **k: calls.__setitem__("interrupt", calls["interrupt"] + 1))
+    agent = types.SimpleNamespace(
+        interrupt=lambda *a, **k: calls.__setitem__("interrupt", calls["interrupt"] + 1)
+    )
     session = _session(agent=agent)
 
     resp = server._handle_busy_submit("r1", "sid", session, "redirect", "ws-1")
@@ -64,7 +68,9 @@ def test_busy_interrupt_mode_interrupts_and_queues(monkeypatch):
 def test_busy_queue_mode_queues_without_interrupting(monkeypatch):
     monkeypatch.setattr(server, "_load_busy_input_mode", lambda: "queue")
     calls = {"interrupt": 0}
-    agent = types.SimpleNamespace(interrupt=lambda *a, **k: calls.__setitem__("interrupt", calls["interrupt"] + 1))
+    agent = types.SimpleNamespace(
+        interrupt=lambda *a, **k: calls.__setitem__("interrupt", calls["interrupt"] + 1)
+    )
     session = _session(agent=agent)
 
     resp = server._handle_busy_submit("r1", "sid", session, "later", "ws-1")
@@ -76,7 +82,9 @@ def test_busy_queue_mode_queues_without_interrupting(monkeypatch):
 
 def test_busy_steer_mode_injects_when_accepted(monkeypatch):
     monkeypatch.setattr(server, "_load_busy_input_mode", lambda: "steer")
-    agent = types.SimpleNamespace(steer=lambda text: True, interrupt=lambda *a, **k: None)
+    agent = types.SimpleNamespace(
+        steer=lambda text: True, interrupt=lambda *a, **k: None
+    )
     session = _session(agent=agent)
 
     resp = server._handle_busy_submit("r1", "sid", session, "nudge", "ws-1")
@@ -87,7 +95,9 @@ def test_busy_steer_mode_injects_when_accepted(monkeypatch):
 
 def test_busy_steer_mode_falls_back_to_queue_when_rejected(monkeypatch):
     monkeypatch.setattr(server, "_load_busy_input_mode", lambda: "steer")
-    agent = types.SimpleNamespace(steer=lambda text: False, interrupt=lambda *a, **k: None)
+    agent = types.SimpleNamespace(
+        steer=lambda text: False, interrupt=lambda *a, **k: None
+    )
     session = _session(agent=agent)
 
     resp = server._handle_busy_submit("r1", "sid", session, "nudge", "ws-1")
@@ -98,10 +108,12 @@ def test_busy_steer_mode_falls_back_to_queue_when_rejected(monkeypatch):
 
 # ── _drain_queued_prompt ───────────────────────────────────────────────────
 
+
 def test_drain_fires_queued_prompt_and_claims_running(monkeypatch):
     fired = {}
     monkeypatch.setattr(
-        server, "_run_prompt_submit",
+        server,
+        "_run_prompt_submit",
         lambda rid, sid, session, text: fired.update(rid=rid, sid=sid, text=text),
     )
     session = _session(queued_prompt={"text": "go", "transport": "ws-9"})
@@ -114,7 +126,11 @@ def test_drain_fires_queued_prompt_and_claims_running(monkeypatch):
 
 
 def test_drain_noop_when_nothing_queued(monkeypatch):
-    monkeypatch.setattr(server, "_run_prompt_submit", lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not fire")))
+    monkeypatch.setattr(
+        server,
+        "_run_prompt_submit",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not fire")),
+    )
     session = _session()
     assert server._drain_queued_prompt("r1", "sid", session) is False
     assert session["running"] is False
@@ -123,7 +139,11 @@ def test_drain_noop_when_nothing_queued(monkeypatch):
 def test_drain_noop_when_session_already_running(monkeypatch):
     """A fresh turn that claimed the session beats a stale queued entry —
     the drain leaves it for that turn's own tail."""
-    monkeypatch.setattr(server, "_run_prompt_submit", lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not fire")))
+    monkeypatch.setattr(
+        server,
+        "_run_prompt_submit",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not fire")),
+    )
     session = _session(running=True, queued_prompt={"text": "go", "transport": None})
     assert server._drain_queued_prompt("r1", "sid", session) is False
     assert session["queued_prompt"]["text"] == "go"
@@ -132,6 +152,7 @@ def test_drain_noop_when_session_already_running(monkeypatch):
 def test_drain_releases_running_on_dispatch_failure(monkeypatch):
     def _boom(*a, **k):
         raise RuntimeError("dispatch failed")
+
     monkeypatch.setattr(server, "_run_prompt_submit", _boom)
     session = _session(queued_prompt={"text": "go", "transport": None})
 

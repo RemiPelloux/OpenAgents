@@ -64,7 +64,12 @@ class WorkflowNode:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"id": self.id, "type": self.type, "position": self.position, "data": self.data}
+        return {
+            "id": self.id,
+            "type": self.type,
+            "position": self.position,
+            "data": self.data,
+        }
 
 
 @dataclass
@@ -86,7 +91,11 @@ class WorkflowEdge:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        out: Dict[str, Any] = {"id": self.id, "source": self.source, "target": self.target}
+        out: Dict[str, Any] = {
+            "id": self.id,
+            "source": self.source,
+            "target": self.target,
+        }
         if self.source_handle is not None:
             out["sourceHandle"] = self.source_handle
         if self.label is not None:

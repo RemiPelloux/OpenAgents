@@ -59,9 +59,7 @@ def rsa_keypair() -> Dict[str, Any]:
 
     def _b64url_uint(n: int) -> str:
         length = (n.bit_length() + 7) // 8
-        return (
-            base64.urlsafe_b64encode(n.to_bytes(length, "big")).rstrip(b"=").decode()
-        )
+        return base64.urlsafe_b64encode(n.to_bytes(length, "big")).rstrip(b"=").decode()
 
     jwk = {
         "kty": "RSA",
@@ -263,9 +261,7 @@ class TestConfigYamlSource:
             cfg = {}
             if oauth_block is not None:
                 cfg = {"dashboard": {"oauth": oauth_block}}
-            monkeypatch.setattr(
-                "openagents_cli.config.load_config", lambda: cfg
-            )
+            monkeypatch.setattr("openagents_cli.config.load_config", lambda: cfg)
 
         return _set
 
@@ -315,7 +311,8 @@ class TestConfigYamlSource:
     def test_env_overrides_config_portal_url(self, patch_config, monkeypatch):
         monkeypatch.setenv("HERMES_DASHBOARD_OAUTH_CLIENT_ID", "agent:x")
         monkeypatch.setenv(
-            "HERMES_DASHBOARD_PORTAL_URL", "https://env.portal.example",
+            "HERMES_DASHBOARD_PORTAL_URL",
+            "https://env.portal.example",
         )
         patch_config({
             "client_id": "agent:x",
@@ -326,9 +323,7 @@ class TestConfigYamlSource:
         registered = ctx.register_dashboard_auth_provider.call_args.args[0]
         assert registered._portal_url == "https://env.portal.example"
 
-    def test_empty_env_string_does_not_shadow_config(
-        self, patch_config, monkeypatch
-    ):
+    def test_empty_env_string_does_not_shadow_config(self, patch_config, monkeypatch):
         """``HERMES_DASHBOARD_OAUTH_CLIENT_ID=`` (set but empty) is
         common in CI/Fly when a secret is provisioned-but-not-populated.
         It MUST NOT shadow a valid config.yaml value with an empty
@@ -341,9 +336,7 @@ class TestConfigYamlSource:
         registered = ctx.register_dashboard_auth_provider.call_args.args[0]
         assert registered._client_id == "agent:from-config"
 
-    def test_neither_source_skips_with_helpful_reason(
-        self, patch_config, monkeypatch
-    ):
+    def test_neither_source_skips_with_helpful_reason(self, patch_config, monkeypatch):
         """Neither env nor config.yaml set — skip with a reason that
         mentions BOTH surfaces so operators don't guess wrong about
         which one to populate."""
@@ -361,9 +354,7 @@ class TestConfigYamlSource:
             f"won't know it exists. got: {nous_plugin.LAST_SKIP_REASON!r}"
         )
 
-    def test_config_yaml_load_failure_falls_through_cleanly(
-        self, monkeypatch
-    ):
+    def test_config_yaml_load_failure_falls_through_cleanly(self, monkeypatch):
         """If load_config() raises (e.g. malformed YAML, IOError), the
         plugin must not crash — it falls through to the env-only path
         and either succeeds (if env is set) or surfaces the standard
@@ -373,17 +364,13 @@ class TestConfigYamlSource:
         def _broken_load():
             raise OSError("config.yaml not readable")
 
-        monkeypatch.setattr(
-            "openagents_cli.config.load_config", _broken_load
-        )
+        monkeypatch.setattr("openagents_cli.config.load_config", _broken_load)
         ctx = MagicMock()
         # Must not raise.
         nous_plugin.register(ctx)
         ctx.register_dashboard_auth_provider.assert_not_called()
 
-    def test_config_yaml_with_non_dict_oauth_section(
-        self, monkeypatch
-    ):
+    def test_config_yaml_with_non_dict_oauth_section(self, monkeypatch):
         """cfg_get handles 'config has a string where a section was
         expected' robustly. Verify the plugin inherits that resilience
         so a malformed user config doesn't crash startup."""
@@ -471,24 +458,19 @@ class TestStartLogin:
         parts = dict(seg.split("=", 1) for seg in pkce.split(";") if "=" in seg)
         verifier = parts["verifier"]
         expected_challenge = (
-            base64.urlsafe_b64encode(
-                hashlib.sha256(verifier.encode("ascii")).digest()
-            )
+            base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest())
             .rstrip(b"=")
             .decode()
         )
         assert params["code_challenge"] == expected_challenge
 
     def test_two_calls_produce_different_state_and_verifier(self, provider):
-        a = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+        a = provider.start_login(redirect_uri="https://hermes.fly.dev/auth/callback")
+        b = provider.start_login(redirect_uri="https://hermes.fly.dev/auth/callback")
+        assert (
+            a.cookie_payload["hermes_session_pkce"]
+            != b.cookie_payload["hermes_session_pkce"]
         )
-        b = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
-        )
-        assert a.cookie_payload["hermes_session_pkce"] != b.cookie_payload[
-            "hermes_session_pkce"
-        ]
 
     def test_rejects_non_http_scheme(self, provider):
         with pytest.raises(ProviderError, match="http"):
@@ -528,7 +510,9 @@ class TestCompleteLogin:
         _patched_jwks(p, rsa_keypair)
         return p
 
-    def _mock_post(self, status_code: int, body: Any, *, ctype: str = "application/json"):
+    def _mock_post(
+        self, status_code: int, body: Any, *, ctype: str = "application/json"
+    ):
         resp = MagicMock(spec=httpx.Response)
         resp.status_code = status_code
         if isinstance(body, dict):
@@ -592,7 +576,9 @@ class TestCompleteLogin:
         with patch("plugins.dashboard_auth.nous.httpx.post", return_value=mock_resp):
             with pytest.raises(InvalidCodeError, match="invalid_grant"):
                 provider.complete_login(
-                    code="bad", state="s", code_verifier="v",
+                    code="bad",
+                    state="s",
+                    code_verifier="v",
                     redirect_uri="https://hermes.fly.dev/auth/callback",
                 )
 
@@ -602,7 +588,9 @@ class TestCompleteLogin:
         with patch("plugins.dashboard_auth.nous.httpx.post", return_value=mock_resp):
             with pytest.raises(ProviderError, match="500"):
                 provider.complete_login(
-                    code="x", state="s", code_verifier="v",
+                    code="x",
+                    state="s",
+                    code_verifier="v",
                     redirect_uri="https://hermes.fly.dev/auth/callback",
                 )
 
@@ -611,7 +599,9 @@ class TestCompleteLogin:
         with patch("plugins.dashboard_auth.nous.httpx.post", return_value=mock_resp):
             with pytest.raises(ProviderError, match="access_token"):
                 provider.complete_login(
-                    code="x", state="s", code_verifier="v",
+                    code="x",
+                    state="s",
+                    code_verifier="v",
                     redirect_uri="https://hermes.fly.dev/auth/callback",
                 )
 
@@ -623,7 +613,9 @@ class TestCompleteLogin:
         with patch("plugins.dashboard_auth.nous.httpx.post", return_value=mock_resp):
             with pytest.raises(ProviderError, match="token_type"):
                 provider.complete_login(
-                    code="x", state="s", code_verifier="v",
+                    code="x",
+                    state="s",
+                    code_verifier="v",
                     redirect_uri="https://hermes.fly.dev/auth/callback",
                 )
 
@@ -634,7 +626,9 @@ class TestCompleteLogin:
         ):
             with pytest.raises(ProviderError, match="unreachable"):
                 provider.complete_login(
-                    code="x", state="s", code_verifier="v",
+                    code="x",
+                    state="s",
+                    code_verifier="v",
                     redirect_uri="https://hermes.fly.dev/auth/callback",
                 )
 
@@ -654,7 +648,9 @@ class TestCompleteLogin:
         )
         with patch("plugins.dashboard_auth.nous.httpx.post", return_value=mock_resp):
             session = provider.complete_login(
-                code="x", state="s", code_verifier="v",
+                code="x",
+                state="s",
+                code_verifier="v",
                 redirect_uri="https://hermes.fly.dev/auth/callback",
             )
         assert session.refresh_token == "rt-opaque"
@@ -731,13 +727,12 @@ class TestVerifySession:
         self, provider, rsa_keypair, caplog
     ):
         import logging
+
         token = _mint_token(rsa_keypair, oauth_contract_version=None)
         with caplog.at_level(logging.WARNING, logger="plugins.dashboard_auth.nous"):
             session = provider.verify_session(access_token=token)
         assert session is not None
-        assert any(
-            "oauth_contract_version" in r.message for r in caplog.records
-        )
+        assert any("oauth_contract_version" in r.message for r in caplog.records)
 
     def test_contract_version_mismatch_rejected(self, provider, rsa_keypair):
         token = _mint_token(rsa_keypair, oauth_contract_version=2)

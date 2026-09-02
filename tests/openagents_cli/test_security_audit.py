@@ -79,7 +79,10 @@ class TestMCPComponentExtraction:
 
     def test_docker_returns_none(self):
         # We don't currently parse docker image refs.
-        assert sa._extract_mcp_component("x", "docker", ["run", "-i", "mcp/foo:1.0"]) is None
+        assert (
+            sa._extract_mcp_component("x", "docker", ["run", "-i", "mcp/foo:1.0"])
+            is None
+        )
 
     def test_empty_args(self):
         assert sa._extract_mcp_component("x", "npx", []) is None
@@ -178,12 +181,18 @@ class TestRunAudit:
 
         def fake_details(ids):
             return {
-                "LOW-1": sa.Vulnerability(osv_id="LOW-1", severity="LOW", summary="low"),
-                "CRIT-1": sa.Vulnerability(osv_id="CRIT-1", severity="CRITICAL", summary="crit"),
+                "LOW-1": sa.Vulnerability(
+                    osv_id="LOW-1", severity="LOW", summary="low"
+                ),
+                "CRIT-1": sa.Vulnerability(
+                    osv_id="CRIT-1", severity="CRITICAL", summary="crit"
+                ),
             }
 
-        with patch.object(sa, "_osv_query_batch", side_effect=fake_batch), \
-             patch.object(sa, "_osv_fetch_details", side_effect=fake_details):
+        with (
+            patch.object(sa, "_osv_query_batch", side_effect=fake_batch),
+            patch.object(sa, "_osv_fetch_details", side_effect=fake_details),
+        ):
             findings = sa.run_audit(
                 skip_venv=True, skip_plugins=False, skip_mcp=True, hermes_home=tmp_path
             )
@@ -225,9 +234,7 @@ class TestExitCodes:
             name="pkg", version="1.0", ecosystem="PyPI", source="venv"
         )
         monkeypatch.setattr(sa, "_discover_venv", lambda: [fake_comp])
-        monkeypatch.setattr(
-            sa, "_osv_query_batch", lambda comps: {fake_comp: ["X-1"]}
-        )
+        monkeypatch.setattr(sa, "_osv_query_batch", lambda comps: {fake_comp: ["X-1"]})
         monkeypatch.setattr(
             sa,
             "_osv_fetch_details",
@@ -244,9 +251,7 @@ class TestExitCodes:
             name="pkg", version="1.0", ecosystem="PyPI", source="venv"
         )
         monkeypatch.setattr(sa, "_discover_venv", lambda: [fake_comp])
-        monkeypatch.setattr(
-            sa, "_osv_query_batch", lambda comps: {fake_comp: ["X-1"]}
-        )
+        monkeypatch.setattr(sa, "_osv_query_batch", lambda comps: {fake_comp: ["X-1"]})
         monkeypatch.setattr(
             sa,
             "_osv_fetch_details",
@@ -270,9 +275,7 @@ class TestExitCodes:
             name="pkg", version="1.0", ecosystem="PyPI", source="venv"
         )
         monkeypatch.setattr(sa, "_discover_venv", lambda: [fake_comp])
-        monkeypatch.setattr(
-            sa, "_osv_query_batch", lambda comps: {fake_comp: ["X-1"]}
-        )
+        monkeypatch.setattr(sa, "_osv_query_batch", lambda comps: {fake_comp: ["X-1"]})
         monkeypatch.setattr(
             sa,
             "_osv_fetch_details",

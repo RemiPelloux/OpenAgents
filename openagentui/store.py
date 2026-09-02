@@ -57,7 +57,9 @@ def _table_dir(name: str) -> Path:
 
 def _write_json(path: Path, data: Dict[str, Any]) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     os.replace(tmp, path)
 
 
@@ -168,7 +170,9 @@ def execution_summary_from_raw(raw: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def list_execution_summaries(workflow_id: Optional[str] = None, *, limit: int = 50) -> List[Dict[str, Any]]:
+def list_execution_summaries(
+    workflow_id: Optional[str] = None, *, limit: int = 50
+) -> List[Dict[str, Any]]:
     if workflow_id:
         _validate_id(workflow_id)
         predicate = lambda raw, wid=workflow_id: raw.get("workflowId") == wid
@@ -218,7 +222,9 @@ def prune_executions(*, keep_per_workflow: int = 20) -> int:
 
 def save_approval(approval: PendingApproval) -> PendingApproval:
     _validate_id(approval.approval_id)
-    _write_json(_table_dir("approvals") / f"{approval.approval_id}.json", approval.to_dict())
+    _write_json(
+        _table_dir("approvals") / f"{approval.approval_id}.json", approval.to_dict()
+    )
     return approval
 
 

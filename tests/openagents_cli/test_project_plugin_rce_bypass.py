@@ -28,6 +28,7 @@ These tests pin each layer of the new defence:
 * End-to-end the original PoC manifest no longer triggers
   ``importlib`` for ``/tmp/payload.py``.
 """
+
 from __future__ import annotations
 
 import json
@@ -135,33 +136,39 @@ class TestApiPathSanitizer:
     def test_simple_relative_path_accepted(self, tmp_path):
         d = self._dashboard_dir(tmp_path)
         (d / "api.py").write_text("router = None\n")
-        assert web_server._safe_plugin_api_relpath("api.py", dashboard_dir=d) == "api.py"
+        assert (
+            web_server._safe_plugin_api_relpath("api.py", dashboard_dir=d) == "api.py"
+        )
 
     def test_nested_relative_path_accepted(self, tmp_path):
         d = self._dashboard_dir(tmp_path)
         (d / "backend").mkdir()
         (d / "backend" / "routes.py").write_text("router = None\n")
-        out = web_server._safe_plugin_api_relpath(
-            "backend/routes.py", dashboard_dir=d
-        )
+        out = web_server._safe_plugin_api_relpath("backend/routes.py", dashboard_dir=d)
         assert out == "backend/routes.py"
 
-    @pytest.mark.parametrize("payload", [
-        "/etc/passwd",
-        "/tmp/payload.py",
-        "/usr/bin/python",
-        # NT-style absolute on POSIX is a relative path — covered by traversal below.
-    ])
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "/etc/passwd",
+            "/tmp/payload.py",
+            "/usr/bin/python",
+            # NT-style absolute on POSIX is a relative path — covered by traversal below.
+        ],
+    )
     def test_absolute_path_rejected(self, tmp_path, payload):
         d = self._dashboard_dir(tmp_path)
         assert web_server._safe_plugin_api_relpath(payload, dashboard_dir=d) is None
 
-    @pytest.mark.parametrize("payload", [
-        "../../../etc/passwd",
-        "../neighbour/api.py",
-        "../../../../tmp/evil.py",
-        "subdir/../../../../etc/passwd",
-    ])
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "../../../etc/passwd",
+            "../neighbour/api.py",
+            "../../../../tmp/evil.py",
+            "subdir/../../../../etc/passwd",
+        ],
+    )
     def test_traversal_rejected(self, tmp_path, payload):
         d = self._dashboard_dir(tmp_path)
         assert web_server._safe_plugin_api_relpath(payload, dashboard_dir=d) is None
@@ -193,36 +200,45 @@ class TestDiscoveryScrubsApiField:
         return _make
 
     def test_absolute_api_path_in_manifest_is_scrubbed(self, user_plugin_factory):
-        user_plugin_factory("evil", {
-            "name": "evil",
-            "label": "Evil",
-            "api": "/tmp/payload.py",
-            "entry": "dist/index.js",
-        })
+        user_plugin_factory(
+            "evil",
+            {
+                "name": "evil",
+                "label": "Evil",
+                "api": "/tmp/payload.py",
+                "entry": "dist/index.js",
+            },
+        )
         plugins = web_server._get_dashboard_plugins(force_rescan=True)
         evil = next(p for p in plugins if p["name"] == "evil")
         assert evil["_api_file"] is None
         assert evil["has_api"] is False
 
     def test_traversal_api_path_in_manifest_is_scrubbed(self, user_plugin_factory):
-        user_plugin_factory("traverse", {
-            "name": "traverse",
-            "label": "Traverse",
-            "api": "../../../../tmp/evil.py",
-            "entry": "dist/index.js",
-        })
+        user_plugin_factory(
+            "traverse",
+            {
+                "name": "traverse",
+                "label": "Traverse",
+                "api": "../../../../tmp/evil.py",
+                "entry": "dist/index.js",
+            },
+        )
         plugins = web_server._get_dashboard_plugins(force_rescan=True)
         entry = next(p for p in plugins if p["name"] == "traverse")
         assert entry["_api_file"] is None
         assert entry["has_api"] is False
 
     def test_safe_api_path_survives(self, user_plugin_factory, tmp_path):
-        user_plugin_factory("safe", {
-            "name": "safe",
-            "label": "Safe",
-            "api": "api.py",
-            "entry": "dist/index.js",
-        })
+        user_plugin_factory(
+            "safe",
+            {
+                "name": "safe",
+                "label": "Safe",
+                "api": "api.py",
+                "entry": "dist/index.js",
+            },
+        )
         # Make the api file actually exist so a downstream mount could
         # in principle proceed — we're only testing the discovery scrub.
         (tmp_path / "plugins" / "safe" / "dashboard" / "api.py").write_text(
@@ -292,8 +308,9 @@ class TestMountApiRoutesRefusesUntrusted:
         """Defence-in-depth: if discovery is bypassed (e.g. cache
         tampering), mount-time validation still refuses to import a
         file outside the dashboard dir."""
-        plugin = self._payload_plugin(tmp_path, source="user",
-                                       api_file="../../../tmp/evil.py")
+        plugin = self._payload_plugin(
+            tmp_path, source="user", api_file="../../../tmp/evil.py"
+        )
         web_server._dashboard_plugins_cache = [plugin]
         with patch("importlib.util.spec_from_file_location") as spec:
             web_server._mount_plugin_api_routes()

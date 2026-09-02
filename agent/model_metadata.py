@@ -42,32 +42,86 @@ def _resolve_requests_verify() -> bool | str:
             return val
     return True
 
+
 # Provider names that can appear as a "provider:" prefix before a model ID.
 # Only these are stripped — Ollama-style "model:tag" colons (e.g. "qwen3.5:27b")
 # are preserved so the full model name reaches cache lookups and server queries.
 _PROVIDER_PREFIXES: frozenset[str] = frozenset({
-    "openrouter", "nous", "openai-codex", "copilot", "copilot-acp",
-    "gemini", "ollama-cloud", "zai", "kimi-coding", "kimi-coding-cn", "stepfun", "minimax", "minimax-oauth", "minimax-cn", "anthropic", "deepseek",
-    "opencode-zen", "opencode-go", "kilocode", "alibaba", "novita",
+    "openrouter",
+    "nous",
+    "openai-codex",
+    "copilot",
+    "copilot-acp",
+    "gemini",
+    "ollama-cloud",
+    "zai",
+    "kimi-coding",
+    "kimi-coding-cn",
+    "stepfun",
+    "minimax",
+    "minimax-oauth",
+    "minimax-cn",
+    "anthropic",
+    "deepseek",
+    "opencode-zen",
+    "opencode-go",
+    "kilocode",
+    "alibaba",
+    "novita",
     "qwen-oauth",
     "xiaomi",
     "arcee",
     "gmi",
     "tencent-tokenhub",
-    "custom", "local",
+    "custom",
+    "local",
     # Common aliases
-    "google", "google-gemini", "google-ai-studio",
-    "glm", "z-ai", "z.ai", "zhipu", "github", "github-copilot",
-    "github-models", "kimi", "moonshot", "kimi-cn", "moonshot-cn", "claude", "deep-seek",
+    "google",
+    "google-gemini",
+    "google-ai-studio",
+    "glm",
+    "z-ai",
+    "z.ai",
+    "zhipu",
+    "github",
+    "github-copilot",
+    "github-models",
+    "kimi",
+    "moonshot",
+    "kimi-cn",
+    "moonshot-cn",
+    "claude",
+    "deep-seek",
     "ollama",
-    "stepfun", "opencode", "zen", "go", "kilo", "dashscope", "aliyun", "qwen",
-    "mimo", "xiaomi-mimo",
-    "tencent", "tokenhub", "tencent-cloud", "tencentmaas",
-    "arcee-ai", "arceeai",
-    "gmi-cloud", "gmicloud",
-    "xai", "x-ai", "x.ai", "grok",
-    "nvidia", "nim", "nvidia-nim", "nemotron",
-    "qwen-portal", "novita-ai", "novitaai",
+    "stepfun",
+    "opencode",
+    "zen",
+    "go",
+    "kilo",
+    "dashscope",
+    "aliyun",
+    "qwen",
+    "mimo",
+    "xiaomi-mimo",
+    "tencent",
+    "tokenhub",
+    "tencent-cloud",
+    "tencentmaas",
+    "arcee-ai",
+    "arceeai",
+    "gmi-cloud",
+    "gmicloud",
+    "xai",
+    "x-ai",
+    "x.ai",
+    "grok",
+    "nvidia",
+    "nim",
+    "nvidia-nim",
+    "nemotron",
+    "qwen-portal",
+    "novita-ai",
+    "novitaai",
 })
 
 
@@ -103,6 +157,7 @@ def _strip_provider_prefix(model: str) -> str:
         return suffix
     return model
 
+
 _model_metadata_cache: Dict[str, Dict[str, Any]] = {}
 _model_metadata_cache_time: float = 0
 _novita_metadata_cache: Dict[str, Dict[str, Any]] = {}
@@ -116,6 +171,7 @@ _ENDPOINT_MODEL_CACHE_TTL = 300
 def _get_model_metadata_cache_path() -> Path:
     """Return path to the OpenRouter model metadata disk cache."""
     from openagents_constants import get_openagents_home
+
     return get_openagents_home() / "cache" / "openrouter_model_metadata.json"
 
 
@@ -142,9 +198,7 @@ def _load_model_metadata_disk_cache() -> Dict[str, Dict[str, Any]]:
         if not isinstance(data, dict):
             return {}
         return {
-            str(key): value
-            for key, value in data.items()
-            if isinstance(value, dict)
+            str(key): value for key, value in data.items() if isinstance(value, dict)
         }
     except Exception as e:
         logger.debug("Failed to load OpenRouter model metadata disk cache: %s", e)
@@ -162,6 +216,7 @@ def _save_model_metadata_disk_cache(data: Dict[str, Dict[str, Any]]) -> None:
         )
     except Exception as e:
         logger.debug("Failed to save OpenRouter model metadata disk cache: %s", e)
+
 
 # Descending tiers for context length probing when the model is unknown.
 # We start at 256K (covers GPT-5.x, many current large-context models) and
@@ -212,9 +267,9 @@ DEFAULT_CONTEXT_LENGTHS = {
     # provider-aware branches (_resolve_codex_oauth_context_length + models.dev).
     # This hardcoded value is only reached when every probe misses.
     "gpt-5.5": 1050000,
-    "gpt-5.4-nano": 400000,           # 400k (not 1.05M like full 5.4)
-    "gpt-5.4-mini": 400000,           # 400k (not 1.05M like full 5.4)
-    "gpt-5.4": 1050000,               # GPT-5.4, GPT-5.4 Pro (1.05M context)
+    "gpt-5.4-nano": 400000,  # 400k (not 1.05M like full 5.4)
+    "gpt-5.4-mini": 400000,  # 400k (not 1.05M like full 5.4)
+    "gpt-5.4": 1050000,  # GPT-5.4, GPT-5.4 Pro (1.05M context)
     # gpt-5.3-codex-spark is Codex-OAuth-only (ChatGPT Pro entitlement) and
     # uses a smaller 128k window than other gpt-5.x slugs. Listed here as
     # a defensive override so the longest-substring fallback doesn't match
@@ -222,8 +277,8 @@ DEFAULT_CONTEXT_LENGTHS = {
     # Spark's context ever needs to be resolved through this path. Real
     # usage flows through _CODEX_OAUTH_CONTEXT_FALLBACK at line ~1113.
     "gpt-5.3-codex-spark": 128000,
-    "gpt-5.1-chat": 128000,           # Chat variant has 128k context
-    "gpt-5": 400000,                  # GPT-5.x base, mini, codex variants (400k)
+    "gpt-5.1-chat": 128000,  # Chat variant has 128k context
+    "gpt-5": 400000,  # GPT-5.x base, mini, codex variants (400k)
     "gpt-4.1": 1047576,
     "gpt-4": 128000,
     # Google
@@ -250,9 +305,9 @@ DEFAULT_CONTEXT_LENGTHS = {
     "llama": 131072,
     # Qwen — specific model families before the catch-all.
     # Official docs: https://help.aliyun.com/zh/model-studio/developer-reference/
-    "qwen3.6-plus": 1048576,      # 1M context (DashScope/Alibaba & OpenRouter)
+    "qwen3.6-plus": 1048576,  # 1M context (DashScope/Alibaba & OpenRouter)
     "qwen3-coder-plus": 1000000,  # 1M context
-    "qwen3-coder": 262144,        # 256K context
+    "qwen3-coder": 262144,  # 256K context
     "qwen": 131072,
     # MiniMax — M3 is 1M context (max output 512K); M2.x series is 204,800.
     # Keys use substring matching (longest-first), so "minimax-m3" wins over
@@ -279,17 +334,17 @@ DEFAULT_CONTEXT_LENGTHS = {
     # usable context window for Composer 2.5 on Grok Build (SuperGrok /
     # Premium+); /v1/responses additionally enforces a ~262144 input+output
     # budget, but the usable context (what we track here) is 200k.
-    "grok-composer": 200000,    # grok-composer-2.5-fast (Grok Build CLI)
-    "grok-build": 256000,       # grok-build-0.1
-    "grok-code-fast": 256000,   # grok-code-fast-1
-    "grok-2-vision": 8192,      # grok-2-vision, -1212, -latest
-    "grok-4-fast": 2000000,     # grok-4-fast-(non-)reasoning, also matches -reasoning
-    "grok-4.20": 2000000,       # grok-4.20-0309-(non-)reasoning, -multi-agent-0309
-    "grok-4.3": 1000000,        # grok-4.3, grok-4.3-latest — 1M context per docs.x.ai
-    "grok-4": 256000,           # grok-4, grok-4-0709
-    "grok-3": 131072,           # grok-3, grok-3-mini, grok-3-fast, grok-3-mini-fast
-    "grok-2": 131072,           # grok-2, grok-2-1212, grok-2-latest
-    "grok": 131072,             # catch-all (grok-beta, unknown grok-*)
+    "grok-composer": 200000,  # grok-composer-2.5-fast (Grok Build CLI)
+    "grok-build": 256000,  # grok-build-0.1
+    "grok-code-fast": 256000,  # grok-code-fast-1
+    "grok-2-vision": 8192,  # grok-2-vision, -1212, -latest
+    "grok-4-fast": 2000000,  # grok-4-fast-(non-)reasoning, also matches -reasoning
+    "grok-4.20": 2000000,  # grok-4.20-0309-(non-)reasoning, -multi-agent-0309
+    "grok-4.3": 1000000,  # grok-4.3, grok-4.3-latest — 1M context per docs.x.ai
+    "grok-4": 256000,  # grok-4, grok-4-0709
+    "grok-3": 131072,  # grok-3, grok-3-mini, grok-3-fast, grok-3-mini-fast
+    "grok-2": 131072,  # grok-2, grok-2-1212, grok-2-latest
+    "grok": 131072,  # catch-all (grok-beta, unknown grok-*)
     # Kimi
     "kimi": 262144,
     # Tencent — Hy3 Preview (Hunyuan) with 256K context window.
@@ -452,6 +507,7 @@ _URL_TO_PROVIDER: Dict[str, str] = {
 # Any provider with a base_url not already in the map gets added automatically.
 try:
     from providers import list_providers as _list_providers
+
     for _pp in _list_providers():
         _host = _pp.get_hostname()
         if _host and _host not in _URL_TO_PROVIDER:
@@ -620,7 +676,9 @@ def _iter_nested_dicts(value: Any):
             yield from _iter_nested_dicts(item)
 
 
-def _coerce_reasonable_int(value: Any, minimum: int = 1024, maximum: int = 10_000_000) -> Optional[int]:
+def _coerce_reasonable_int(
+    value: Any, minimum: int = 1024, maximum: int = 10_000_000
+) -> Optional[int]:
     try:
         if isinstance(value, bool):
             return None
@@ -667,14 +725,32 @@ def _extract_pricing(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     alias_map = {
         "prompt": ("prompt", "input", "input_cost_per_token", "prompt_token_cost"),
-        "completion": ("completion", "output", "output_cost_per_token", "completion_token_cost"),
+        "completion": (
+            "completion",
+            "output",
+            "output_cost_per_token",
+            "completion_token_cost",
+        ),
         "request": ("request", "request_cost"),
-        "cache_read": ("cache_read", "cached_prompt", "input_cache_read", "cache_read_cost_per_token"),
-        "cache_write": ("cache_write", "cache_creation", "input_cache_write", "cache_write_cost_per_token"),
+        "cache_read": (
+            "cache_read",
+            "cached_prompt",
+            "input_cache_read",
+            "cache_read_cost_per_token",
+        ),
+        "cache_write": (
+            "cache_write",
+            "cache_creation",
+            "input_cache_write",
+            "cache_write_cost_per_token",
+        ),
     }
     for mapping in _iter_nested_dicts(payload):
         normalized = {str(key).lower(): value for key, value in mapping.items()}
-        if not any(any(alias in normalized for alias in aliases) for aliases in alias_map.values()):
+        if not any(
+            any(alias in normalized for alias in aliases)
+            for aliases in alias_map.values()
+        ):
             continue
         pricing: Dict[str, Any] = {}
         for target, aliases in alias_map.items():
@@ -687,7 +763,9 @@ def _extract_pricing(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {}
 
 
-def _add_model_aliases(cache: Dict[str, Dict[str, Any]], model_id: str, entry: Dict[str, Any]) -> None:
+def _add_model_aliases(
+    cache: Dict[str, Dict[str, Any]], model_id: str, entry: Dict[str, Any]
+) -> None:
     cache[model_id] = entry
     if "/" in model_id:
         bare_model = model_id.split("/", 1)[1]
@@ -698,7 +776,11 @@ def fetch_model_metadata(force_refresh: bool = False) -> Dict[str, Dict[str, Any
     """Fetch model metadata from OpenRouter (cached for 1 hour)."""
     global _model_metadata_cache, _model_metadata_cache_time
 
-    if not force_refresh and _model_metadata_cache and (time.time() - _model_metadata_cache_time) < _MODEL_CACHE_TTL:
+    if (
+        not force_refresh
+        and _model_metadata_cache
+        and (time.time() - _model_metadata_cache_time) < _MODEL_CACHE_TTL
+    ):
         return _model_metadata_cache
 
     if not force_refresh:
@@ -711,7 +793,9 @@ def fetch_model_metadata(force_refresh: bool = False) -> Dict[str, Dict[str, Any
                 return _model_metadata_cache
 
     try:
-        response = requests.get(OPENROUTER_MODELS_URL, timeout=10, verify=_resolve_requests_verify())
+        response = requests.get(
+            OPENROUTER_MODELS_URL, timeout=10, verify=_resolve_requests_verify()
+        )
         response.raise_for_status()
         data = response.json()
 
@@ -720,7 +804,9 @@ def fetch_model_metadata(force_refresh: bool = False) -> Dict[str, Dict[str, Any
             model_id = model.get("id", "")
             entry = {
                 "context_length": model.get("context_length", 128000),
-                "max_completion_tokens": model.get("top_provider", {}).get("max_completion_tokens", 4096),
+                "max_completion_tokens": model.get("top_provider", {}).get(
+                    "max_completion_tokens", 4096
+                ),
                 "name": model.get("name", model_id),
                 "pricing": model.get("pricing", {}),
             }
@@ -744,7 +830,9 @@ def fetch_model_metadata(force_refresh: bool = False) -> Dict[str, Dict[str, Any
             _model_metadata_cache = disk_cache
             disk_age = _model_metadata_disk_cache_age_seconds()
             if disk_age is not None:
-                _model_metadata_cache_time = time.time() - min(disk_age, _MODEL_CACHE_TTL)
+                _model_metadata_cache_time = time.time() - min(
+                    disk_age, _MODEL_CACHE_TTL
+                )
             else:
                 _model_metadata_cache_time = time.time() - _MODEL_CACHE_TTL + 1
             return _model_metadata_cache
@@ -808,7 +896,9 @@ def fetch_endpoint_model_metadata(
                         if not isinstance(inst, dict):
                             continue
                         cfg = inst.get("config", {})
-                        ctx = cfg.get("context_length") if isinstance(cfg, dict) else None
+                        ctx = (
+                            cfg.get("context_length") if isinstance(cfg, dict) else None
+                        )
                         if isinstance(ctx, int) and ctx > 0:
                             context_length = ctx
                             break
@@ -837,7 +927,9 @@ def fetch_endpoint_model_metadata(
     for candidate in candidates:
         url = candidate.rstrip("/") + "/models"
         try:
-            response = requests.get(url, headers=headers, timeout=10, verify=_resolve_requests_verify())
+            response = requests.get(
+                url, headers=headers, timeout=10, verify=_resolve_requests_verify()
+            )
             response.raise_for_status()
             payload = response.json()
             cache: Dict[str, Dict[str, Any]] = {}
@@ -862,16 +954,21 @@ def fetch_endpoint_model_metadata(
             # If this is a llama.cpp server, query /props for actual allocated context
             is_llamacpp = any(
                 m.get("owned_by") == "llamacpp"
-                for m in payload.get("data", []) if isinstance(m, dict)
+                for m in payload.get("data", [])
+                if isinstance(m, dict)
             )
             if is_llamacpp:
                 try:
                     # Try /v1/props first (current llama.cpp); fall back to /props for older builds
                     base = candidate.rstrip("/").replace("/v1", "")
                     _verify = _resolve_requests_verify()
-                    props_resp = requests.get(base + "/v1/props", headers=headers, timeout=5, verify=_verify)
+                    props_resp = requests.get(
+                        base + "/v1/props", headers=headers, timeout=5, verify=_verify
+                    )
                     if not props_resp.ok:
-                        props_resp = requests.get(base + "/props", headers=headers, timeout=5, verify=_verify)
+                        props_resp = requests.get(
+                            base + "/props", headers=headers, timeout=5, verify=_verify
+                        )
                     if props_resp.ok:
                         props = props_resp.json()
                         gen_settings = props.get("default_generation_settings", {})
@@ -889,7 +986,9 @@ def fetch_endpoint_model_metadata(
             last_error = exc
 
     if last_error:
-        logger.debug("Failed to fetch model metadata from %s/models: %s", normalized, last_error)
+        logger.debug(
+            "Failed to fetch model metadata from %s/models: %s", normalized, last_error
+        )
     _endpoint_model_metadata_cache[normalized] = {}
     _endpoint_model_metadata_cache_time[normalized] = time.time()
     return {}
@@ -921,6 +1020,7 @@ def _resolve_endpoint_context_length(
 def _get_context_cache_path() -> Path:
     """Return path to the persistent context length cache file."""
     from openagents_constants import get_openagents_home
+
     return get_openagents_home() / "context_length_cache.yaml"
 
 
@@ -1002,11 +1102,11 @@ def parse_context_limit_from_error(error_msg: str) -> Optional[int]:
     error_lower = error_msg.lower()
     # Pattern: look for numbers near context-related keywords
     patterns = [
-        r'(?:max(?:imum)?|limit)\s*(?:context\s*)?(?:length|size|window)?\s*(?:is|of|:)?\s*(\d{4,})',
-        r'context\s*(?:length|size|window)\s*(?:is|of|:)?\s*(\d{4,})',
-        r'(\d{4,})\s*(?:token)?\s*(?:context|limit)',
-        r'>\s*(\d{4,})\s*(?:max|limit|token)',  # "250000 tokens > 200000 maximum"
-        r'(\d{4,})\s*(?:max(?:imum)?)\b',  # "200000 maximum"
+        r"(?:max(?:imum)?|limit)\s*(?:context\s*)?(?:length|size|window)?\s*(?:is|of|:)?\s*(\d{4,})",
+        r"context\s*(?:length|size|window)\s*(?:is|of|:)?\s*(\d{4,})",
+        r"(\d{4,})\s*(?:token)?\s*(?:context|limit)",
+        r">\s*(\d{4,})\s*(?:max|limit|token)",  # "250000 tokens > 200000 maximum"
+        r"(\d{4,})\s*(?:max(?:imum)?)\b",  # "200000 maximum"
     ]
     for pattern in patterns:
         match = re.search(pattern, error_lower)
@@ -1059,22 +1159,25 @@ def parse_available_output_tokens_from_error(error_msg: str) -> Optional[int]:
 
     # Must look like an output-cap error, not a prompt-length error.
     is_output_cap_error = (
-        "max_tokens" in error_lower
-        and ("available_tokens" in error_lower or "available tokens" in error_lower)
-    ) or (
-        # OpenRouter/Nous phrasing of the same condition.
-        "in the output" in error_lower
-        and "maximum context length" in error_lower
-    ) or (
-        # LM Studio / llama.cpp / some OpenAI-compatible servers:
-        #   "This model's maximum context length is 65536 tokens. However, you
-        #    requested 65536 output tokens and your prompt contains 77409
-        #    characters ..."
-        # The "requested N output tokens" phrasing means the OUTPUT cap is the
-        # problem (the input itself fits) — reduce max_tokens, don't compress.
-        "maximum context length" in error_lower
-        and "requested" in error_lower
-        and "output tokens" in error_lower
+        (
+            "max_tokens" in error_lower
+            and ("available_tokens" in error_lower or "available tokens" in error_lower)
+        )
+        or (
+            # OpenRouter/Nous phrasing of the same condition.
+            "in the output" in error_lower and "maximum context length" in error_lower
+        )
+        or (
+            # LM Studio / llama.cpp / some OpenAI-compatible servers:
+            #   "This model's maximum context length is 65536 tokens. However, you
+            #    requested 65536 output tokens and your prompt contains 77409
+            #    characters ..."
+            # The "requested N output tokens" phrasing means the OUTPUT cap is the
+            # problem (the input itself fits) — reduce max_tokens, don't compress.
+            "maximum context length" in error_lower
+            and "requested" in error_lower
+            and "output tokens" in error_lower
+        )
     )
     if not is_output_cap_error:
         return None
@@ -1082,10 +1185,10 @@ def parse_available_output_tokens_from_error(error_msg: str) -> Optional[int]:
     # Extract the available_tokens figure.
     # Anthropic format: "… = available_tokens: 10000"
     patterns = [
-        r'available_tokens[:\s]+(\d+)',
-        r'available\s+tokens[:\s]+(\d+)',
+        r"available_tokens[:\s]+(\d+)",
+        r"available\s+tokens[:\s]+(\d+)",
         # fallback: last number after "=" in expressions like "200000 - 190000 = 10000"
-        r'=\s*(\d+)\s*$',
+        r"=\s*(\d+)\s*$",
     ]
     for pattern in patterns:
         match = re.search(pattern, error_lower)
@@ -1096,13 +1199,15 @@ def parse_available_output_tokens_from_error(error_msg: str) -> Optional[int]:
 
     # OpenRouter/Nous format: "maximum context length is N … (A of text input,
     # B of tool input, C in the output)". Available output = ctx - text - tool.
-    _m_ctx = re.search(r'maximum context length is (\d+)', error_lower)
+    _m_ctx = re.search(r"maximum context length is (\d+)", error_lower)
     _m_parts = re.search(
-        r'\((\d+)\s+of text input,\s*(\d+)\s+of tool input,\s*(\d+)\s+in the output\)',
+        r"\((\d+)\s+of text input,\s*(\d+)\s+of tool input,\s*(\d+)\s+in the output\)",
         error_lower,
     )
     if _m_ctx and _m_parts:
-        _available = int(_m_ctx.group(1)) - int(_m_parts.group(1)) - int(_m_parts.group(2))
+        _available = (
+            int(_m_ctx.group(1)) - int(_m_parts.group(1)) - int(_m_parts.group(2))
+        )
         if _available >= 1:
             return _available
 
@@ -1113,8 +1218,8 @@ def parse_available_output_tokens_from_error(error_msg: str) -> Optional[int]:
     # Estimate the input tokens conservatively (~3 chars/token, which
     # over-reserves the input so the retried output cap stays safely inside the
     # window) and leave the remainder of the window for output.
-    _m_ctx_tok = re.search(r'maximum context length is (\d+)\s*token', error_lower)
-    _m_chars = re.search(r'prompt contains (\d+)\s*character', error_lower)
+    _m_ctx_tok = re.search(r"maximum context length is (\d+)\s*token", error_lower)
+    _m_chars = re.search(r"prompt contains (\d+)\s*character", error_lower)
     if _m_ctx_tok and _m_chars:
         _ctx = int(_m_ctx_tok.group(1))
         _est_input = (int(_m_chars.group(1)) + 2) // 3
@@ -1199,7 +1304,9 @@ def query_ollama_num_ctx(model: str, base_url: str, api_key: str = "") -> Option
     return None
 
 
-def query_ollama_supports_vision(model: str, base_url: str, api_key: str = "") -> Optional[bool]:
+def query_ollama_supports_vision(
+    model: str, base_url: str, api_key: str = ""
+) -> Optional[bool]:
     """Return True/False when Ollama ``/api/show`` reports vision support.
 
     Uses the ``capabilities`` field on Ollama 0.6.0+ and falls back to
@@ -1249,7 +1356,9 @@ def query_ollama_supports_vision(model: str, base_url: str, api_key: str = "") -
     return None
 
 
-def _query_ollama_api_show(model: str, base_url: str, api_key: str = "") -> Optional[int]:
+def _query_ollama_api_show(
+    model: str, base_url: str, api_key: str = ""
+) -> Optional[int]:
     """Query an Ollama server's native ``/api/show`` for context length.
 
     Provider-agnostic: works against ANY Ollama-compatible server regardless
@@ -1346,7 +1455,9 @@ def _model_name_suggests_grok_4_3(model: str) -> bool:
     return "grok-4.3" in model.lower()
 
 
-def _query_local_context_length(model: str, base_url: str, api_key: str = "") -> Optional[int]:
+def _query_local_context_length(
+    model: str, base_url: str, api_key: str = ""
+) -> Optional[int]:
     """Query a local server for the model's context length."""
     import httpx
 
@@ -1406,7 +1517,9 @@ def _query_local_context_length(model: str, base_url: str, api_key: str = "") ->
                 if resp.status_code == 200:
                     data = resp.json()
                     for m in data.get("models", []):
-                        if _model_id_matches(m.get("key", ""), model) or _model_id_matches(m.get("id", ""), model):
+                        if _model_id_matches(
+                            m.get("key", ""), model
+                        ) or _model_id_matches(m.get("id", ""), model):
                             # Prefer loaded instance context (actual runtime value)
                             for inst in m.get("loaded_instances", []):
                                 cfg = inst.get("config", {})
@@ -1420,7 +1533,11 @@ def _query_local_context_length(model: str, base_url: str, api_key: str = "") ->
             if resp.status_code == 200:
                 data = resp.json()
                 # vLLM returns max_model_len
-                ctx = data.get("max_model_len") or data.get("context_length") or data.get("max_tokens")
+                ctx = (
+                    data.get("max_model_len")
+                    or data.get("context_length")
+                    or data.get("max_tokens")
+                )
                 if ctx and isinstance(ctx, (int, float)):
                     return int(ctx)
 
@@ -1432,7 +1549,11 @@ def _query_local_context_length(model: str, base_url: str, api_key: str = "") ->
                 models_list = data.get("data", [])
                 for m in models_list:
                     if _model_id_matches(m.get("id", ""), model):
-                        ctx = m.get("max_model_len") or m.get("context_length") or m.get("max_tokens")
+                        ctx = (
+                            m.get("max_model_len")
+                            or m.get("context_length")
+                            or m.get("max_tokens")
+                        )
                         if ctx and isinstance(ctx, (int, float)):
                             return int(ctx)
     except Exception:
@@ -1451,7 +1572,9 @@ def _normalize_model_version(model: str) -> str:
     return model.replace(".", "-")
 
 
-def _query_anthropic_context_length(model: str, base_url: str, api_key: str) -> Optional[int]:
+def _query_anthropic_context_length(
+    model: str, base_url: str, api_key: str
+) -> Optional[int]:
     """Query Anthropic's /v1/models endpoint for context length.
 
     Only works with regular ANTHROPIC_API_KEY (sk-ant-api*).
@@ -1468,7 +1591,9 @@ def _query_anthropic_context_length(model: str, base_url: str, api_key: str) -> 
             "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
         }
-        resp = requests.get(url, headers=headers, timeout=10, verify=_resolve_requests_verify())
+        resp = requests.get(
+            url, headers=headers, timeout=10, verify=_resolve_requests_verify()
+        )
         if resp.status_code != 200:
             return None
         data = resp.json()
@@ -1639,7 +1764,8 @@ def _resolve_nous_context_length(
             logger.info(
                 "Rejecting OpenRouter metadata context=%s for %r "
                 "(Kimi-family underreport, Nous path); falling through to hardcoded defaults",
-                ctx, or_id,
+                ctx,
+                or_id,
             )
             return None
         return ctx
@@ -1653,7 +1779,10 @@ def _resolve_nous_context_length(
 
     for or_id, entry in metadata.items():
         bare = or_id.split("/", 1)[1] if "/" in or_id else or_id
-        if bare.lower() == model.lower() or _normalize_model_version(bare).lower() == normalized:
+        if (
+            bare.lower() == model.lower()
+            or _normalize_model_version(bare).lower() == normalized
+        ):
             ctx = _safe_ctx(or_id, entry)
             if ctx is not None:
                 return ctx, "openrouter"
@@ -1661,7 +1790,10 @@ def _resolve_nous_context_length(
     model_lower = model.lower()
     for or_id, entry in metadata.items():
         bare = or_id.split("/", 1)[1] if "/" in or_id else or_id
-        for candidate, query in [(bare.lower(), model_lower), (_normalize_model_version(bare).lower(), normalized)]:
+        for candidate, query in [
+            (bare.lower(), model_lower),
+            (_normalize_model_version(bare).lower(), normalized),
+        ]:
             if candidate.startswith(query) and (
                 len(candidate) == len(query) or candidate[len(query)] in "-:."
             ):
@@ -1705,7 +1837,11 @@ def get_model_context_length(
     8. Local server query (last resort)
     9. Default fallback (256K)"""
     # 0. Explicit config override — user knows best
-    if config_context_length is not None and isinstance(config_context_length, int) and config_context_length > 0:
+    if (
+        config_context_length is not None
+        and isinstance(config_context_length, int)
+        and config_context_length > 0
+    ):
         return config_context_length
 
     # 0a. MoA virtual provider — ``model`` is a preset name, not a real model,
@@ -1725,7 +1861,9 @@ def get_model_context_length(
             agg_provider = str(agg.get("provider") or "").strip()
             agg_model = str(agg.get("model") or "").strip()
             if agg_model and agg_provider and agg_provider.lower() != "moa":
-                rt = resolve_runtime_provider(requested=agg_provider, target_model=agg_model)
+                rt = resolve_runtime_provider(
+                    requested=agg_provider, target_model=agg_model
+                )
                 return get_model_context_length(
                     agg_model,
                     base_url=rt.get("base_url", "") or "",
@@ -1733,7 +1871,9 @@ def get_model_context_length(
                     provider=agg_provider,
                 )
         except Exception:
-            logger.debug("MoA aggregator context-length resolution failed", exc_info=True)
+            logger.debug(
+                "MoA aggregator context-length resolution failed", exc_info=True
+            )
         # Fall through to the generic default if aggregator resolution failed.
 
     # 0b. custom_providers per-model override — check before any probe.
@@ -1743,6 +1883,7 @@ def get_model_context_length(
     if custom_providers and base_url and model:
         try:
             from openagents_cli.config import get_custom_provider_context_length
+
             cp_ctx = get_custom_provider_context_length(
                 model=model,
                 base_url=base_url,
@@ -1775,7 +1916,9 @@ def get_model_context_length(
                 logger.info(
                     "Dropping stale Codex cache entry %s@%s -> %s (pre-fix value); "
                     "re-resolving via live /models probe",
-                    model, base_url, f"{cached:,}",
+                    model,
+                    base_url,
+                    f"{cached:,}",
                 )
                 _invalidate_cached_context_length(model, base_url)
             # Invalidate stale 32k cache entries for Kimi-family models.
@@ -1783,7 +1926,9 @@ def get_model_context_length(
                 logger.info(
                     "Dropping stale Kimi cache entry %s@%s -> %s (OpenRouter underreport); "
                     "re-resolving via hardcoded defaults",
-                    model, base_url, f"{cached:,}",
+                    model,
+                    base_url,
+                    f"{cached:,}",
                 )
                 _invalidate_cached_context_length(model, base_url)
             # Invalidate stale ≤204,800 cache entries for MiniMax-M3.  Pre-catalog
@@ -1796,7 +1941,9 @@ def get_model_context_length(
                 logger.info(
                     "Dropping stale MiniMax-M3 cache entry %s@%s -> %s (pre-catalog value); "
                     "re-resolving via hardcoded defaults",
-                    model, base_url, f"{cached:,}",
+                    model,
+                    base_url,
+                    f"{cached:,}",
                 )
                 _invalidate_cached_context_length(model, base_url)
             # Invalidate stale ≤256,000 cache entries for Grok-4.3.  The
@@ -1809,7 +1956,9 @@ def get_model_context_length(
                 logger.info(
                     "Dropping stale Grok-4.3 cache entry %s@%s -> %s (pre-catalog value); "
                     "re-resolving via hardcoded defaults",
-                    model, base_url, f"{cached:,}",
+                    model,
+                    base_url,
+                    f"{cached:,}",
                 )
                 _invalidate_cached_context_length(model, base_url)
             # Nous Portal: the portal /v1/models endpoint is authoritative.
@@ -1823,7 +1972,8 @@ def get_model_context_length(
             elif _infer_provider_from_url(base_url) == "nous":
                 logger.debug(
                     "Bypassing persistent cache for %s@%s (Nous portal authoritative)",
-                    model, base_url,
+                    model,
+                    base_url,
                 )
                 # Fall through; step 5b reconciles and overwrites if portal responds.
             else:
@@ -1845,12 +1995,17 @@ def get_model_context_length(
     ):
         try:
             from agent.bedrock_adapter import get_bedrock_context_length
+
             return get_bedrock_context_length(model)
         except ImportError:
             pass  # boto3 not installed — fall through to generic resolution
 
-    if provider == "novita" or (base_url and base_url_host_matches(base_url, "api.novita.ai")):
-        ctx = _resolve_endpoint_context_length(model, base_url or "https://api.novita.ai/openai/v1", api_key=api_key)
+    if provider == "novita" or (
+        base_url and base_url_host_matches(base_url, "api.novita.ai")
+    ):
+        ctx = _resolve_endpoint_context_length(
+            model, base_url or "https://api.novita.ai/openai/v1", api_key=api_key
+        )
         if ctx is not None:
             if base_url:
                 save_context_length(model, base_url, ctx)
@@ -1862,7 +2017,9 @@ def get_model_context_length(
     # returns 128k) instead of the model's full context (400k).  models.dev
     # has the correct per-provider values and is checked at step 5+.
     if _is_custom_endpoint(base_url) and not _is_known_provider_base_url(base_url):
-        context_length = _resolve_endpoint_context_length(model, base_url, api_key=api_key)
+        context_length = _resolve_endpoint_context_length(
+            model, base_url, api_key=api_key
+        )
         if context_length is not None:
             return context_length
         if not _is_known_provider_base_url(base_url):
@@ -1875,7 +2032,9 @@ def get_model_context_length(
                 return ctx
             # 3. Try querying local server directly
             if is_local_endpoint(base_url):
-                local_ctx = _query_local_context_length(model, base_url, api_key=api_key)
+                local_ctx = _query_local_context_length(
+                    model, base_url, api_key=api_key
+                )
                 if local_ctx and local_ctx > 0:
                     if provider != "lmstudio":
                         save_context_length(model, base_url, local_ctx)
@@ -1884,7 +2043,9 @@ def get_model_context_length(
                 "Could not detect context length for model %r at %s — "
                 "defaulting to %s tokens (probe-down). Set model.context_length "
                 "in config.yaml to override.",
-                model, base_url, f"{DEFAULT_FALLBACK_CONTEXT:,}",
+                model,
+                base_url,
+                f"{DEFAULT_FALLBACK_CONTEXT:,}",
             )
             # 3b. Before falling back to the hard 256K default, consult the
             # hardcoded catalog as a last resort.  A proxied/custom Anthropic
@@ -1903,7 +2064,9 @@ def get_model_context_length(
                     logger.info(
                         "Using hardcoded context length %s for model %r "
                         "(custom endpoint, catalog match on %r)",
-                        f"{length:,}", model, default_model,
+                        f"{length:,}",
+                        model,
+                        default_model,
                     )
                     return length
             return DEFAULT_FALLBACK_CONTEXT
@@ -1912,7 +2075,9 @@ def get_model_context_length(
     if provider == "anthropic" or (
         base_url and base_url_hostname(base_url) == "api.anthropic.com"
     ):
-        ctx = _query_anthropic_context_length(model, base_url or "https://api.anthropic.com", api_key)
+        ctx = _query_anthropic_context_length(
+            model, base_url or "https://api.anthropic.com", api_key
+        )
         if ctx:
             return ctx
 
@@ -1937,6 +2102,7 @@ def get_model_context_length(
     if effective_provider in {"copilot", "copilot-acp", "github-copilot"}:
         try:
             from openagents_cli.models import get_copilot_model_context
+
             ctx = get_copilot_model_context(model, api_key=api_key)
             if ctx:
                 return ctx
@@ -1961,7 +2127,9 @@ def get_model_context_length(
         # Codex OAuth enforces lower context limits than the direct OpenAI
         # API for the same slug (e.g. gpt-5.5 is 1.05M on the API but 272K
         # on Codex). Authoritative source is Codex's own /models endpoint.
-        codex_ctx = _resolve_codex_oauth_context_length(model, access_token=api_key or "")
+        codex_ctx = _resolve_codex_oauth_context_length(
+            model, access_token=api_key or ""
+        )
         if codex_ctx:
             if base_url:
                 save_context_length(model, base_url, codex_ctx)
@@ -2003,13 +2171,16 @@ def get_model_context_length(
             or_ctx = entry.get("context_length")
             # Guard against the known OpenRouter Kimi-family 32k underreport
             # (same class the hardcoded overrides exist to mitigate).
-            if isinstance(or_ctx, int) and or_ctx > 0 and not (
-                or_ctx == 32768 and _model_name_suggests_kimi(model)
+            if (
+                isinstance(or_ctx, int)
+                and or_ctx > 0
+                and not (or_ctx == 32768 and _model_name_suggests_kimi(model))
             ):
                 return or_ctx
 
     if effective_provider:
         from agent.models_dev import lookup_models_dev_context
+
         ctx = lookup_models_dev_context(effective_provider, model)
         if ctx:
             # MiniMax M3: models.dev reports 512K but actual context is 1M.
@@ -2020,7 +2191,9 @@ def get_model_context_length(
                     logger.info(
                         "Rejecting models.dev context=%s for %r "
                         "(MiniMax-M3 underreport); using hardcoded default %s",
-                        ctx, model, f"{catalog:,}",
+                        ctx,
+                        model,
+                        f"{catalog:,}",
                     )
                     ctx = catalog
             return ctx
@@ -2038,7 +2211,8 @@ def get_model_context_length(
                 logger.info(
                     "Rejecting OpenRouter metadata context=%s for %r "
                     "(Kimi-family underreport); falling through to hardcoded defaults",
-                    or_ctx, model,
+                    or_ctx,
+                    model,
                 )
             else:
                 return or_ctx
@@ -2118,7 +2292,10 @@ def _count_image_tokens(msg: Dict[str, Any], cost_per_image: int) -> int:
         inner = content.get("content")
         if isinstance(inner, list):
             for part in inner:
-                if isinstance(part, dict) and part.get("type") in {"image", "image_url"}:
+                if isinstance(part, dict) and part.get("type") in {
+                    "image",
+                    "image_url",
+                }:
                     count += 1
     return count * cost_per_image
 
@@ -2141,7 +2318,10 @@ def _estimate_message_chars(msg: Dict[str, Any]) -> int:
                 for part in v:
                     if isinstance(part, dict):
                         if part.get("type") in {"image", "image_url", "input_image"}:
-                            cleaned.append({"type": part.get("type"), "image": "[stripped]"})
+                            cleaned.append({
+                                "type": part.get("type"),
+                                "image": "[stripped]",
+                            })
                         else:
                             cleaned.append(part)
                     else:

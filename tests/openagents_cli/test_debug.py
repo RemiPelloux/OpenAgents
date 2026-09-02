@@ -10,6 +10,7 @@ import pytest
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def hermes_home(tmp_path, monkeypatch):
     """Set up an isolated OPENAGENTS_HOME with minimal logs."""
@@ -45,6 +46,7 @@ def hermes_home(tmp_path, monkeypatch):
 # Unit tests for upload helpers
 # ---------------------------------------------------------------------------
 
+
 class TestUploadPasteRs:
     """Test paste.rs upload path."""
 
@@ -56,7 +58,9 @@ class TestUploadPasteRs:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("openagents_cli.debug.urllib.request.urlopen", return_value=mock_resp):
+        with patch(
+            "openagents_cli.debug.urllib.request.urlopen", return_value=mock_resp
+        ):
             url = _upload_paste_rs("hello world")
 
         assert url == "https://paste.rs/abc123"
@@ -69,7 +73,9 @@ class TestUploadPasteRs:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("openagents_cli.debug.urllib.request.urlopen", return_value=mock_resp):
+        with patch(
+            "openagents_cli.debug.urllib.request.urlopen", return_value=mock_resp
+        ):
             with pytest.raises(ValueError, match="Unexpected response"):
                 _upload_paste_rs("test")
 
@@ -95,7 +101,9 @@ class TestUploadDpasteCom:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("openagents_cli.debug.urllib.request.urlopen", return_value=mock_resp):
+        with patch(
+            "openagents_cli.debug.urllib.request.urlopen", return_value=mock_resp
+        ):
             url = _upload_dpaste_com("hello world", expiry_days=7)
 
         assert url == "https://dpaste.com/ABCDEFG"
@@ -107,8 +115,10 @@ class TestUploadToPastebin:
     def test_tries_paste_rs_first(self):
         from openagents_cli.debug import upload_to_pastebin
 
-        with patch("openagents_cli.debug._upload_paste_rs",
-                    return_value="https://paste.rs/test") as prs:
+        with patch(
+            "openagents_cli.debug._upload_paste_rs",
+            return_value="https://paste.rs/test",
+        ) as prs:
             url = upload_to_pastebin("content")
 
         assert url == "https://paste.rs/test"
@@ -117,10 +127,15 @@ class TestUploadToPastebin:
     def test_falls_back_to_dpaste_com(self):
         from openagents_cli.debug import upload_to_pastebin
 
-        with patch("openagents_cli.debug._upload_paste_rs",
-                    side_effect=Exception("down")), \
-             patch("openagents_cli.debug._upload_dpaste_com",
-                    return_value="https://dpaste.com/TEST") as dp:
+        with (
+            patch(
+                "openagents_cli.debug._upload_paste_rs", side_effect=Exception("down")
+            ),
+            patch(
+                "openagents_cli.debug._upload_dpaste_com",
+                return_value="https://dpaste.com/TEST",
+            ) as dp,
+        ):
             url = upload_to_pastebin("content")
 
         assert url == "https://dpaste.com/TEST"
@@ -129,10 +144,14 @@ class TestUploadToPastebin:
     def test_raises_when_both_fail(self):
         from openagents_cli.debug import upload_to_pastebin
 
-        with patch("openagents_cli.debug._upload_paste_rs",
-                    side_effect=Exception("err1")), \
-             patch("openagents_cli.debug._upload_dpaste_com",
-                    side_effect=Exception("err2")):
+        with (
+            patch(
+                "openagents_cli.debug._upload_paste_rs", side_effect=Exception("err1")
+            ),
+            patch(
+                "openagents_cli.debug._upload_dpaste_com", side_effect=Exception("err2")
+            ),
+        ):
             with pytest.raises(RuntimeError, match="Failed to upload"):
                 upload_to_pastebin("content")
 
@@ -140,6 +159,7 @@ class TestUploadToPastebin:
 # ---------------------------------------------------------------------------
 # Log reading
 # ---------------------------------------------------------------------------
+
 
 class TestCaptureLogSnapshot:
     """Test _capture_log_snapshot for log reading and truncation."""
@@ -158,6 +178,7 @@ class TestCaptureLogSnapshot:
         monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
         from openagents_cli.debug import _capture_log_snapshot
+
         snap = _capture_log_snapshot("agent", tail_lines=10)
         assert snap.full_text is None
         assert snap.tail_text == "(file not found)"
@@ -167,6 +188,7 @@ class TestCaptureLogSnapshot:
         (hermes_home / "logs" / "agent.log").write_text("")
 
         from openagents_cli.debug import _capture_log_snapshot
+
         snap = _capture_log_snapshot("agent", tail_lines=10)
         assert snap.full_text is None
         assert snap.tail_text == "(file empty)"
@@ -234,6 +256,7 @@ class TestCaptureLogSnapshot:
 
     def test_unknown_log_returns_none(self, hermes_home):
         from openagents_cli.debug import _capture_log_snapshot
+
         snap = _capture_log_snapshot("nonexistent", tail_lines=10)
         assert snap.full_text is None
 
@@ -416,6 +439,7 @@ class TestCaptureLogSnapshotRedaction:
 # Debug report collection
 # ---------------------------------------------------------------------------
 
+
 class TestCollectDebugReport:
     """Test the debug report builder."""
 
@@ -492,6 +516,7 @@ class TestCollectDebugReport:
 # CLI entry point — run_debug_share
 # ---------------------------------------------------------------------------
 
+
 class TestRunDebugShare:
     """Test the run_debug_share CLI handler."""
 
@@ -504,10 +529,16 @@ class TestRunDebugShare:
         args.expire = 7
         args.local = False
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug._sweep_expired_pastes", return_value=(0, 0)) as mock_sweep, \
-             patch("openagents_cli.debug.upload_to_pastebin",
-                    return_value="https://paste.rs/test"):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch(
+                "openagents_cli.debug._sweep_expired_pastes", return_value=(0, 0)
+            ) as mock_sweep,
+            patch(
+                "openagents_cli.debug.upload_to_pastebin",
+                return_value="https://paste.rs/test",
+            ),
+        ):
             run_debug_share(args)
 
         mock_sweep.assert_called_once()
@@ -522,13 +553,17 @@ class TestRunDebugShare:
         args.expire = 7
         args.local = False
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch(
-                 "openagents_cli.debug._sweep_expired_pastes",
-                 side_effect=RuntimeError("offline"),
-             ), \
-             patch("openagents_cli.debug.upload_to_pastebin",
-                    return_value="https://paste.rs/test"):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch(
+                "openagents_cli.debug._sweep_expired_pastes",
+                side_effect=RuntimeError("offline"),
+            ),
+            patch(
+                "openagents_cli.debug.upload_to_pastebin",
+                return_value="https://paste.rs/test",
+            ),
+        ):
             run_debug_share(args)
 
         assert "https://paste.rs/test" in capsys.readouterr().out
@@ -561,15 +596,19 @@ class TestRunDebugShare:
 
         call_count = [0]
         uploaded_content = []
+
         def _mock_upload(content, expiry_days=7):
             call_count[0] += 1
             uploaded_content.append(content)
             return f"https://paste.rs/paste{call_count[0]}"
 
-        with patch("openagents_cli.dump.run_dump") as mock_dump, \
-             patch("openagents_cli.debug.upload_to_pastebin",
-                    side_effect=_mock_upload):
-            mock_dump.side_effect = lambda a: print("--- hermes dump ---\nversion: test\n--- end dump ---")
+        with (
+            patch("openagents_cli.dump.run_dump") as mock_dump,
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=_mock_upload),
+        ):
+            mock_dump.side_effect = lambda a: print(
+                "--- hermes dump ---\nversion: test\n--- end dump ---"
+            )
             run_debug_share(args)
 
         out = capsys.readouterr().out
@@ -600,9 +639,14 @@ class TestRunDebugShare:
         assert "--- hermes dump ---" in desktop_paste
         assert "--- full desktop.log ---" in desktop_paste
 
-    def test_share_keeps_report_and_full_log_on_same_snapshot(self, hermes_home, capsys):
+    def test_share_keeps_report_and_full_log_on_same_snapshot(
+        self, hermes_home, capsys
+    ):
         """A mid-run rotation must not make full agent.log older than the report."""
-        from openagents_cli.debug import run_debug_share, collect_debug_report as real_collect_debug_report
+        from openagents_cli.debug import (
+            run_debug_share,
+            collect_debug_report as real_collect_debug_report,
+        )
 
         logs_dir = hermes_home / "logs"
         (logs_dir / "agent.log").write_text(
@@ -623,7 +667,9 @@ class TestRunDebugShare:
             uploaded_content.append(content)
             return f"https://paste.rs/paste{len(uploaded_content)}"
 
-        def _wrapped_collect_debug_report(*, log_lines=200, dump_text="", log_snapshots=None):
+        def _wrapped_collect_debug_report(
+            *, log_lines=200, dump_text="", log_snapshots=None
+        ):
             report = real_collect_debug_report(
                 log_lines=log_lines,
                 dump_text=dump_text,
@@ -638,9 +684,14 @@ class TestRunDebugShare:
             )
             return report
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug.collect_debug_report", side_effect=_wrapped_collect_debug_report), \
-             patch("openagents_cli.debug.upload_to_pastebin", side_effect=_mock_upload):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch(
+                "openagents_cli.debug.collect_debug_report",
+                side_effect=_wrapped_collect_debug_report,
+            ),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=_mock_upload),
+        ):
             run_debug_share(args)
 
         report_paste = uploaded_content[0]
@@ -663,13 +714,15 @@ class TestRunDebugShare:
         args.local = False
 
         call_count = [0]
+
         def _mock_upload(content, expiry_days=7):
             call_count[0] += 1
             return f"https://paste.rs/paste{call_count[0]}"
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug.upload_to_pastebin",
-                    side_effect=_mock_upload):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=_mock_upload),
+        ):
             run_debug_share(args)
 
         out = capsys.readouterr().out
@@ -687,15 +740,17 @@ class TestRunDebugShare:
         args.local = False
 
         call_count = [0]
+
         def _mock_upload(content, expiry_days=7):
             call_count[0] += 1
             if call_count[0] > 1:
                 raise RuntimeError("upload failed")
             return "https://paste.rs/report"
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug.upload_to_pastebin",
-                    side_effect=_mock_upload):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=_mock_upload),
+        ):
             run_debug_share(args)
 
         out = capsys.readouterr().out
@@ -712,9 +767,13 @@ class TestRunDebugShare:
         args.expire = 7
         args.local = False
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug.upload_to_pastebin",
-                    side_effect=RuntimeError("all failed")):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch(
+                "openagents_cli.debug.upload_to_pastebin",
+                side_effect=RuntimeError("all failed"),
+            ),
+        ):
             with pytest.raises(SystemExit) as exc_info:
                 run_debug_share(args)
 
@@ -726,6 +785,7 @@ class TestRunDebugShare:
 # ---------------------------------------------------------------------------
 # Share-time redaction wiring + visible banner
 # ---------------------------------------------------------------------------
+
 
 class TestRunDebugShareRedaction:
     """End-to-end: --no-redact flag, banner injection, default behavior."""
@@ -767,9 +827,11 @@ class TestRunDebugShareRedaction:
             captured.append(content)
             return f"https://paste.rs/{len(captured)}"
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug._sweep_expired_pastes", return_value=(0, 0)), \
-             patch("openagents_cli.debug.upload_to_pastebin", side_effect=fake_upload):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch("openagents_cli.debug._sweep_expired_pastes", return_value=(0, 0)),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=fake_upload),
+        ):
             run_debug_share(args)
 
         # At least the report plus one full log paste reached the upload path.
@@ -797,9 +859,11 @@ class TestRunDebugShareRedaction:
             captured.append(content)
             return f"https://paste.rs/{len(captured)}"
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug._sweep_expired_pastes", return_value=(0, 0)), \
-             patch("openagents_cli.debug.upload_to_pastebin", side_effect=fake_upload):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch("openagents_cli.debug._sweep_expired_pastes", return_value=(0, 0)),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=fake_upload),
+        ):
             run_debug_share(args)
 
         for content in captured:
@@ -825,9 +889,11 @@ class TestRunDebugShareRedaction:
             captured.append(content)
             return f"https://paste.rs/{len(captured)}"
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug._sweep_expired_pastes", return_value=(0, 0)), \
-             patch("openagents_cli.debug.upload_to_pastebin", side_effect=fake_upload):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch("openagents_cli.debug._sweep_expired_pastes", return_value=(0, 0)),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=fake_upload),
+        ):
             run_debug_share(args)
 
         # The agent.log paste should now contain the raw token.
@@ -844,6 +910,7 @@ class TestRunDebugShareRedaction:
 # ---------------------------------------------------------------------------
 # run_debug router
 # ---------------------------------------------------------------------------
+
 
 class TestRunDebug:
     def test_no_subcommand_shows_usage(self, capsys):
@@ -880,25 +947,31 @@ class TestRunDebug:
 # Delete / auto-delete
 # ---------------------------------------------------------------------------
 
+
 class TestExtractPasteId:
     def test_paste_rs_url(self):
         from openagents_cli.debug import _extract_paste_id
+
         assert _extract_paste_id("https://paste.rs/abc123") == "abc123"
 
     def test_paste_rs_trailing_slash(self):
         from openagents_cli.debug import _extract_paste_id
+
         assert _extract_paste_id("https://paste.rs/abc123/") == "abc123"
 
     def test_http_variant(self):
         from openagents_cli.debug import _extract_paste_id
+
         assert _extract_paste_id("http://paste.rs/xyz") == "xyz"
 
     def test_non_paste_rs_returns_none(self):
         from openagents_cli.debug import _extract_paste_id
+
         assert _extract_paste_id("https://dpaste.com/ABCDEF") is None
 
     def test_empty_returns_none(self):
         from openagents_cli.debug import _extract_paste_id
+
         assert _extract_paste_id("") is None
 
 
@@ -911,8 +984,9 @@ class TestDeletePaste:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("openagents_cli.debug.urllib.request.urlopen",
-                    return_value=mock_resp) as mock_open:
+        with patch(
+            "openagents_cli.debug.urllib.request.urlopen", return_value=mock_resp
+        ) as mock_open:
             result = delete_paste("https://paste.rs/abc123")
 
         assert result is True
@@ -978,6 +1052,7 @@ class TestScheduleAutoDelete:
         # And verify that calling it doesn't produce any orphaned children
         # (it should just write pending.json synchronously).
         import os as _os
+
         before = set(_os.listdir("/proc")) if _os.path.exists("/proc") else None
         _schedule_auto_delete(
             ["https://paste.rs/abc", "https://paste.rs/def"],
@@ -1021,6 +1096,7 @@ class TestScheduleAutoDelete:
 
         # expire_at is ~now + delay_seconds
         import time
+
         for e in entries:
             assert e["expire_at"] > time.time()
             assert e["expire_at"] <= time.time() + 15
@@ -1216,8 +1292,9 @@ class TestRunDebugDelete:
         args = MagicMock()
         args.urls = ["https://paste.rs/abc"]
 
-        with patch("openagents_cli.debug.delete_paste",
-                    side_effect=Exception("network error")):
+        with patch(
+            "openagents_cli.debug.delete_paste", side_effect=Exception("network error")
+        ):
             run_debug_delete(args)
 
         out = capsys.readouterr().out
@@ -1246,10 +1323,14 @@ class TestShareIncludesAutoDelete:
         args.expire = 7
         args.local = False
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug.upload_to_pastebin",
-                    return_value="https://paste.rs/test1"), \
-             patch("openagents_cli.debug._schedule_auto_delete") as mock_sched:
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch(
+                "openagents_cli.debug.upload_to_pastebin",
+                return_value="https://paste.rs/test1",
+            ),
+            patch("openagents_cli.debug._schedule_auto_delete") as mock_sched,
+        ):
             run_debug_share(args)
 
         # auto-delete was scheduled with the uploaded URLs
@@ -1268,10 +1349,14 @@ class TestShareIncludesAutoDelete:
         args.expire = 7
         args.local = False
 
-        with patch("openagents_cli.dump.run_dump"), \
-             patch("openagents_cli.debug.upload_to_pastebin",
-                    return_value="https://paste.rs/test"), \
-             patch("openagents_cli.debug._schedule_auto_delete"):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch(
+                "openagents_cli.debug.upload_to_pastebin",
+                return_value="https://paste.rs/test",
+            ),
+            patch("openagents_cli.debug._schedule_auto_delete"),
+        ):
             run_debug_share(args)
 
         out = capsys.readouterr().out
@@ -1314,9 +1399,11 @@ class TestBuildDebugShare:
             count[0] += 1
             return f"https://paste.rs/p{count[0]}"
 
-        with patch("openagents_cli.dump.run_dump"), patch(
-            "openagents_cli.debug.upload_to_pastebin", side_effect=_upload
-        ), patch("openagents_cli.debug._schedule_auto_delete"):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=_upload),
+            patch("openagents_cli.debug._schedule_auto_delete"),
+        ):
             result = build_debug_share(log_lines=50, redact=True)
 
         assert isinstance(result, DebugShareResult)
@@ -1335,10 +1422,14 @@ class TestBuildDebugShare:
         # Remove desktop.log so it should be neither uploaded nor reported failed.
         (hermes_home / "logs" / "desktop.log").unlink()
 
-        with patch("openagents_cli.dump.run_dump"), patch(
-            "openagents_cli.debug.upload_to_pastebin",
-            side_effect=lambda c, expiry_days=7: "https://paste.rs/x",
-        ), patch("openagents_cli.debug._schedule_auto_delete"):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch(
+                "openagents_cli.debug.upload_to_pastebin",
+                side_effect=lambda c, expiry_days=7: "https://paste.rs/x",
+            ),
+            patch("openagents_cli.debug._schedule_auto_delete"),
+        ):
             result = build_debug_share(log_lines=50, redact=True)
 
         assert "desktop.log" not in result.urls
@@ -1358,9 +1449,11 @@ class TestBuildDebugShare:
             uploaded.append(content)
             return "https://paste.rs/x"
 
-        with patch("openagents_cli.dump.run_dump"), patch(
-            "openagents_cli.debug.upload_to_pastebin", side_effect=_upload
-        ), patch("openagents_cli.debug._schedule_auto_delete"):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=_upload),
+            patch("openagents_cli.debug._schedule_auto_delete"),
+        ):
             result = build_debug_share(log_lines=50, redact=True)
 
         assert result.redacted is True
@@ -1379,9 +1472,11 @@ class TestBuildDebugShare:
                 raise RuntimeError("paste service hiccup")
             return f"https://paste.rs/p{count[0]}"
 
-        with patch("openagents_cli.dump.run_dump"), patch(
-            "openagents_cli.debug.upload_to_pastebin", side_effect=_upload
-        ), patch("openagents_cli.debug._schedule_auto_delete"):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch("openagents_cli.debug.upload_to_pastebin", side_effect=_upload),
+            patch("openagents_cli.debug._schedule_auto_delete"),
+        ):
             result = build_debug_share(log_lines=50, redact=True)
 
         assert "Report" in result.urls
@@ -1391,9 +1486,13 @@ class TestBuildDebugShare:
     def test_required_report_failure_raises(self, hermes_home):
         from openagents_cli.debug import build_debug_share
 
-        with patch("openagents_cli.dump.run_dump"), patch(
-            "openagents_cli.debug.upload_to_pastebin",
-            side_effect=RuntimeError("all paste services down"),
-        ), patch("openagents_cli.debug._schedule_auto_delete"):
+        with (
+            patch("openagents_cli.dump.run_dump"),
+            patch(
+                "openagents_cli.debug.upload_to_pastebin",
+                side_effect=RuntimeError("all paste services down"),
+            ),
+            patch("openagents_cli.debug._schedule_auto_delete"),
+        ):
             with pytest.raises(RuntimeError, match="all paste services down"):
                 build_debug_share(log_lines=50, redact=True)

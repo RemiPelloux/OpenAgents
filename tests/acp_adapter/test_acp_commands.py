@@ -23,7 +23,9 @@ class FakeAgent:
         self.steers.append(text)
         return True
 
-    def run_conversation(self, *, user_message, conversation_history, task_id, **kwargs):
+    def run_conversation(
+        self, *, user_message, conversation_history, task_id, **kwargs
+    ):
         self.runs.append(user_message)
         messages = list(conversation_history or [])
         messages.append({"role": "user", "content": user_message})
@@ -83,11 +85,16 @@ def test_acp_real_agent_gets_session_db_for_recall(monkeypatch):
             setattr(module, key, value)
         return module
 
-    monkeypatch.setitem(sys.modules, "run_agent", mod("run_agent", AIAgent=CapturingAgent))
+    monkeypatch.setitem(
+        sys.modules, "run_agent", mod("run_agent", AIAgent=CapturingAgent)
+    )
     monkeypatch.setitem(
         sys.modules,
         "openagents_cli.config",
-        mod("openagents_cli.config", load_config=lambda: {"model": {"default": "m", "provider": "p"}}),
+        mod(
+            "openagents_cli.config",
+            load_config=lambda: {"model": {"default": "m", "provider": "p"}},
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
@@ -194,5 +201,9 @@ async def test_acp_prompt_drains_queued_turns_after_current_run():
     assert response.stop_reason == "end_turn"
     assert fake.runs == ["make the change", "then run tests"]
     assert state.queued_prompts == []
-    agent_messages = [u for _sid, u in conn.updates if getattr(u, "session_update", None) == "agent_message_chunk"]
+    agent_messages = [
+        u
+        for _sid, u in conn.updates
+        if getattr(u, "session_update", None) == "agent_message_chunk"
+    ]
     assert len(agent_messages) >= 2

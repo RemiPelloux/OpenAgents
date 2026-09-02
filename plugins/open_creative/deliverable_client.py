@@ -32,15 +32,13 @@ def post_deliverables(
     if not api_key:
         return False
 
-    body = json.dumps(
-        {
-            "session_id": session_id,
-            "workflow_run_id": workflow_run_id,
-            "correlation_id": correlation_id,
-            "images": images,
-            "summary": summary,
-        }
-    ).encode()
+    body = json.dumps({
+        "session_id": session_id,
+        "workflow_run_id": workflow_run_id,
+        "correlation_id": correlation_id,
+        "images": images,
+        "summary": summary,
+    }).encode()
     req = urllib.request.Request(
         f"{base}/api/v1/workflows/deliverables",
         data=body,

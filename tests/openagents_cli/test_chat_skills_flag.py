@@ -62,7 +62,14 @@ def test_chat_subcommand_accepts_image_flag(monkeypatch):
     monkeypatch.setattr(
         sys,
         "argv",
-        ["openagents", "chat", "-q", "hello", "--image", "~/storage/shared/Pictures/cat.png"],
+        [
+            "openagents",
+            "chat",
+            "-q",
+            "hello",
+            "--image",
+            "~/storage/shared/Pictures/cat.png",
+        ],
     )
 
     main_mod.main()

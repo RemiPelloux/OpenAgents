@@ -12,7 +12,12 @@ from openagentui.schema import PendingApproval, Workflow, WorkflowExecution
 
 
 def _workflow(id_="wf_test") -> Workflow:
-    return Workflow.from_dict({"id": id_, "name": "My Workflow", "nodes": [], "edges": []})
+    return Workflow.from_dict({
+        "id": id_,
+        "name": "My Workflow",
+        "nodes": [],
+        "edges": [],
+    })
 
 
 def test_save_and_get_workflow():
@@ -60,21 +65,37 @@ def test_invalid_id_rejected():
 
 
 def test_execution_save_get_list():
-    execution = WorkflowExecution(id="exec_1", workflow_id="wf_test", status="running", started_at="now")
+    execution = WorkflowExecution(
+        id="exec_1", workflow_id="wf_test", status="running", started_at="now"
+    )
     store.save_execution(execution)
     fetched = store.get_execution("exec_1")
     assert fetched is not None
     assert fetched.status == "running"
 
-    execution2 = WorkflowExecution(id="exec_2", workflow_id="wf_other", status="completed", started_at="now")
+    execution2 = WorkflowExecution(
+        id="exec_2", workflow_id="wf_other", status="completed", started_at="now"
+    )
     store.save_execution(execution2)
     assert {e.id for e in store.list_executions()} >= {"exec_1", "exec_2"}
     assert [e.id for e in store.list_executions("wf_test")] == ["exec_1"]
 
 
 def test_approval_save_get_and_pending_filter():
-    pending = PendingApproval(approval_id="appr_1", execution_id="exec_1", node_id="n1", message="ok?", status="pending")
-    resolved = PendingApproval(approval_id="appr_2", execution_id="exec_2", node_id="n2", message="ok?", status="approved")
+    pending = PendingApproval(
+        approval_id="appr_1",
+        execution_id="exec_1",
+        node_id="n1",
+        message="ok?",
+        status="pending",
+    )
+    resolved = PendingApproval(
+        approval_id="appr_2",
+        execution_id="exec_2",
+        node_id="n2",
+        message="ok?",
+        status="approved",
+    )
     store.save_approval(pending)
     store.save_approval(resolved)
 

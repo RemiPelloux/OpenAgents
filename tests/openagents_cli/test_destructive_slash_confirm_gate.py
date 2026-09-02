@@ -51,13 +51,16 @@ class TestUserConfigMerge:
         monkeypatch.setenv("OPENAGENTS_HOME", str(home))
         import importlib
         import openagents_cli.config as cfg_mod
+
         importlib.reload(cfg_mod)
 
         cfg = cfg_mod.load_config()
         assert cfg["approvals"]["destructive_slash_confirm"] is True
 
     def test_existing_user_config_with_false_key_survives_merge(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """A user who clicked "Always Approve" (key=false) must keep that
         setting — the default-true value must not win on later loads.
@@ -80,6 +83,7 @@ class TestUserConfigMerge:
         monkeypatch.setenv("OPENAGENTS_HOME", str(home))
         import importlib
         import openagents_cli.config as cfg_mod
+
         importlib.reload(cfg_mod)
 
         cfg = cfg_mod.load_config()

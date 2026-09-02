@@ -68,6 +68,7 @@ def _is_client_error(exc: Exception) -> bool:
 # Config
 # ---------------------------------------------------------------------------
 
+
 def _load_config() -> dict:
     """Load config from env vars, with $OPENAGENTS_HOME/mem0.json overrides.
 
@@ -94,8 +95,9 @@ def _load_config() -> dict:
     if config_path.exists():
         try:
             file_cfg = json.loads(config_path.read_text(encoding="utf-8"))
-            config.update({k: v for k, v in file_cfg.items()
-                           if v is not None and v != ""})
+            config.update({
+                k: v for k, v in file_cfg.items() if v is not None and v != ""
+            })
         except Exception:
             pass
 
@@ -116,7 +118,10 @@ LIST_SCHEMA = {
         "type": "object",
         "properties": {
             "page": {"type": "integer", "description": "Page number (default: 1)."},
-            "page_size": {"type": "integer", "description": "Results per page (default: 100, max: 200)."},
+            "page_size": {
+                "type": "integer",
+                "description": "Results per page (default: 100, max: 200).",
+            },
         },
         "required": [],
     },
@@ -131,8 +136,14 @@ SEARCH_SCHEMA = {
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "What to search for."},
-            "top_k": {"type": "integer", "description": "Max results (default: 10, max: 50)."},
-            "rerank": {"type": "boolean", "description": "Rerank results for relevance (default: true, platform mode only)."},
+            "top_k": {
+                "type": "integer",
+                "description": "Max results (default: 10, max: 50).",
+            },
+            "rerank": {
+                "type": "boolean",
+                "description": "Rerank results for relevance (default: true, platform mode only).",
+            },
         },
         "required": ["query"],
     },
@@ -183,6 +194,7 @@ DELETE_SCHEMA = {
 # MemoryProvider implementation
 # ---------------------------------------------------------------------------
 
+
 class Mem0MemoryProvider(MemoryProvider):
     """Mem0 memory with server-side extraction and semantic search.
 
@@ -223,6 +235,7 @@ class Mem0MemoryProvider(MemoryProvider):
         """Write config to $OPENAGENTS_HOME/mem0.json."""
         import json
         from pathlib import Path
+
         config_path = Path(hermes_home) / "mem0.json"
         existing = {}
         if config_path.exists():
@@ -232,6 +245,7 @@ class Mem0MemoryProvider(MemoryProvider):
                 pass
         existing.update(values)
         from utils import atomic_json_write
+
         atomic_json_write(config_path, existing, mode=0o600)
 
     def get_config_schema(self):
@@ -239,14 +253,35 @@ class Mem0MemoryProvider(MemoryProvider):
         mode = cfg.get("mode", "platform")
         api_key_required = mode != "oss"
         return [
-            {"key": "api_key", "description": "Mem0 Platform API key", "secret": True, "required": api_key_required, "env_var": "MEM0_API_KEY", "url": "https://app.mem0.ai"},
-            {"key": "user_id", "description": "User identifier", "default": "hermes-user"},
-            {"key": "agent_id", "description": "Agent identifier", "default": "openagents"},
-            {"key": "rerank", "description": "Enable reranking for recall", "default": "true", "choices": ["true", "false"]},
+            {
+                "key": "api_key",
+                "description": "Mem0 Platform API key",
+                "secret": True,
+                "required": api_key_required,
+                "env_var": "MEM0_API_KEY",
+                "url": "https://app.mem0.ai",
+            },
+            {
+                "key": "user_id",
+                "description": "User identifier",
+                "default": "hermes-user",
+            },
+            {
+                "key": "agent_id",
+                "description": "Agent identifier",
+                "default": "openagents",
+            },
+            {
+                "key": "rerank",
+                "description": "Enable reranking for recall",
+                "default": "true",
+                "choices": ["true", "false"],
+            },
         ]
 
     def post_setup(self, hermes_home: str, config: dict) -> None:
         from ._setup import post_setup
+
         post_setup(hermes_home, config)
 
     def _create_backend(self):
@@ -257,6 +292,7 @@ class Mem0MemoryProvider(MemoryProvider):
         # produces the canonical error, captured below.
         try:
             from tools.lazy_deps import ensure as _lazy_ensure
+
             _lazy_ensure("memory.mem0", prompt=False)
         except ImportError:
             pass
@@ -265,11 +301,15 @@ class Mem0MemoryProvider(MemoryProvider):
         try:
             if self._mode == "oss":
                 from ._backend import OSSBackend
+
                 return OSSBackend(self._config.get("oss", {}))
             from ._backend import PlatformBackend
+
             return PlatformBackend(self._api_key)
         except Exception as e:
-            logger.error("Mem0 backend failed to initialize (%s mode): %s", self._mode, e)
+            logger.error(
+                "Mem0 backend failed to initialize (%s mode): %s", self._mode, e
+            )
             self._init_error = str(e)
             return None
 
@@ -313,7 +353,9 @@ class Mem0MemoryProvider(MemoryProvider):
             logger.warning(
                 "Mem0 circuit breaker tripped after %d consecutive failures. "
                 "Pausing API calls for %ds.%s",
-                count, _BREAKER_COOLDOWN_SECS, hint,
+                count,
+                _BREAKER_COOLDOWN_SECS,
+                hint,
             )
 
     def initialize(self, session_id: str, **kwargs) -> None:
@@ -356,8 +398,12 @@ class Mem0MemoryProvider(MemoryProvider):
         return {"channel": self._channel} if self._channel else {}
 
     def system_prompt_block(self) -> str:
-        mode_label = "platform (cloud API)" if self._mode == "platform" else "OSS (self-hosted)"
-        rerank_note = " Rerank is available on search." if self._mode == "platform" else ""
+        mode_label = (
+            "platform (cloud API)" if self._mode == "platform" else "OSS (self-hosted)"
+        )
+        rerank_note = (
+            " Rerank is available on search." if self._mode == "platform" else ""
+        )
         return (
             "# Mem0 Memory\n"
             f"Active. Mode: {mode_label}. User: {self._user_id}.\n"
@@ -387,7 +433,9 @@ class Mem0MemoryProvider(MemoryProvider):
             if backend is None:
                 return
             try:
-                results = backend.search(query=query, filters=self._read_filters(), top_k=5, rerank=True)
+                results = backend.search(
+                    query=query, filters=self._read_filters(), top_k=5, rerank=True
+                )
                 if results:
                     lines = [r.get("memory", "") for r in results if r.get("memory")]
                     with self._prefetch_lock:
@@ -397,10 +445,14 @@ class Mem0MemoryProvider(MemoryProvider):
                 self._record_failure()
                 logger.debug("Mem0 prefetch failed: %s", e)
 
-        self._prefetch_thread = threading.Thread(target=_run, daemon=True, name="mem0-prefetch")
+        self._prefetch_thread = threading.Thread(
+            target=_run, daemon=True, name="mem0-prefetch"
+        )
         self._prefetch_thread.start()
 
-    def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "") -> None:
+    def sync_turn(
+        self, user_content: str, assistant_content: str, *, session_id: str = ""
+    ) -> None:
         """Send the turn to Mem0 for server-side fact extraction (non-blocking)."""
         if self._backend is None or self._is_breaker_open():
             return
@@ -432,7 +484,9 @@ class Mem0MemoryProvider(MemoryProvider):
             # If still alive after timeout, skip to avoid duplicate ingestion.
             if self._sync_thread and self._sync_thread.is_alive():
                 return
-            self._sync_thread = threading.Thread(target=_sync, daemon=True, name="mem0-sync")
+            self._sync_thread = threading.Thread(
+                target=_sync, daemon=True, name="mem0-sync"
+            )
             self._sync_thread.start()
 
     def get_tool_schemas(self) -> List[Dict[str, Any]]:
@@ -452,7 +506,9 @@ class Mem0MemoryProvider(MemoryProvider):
             msg = "Mem0 temporarily unavailable (multiple consecutive failures). Will retry automatically."
             if self._mode == "oss":
                 vs = self._config.get("oss", {}).get("vector_store", {})
-                msg += f" Check that your {vs.get('provider', 'vector store')} is running."
+                msg += (
+                    f" Check that your {vs.get('provider', 'vector store')} is running."
+                )
             return json.dumps({"error": msg})
 
         if tool_name == "mem0_list":
@@ -460,18 +516,22 @@ class Mem0MemoryProvider(MemoryProvider):
                 page = max(1, int(args.get("page", 1)))
                 page_size = min(max(1, int(args.get("page_size", 100))), 200)
                 response = self._backend.get_all(
-                    filters=self._read_filters(), page=page, page_size=page_size,
+                    filters=self._read_filters(),
+                    page=page,
+                    page_size=page_size,
                 )
                 self._record_success()
                 results = response.get("results", [])
                 if not results:
                     return json.dumps({"result": "No memories stored yet."})
-                items = [{"id": m.get("id"), "memory": m.get("memory", "")}
-                         for m in results]
+                items = [
+                    {"id": m.get("id"), "memory": m.get("memory", "")} for m in results
+                ]
                 return json.dumps({
                     "results": items,
                     "count": response.get("count", len(items)),
-                    "page": page, "page_size": page_size,
+                    "page": page,
+                    "page_size": page_size,
                 })
             except Exception as e:
                 if not _is_client_error(e):
@@ -489,12 +549,20 @@ class Mem0MemoryProvider(MemoryProvider):
                     rerank = rerank_raw.lower() not in ("false", "0", "no")
                 else:
                     rerank = bool(rerank_raw)
-                results = self._backend.search(query, filters=self._read_filters(), top_k=top_k, rerank=rerank)
+                results = self._backend.search(
+                    query, filters=self._read_filters(), top_k=top_k, rerank=rerank
+                )
                 self._record_success()
                 if not results:
                     return json.dumps({"result": "No relevant memories found."})
-                items = [{"id": r.get("id"), "memory": r.get("memory", ""),
-                          "score": r.get("score", 0)} for r in results]
+                items = [
+                    {
+                        "id": r.get("id"),
+                        "memory": r.get("memory", ""),
+                        "score": r.get("score", 0),
+                    }
+                    for r in results
+                ]
                 return json.dumps({"results": items, "count": len(items)})
             except Exception as e:
                 if not _is_client_error(e):
@@ -515,7 +583,11 @@ class Mem0MemoryProvider(MemoryProvider):
                 )
                 self._record_success()
                 event_id = result.get("event_id") if isinstance(result, dict) else None
-                msg = "Fact stored." if self._mode == "oss" else "Fact queued for storage."
+                msg = (
+                    "Fact stored."
+                    if self._mode == "oss"
+                    else "Fact queued for storage."
+                )
                 return json.dumps({"result": msg, "event_id": event_id})
             except Exception as e:
                 self._record_failure()

@@ -35,6 +35,7 @@ from openagents_cli import kanban_db as kb
 # Fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def fresh_home(tmp_path, monkeypatch):
     """Isolated OPENAGENTS_HOME with no prior kanban state.
@@ -56,6 +57,7 @@ def fresh_home(tmp_path, monkeypatch):
     # Also reset openagents_constants cache so get_default_openagents_root() re-reads.
     try:
         import openagents_constants
+
         openagents_constants._cached_default_hermes_root = None  # type: ignore[attr-defined]
     except Exception:
         pass
@@ -68,20 +70,36 @@ def fresh_home(tmp_path, monkeypatch):
 # Slug validation
 # ---------------------------------------------------------------------------
 
+
 class TestSlugValidation:
-    @pytest.mark.parametrize("good", [
-        "default", "atm10-server", "openagents", "proj_1", "a",
-        "very-long-but-still-ok-slug-with-hyphens-and-numbers-1234",
-    ])
+    @pytest.mark.parametrize(
+        "good",
+        [
+            "default",
+            "atm10-server",
+            "openagents",
+            "proj_1",
+            "a",
+            "very-long-but-still-ok-slug-with-hyphens-and-numbers-1234",
+        ],
+    )
     def test_accepts_valid(self, good):
         assert kb._normalize_board_slug(good) == good
 
-    @pytest.mark.parametrize("bad", [
-        "-leading-hyphen", "_leading_underscore",
-        "with/slash", "with space",
-        "has.dot", "has?question",
-        "..", "../etc", "foo\x00bar",
-    ])
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "-leading-hyphen",
+            "_leading_underscore",
+            "with/slash",
+            "with space",
+            "has.dot",
+            "has?question",
+            "..",
+            "../etc",
+            "foo\x00bar",
+        ],
+    )
     def test_rejects_invalid(self, bad):
         with pytest.raises(ValueError):
             kb._normalize_board_slug(bad)
@@ -102,6 +120,7 @@ class TestSlugValidation:
 # ---------------------------------------------------------------------------
 # Path resolution
 # ---------------------------------------------------------------------------
+
 
 class TestPathResolution:
     def test_default_board_legacy_path(self, fresh_home):
@@ -142,6 +161,7 @@ class TestPathResolution:
 # ---------------------------------------------------------------------------
 # Current-board resolution
 # ---------------------------------------------------------------------------
+
 
 class TestCurrentBoard:
     def test_default_when_unset(self, fresh_home):
@@ -211,6 +231,7 @@ class TestCurrentBoard:
 # ---------------------------------------------------------------------------
 # Board CRUD
 # ---------------------------------------------------------------------------
+
 
 class TestBoardCRUD:
     def test_create_and_list(self, fresh_home):
@@ -314,6 +335,7 @@ class TestBoardCRUD:
 # Connection isolation
 # ---------------------------------------------------------------------------
 
+
 class TestConnectionIsolation:
     def test_tasks_do_not_leak_across_boards(self, fresh_home):
         kb.create_board("alpha")
@@ -359,7 +381,9 @@ class TestConnectionIsolation:
             assert kb.list_tasks(conn) == []
 
     def test_connect_stale_env_uses_fallback_board_without_recreating_it(
-        self, fresh_home, monkeypatch,
+        self,
+        fresh_home,
+        monkeypatch,
     ):
         kb.create_board("ephemeral")
         kb.remove_board("ephemeral")
@@ -378,6 +402,7 @@ class TestConnectionIsolation:
 # ---------------------------------------------------------------------------
 # Worker spawn env injection
 # ---------------------------------------------------------------------------
+
 
 class TestWorkerSpawnEnv:
     """Ensure the dispatcher pins ``HERMES_KANBAN_BOARD`` / DB / workspaces on spawn.
@@ -467,6 +492,7 @@ class TestWorkerSpawnEnv:
 # CLI surface
 # ---------------------------------------------------------------------------
 
+
 def _cli(args: list[str], env_extra: dict | None = None) -> subprocess.CompletedProcess:
     """Run ``hermes kanban …`` with PYTHONPATH pinned to the worktree."""
     env = dict(os.environ)
@@ -514,9 +540,13 @@ class TestCLI:
         assert _cli(["boards", "create", "projB"], env_extra=env).returncode == 0
 
         # Create one task on each via --board.
-        r = _cli(["--board", "projA", "create", "Task A", "--assignee", "dev"], env_extra=env)
+        r = _cli(
+            ["--board", "projA", "create", "Task A", "--assignee", "dev"], env_extra=env
+        )
         assert r.returncode == 0, r.stderr
-        r = _cli(["--board", "projB", "create", "Task B", "--assignee", "dev"], env_extra=env)
+        r = _cli(
+            ["--board", "projB", "create", "Task B", "--assignee", "dev"], env_extra=env
+        )
         assert r.returncode == 0, r.stderr
 
         # list on each board only shows its own.

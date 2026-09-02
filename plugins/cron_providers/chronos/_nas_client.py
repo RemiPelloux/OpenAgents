@@ -43,6 +43,7 @@ class NasCronClient:
     def _access_token(self) -> str:
         """The agent's existing Nous Portal access token (refresh-aware)."""
         from openagents_cli.auth import resolve_nous_access_token
+
         return resolve_nous_access_token()
 
     def _headers(self) -> Dict[str, str]:
@@ -78,7 +79,10 @@ class NasCronClient:
         url = f"{self.portal_url}{path}"
         try:
             resp = requests.get(
-                url, params=params, headers=self._headers(), timeout=self.timeout_seconds
+                url,
+                params=params,
+                headers=self._headers(),
+                timeout=self.timeout_seconds,
             )
         except Exception as e:
             raise NasCronClientError(f"GET {path} failed: {e}") from e
@@ -93,19 +97,23 @@ class NasCronClient:
 
     # -- endpoints --------------------------------------------------------
 
-    def provision(self, *, job_id: str, fire_at: str, agent_callback_url: str,
-                  dedup_key: str) -> Dict[str, Any]:
+    def provision(
+        self, *, job_id: str, fire_at: str, agent_callback_url: str, dedup_key: str
+    ) -> Dict[str, Any]:
         """Ask NAS to arm a one-shot for ``job_id`` at ``fire_at`` (ISO 8601).
 
         ``dedup_key`` (``{job_id}:{fire_at}``) makes re-arming the same fire
         idempotent NAS-side. Returns the NAS response (e.g. ``{schedule_id}``).
         """
-        return self._post(_PROVISION_PATH, {
-            "job_id": job_id,
-            "fire_at": fire_at,
-            "agent_callback_url": agent_callback_url,
-            "dedup_key": dedup_key,
-        })
+        return self._post(
+            _PROVISION_PATH,
+            {
+                "job_id": job_id,
+                "fire_at": fire_at,
+                "agent_callback_url": agent_callback_url,
+                "dedup_key": dedup_key,
+            },
+        )
 
     def cancel(self, *, job_id: str) -> Dict[str, Any]:
         """Ask NAS to cancel any armed one-shot for ``job_id``."""

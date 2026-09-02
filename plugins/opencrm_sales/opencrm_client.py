@@ -69,11 +69,15 @@ def _request(
         raise RuntimeError(f"OpenCRM API failed ({exc.code}): {detail}") from exc
 
 
-def _post(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None) -> Dict[str, Any]:
+def _post(
+    path: str, body: Dict[str, Any], correlation_id: Optional[str] = None
+) -> Dict[str, Any]:
     return _request("POST", path, body, correlation_id)
 
 
-def _patch(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None) -> Dict[str, Any]:
+def _patch(
+    path: str, body: Dict[str, Any], correlation_id: Optional[str] = None
+) -> Dict[str, Any]:
     return _request("PATCH", path, body, correlation_id)
 
 
@@ -109,7 +113,9 @@ def search_accounts(company_name: str, city: Optional[str] = None) -> Dict[str, 
     return _get(f"/v1/accounts?{urllib.parse.urlencode(params)}")
 
 
-def check_account_duplicate(company_name: str, city: Optional[str] = None) -> Dict[str, Any]:
+def check_account_duplicate(
+    company_name: str, city: Optional[str] = None
+) -> Dict[str, Any]:
     """CC-W1-006 — fuzzy duplicate check used by prospection + sales skills.
 
     Returns `{"duplicate": False}` (instead of raising) when OpenCRM is unreachable,
@@ -120,7 +126,10 @@ def check_account_duplicate(company_name: str, city: Optional[str] = None) -> Di
     except (urllib.error.URLError, TimeoutError, OSError):
         return {"duplicate": False, "opencrm_unavailable": True}
     accounts = result.get("accounts", [])
-    return {"duplicate": len(accounts) > 0, "account": accounts[0] if accounts else None}
+    return {
+        "duplicate": len(accounts) > 0,
+        "account": accounts[0] if accounts else None,
+    }
 
 
 def get_account(account_id: str) -> Dict[str, Any]:
@@ -244,7 +253,11 @@ def propose_crm_update(
         "entity_type": entity_type,
         "entity_id": entity_id,
         "payload": payload,
-        "requested_by": {"type": "agent", "id": "openagents", "agent_profile": agent_profile},
+        "requested_by": {
+            "type": "agent",
+            "id": "openagents",
+            "agent_profile": agent_profile,
+        },
     }
     if correlation_id:
         body["correlation_id"] = correlation_id

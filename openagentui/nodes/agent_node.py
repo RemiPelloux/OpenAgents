@@ -47,7 +47,9 @@ def _coerce_output(text: str, output_format: Optional[str]) -> Any:
         try:
             return json.loads(text)
         except (json.JSONDecodeError, TypeError):
-            logger.warning("openagentui: agent node requested JSON output but got non-JSON text")
+            logger.warning(
+                "openagentui: agent node requested JSON output but got non-JSON text"
+            )
     return text
 
 
@@ -67,8 +69,14 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
 
     try:
         from run_agent import AIAgent
-    except Exception as exc:  # pragma: no cover - import failure is an environment problem
-        return failed(ctx.node.id, f"could not load OpenAgents agent runtime: {exc}", input_value=instructions)
+    except (
+        Exception
+    ) as exc:  # pragma: no cover - import failure is an environment problem
+        return failed(
+            ctx.node.id,
+            f"could not load OpenAgents agent runtime: {exc}",
+            input_value=instructions,
+        )
 
     from openagentui.llm_defaults import resolve_agent_runtime_kwargs
 
@@ -91,7 +99,9 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
         )
     except Exception as exc:
         logger.exception("openagentui: agent node %s failed", ctx.node.id)
-        return failed(ctx.node.id, f"agent execution failed: {exc}", input_value=instructions)
+        return failed(
+            ctx.node.id, f"agent execution failed: {exc}", input_value=instructions
+        )
 
     text = _extract_final_text(result.get("messages") or [])
     output = _coerce_output(text, output_format)

@@ -15,7 +15,7 @@ def _old_filter_matches(path_str: str) -> bool:
 
     Returns True when the path SHOULD be filtered out.
     """
-    return '/.git/' in path_str or '/.github/' in path_str or '/.hub/' in path_str
+    return "/.git/" in path_str or "/.github/" in path_str or "/.hub/" in path_str
 
 
 def _new_filter_matches(path: Path) -> bool:
@@ -23,7 +23,7 @@ def _new_filter_matches(path: Path) -> bool:
 
     Returns True when the path SHOULD be filtered out.
     """
-    return any(part in {'.git', '.github', '.hub'} for part in path.parts)
+    return any(part in {".git", ".github", ".hub"} for part in path.parts)
 
 
 class TestOldFilterBrokenOnWindows:
@@ -50,7 +50,15 @@ class TestNewFilterCrossPlatform:
 
     def test_hub_quarantine_filtered(self, tmp_path):
         """A SKILL.md inside .hub/quarantine/ must be filtered out."""
-        p = tmp_path / ".hermes" / "skills" / ".hub" / "quarantine" / "evil" / "SKILL.md"
+        p = (
+            tmp_path
+            / ".hermes"
+            / "skills"
+            / ".hub"
+            / "quarantine"
+            / "evil"
+            / "SKILL.md"
+        )
         assert _new_filter_matches(p) is True
 
     def test_git_dir_filtered(self, tmp_path):

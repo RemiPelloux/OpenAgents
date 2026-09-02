@@ -31,7 +31,9 @@ def curator_modules(tmp_path, monkeypatch):
     return home, skill_usage, curator
 
 
-def test_recent_view_activity_prevents_false_stale_transition(curator_modules, monkeypatch):
+def test_recent_view_activity_prevents_false_stale_transition(
+    curator_modules, monkeypatch
+):
     home, skill_usage, curator = curator_modules
     skills_dir = home / "skills"
     _write_skill(skills_dir, "recently-viewed")

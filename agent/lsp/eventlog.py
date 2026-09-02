@@ -35,6 +35,7 @@ Grep recipe::
 
     tail -f ~/.openagents/logs/agent.log | rg 'lsp\\['
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,10 +52,10 @@ event_log = logging.getLogger("hermes.lint.lsp")
 # ---------------------------------------------------------------------------
 
 _announce_lock = threading.Lock()
-_announced_active: set = set()        # keys: (server_id, workspace_root)
-_announced_unavailable: set = set()   # keys: (server_id, binary_path_or_name)
-_announced_no_root: set = set()       # keys: (server_id, file_path)
-_announced_no_server: set = set()     # keys: (server_id,)
+_announced_active: set = set()  # keys: (server_id, workspace_root)
+_announced_unavailable: set = set()  # keys: (server_id, binary_path_or_name)
+_announced_no_root: set = set()  # keys: (server_id, file_path)
+_announced_no_server: set = set()  # keys: (server_id,)
 
 
 def _short_path(file_path: str) -> str:

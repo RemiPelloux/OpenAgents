@@ -26,7 +26,9 @@ class TestNvidiaProfileParity:
     def test_max_tokens_match(self, transport):
         """NVIDIA profile sets max_tokens=16384; legacy flag is removed."""
         profile = transport.build_kwargs(
-            model="nvidia/nemotron", messages=_msgs(), tools=None,
+            model="nvidia/nemotron",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("nvidia"),
             max_tokens_param_fn=_max_tokens_fn,
         )
@@ -36,11 +38,16 @@ class TestNvidiaProfileParity:
 class TestKimiProfileParity:
     def test_temperature_omitted(self, transport):
         legacy = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("kimi-coding"), omit_temperature=True,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("kimi-coding"),
+            omit_temperature=True,
         )
         profile = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("kimi"),
         )
         assert "temperature" not in legacy
@@ -48,25 +55,37 @@ class TestKimiProfileParity:
 
     def test_max_tokens(self, transport):
         legacy = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("kimi-coding"), max_tokens_param_fn=_max_tokens_fn,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("kimi-coding"),
+            max_tokens_param_fn=_max_tokens_fn,
         )
         profile = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("kimi"),
             max_tokens_param_fn=_max_tokens_fn,
         )
-        assert profile["max_completion_tokens"] == legacy["max_completion_tokens"] == 32000
+        assert (
+            profile["max_completion_tokens"] == legacy["max_completion_tokens"] == 32000
+        )
 
     def test_thinking_enabled(self, transport):
         # xor contract: explicit effort → reasoning_effort only, no thinking.
         rc = {"enabled": True, "effort": "high"}
         legacy = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("kimi-coding"), reasoning_config=rc,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("kimi-coding"),
+            reasoning_config=rc,
         )
         profile = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("kimi"),
             reasoning_config=rc,
         )
@@ -77,11 +96,16 @@ class TestKimiProfileParity:
     def test_thinking_disabled(self, transport):
         rc = {"enabled": False}
         legacy = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("kimi-coding"), reasoning_config=rc,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("kimi-coding"),
+            reasoning_config=rc,
         )
         profile = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("kimi"),
             reasoning_config=rc,
         )
@@ -94,15 +118,24 @@ class TestKimiProfileParity:
         # xor contract: enabled w/o effort → thinking-enabled only, no effort.
         rc = {"enabled": True}
         legacy = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("kimi-coding"), reasoning_config=rc,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("kimi-coding"),
+            reasoning_config=rc,
         )
         profile = transport.build_kwargs(
-            model="kimi-k2", messages=_msgs(), tools=None,
+            model="kimi-k2",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("kimi"),
             reasoning_config=rc,
         )
-        assert profile["extra_body"]["thinking"] == legacy["extra_body"]["thinking"] == {"type": "enabled"}
+        assert (
+            profile["extra_body"]["thinking"]
+            == legacy["extra_body"]["thinking"]
+            == {"type": "enabled"}
+        )
         assert "reasoning_effort" not in profile
         assert "reasoning_effort" not in legacy
 
@@ -111,11 +144,16 @@ class TestOpenRouterProfileParity:
     def test_provider_preferences(self, transport):
         prefs = {"allow": ["anthropic"]}
         legacy = transport.build_kwargs(
-            model="anthropic/claude-sonnet-4.6", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("openrouter"), provider_preferences=prefs,
+            model="anthropic/claude-sonnet-4.6",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("openrouter"),
+            provider_preferences=prefs,
         )
         profile = transport.build_kwargs(
-            model="anthropic/claude-sonnet-4.6", messages=_msgs(), tools=None,
+            model="anthropic/claude-sonnet-4.6",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("openrouter"),
             provider_preferences=prefs,
         )
@@ -124,23 +162,35 @@ class TestOpenRouterProfileParity:
     def test_reasoning_full_config(self, transport):
         rc = {"enabled": True, "effort": "high"}
         legacy = transport.build_kwargs(
-            model="deepseek/deepseek-chat", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("openrouter"), supports_reasoning=True, reasoning_config=rc,
+            model="deepseek/deepseek-chat",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("openrouter"),
+            supports_reasoning=True,
+            reasoning_config=rc,
         )
         profile = transport.build_kwargs(
-            model="deepseek/deepseek-chat", messages=_msgs(), tools=None,
+            model="deepseek/deepseek-chat",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("openrouter"),
-            supports_reasoning=True, reasoning_config=rc,
+            supports_reasoning=True,
+            reasoning_config=rc,
         )
         assert profile["extra_body"]["reasoning"] == legacy["extra_body"]["reasoning"]
 
     def test_default_reasoning(self, transport):
         legacy = transport.build_kwargs(
-            model="deepseek/deepseek-chat", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("openrouter"), supports_reasoning=True,
+            model="deepseek/deepseek-chat",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("openrouter"),
+            supports_reasoning=True,
         )
         profile = transport.build_kwargs(
-            model="deepseek/deepseek-chat", messages=_msgs(), tools=None,
+            model="deepseek/deepseek-chat",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("openrouter"),
             supports_reasoning=True,
         )
@@ -150,10 +200,15 @@ class TestOpenRouterProfileParity:
 class TestNousProfileParity:
     def test_tags(self, transport):
         legacy = transport.build_kwargs(
-            model="hermes-3", messages=_msgs(), tools=None, provider_profile=get_provider_profile("nous"),
+            model="hermes-3",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("nous"),
         )
         profile = transport.build_kwargs(
-            model="hermes-3", messages=_msgs(), tools=None,
+            model="hermes-3",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("nous"),
         )
         assert profile["extra_body"]["tags"] == legacy["extra_body"]["tags"]
@@ -161,13 +216,20 @@ class TestNousProfileParity:
     def test_reasoning_omitted_when_disabled(self, transport):
         rc = {"enabled": False}
         legacy = transport.build_kwargs(
-            model="hermes-3", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("nous"), supports_reasoning=True, reasoning_config=rc,
+            model="hermes-3",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("nous"),
+            supports_reasoning=True,
+            reasoning_config=rc,
         )
         profile = transport.build_kwargs(
-            model="hermes-3", messages=_msgs(), tools=None,
+            model="hermes-3",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("nous"),
-            supports_reasoning=True, reasoning_config=rc,
+            supports_reasoning=True,
+            reasoning_config=rc,
         )
         assert "reasoning" not in legacy.get("extra_body", {})
         assert "reasoning" not in profile.get("extra_body", {})
@@ -176,34 +238,54 @@ class TestNousProfileParity:
 class TestQwenProfileParity:
     def test_max_tokens(self, transport):
         legacy = transport.build_kwargs(
-            model="qwen3.5", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("qwen-oauth"), max_tokens_param_fn=_max_tokens_fn,
+            model="qwen3.5",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("qwen-oauth"),
+            max_tokens_param_fn=_max_tokens_fn,
         )
         profile = transport.build_kwargs(
-            model="qwen3.5", messages=_msgs(), tools=None,
+            model="qwen3.5",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("qwen"),
             max_tokens_param_fn=_max_tokens_fn,
         )
-        assert profile["max_completion_tokens"] == legacy["max_completion_tokens"] == 65536
+        assert (
+            profile["max_completion_tokens"] == legacy["max_completion_tokens"] == 65536
+        )
 
     def test_vl_high_resolution(self, transport):
         legacy = transport.build_kwargs(
-            model="qwen3.5", messages=_msgs(), tools=None, provider_profile=get_provider_profile("qwen-oauth"),
+            model="qwen3.5",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("qwen-oauth"),
         )
         profile = transport.build_kwargs(
-            model="qwen3.5", messages=_msgs(), tools=None,
+            model="qwen3.5",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("qwen"),
         )
-        assert profile["extra_body"]["vl_high_resolution_images"] == legacy["extra_body"]["vl_high_resolution_images"]
+        assert (
+            profile["extra_body"]["vl_high_resolution_images"]
+            == legacy["extra_body"]["vl_high_resolution_images"]
+        )
 
     def test_metadata_top_level(self, transport):
         meta = {"sessionId": "s123", "promptId": "p456"}
         legacy = transport.build_kwargs(
-            model="qwen3.5", messages=_msgs(), tools=None,
-            provider_profile=get_provider_profile("qwen-oauth"), qwen_session_metadata=meta,
+            model="qwen3.5",
+            messages=_msgs(),
+            tools=None,
+            provider_profile=get_provider_profile("qwen-oauth"),
+            qwen_session_metadata=meta,
         )
         profile = transport.build_kwargs(
-            model="qwen3.5", messages=_msgs(), tools=None,
+            model="qwen3.5",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("qwen"),
             qwen_session_metadata=meta,
         )
@@ -217,7 +299,9 @@ class TestQwenProfileParity:
             {"role": "user", "content": "hello"},
         ]
         profile = transport.build_kwargs(
-            model="qwen3.5", messages=msgs, tools=None,
+            model="qwen3.5",
+            messages=msgs,
+            tools=None,
             provider_profile=get_provider_profile("qwen"),
         )
         out_msgs = profile["messages"]
@@ -234,24 +318,39 @@ class TestDeveloperRoleParity:
     """Developer role swap must work on BOTH legacy and profile paths."""
 
     def test_legacy_path_swaps_for_gpt5(self, transport):
-        msgs = [{"role": "system", "content": "Be helpful"}, {"role": "user", "content": "hi"}]
+        msgs = [
+            {"role": "system", "content": "Be helpful"},
+            {"role": "user", "content": "hi"},
+        ]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=msgs, tools=None,
+            model="gpt-5.4",
+            messages=msgs,
+            tools=None,
         )
         assert kw["messages"][0]["role"] == "developer"
 
     def test_profile_path_swaps_for_gpt5(self, transport):
-        msgs = [{"role": "system", "content": "Be helpful"}, {"role": "user", "content": "hi"}]
+        msgs = [
+            {"role": "system", "content": "Be helpful"},
+            {"role": "user", "content": "hi"},
+        ]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=msgs, tools=None,
+            model="gpt-5.4",
+            messages=msgs,
+            tools=None,
             provider_profile=get_provider_profile("openrouter"),
         )
         assert kw["messages"][0]["role"] == "developer"
 
     def test_profile_path_no_swap_for_claude(self, transport):
-        msgs = [{"role": "system", "content": "Be helpful"}, {"role": "user", "content": "hi"}]
+        msgs = [
+            {"role": "system", "content": "Be helpful"},
+            {"role": "user", "content": "hi"},
+        ]
         kw = transport.build_kwargs(
-            model="anthropic/claude-sonnet-4.6", messages=msgs, tools=None,
+            model="anthropic/claude-sonnet-4.6",
+            messages=msgs,
+            tools=None,
             provider_profile=get_provider_profile("openrouter"),
         )
         assert kw["messages"][0]["role"] == "system"
@@ -262,7 +361,9 @@ class TestRequestOverridesParity:
 
     def test_extra_body_override_legacy(self, transport):
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=_msgs(), tools=None,
+            model="gpt-5.4",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("openrouter"),
             request_overrides={"extra_body": {"custom_key": "custom_val"}},
         )
@@ -270,7 +371,9 @@ class TestRequestOverridesParity:
 
     def test_extra_body_override_profile(self, transport):
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=_msgs(), tools=None,
+            model="gpt-5.4",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("openrouter"),
             request_overrides={"extra_body": {"custom_key": "custom_val"}},
         )
@@ -279,8 +382,11 @@ class TestRequestOverridesParity:
     def test_extra_body_override_merges_with_provider_body(self, transport):
         """Override extra_body merges WITH provider extra_body, not replaces."""
         from agent.portal_tags import nous_portal_tags
+
         kw = transport.build_kwargs(
-            model="hermes-3", messages=_msgs(), tools=None,
+            model="hermes-3",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("nous"),
             request_overrides={"extra_body": {"custom": True}},
         )
@@ -289,7 +395,9 @@ class TestRequestOverridesParity:
 
     def test_top_level_override(self, transport):
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=_msgs(), tools=None,
+            model="gpt-5.4",
+            messages=_msgs(),
+            tools=None,
             provider_profile=get_provider_profile("openrouter"),
             request_overrides={"top_p": 0.9},
         )

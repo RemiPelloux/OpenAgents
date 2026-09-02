@@ -4,13 +4,15 @@ Build the real image and verify: a config.yaml present in $OPENAGENTS_HOME
 is migrated by docker_config_migrate.py on boot, running as the hermes
 user.
 """
+
 from __future__ import annotations
 
 from tests.docker.conftest import docker_exec, docker_exec_sh, start_container
 
 
 def test_config_migration_runs_on_boot(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """A config.yaml in $OPENAGENTS_HOME must be migrated on boot by
     docker_config_migrate.py, running as the hermes user."""
@@ -51,11 +53,14 @@ def test_config_migration_runs_on_boot(
 
 
 def test_config_migration_opt_out_env_var_respected(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """HERMES_SKIP_CONFIG_MIGRATION=1 must skip the migration."""
     start_container(
-        built_image, container_name, "HERMES_SKIP_CONFIG_MIGRATION=1",
+        built_image,
+        container_name,
+        "HERMES_SKIP_CONFIG_MIGRATION=1",
     )
 
     # config.yaml should still be seeded (seeding is separate from migration)

@@ -144,16 +144,12 @@ class TestApplyWalWithFallback:
         probe.
         """
         # Prime the file in WAL mode using a normal connection
-        primer = sqlite3.connect(
-            str(tmp_path / "already-wal.db"), isolation_level=None
-        )
+        primer = sqlite3.connect(str(tmp_path / "already-wal.db"), isolation_level=None)
         try:
             primer.execute("PRAGMA journal_mode=WAL")
             primer.execute("CREATE TABLE t (x INTEGER)")
             primer.execute("INSERT INTO t VALUES (1)")
-            assert (
-                primer.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
-            )
+            assert primer.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
         finally:
             primer.close()
 
@@ -177,9 +173,7 @@ class TestApplyWalWithFallback:
         # And the file is STILL WAL on disk — nothing got rewritten
         check = sqlite3.connect(str(tmp_path / "already-wal.db"))
         try:
-            assert (
-                check.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
-            )
+            assert check.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
         finally:
             check.close()
 
@@ -206,16 +200,15 @@ class TestApplyWalWithFallback:
         with caplog.at_level("WARNING", logger="openagents_state"):
             # Three separate connections to "the same DB" via the same label
             for i in range(3):
-                conn, _ = _open_blocking(
-                    tmp_path / f"dup-{i}.db", isolation_level=None
-                )
+                conn, _ = _open_blocking(tmp_path / f"dup-{i}.db", isolation_level=None)
                 mode = apply_wal_with_fallback(conn, db_label="shared.db")
                 assert mode == "delete"
                 conn.close()
 
         # Exactly one warning across all three calls
         warnings = [
-            r for r in caplog.records
+            r
+            for r in caplog.records
             if r.levelname == "WARNING" and "shared.db" in r.getMessage()
         ]
         assert len(warnings) == 1, (
@@ -236,7 +229,9 @@ class TestApplyWalWithFallback:
 
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
         labels_warned = {
-            lbl for r in warnings for lbl in ("state.db", "kanban.db")
+            lbl
+            for r in warnings
+            for lbl in ("state.db", "kanban.db")
             if lbl in r.getMessage()
         }
         assert labels_warned == {"state.db", "kanban.db"}, (
@@ -297,7 +292,9 @@ class TestGetLastInitError:
                 return super().execute(sql, *args, **kwargs)
 
         def gated_connect(*args, **kwargs):
-            return real_connect(str(target), factory=_BothPragmasFailConnection, **kwargs)
+            return real_connect(
+                str(target), factory=_BothPragmasFailConnection, **kwargs
+            )
 
         with patch("openagents_state.sqlite3.connect", side_effect=gated_connect):
             with pytest.raises(sqlite3.OperationalError):

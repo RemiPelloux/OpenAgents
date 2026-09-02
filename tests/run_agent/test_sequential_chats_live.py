@@ -15,6 +15,7 @@ Opt-in — not part of default CI:
 
 Requires ``OPENROUTER_API_KEY`` to be set (or sourced via ~/.openagents/.env).
 """
+
 from __future__ import annotations
 
 import os

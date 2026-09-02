@@ -45,7 +45,11 @@ def test_cmd_update_in_docker_prints_guidance_and_exits(
     assert "docker pull nousresearch/openagents:latest" in out
 
     # No git invocations — the early-return must beat every git command.
-    git_calls = [c for c in mock_run.call_args_list if c.args and c.args[0] and "git" in str(c.args[0][0])]
+    git_calls = [
+        c
+        for c in mock_run.call_args_list
+        if c.args and c.args[0] and "git" in str(c.args[0][0])
+    ]
     assert git_calls == [], f"expected no git calls, got: {git_calls}"
 
 
@@ -64,7 +68,11 @@ def test_cmd_update_check_in_docker_prints_guidance_and_exits(
     assert "doesn't apply inside the Docker container" in out
     assert "docker pull nousresearch/openagents:latest" in out
 
-    git_calls = [c for c in mock_run.call_args_list if c.args and c.args[0] and "git" in str(c.args[0][0])]
+    git_calls = [
+        c
+        for c in mock_run.call_args_list
+        if c.args and c.args[0] and "git" in str(c.args[0][0])
+    ]
     assert git_calls == [], f"expected no git calls, got: {git_calls}"
 
 
@@ -84,7 +92,11 @@ def test_cmd_update_in_docker_ignores_yes_and_force(
         cmd_update(SimpleNamespace(check=False, yes=True, force=True))
 
     assert "docker pull" in capsys.readouterr().out
-    git_calls = [c for c in mock_run.call_args_list if c.args and c.args[0] and "git" in str(c.args[0][0])]
+    git_calls = [
+        c
+        for c in mock_run.call_args_list
+        if c.args and c.args[0] and "git" in str(c.args[0][0])
+    ]
     assert git_calls == []
 
 
@@ -100,7 +112,11 @@ def test_cmd_update_check_direct_in_docker(mock_run, _mock_method, capsys):
 
     assert excinfo.value.code == 1
     assert "docker pull" in capsys.readouterr().out
-    git_calls = [c for c in mock_run.call_args_list if c.args and c.args[0] and "git" in str(c.args[0][0])]
+    git_calls = [
+        c
+        for c in mock_run.call_args_list
+        if c.args and c.args[0] and "git" in str(c.args[0][0])
+    ]
     assert git_calls == []
 
 

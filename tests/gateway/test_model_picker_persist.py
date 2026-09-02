@@ -59,7 +59,9 @@ def _make_event(text):
     return MessageEvent(
         text=text,
         message_type=MessageType.TEXT,
-        source=SessionSource(platform=Platform.TELEGRAM, chat_id="12345", chat_type="dm"),
+        source=SessionSource(
+            platform=Platform.TELEGRAM, chat_id="12345", chat_type="dm"
+        ),
     )
 
 
@@ -101,7 +103,9 @@ def _setup_isolated_home(tmp_path, monkeypatch, model_yaml_value):
     # patching the source-module attribute takes effect.
     monkeypatch.setattr(
         "openagents_cli.model_switch.list_picker_providers",
-        lambda **kw: [{"slug": "openrouter", "name": "OpenRouter", "models": ["gpt-5.5"]}],
+        lambda **kw: [
+            {"slug": "openrouter", "name": "OpenRouter", "models": ["gpt-5.5"]}
+        ],
     )
     # switch_model is imported as a local alias inside the handler
     # (`from openagents_cli.model_switch import switch_model as _switch_model`),
@@ -120,7 +124,9 @@ def _setup_isolated_home(tmp_path, monkeypatch, model_yaml_value):
     )
     # save_config writes to ``get_openagents_home() / config.yaml`` — point it here.
     monkeypatch.setattr("openagents_constants.get_openagents_home", lambda: hermes_home)
-    monkeypatch.setattr("openagents_cli.config.get_openagents_home", lambda: hermes_home)
+    monkeypatch.setattr(
+        "openagents_cli.config.get_openagents_home", lambda: hermes_home
+    )
     return cfg_path
 
 
@@ -194,8 +200,7 @@ async def test_picker_tap_session_flag_does_not_persist(tmp_path, monkeypatch):
     # The session override IS applied in-memory (proves the path didn't no-op).
     assert runner._session_model_overrides, "session override should be set"
     assert any(
-        ov.get("model") == "gpt-5.5"
-        for ov in runner._session_model_overrides.values()
+        ov.get("model") == "gpt-5.5" for ov in runner._session_model_overrides.values()
     )
     # But config.yaml is untouched — the override is in-memory only.
     written = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))

@@ -20,7 +20,8 @@ def _make_cli(user_message_preview=None):
         "display": {
             "compact": False,
             "tool_progress": "all",
-            "user_message_preview": user_message_preview or {"first_lines": 2, "last_lines": 2},
+            "user_message_preview": user_message_preview
+            or {"first_lines": 2, "last_lines": 2},
         },
         "agent": {},
         "terminal": {"env_type": "local"},
@@ -43,12 +44,18 @@ def _make_cli(user_message_preview=None):
         "prompt_toolkit.formatted_text": MagicMock(),
         "prompt_toolkit.auto_suggest": MagicMock(),
     }
-    with patch.dict(sys.modules, prompt_toolkit_stubs), patch.dict("os.environ", clean_env, clear=False):
+    with (
+        patch.dict(sys.modules, prompt_toolkit_stubs),
+        patch.dict("os.environ", clean_env, clear=False),
+    ):
         import cli as mod
 
         mod = importlib.reload(mod)
         _cli_mod = mod
-        with patch.object(mod, "get_tool_definitions", return_value=[]), patch.dict(mod.__dict__, {"CLI_CONFIG": clean_config}):
+        with (
+            patch.object(mod, "get_tool_definitions", return_value=[]),
+            patch.dict(mod.__dict__, {"CLI_CONFIG": clean_config}),
+        ):
             return mod.HermesCLI()
 
 
@@ -84,7 +91,9 @@ class TestSubmittedUserMessagePreview:
     def test_invalid_first_lines_value_falls_back_to_one(self):
         cli = _make_cli({"first_lines": 0, "last_lines": 2})
 
-        rendered = cli._format_submitted_user_message_preview("line1\nline2\nline3\nline4")
+        rendered = cli._format_submitted_user_message_preview(
+            "line1\nline2\nline3\nline4"
+        )
 
         assert "line1" in rendered
         assert "line3" in rendered

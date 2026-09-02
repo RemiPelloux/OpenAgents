@@ -23,11 +23,12 @@ def _add_server_runtime_args(parser) -> None:
     browser-opening behavior and help framing differ.
     """
     parser.add_argument(
-        "--port", type=int, default=9119, help="Port (default 9119, 0 for auto-assign by OS)"
+        "--port",
+        type=int,
+        default=9119,
+        help="Port (default 9119, 0 for auto-assign by OS)",
     )
-    parser.add_argument(
-        "--host", default="127.0.0.1", help="Host (default 127.0.0.1)"
-    )
+    parser.add_argument("--host", default="127.0.0.1", help="Host (default 127.0.0.1)")
     parser.add_argument(
         "--insecure",
         action="store_true",
@@ -145,18 +146,14 @@ def build_dashboard_parser(
     # Accepted but redundant: `serve` is always headless (see set_defaults
     # below). Kept so callers that pass the legacy `--no-open` flag (e.g. the
     # desktop backend spawn) don't trip "unrecognized arguments".
-    serve_parser.add_argument(
-        "--no-open", action="store_true", help=argparse.SUPPRESS
-    )
+    serve_parser.add_argument("--no-open", action="store_true", help=argparse.SUPPRESS)
     serve_parser.set_defaults(func=cmd_dashboard, no_open=True)
 
     # `hermes dashboard register` — register a self-hosted dashboard OAuth
     # client with Nous Portal and write the client_id into ~/.openagents/.env.
     # Nested subparser so bare `hermes dashboard` keeps launching the server
     # (set_defaults(func=cmd_dashboard) above remains the default).
-    dashboard_subparsers = dashboard_parser.add_subparsers(
-        dest="dashboard_subcommand"
-    )
+    dashboard_subparsers = dashboard_parser.add_subparsers(dest="dashboard_subcommand")
     dashboard_register_parser = dashboard_subparsers.add_parser(
         "register",
         help="Register a self-hosted dashboard with Nous Portal (writes the OAuth client ID to .env)",

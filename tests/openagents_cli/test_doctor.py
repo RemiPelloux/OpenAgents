@@ -30,7 +30,9 @@ class TestDoctorPlatformHints:
         monkeypatch.setattr(sys, "platform", "linux")
         assert doctor._is_termux() is False
         assert doctor._python_install_cmd() == "uv pip install"
-        assert doctor._system_package_install_cmd("ripgrep") == "sudo apt install ripgrep"
+        assert (
+            doctor._system_package_install_cmd("ripgrep") == "sudo apt install ripgrep"
+        )
 
 
 class TestProviderEnvDetection:
@@ -91,7 +93,9 @@ class TestDoctorEnvFileEncoding:
         # Short-circuit the expensive tool-availability probe — we only
         # need doctor to reach the .env read without crashing.
         fake_model_tools = types.SimpleNamespace(
-            check_tool_availability=lambda *a, **kw: (_ for _ in ()).throw(SystemExit(0)),
+            check_tool_availability=lambda *a, **kw: (_ for _ in ()).throw(
+                SystemExit(0)
+            ),
             TOOLSET_REQUIREMENTS={},
         )
         monkeypatch.setitem(sys.modules, "model_tools", fake_model_tools)
@@ -117,7 +121,11 @@ class TestDoctorToolAvailabilityOverrides:
     def test_leaves_honcho_unavailable_when_not_configured(self, monkeypatch):
         monkeypatch.setattr(doctor, "_honcho_is_configured_for_doctor", lambda: False)
 
-        honcho_entry = {"name": "honcho", "env_vars": [], "tools": ["query_user_context"]}
+        honcho_entry = {
+            "name": "honcho",
+            "env_vars": [],
+            "tools": ["query_user_context"],
+        }
         available, unavailable = doctor._apply_doctor_tool_availability_overrides(
             [],
             [honcho_entry],
@@ -126,7 +134,9 @@ class TestDoctorToolAvailabilityOverrides:
         assert available == []
         assert unavailable == [honcho_entry]
 
-    def test_marks_kanban_available_only_when_missing_worker_env_gate(self, monkeypatch):
+    def test_marks_kanban_available_only_when_missing_worker_env_gate(
+        self, monkeypatch
+    ):
         monkeypatch.setattr(doctor, "_honcho_is_configured_for_doctor", lambda: False)
         monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
 
@@ -152,7 +162,11 @@ class TestDoctorToolAvailabilityOverrides:
 
     def test_leaves_non_worker_kanban_failure_unavailable(self, monkeypatch):
         monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
-        kanban_entry = {"name": "kanban", "env_vars": [], "tools": ["kanban_show", "not_a_kanban_tool"]}
+        kanban_entry = {
+            "name": "kanban",
+            "env_vars": [],
+            "tools": ["kanban_show", "not_a_kanban_tool"],
+        }
 
         available, unavailable = doctor._apply_doctor_tool_availability_overrides(
             [],
@@ -165,7 +179,10 @@ class TestDoctorToolAvailabilityOverrides:
     def test_kanban_doctor_detail_explains_worker_gate(self, monkeypatch):
         monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
 
-        assert doctor._doctor_tool_availability_detail("kanban") == "(runtime-gated; loaded only for dispatcher-spawned workers)"
+        assert (
+            doctor._doctor_tool_availability_detail("kanban")
+            == "(runtime-gated; loaded only for dispatcher-spawned workers)"
+        )
 
 
 class TestHonchoDoctorConfigDetection:
@@ -219,7 +236,9 @@ def test_run_doctor_sets_interactive_env_for_tool_checks(monkeypatch, tmp_path):
     assert seen["interactive"] == "1"
 
 
-def test_check_gateway_service_linger_warns_when_disabled(monkeypatch, tmp_path, capsys):
+def test_check_gateway_service_linger_warns_when_disabled(
+    monkeypatch, tmp_path, capsys
+):
     unit_path = tmp_path / "openagents-gateway.service"
     unit_path.write_text("[Unit]\n")
 
@@ -239,7 +258,9 @@ def test_check_gateway_service_linger_warns_when_disabled(monkeypatch, tmp_path,
     ]
 
 
-def test_check_gateway_service_linger_skips_when_service_not_installed(monkeypatch, tmp_path, capsys):
+def test_check_gateway_service_linger_skips_when_service_not_installed(
+    monkeypatch, tmp_path, capsys
+):
     unit_path = tmp_path / "missing.service"
 
     monkeypatch.setattr(gateway_cli, "is_linux", lambda: True)
@@ -264,6 +285,7 @@ class TestDoctorMemoryProviderSection:
         home = tmp_path / ".hermes"
         home.mkdir(parents=True, exist_ok=True)
         import yaml
+
         config = {"memory": {"provider": provider}} if provider else {"memory": {}}
         (home / "config.yaml").write_text(yaml.dump(config))
         return home
@@ -286,6 +308,7 @@ class TestDoctorMemoryProviderSection:
         # Stub auth checks to avoid real API calls
         try:
             from openagents_cli import auth as _auth_mod
+
             monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
             monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
             monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -293,6 +316,7 @@ class TestDoctorMemoryProviderSection:
             pass
 
         import io, contextlib
+
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             doctor_mod.run_doctor(Namespace(fix=False))
@@ -308,9 +332,7 @@ class TestDoctorMemoryProviderSection:
 
     def test_honcho_provider_not_installed_shows_fail(self, monkeypatch, tmp_path):
         # Make honcho import fail
-        monkeypatch.setitem(
-            sys.modules, "plugins.memory.honcho.client", None
-        )
+        monkeypatch.setitem(sys.modules, "plugins.memory.honcho.client", None)
         out = self._run_doctor_and_capture(monkeypatch, tmp_path, provider="honcho")
         assert "Memory Provider" in out
         # Should show failure since honcho is set but not importable
@@ -324,7 +346,9 @@ class TestDoctorMemoryProviderSection:
         assert "Built-in memory active" not in out
 
 
-def test_run_doctor_termux_treats_docker_and_browser_warnings_as_expected(monkeypatch, tmp_path):
+def test_run_doctor_termux_treats_docker_and_browser_warnings_as_expected(
+    monkeypatch, tmp_path
+):
     helper = TestDoctorMemoryProviderSection()
     monkeypatch.setenv("TERMUX_VERSION", "0.118.3")
     monkeypatch.setenv("PREFIX", "/data/data/com.termux/files/usr")
@@ -341,7 +365,10 @@ def test_run_doctor_termux_treats_docker_and_browser_warnings_as_expected(monkey
     out = helper._run_doctor_and_capture(monkeypatch, tmp_path, provider="")
 
     assert "Docker backend is not available inside Termux" in out
-    assert "Node.js not found (browser tools are optional in the tested Termux path)" in out
+    assert (
+        "Node.js not found (browser tools are optional in the tested Termux path)"
+        in out
+    )
     assert "Install Node.js on Termux with: pkg install nodejs" in out
     assert "Termux browser setup:" in out
     assert "1) pkg install nodejs" in out
@@ -351,33 +378,36 @@ def test_run_doctor_termux_treats_docker_and_browser_warnings_as_expected(monkey
     assert "use .[termux-all] for broad compatibility" in out
     assert "Matrix E2EE extra is excluded on Termux" in out
     assert "Local faster-whisper extra is excluded on Termux" in out
-    assert "STT fallback: use Groq Whisper (set GROQ_API_KEY) or OpenAI Whisper (set VOICE_TOOLS_OPENAI_KEY)." in out
+    assert (
+        "STT fallback: use Groq Whisper (set GROQ_API_KEY) or OpenAI Whisper (set VOICE_TOOLS_OPENAI_KEY)."
+        in out
+    )
     assert "docker not found (optional)" not in out
 
 
-def test_run_doctor_accepts_named_provider_from_providers_section(monkeypatch, tmp_path):
+def test_run_doctor_accepts_named_provider_from_providers_section(
+    monkeypatch, tmp_path
+):
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
 
     import yaml
 
     (home / "config.yaml").write_text(
-        yaml.dump(
-            {
-                "model": {
-                    "provider": "volcengine-plan",
-                    "default": "doubao-seed-2.0-code",
-                },
-                "providers": {
-                    "volcengine-plan": {
-                        "name": "volcengine-plan",
-                        "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
-                        "default_model": "doubao-seed-2.0-code",
-                        "models": {"doubao-seed-2.0-code": {}},
-                    }
-                },
-            }
-        )
+        yaml.dump({
+            "model": {
+                "provider": "volcengine-plan",
+                "default": "doubao-seed-2.0-code",
+            },
+            "providers": {
+                "volcengine-plan": {
+                    "name": "volcengine-plan",
+                    "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
+                    "default_model": "doubao-seed-2.0-code",
+                    "models": {"doubao-seed-2.0-code": {}},
+                }
+            },
+        })
     )
 
     monkeypatch.setattr(doctor_mod, "OPENAGENTS_HOME", home)
@@ -393,6 +423,7 @@ def test_run_doctor_accepts_named_provider_from_providers_section(monkeypatch, t
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -431,6 +462,7 @@ def test_run_doctor_accepts_bare_custom_provider(monkeypatch, tmp_path):
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -445,13 +477,13 @@ def test_run_doctor_accepts_bare_custom_provider(monkeypatch, tmp_path):
     assert "model.provider 'custom' is not a recognised provider" not in out
 
 
-def test_run_doctor_flags_missing_credentials_for_active_openrouter_provider(monkeypatch, tmp_path):
+def test_run_doctor_flags_missing_credentials_for_active_openrouter_provider(
+    monkeypatch, tmp_path
+):
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text(
-        "model:\n"
-        "  provider: openrouter\n"
-        "  default: openai/gpt-4.1-mini\n",
+        "model:\n  provider: openrouter\n  default: openai/gpt-4.1-mini\n",
         encoding="utf-8",
     )
 
@@ -501,9 +533,7 @@ def test_run_doctor_accepts_hermes_provider_ids_that_catalog_aliases(
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text(
-        "model:\n"
-        f"  provider: {provider}\n"
-        f"  default: {default_model}\n",
+        f"model:\n  provider: {provider}\n  default: {default_model}\n",
         encoding="utf-8",
     )
 
@@ -520,6 +550,7 @@ def test_run_doctor_accepts_hermes_provider_ids_that_catalog_aliases(
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -540,7 +571,9 @@ def test_run_doctor_accepts_hermes_provider_ids_that_catalog_aliases(
         )
 
 
-def test_run_doctor_accepts_vendor_slugs_for_named_custom_provider(monkeypatch, tmp_path):
+def test_run_doctor_accepts_vendor_slugs_for_named_custom_provider(
+    monkeypatch, tmp_path
+):
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text(
@@ -567,6 +600,7 @@ def test_run_doctor_accepts_vendor_slugs_for_named_custom_provider(monkeypatch, 
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -582,12 +616,12 @@ def test_run_doctor_accepts_vendor_slugs_for_named_custom_provider(monkeypatch, 
     assert "model.provider 'custom:hpc-ai' is unknown" not in out
     assert (
         "model.default 'deepseek/deepseek-v4-flash' uses a vendor/model slug but provider is "
-        "'custom:hpc-ai'"
+        "'custom:hpc-ai'" not in out
+    )
+    assert (
+        "Either set model.provider to 'openrouter', or drop the vendor prefix."
         not in out
     )
-    assert "Either set model.provider to 'openrouter', or drop the vendor prefix." not in out
-
-
 
 
 def test_run_doctor_accepts_kimi_coding_cn_provider(monkeypatch, tmp_path):
@@ -595,9 +629,7 @@ def test_run_doctor_accepts_kimi_coding_cn_provider(monkeypatch, tmp_path):
     home.mkdir(parents=True, exist_ok=True)
     (home / ".env").write_text("KIMI_CN_API_KEY=***\n", encoding="utf-8")
     (home / "config.yaml").write_text(
-        "model:\n"
-        "  provider: kimi-coding-cn\n"
-        "  default: kimi-k2.6\n",
+        "model:\n  provider: kimi-coding-cn\n  default: kimi-k2.6\n",
         encoding="utf-8",
     )
 
@@ -614,9 +646,12 @@ def test_run_doctor_accepts_kimi_coding_cn_provider(monkeypatch, tmp_path):
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
-        monkeypatch.setattr(_auth_mod, "get_auth_status", lambda provider: {"logged_in": True})
+        monkeypatch.setattr(
+            _auth_mod, "get_auth_status", lambda provider: {"logged_in": True}
+        )
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
     except Exception:
         pass
@@ -629,7 +664,9 @@ def test_run_doctor_accepts_kimi_coding_cn_provider(monkeypatch, tmp_path):
     assert "model.provider 'kimi-coding-cn' is not a recognised provider" not in out
 
 
-def test_run_doctor_termux_does_not_mark_browser_available_without_agent_browser(monkeypatch, tmp_path):
+def test_run_doctor_termux_does_not_mark_browser_available_without_agent_browser(
+    monkeypatch, tmp_path
+):
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text("memory: {}\n", encoding="utf-8")
@@ -641,10 +678,19 @@ def test_run_doctor_termux_does_not_mark_browser_available_without_agent_browser
     monkeypatch.setattr(doctor_mod, "OPENAGENTS_HOME", home)
     monkeypatch.setattr(doctor_mod, "PROJECT_ROOT", project)
     monkeypatch.setattr(doctor_mod, "_DHH", str(home))
-    monkeypatch.setattr(doctor_mod.shutil, "which", lambda cmd: "/data/data/com.termux/files/usr/bin/node" if cmd in {"node", "npm"} else None)
+    monkeypatch.setattr(
+        doctor_mod.shutil,
+        "which",
+        lambda cmd: "/data/data/com.termux/files/usr/bin/node"
+        if cmd in {"node", "npm"}
+        else None,
+    )
 
     fake_model_tools = types.SimpleNamespace(
-        check_tool_availability=lambda *a, **kw: (["terminal"], [{"name": "browser", "env_vars": [], "tools": ["browser_navigate"]}]),
+        check_tool_availability=lambda *a, **kw: (
+            ["terminal"],
+            [{"name": "browser", "env_vars": [], "tools": ["browser_navigate"]}],
+        ),
         TOOLSET_REQUIREMENTS={
             "terminal": {"name": "terminal"},
             "browser": {"name": "browser"},
@@ -654,6 +700,7 @@ def test_run_doctor_termux_does_not_mark_browser_available_without_agent_browser
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -661,6 +708,7 @@ def test_run_doctor_termux_does_not_mark_browser_available_without_agent_browser
         pass
 
     import io, contextlib
+
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         doctor_mod.run_doctor(Namespace(fix=False))
@@ -673,7 +721,9 @@ def test_run_doctor_termux_does_not_mark_browser_available_without_agent_browser
     assert "npm install -g agent-browser && agent-browser install" in out
 
 
-def test_run_doctor_kimi_cn_env_is_detected_and_probe_is_null_safe(monkeypatch, tmp_path):
+def test_run_doctor_kimi_cn_env_is_detected_and_probe_is_null_safe(
+    monkeypatch, tmp_path
+):
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text("memory: {}\n", encoding="utf-8")
@@ -694,6 +744,7 @@ def test_run_doctor_kimi_cn_env_is_detected_and_probe_is_null_safe(monkeypatch, 
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -707,9 +758,11 @@ def test_run_doctor_kimi_cn_env_is_detected_and_probe_is_null_safe(monkeypatch, 
         return types.SimpleNamespace(status_code=200)
 
     import httpx
+
     monkeypatch.setattr(httpx, "get", fake_get)
 
     import io, contextlib
+
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         doctor_mod.run_doctor(Namespace(fix=False))
@@ -721,7 +774,9 @@ def test_run_doctor_kimi_cn_env_is_detected_and_probe_is_null_safe(monkeypatch, 
     assert any(url == "https://api.moonshot.cn/v1/models" for url, _, _ in calls)
 
 
-def test_run_doctor_dashscope_retries_china_endpoint_after_intl_unauthorized(monkeypatch, tmp_path):
+def test_run_doctor_dashscope_retries_china_endpoint_after_intl_unauthorized(
+    monkeypatch, tmp_path
+):
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text("memory: {}\n", encoding="utf-8")
@@ -743,6 +798,7 @@ def test_run_doctor_dashscope_retries_china_endpoint_after_intl_unauthorized(mon
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -757,6 +813,7 @@ def test_run_doctor_dashscope_retries_china_endpoint_after_intl_unauthorized(mon
         return types.SimpleNamespace(status_code=status)
 
     import httpx
+
     monkeypatch.setattr(httpx, "get", fake_get)
 
     buf = io.StringIO()
@@ -777,7 +834,9 @@ def test_run_doctor_dashscope_retries_china_endpoint_after_intl_unauthorized(mon
 
 
 @pytest.mark.parametrize("base_url", [None, "https://opencode.ai/zen/go/v1"])
-def test_run_doctor_opencode_go_skips_invalid_models_probe(monkeypatch, tmp_path, base_url):
+def test_run_doctor_opencode_go_skips_invalid_models_probe(
+    monkeypatch, tmp_path, base_url
+):
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text("memory: {}\n", encoding="utf-8")
@@ -802,6 +861,7 @@ def test_run_doctor_opencode_go_skips_invalid_models_probe(monkeypatch, tmp_path
 
     try:
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {})
@@ -815,9 +875,11 @@ def test_run_doctor_opencode_go_skips_invalid_models_probe(monkeypatch, tmp_path
         return types.SimpleNamespace(status_code=200)
 
     import httpx
+
     monkeypatch.setattr(httpx, "get", fake_get)
 
     import io, contextlib
+
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         doctor_mod.run_doctor(Namespace(fix=False))
@@ -828,7 +890,9 @@ def test_run_doctor_opencode_go_skips_invalid_models_probe(monkeypatch, tmp_path
         for line in out.splitlines()
     )
     assert not any(url == "https://opencode.ai/zen/go/v1/models" for url, _, _ in calls)
-    assert not any("opencode" in url.lower() and "models" in url.lower() for url, _, _ in calls)
+    assert not any(
+        "opencode" in url.lower() and "models" in url.lower() for url, _, _ in calls
+    )
 
 
 class TestGitHubTokenCheck:
@@ -878,12 +942,16 @@ class TestGitHubTokenCheck:
 
         # Mock gh to return success
         import shutil
+
         real_which = shutil.which
+
         def mock_which(cmd):
             return "/usr/local/bin/gh" if cmd == "gh" else real_which(cmd)
+
         monkeypatch.setattr(shutil, "which", mock_which)
 
         call_log = []
+
         def mock_run(cmd, **kwargs):
             call_log.append(cmd)
             if cmd[:2] == ["gh", "auth"]:
@@ -893,6 +961,7 @@ class TestGitHubTokenCheck:
             return result
 
         import subprocess
+
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from openagents_cli.doctor import run_doctor
@@ -903,7 +972,9 @@ class TestGitHubTokenCheck:
             run_doctor(Namespace(fix=False))
         out = buf.getvalue()
 
-        assert "gh auth" in str(call_log) or any(c[0] == "gh" for c in call_log), f"gh not called: {call_log}"
+        assert "gh auth" in str(call_log) or any(c[0] == "gh" for c in call_log), (
+            f"gh not called: {call_log}"
+        )
         assert "GitHub authenticated via gh CLI" in out or "token configured" in out
 
 
@@ -920,9 +991,7 @@ def _run_doctor_with_healthy_oauth_fallback(
     home = tmp_path / ".hermes"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text(
-        "model:\n"
-        "  provider: nous\n"
-        "  default: moonshotai/kimi-k2.6\n",
+        "model:\n  provider: nous\n  default: moonshotai/kimi-k2.6\n",
         encoding="utf-8",
     )
     project = tmp_path / "project"
@@ -950,7 +1019,9 @@ def _run_doctor_with_healthy_oauth_fallback(
 
     monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {"logged_in": True})
     monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {})
-    monkeypatch.setattr(_auth_mod, "get_minimax_oauth_auth_status", lambda: minimax_oauth_status)
+    monkeypatch.setattr(
+        _auth_mod, "get_minimax_oauth_auth_status", lambda: minimax_oauth_status
+    )
     _xai_status = xai_oauth_status if xai_oauth_status is not None else {}
     monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: _xai_status)
 
@@ -969,7 +1040,14 @@ def _run_doctor_with_healthy_oauth_fallback(
 
 
 @pytest.mark.parametrize(
-    ("env_key", "bad_key", "failing_host", "minimax_oauth_status", "xai_oauth_status", "unexpected_issue"),
+    (
+        "env_key",
+        "bad_key",
+        "failing_host",
+        "minimax_oauth_status",
+        "xai_oauth_status",
+        "unexpected_issue",
+    ),
     [
         (
             "MINIMAX_API_KEY",
@@ -1015,35 +1093,58 @@ def test_run_doctor_ignores_invalid_direct_keys_when_oauth_fallback_is_healthy(
 
 def test_has_healthy_oauth_fallback_returns_false_for_unknown_provider():
     from openagents_cli.doctor import _has_healthy_oauth_fallback_for_apikey_provider
+
     assert _has_healthy_oauth_fallback_for_apikey_provider("unknown-provider") is False
 
 
 class TestHasHealthyOauthFallbackForXai:
     def test_returns_true_when_xai_oauth_healthy(self, monkeypatch):
         from openagents_cli import auth as _auth_mod
-        monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {"logged_in": True})
-        from openagents_cli.doctor import _has_healthy_oauth_fallback_for_apikey_provider
+
+        monkeypatch.setattr(
+            _auth_mod, "get_xai_oauth_auth_status", lambda: {"logged_in": True}
+        )
+        from openagents_cli.doctor import (
+            _has_healthy_oauth_fallback_for_apikey_provider,
+        )
+
         assert _has_healthy_oauth_fallback_for_apikey_provider("xai") is True
 
     def test_returns_false_when_xai_oauth_not_logged_in(self, monkeypatch):
         from openagents_cli import auth as _auth_mod
-        monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {"logged_in": False})
-        from openagents_cli.doctor import _has_healthy_oauth_fallback_for_apikey_provider
+
+        monkeypatch.setattr(
+            _auth_mod, "get_xai_oauth_auth_status", lambda: {"logged_in": False}
+        )
+        from openagents_cli.doctor import (
+            _has_healthy_oauth_fallback_for_apikey_provider,
+        )
+
         assert _has_healthy_oauth_fallback_for_apikey_provider("xai") is False
 
     def test_returns_false_when_xai_oauth_returns_none(self, monkeypatch):
         from openagents_cli import auth as _auth_mod
+
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: None)
-        from openagents_cli.doctor import _has_healthy_oauth_fallback_for_apikey_provider
+        from openagents_cli.doctor import (
+            _has_healthy_oauth_fallback_for_apikey_provider,
+        )
+
         assert _has_healthy_oauth_fallback_for_apikey_provider("xai") is False
 
     def test_returns_false_when_xai_import_unavailable(self, monkeypatch):
         import sys
+
         # Simulate get_xai_oauth_auth_status missing from auth module
-        monkeypatch.delattr("openagents_cli.auth.get_xai_oauth_auth_status", raising=False)
+        monkeypatch.delattr(
+            "openagents_cli.auth.get_xai_oauth_auth_status", raising=False
+        )
         # Force doctor module to re-import the function
         monkeypatch.delitem(sys.modules, "openagents_cli.doctor", raising=False)
-        from openagents_cli.doctor import _has_healthy_oauth_fallback_for_apikey_provider
+        from openagents_cli.doctor import (
+            _has_healthy_oauth_fallback_for_apikey_provider,
+        )
+
         assert _has_healthy_oauth_fallback_for_apikey_provider("xai") is False
 
 
@@ -1079,9 +1180,16 @@ class TestDoctorXaiOAuthStatus:
         monkeypatch.setitem(sys.modules, "model_tools", fake_model_tools)
 
         from openagents_cli import auth as _auth_mod
-        monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {"logged_in": False})
-        monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {"logged_in": False})
-        monkeypatch.setattr(_auth_mod, "get_minimax_oauth_auth_status", lambda: {"logged_in": False})
+
+        monkeypatch.setattr(
+            _auth_mod, "get_nous_auth_status", lambda: {"logged_in": False}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_codex_auth_status", lambda: {"logged_in": False}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_minimax_oauth_auth_status", lambda: {"logged_in": False}
+        )
         monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", xai_auth_fn)
 
         buf = io.StringIO()
@@ -1091,7 +1199,8 @@ class TestDoctorXaiOAuthStatus:
 
     def test_logged_in_shows_ok(self, monkeypatch, tmp_path):
         out = self._run(
-            monkeypatch, tmp_path,
+            monkeypatch,
+            tmp_path,
             xai_auth_fn=lambda: {"logged_in": True},
         )
         assert "xAI OAuth" in out
@@ -1099,15 +1208,19 @@ class TestDoctorXaiOAuthStatus:
 
     def test_not_logged_in_shows_warn(self, monkeypatch, tmp_path):
         out = self._run(
-            monkeypatch, tmp_path,
+            monkeypatch,
+            tmp_path,
             xai_auth_fn=lambda: {"logged_in": False},
         )
         assert "xAI OAuth" in out
         assert "(not logged in)" in out
 
-    def test_error_shown_when_not_logged_in_and_error_present(self, monkeypatch, tmp_path):
+    def test_error_shown_when_not_logged_in_and_error_present(
+        self, monkeypatch, tmp_path
+    ):
         out = self._run(
-            monkeypatch, tmp_path,
+            monkeypatch,
+            tmp_path,
             xai_auth_fn=lambda: {"logged_in": False, "error": "refresh token expired"},
         )
         assert "xAI OAuth" in out
@@ -1115,7 +1228,8 @@ class TestDoctorXaiOAuthStatus:
 
     def test_no_error_line_when_error_key_absent(self, monkeypatch, tmp_path):
         out = self._run(
-            monkeypatch, tmp_path,
+            monkeypatch,
+            tmp_path,
             xai_auth_fn=lambda: {"logged_in": False},
         )
         assert "xAI OAuth" in out
@@ -1123,9 +1237,12 @@ class TestDoctorXaiOAuthStatus:
         # Pick a token that would appear in no ordinary doctor output.
         assert "refresh token expired" not in out
 
-    def test_logged_in_does_not_emit_not_logged_in_on_xai_line(self, monkeypatch, tmp_path):
+    def test_logged_in_does_not_emit_not_logged_in_on_xai_line(
+        self, monkeypatch, tmp_path
+    ):
         out = self._run(
-            monkeypatch, tmp_path,
+            monkeypatch,
+            tmp_path,
             xai_auth_fn=lambda: {"logged_in": True},
         )
         assert "xAI OAuth" in out
@@ -1153,9 +1270,16 @@ class TestDoctorXaiOAuthStatus:
         monkeypatch.setitem(sys.modules, "model_tools", fake_model_tools)
 
         from openagents_cli import auth as _auth_mod
-        monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {"logged_in": False})
-        monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {"logged_in": False})
-        monkeypatch.setattr(_auth_mod, "get_minimax_oauth_auth_status", lambda: {"logged_in": False})
+
+        monkeypatch.setattr(
+            _auth_mod, "get_nous_auth_status", lambda: {"logged_in": False}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_codex_auth_status", lambda: {"logged_in": False}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_minimax_oauth_auth_status", lambda: {"logged_in": False}
+        )
         monkeypatch.delattr(_auth_mod, "get_xai_oauth_auth_status", raising=False)
 
         buf = io.StringIO()
@@ -1165,7 +1289,9 @@ class TestDoctorXaiOAuthStatus:
         # The ◆ Auth Providers header must still appear — other providers unaffected.
         assert "Auth Providers" in out
 
-    def test_import_failure_does_not_affect_other_providers(self, monkeypatch, tmp_path):
+    def test_import_failure_does_not_affect_other_providers(
+        self, monkeypatch, tmp_path
+    ):
         """Nous / Codex / Gemini / MiniMax rows must survive an xAI import failure."""
         home = tmp_path / ".hermes"
         home.mkdir(parents=True, exist_ok=True)
@@ -1184,9 +1310,16 @@ class TestDoctorXaiOAuthStatus:
         monkeypatch.setitem(sys.modules, "model_tools", fake_model_tools)
 
         from openagents_cli import auth as _auth_mod
-        monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {"logged_in": True})
-        monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {"logged_in": False})
-        monkeypatch.setattr(_auth_mod, "get_minimax_oauth_auth_status", lambda: {"logged_in": False})
+
+        monkeypatch.setattr(
+            _auth_mod, "get_nous_auth_status", lambda: {"logged_in": True}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_codex_auth_status", lambda: {"logged_in": False}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_minimax_oauth_auth_status", lambda: {"logged_in": False}
+        )
         monkeypatch.delattr(_auth_mod, "get_xai_oauth_auth_status", raising=False)
 
         buf = io.StringIO()
@@ -1198,6 +1331,7 @@ class TestDoctorXaiOAuthStatus:
 
     def test_function_raises_does_not_crash_doctor(self, monkeypatch, tmp_path):
         """A runtime exception from get_xai_oauth_auth_status must be swallowed."""
+
         def _raise():
             raise RuntimeError("simulated xAI status failure")
 
@@ -1226,7 +1360,9 @@ class TestDoctorCodexCliHintPlacement:
     reading as remediation for an unrelated provider.
     """
 
-    def _run(self, monkeypatch, tmp_path, *, codex_logged_in: bool, codex_cli_present: bool) -> str:
+    def _run(
+        self, monkeypatch, tmp_path, *, codex_logged_in: bool, codex_cli_present: bool
+    ) -> str:
         home = tmp_path / ".hermes"
         home.mkdir(parents=True, exist_ok=True)
         (home / "config.yaml").write_text("memory: {}\n", encoding="utf-8")
@@ -1244,16 +1380,27 @@ class TestDoctorCodexCliHintPlacement:
         monkeypatch.setitem(sys.modules, "model_tools", fake_model_tools)
 
         from openagents_cli import auth as _auth_mod
-        monkeypatch.setattr(_auth_mod, "get_nous_auth_status", lambda: {"logged_in": False})
-        monkeypatch.setattr(_auth_mod, "get_codex_auth_status", lambda: {"logged_in": codex_logged_in})
-        monkeypatch.setattr(_auth_mod, "get_minimax_oauth_auth_status", lambda: {"logged_in": False})
-        monkeypatch.setattr(_auth_mod, "get_xai_oauth_auth_status", lambda: {"logged_in": False})
+
+        monkeypatch.setattr(
+            _auth_mod, "get_nous_auth_status", lambda: {"logged_in": False}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_codex_auth_status", lambda: {"logged_in": codex_logged_in}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_minimax_oauth_auth_status", lambda: {"logged_in": False}
+        )
+        monkeypatch.setattr(
+            _auth_mod, "get_xai_oauth_auth_status", lambda: {"logged_in": False}
+        )
 
         real_which = doctor_mod.shutil.which
         monkeypatch.setattr(
             doctor_mod.shutil,
             "which",
-            lambda cmd: ("/usr/local/bin/codex" if codex_cli_present else None) if cmd == "codex" else real_which(cmd),
+            lambda cmd: ("/usr/local/bin/codex" if codex_cli_present else None)
+            if cmd == "codex"
+            else real_which(cmd),
         )
 
         buf = io.StringIO()
@@ -1266,7 +1413,9 @@ class TestDoctorCodexCliHintPlacement:
         return "codex CLI not installed"
 
     def test_hint_appears_under_codex_auth_when_missing(self, monkeypatch, tmp_path):
-        out = self._run(monkeypatch, tmp_path, codex_logged_in=False, codex_cli_present=False)
+        out = self._run(
+            monkeypatch, tmp_path, codex_logged_in=False, codex_cli_present=False
+        )
         lines = out.splitlines()
         codex_idx = next(i for i, l in enumerate(lines) if "OpenAI Codex auth" in l)
         hint_idx = next(i for i, l in enumerate(lines) if self._hint_line() in l)
@@ -1275,18 +1424,24 @@ class TestDoctorCodexCliHintPlacement:
         assert codex_idx < hint_idx < minimax_idx
 
     def test_hint_suppressed_when_codex_cli_present(self, monkeypatch, tmp_path):
-        out = self._run(monkeypatch, tmp_path, codex_logged_in=False, codex_cli_present=True)
+        out = self._run(
+            monkeypatch, tmp_path, codex_logged_in=False, codex_cli_present=True
+        )
         assert "OpenAI Codex auth" in out
         assert self._hint_line() not in out
 
     def test_hint_suppressed_when_codex_logged_in(self, monkeypatch, tmp_path):
-        out = self._run(monkeypatch, tmp_path, codex_logged_in=True, codex_cli_present=False)
+        out = self._run(
+            monkeypatch, tmp_path, codex_logged_in=True, codex_cli_present=False
+        )
         assert "OpenAI Codex auth" in out
         assert "(logged in)" in out
         assert self._hint_line() not in out
 
     def test_hint_never_attaches_to_minimax_row(self, monkeypatch, tmp_path):
-        out = self._run(monkeypatch, tmp_path, codex_logged_in=False, codex_cli_present=False)
+        out = self._run(
+            monkeypatch, tmp_path, codex_logged_in=False, codex_cli_present=False
+        )
         # The hint belongs to the Codex auth row that precedes it, never to the
         # MiniMax row that follows (#27975). The MiniMax row itself must not be
         # the hint line, and the hint must sit strictly above MiniMax.
@@ -1310,8 +1465,9 @@ class TestDoctorStaleMaxIterationsDrift:
     so the ghost is only visible in the file.
     """
 
-    def _run_config_section(self, monkeypatch, tmp_path, *, fix, ghost, cfg_turns,
-                            os_environ_value=None):
+    def _run_config_section(
+        self, monkeypatch, tmp_path, *, fix, ghost, cfg_turns, os_environ_value=None
+    ):
         import pathlib
         import contextlib
         import io
@@ -1340,7 +1496,9 @@ class TestDoctorStaleMaxIterationsDrift:
         # Short-circuit at the Tool Availability stage — the drift check runs
         # well before it in the Configuration Files section.
         fake_model_tools = types.SimpleNamespace(
-            check_tool_availability=lambda *a, **kw: (_ for _ in ()).throw(SystemExit(0)),
+            check_tool_availability=lambda *a, **kw: (_ for _ in ()).throw(
+                SystemExit(0)
+            ),
             TOOLSET_REQUIREMENTS={},
         )
         monkeypatch.setitem(sys.modules, "model_tools", fake_model_tools)
@@ -1352,17 +1510,27 @@ class TestDoctorStaleMaxIterationsDrift:
 
     def test_detects_drift_warn_only(self, monkeypatch, tmp_path):
         out, hermes_home = self._run_config_section(
-            monkeypatch, tmp_path, fix=False, ghost=90, cfg_turns=400,
+            monkeypatch,
+            tmp_path,
+            fix=False,
+            ghost=90,
+            cfg_turns=400,
             os_environ_value=400,  # bridge contaminated os.environ
         )
         assert "HERMES_MAX_ITERATIONS=90" in out
         assert "shadows" in out
         # Warn-only must NOT mutate .env.
-        assert "HERMES_MAX_ITERATIONS=90" in (hermes_home / ".env").read_text(encoding="utf-8")
+        assert "HERMES_MAX_ITERATIONS=90" in (hermes_home / ".env").read_text(
+            encoding="utf-8"
+        )
 
     def test_fix_removes_ghost(self, monkeypatch, tmp_path):
         out, hermes_home = self._run_config_section(
-            monkeypatch, tmp_path, fix=True, ghost=90, cfg_turns=400,
+            monkeypatch,
+            tmp_path,
+            fix=True,
+            ghost=90,
+            cfg_turns=400,
             os_environ_value=400,
         )
         assert "Removed stale HERMES_MAX_ITERATIONS" in out
@@ -1372,13 +1540,21 @@ class TestDoctorStaleMaxIterationsDrift:
 
     def test_no_drift_when_values_match(self, monkeypatch, tmp_path):
         out, _ = self._run_config_section(
-            monkeypatch, tmp_path, fix=False, ghost=400, cfg_turns=400,
+            monkeypatch,
+            tmp_path,
+            fix=False,
+            ghost=400,
+            cfg_turns=400,
         )
         assert "shadows" not in out
 
     def test_no_drift_when_ghost_absent(self, monkeypatch, tmp_path):
         out, _ = self._run_config_section(
-            monkeypatch, tmp_path, fix=False, ghost=None, cfg_turns=400,
+            monkeypatch,
+            tmp_path,
+            fix=False,
+            ghost=None,
+            cfg_turns=400,
         )
         assert "shadows" not in out
 

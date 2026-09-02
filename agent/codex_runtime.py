@@ -45,7 +45,11 @@ def _codex_note_to_tool_progress(note: dict) -> tuple[str, str, dict] | None:
     item_type = item.get("type") or ""
     if item_type == "commandExecution":
         command = item.get("command") or ""
-        return "exec_command", command, {"command": command, "cwd": item.get("cwd") or ""}
+        return (
+            "exec_command",
+            command,
+            {"command": command, "cwd": item.get("cwd") or ""},
+        )
 
     if item_type == "fileChange":
         changes = item.get("changes") or []
@@ -125,7 +129,8 @@ def _record_codex_app_server_usage(agent, turn) -> dict[str, Any]:
             except Exception as exc:
                 logger.debug(
                     "Codex app-server api-call persistence failed (session=%s): %s",
-                    agent.session_id, exc,
+                    agent.session_id,
+                    exc,
                 )
         return {}
 
@@ -202,27 +207,32 @@ def _record_codex_app_server_usage(agent, turn) -> dict[str, Any]:
                 cache_write_tokens=canonical_usage.cache_write_tokens,
                 reasoning_tokens=canonical_usage.reasoning_tokens,
                 estimated_cost_usd=float(cost_result.amount_usd)
-                if cost_result.amount_usd is not None else None,
+                if cost_result.amount_usd is not None
+                else None,
                 cost_status=cost_result.status,
                 cost_source=cost_result.source,
                 billing_provider=agent.provider,
                 billing_base_url=agent.base_url,
                 billing_mode="subscription_included"
-                if cost_result.status == "included" else None,
+                if cost_result.status == "included"
+                else None,
                 model=agent.model,
                 api_call_count=1,
             )
         except Exception as exc:
             logger.debug(
                 "Codex app-server token persistence failed (session=%s, tokens=%d): %s",
-                agent.session_id, total_tokens, exc,
+                agent.session_id,
+                total_tokens,
+                exc,
             )
 
     return {
         **usage_dict,
         "last_prompt_tokens": prompt_tokens,
         "estimated_cost_usd": float(cost_result.amount_usd)
-        if cost_result.amount_usd is not None else None,
+        if cost_result.amount_usd is not None
+        else None,
         "cost_status": cost_result.status,
         "cost_source": cost_result.source,
     }
@@ -258,6 +268,7 @@ def run_codex_app_server_turn(
         # codex-side fail-closed default.
         try:
             from tools.terminal_tool import _get_approval_callback
+
             approval_callback = _get_approval_callback()
         except Exception:
             approval_callback = None
@@ -445,7 +456,10 @@ def _raise_stream_error(event: Any) -> None:
     pull in ``run_agent`` (e.g. plugin code, doc tools).
     """
     from run_agent import _StreamErrorEvent
-    message = (_event_field(event, "message", "") or "stream emitted error event").strip()
+
+    message = (
+        _event_field(event, "message", "") or "stream emitted error event"
+    ).strip()
     raise _StreamErrorEvent(
         message,
         code=_event_field(event, "code"),
@@ -533,7 +547,10 @@ def _consume_codex_event_stream(
         if event_type == "error":
             _raise_stream_error(event)
 
-        if "output_text.delta" in event_type or event_type == "response.output_text.delta":
+        if (
+            "output_text.delta" in event_type
+            or event_type == "response.output_text.delta"
+        ):
             delta_text = _event_field(event, "delta", "")
             if delta_text:
                 collected_text_deltas.append(delta_text)
@@ -544,12 +561,16 @@ def _consume_codex_event_stream(
                             try:
                                 on_first_delta()
                             except Exception:
-                                logger.debug("Codex stream on_first_delta raised", exc_info=True)
+                                logger.debug(
+                                    "Codex stream on_first_delta raised", exc_info=True
+                                )
                     if on_text_delta is not None:
                         try:
                             on_text_delta(delta_text)
                         except Exception:
-                            logger.debug("Codex stream on_text_delta raised", exc_info=True)
+                            logger.debug(
+                                "Codex stream on_text_delta raised", exc_info=True
+                            )
             continue
 
         if "function_call" in event_type:
@@ -562,7 +583,9 @@ def _consume_codex_event_stream(
                 try:
                     on_reasoning_delta(reasoning_text)
                 except Exception:
-                    logger.debug("Codex stream on_reasoning_delta raised", exc_info=True)
+                    logger.debug(
+                        "Codex stream on_reasoning_delta raised", exc_info=True
+                    )
             continue
 
         if event_type == "response.output_item.done":
@@ -588,8 +611,12 @@ def _consume_codex_event_stream(
                 if isinstance(rstatus, str):
                     terminal_status = rstatus
                 if event_type == "response.incomplete":
-                    terminal_incomplete_details = getattr(resp_obj, "incomplete_details", None)
-                    if terminal_incomplete_details is None and isinstance(resp_obj, dict):
+                    terminal_incomplete_details = getattr(
+                        resp_obj, "incomplete_details", None
+                    )
+                    if terminal_incomplete_details is None and isinstance(
+                        resp_obj, dict
+                    ):
                         terminal_incomplete_details = resp_obj.get("incomplete_details")
                 if event_type == "response.failed":
                     terminal_error = getattr(resp_obj, "error", None)
@@ -611,12 +638,14 @@ def _consume_codex_event_stream(
         output = list(collected_output_items)
     elif collected_text_deltas and not has_tool_calls:
         assembled = "".join(collected_text_deltas)
-        output = [SimpleNamespace(
-            type="message",
-            role="assistant",
-            status="completed",
-            content=[SimpleNamespace(type="output_text", text=assembled)],
-        )]
+        output = [
+            SimpleNamespace(
+                type="message",
+                role="assistant",
+                status="completed",
+                content=[SimpleNamespace(type="output_text", text=assembled)],
+            )
+        ]
     else:
         output = []
 
@@ -627,9 +656,7 @@ def _consume_codex_event_stream(
     # signal the SDK's high-level helper used to raise as
     # ``RuntimeError("Didn't receive a `response.completed` event.")``.
     if not saw_terminal and not output:
-        raise RuntimeError(
-            "Codex Responses stream did not emit a terminal response"
-        )
+        raise RuntimeError("Codex Responses stream did not emit a terminal response")
 
     assembled_text = "".join(collected_text_deltas)
 
@@ -657,7 +684,9 @@ def run_codex_stream(agent, api_kwargs: dict, client: Any = None, on_first_delta
     """
     import httpx as _httpx
 
-    active_client = client or agent._ensure_primary_openai_client(reason="codex_stream_direct")
+    active_client = client or agent._ensure_primary_openai_client(
+        reason="codex_stream_direct"
+    )
     max_stream_retries = 1
     # Accumulate streamed text so callers / compat shims can read it.
     agent._codex_streamed_text_parts: list = []
@@ -686,12 +715,19 @@ def run_codex_stream(agent, api_kwargs: dict, client: Any = None, on_first_delta
 
         try:
             event_stream = active_client.responses.create(**stream_kwargs)
-        except (_httpx.RemoteProtocolError, _httpx.ReadTimeout, _httpx.ConnectError, ConnectionError) as exc:
+        except (
+            _httpx.RemoteProtocolError,
+            _httpx.ReadTimeout,
+            _httpx.ConnectError,
+            ConnectionError,
+        ) as exc:
             if attempt < max_stream_retries:
                 logger.debug(
                     "Codex Responses stream connect failed (attempt %s/%s); retrying. %s error=%s",
-                    attempt + 1, max_stream_retries + 1,
-                    agent._client_log_context(), exc,
+                    attempt + 1,
+                    max_stream_retries + 1,
+                    agent._client_log_context(),
+                    exc,
                 )
                 continue
             raise
@@ -699,7 +735,9 @@ def run_codex_stream(agent, api_kwargs: dict, client: Any = None, on_first_delta
         try:
             # Compatibility: some mocks/providers return a concrete response
             # instead of an iterable.  Pass it straight through.
-            if hasattr(event_stream, "output") and not hasattr(event_stream, "__iter__"):
+            if hasattr(event_stream, "output") and not hasattr(
+                event_stream, "__iter__"
+            ):
                 return event_stream
 
             try:
@@ -712,13 +750,20 @@ def run_codex_stream(agent, api_kwargs: dict, client: Any = None, on_first_delta
                     on_event=_on_event,
                     interrupt_check=_interrupt_check,
                 )
-            except (_httpx.RemoteProtocolError, _httpx.ReadTimeout, _httpx.ConnectError, ConnectionError) as exc:
+            except (
+                _httpx.RemoteProtocolError,
+                _httpx.ReadTimeout,
+                _httpx.ConnectError,
+                ConnectionError,
+            ) as exc:
                 if attempt < max_stream_retries:
                     logger.debug(
                         "Codex Responses stream transport failed mid-iteration "
                         "(attempt %s/%s); retrying. %s error=%s",
-                        attempt + 1, max_stream_retries + 1,
-                        agent._client_log_context(), exc,
+                        attempt + 1,
+                        max_stream_retries + 1,
+                        agent._client_log_context(),
+                        exc,
                     )
                     continue
                 raise
@@ -727,7 +772,9 @@ def run_codex_stream(agent, api_kwargs: dict, client: Any = None, on_first_delta
                 logger.warning(
                     "Codex Responses stream terminal status=%s "
                     "(incomplete_details=%s, error=%s, streamed_chars=%d). %s",
-                    final.status, final.incomplete_details, final.error,
+                    final.status,
+                    final.incomplete_details,
+                    final.error,
                     sum(len(p) for p in agent._codex_streamed_text_parts),
                     agent._client_log_context(),
                 )

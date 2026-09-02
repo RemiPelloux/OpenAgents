@@ -27,18 +27,25 @@ import tools.file_tools as ft
 # _expand_tilde() unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestExpandTilde:
     """Verify the _expand_tilde() helper resolves ~ to the profile home."""
 
     def test_tilde_expands_to_profile_home(self):
         """When get_subprocess_home returns a value, ~/path uses it."""
-        with patch("openagents_constants.get_subprocess_home", return_value="/opt/data/profiles/coder/home"):
+        with patch(
+            "openagents_constants.get_subprocess_home",
+            return_value="/opt/data/profiles/coder/home",
+        ):
             result = ft._expand_tilde("~/scratch/file.txt")
         assert result == "/opt/data/profiles/coder/home/scratch/file.txt"
 
     def test_bare_tilde_expands_to_profile_home(self):
         """Bare ~ expands to the profile home."""
-        with patch("openagents_constants.get_subprocess_home", return_value="/opt/data/profiles/coder/home"):
+        with patch(
+            "openagents_constants.get_subprocess_home",
+            return_value="/opt/data/profiles/coder/home",
+        ):
             result = ft._expand_tilde("~")
         assert result == "/opt/data/profiles/coder/home"
 
@@ -50,26 +57,36 @@ class TestExpandTilde:
 
     def test_other_user_tilde_not_overridden(self):
         """~user/path must NOT use the profile home — it's a different user."""
-        with patch("openagents_constants.get_subprocess_home", return_value="/opt/data/profiles/coder/home"):
+        with patch(
+            "openagents_constants.get_subprocess_home",
+            return_value="/opt/data/profiles/coder/home",
+        ):
             result = ft._expand_tilde("~root/file.txt")
         # Should use os.path.expanduser, not the profile home
         assert "/opt/data/profiles/coder/home" not in result
 
     def test_no_tilde_unchanged(self):
         """Paths without ~ are returned unchanged (modulo expanduser)."""
-        with patch("openagents_constants.get_subprocess_home", return_value="/opt/data/profiles/coder/home"):
+        with patch(
+            "openagents_constants.get_subprocess_home",
+            return_value="/opt/data/profiles/coder/home",
+        ):
             result = ft._expand_tilde("/etc/passwd")
         assert result == "/etc/passwd"
 
     def test_empty_path_unchanged(self):
         """Empty string returns empty."""
-        with patch("openagents_constants.get_subprocess_home", return_value="/opt/data/profiles/coder/home"):
+        with patch(
+            "openagents_constants.get_subprocess_home",
+            return_value="/opt/data/profiles/coder/home",
+        ):
             assert ft._expand_tilde("") == ""
 
 
 # ---------------------------------------------------------------------------
 # Integration: _resolve_path_for_task uses profile home
 # ---------------------------------------------------------------------------
+
 
 class TestResolvePathUsesProfileHome:
     """Verify _resolve_path_for_task resolves ~ to the profile home."""
@@ -82,9 +99,13 @@ class TestResolvePathUsesProfileHome:
         process_home.mkdir()
 
         monkeypatch.setenv("HOME", str(process_home))
-        monkeypatch.setattr(ft, "_get_live_tracking_cwd", lambda task_id="default": None)
+        monkeypatch.setattr(
+            ft, "_get_live_tracking_cwd", lambda task_id="default": None
+        )
 
-        with patch("openagents_constants.get_subprocess_home", return_value=str(profile_home)):
+        with patch(
+            "openagents_constants.get_subprocess_home", return_value=str(profile_home)
+        ):
             resolved = ft._resolve_path_for_task("~/test_file.txt", task_id="test")
 
         assert str(resolved).startswith(str(profile_home))
@@ -98,9 +119,13 @@ class TestResolvePathUsesProfileHome:
         process_home.mkdir()
 
         monkeypatch.setenv("HOME", str(process_home))
-        monkeypatch.setattr(ft, "_get_live_tracking_cwd", lambda task_id="default": None)
+        monkeypatch.setattr(
+            ft, "_get_live_tracking_cwd", lambda task_id="default": None
+        )
 
-        with patch("openagents_constants.get_subprocess_home", return_value=str(profile_home)):
+        with patch(
+            "openagents_constants.get_subprocess_home", return_value=str(profile_home)
+        ):
             # _resolve_base_dir uses the workspace root from config; if it contains ~,
             # it should resolve to profile home
             resolved = ft._resolve_path_for_task("~/data/config.json", task_id="test")

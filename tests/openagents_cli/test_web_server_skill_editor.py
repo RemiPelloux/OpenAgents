@@ -11,6 +11,7 @@ gap for headless/VPS users. These tests pin:
 - POST /api/cron/jobs accepts ``skills`` and persists it on the job;
   PUT /api/cron/jobs/{id} can update the list.
 """
+
 import pytest
 
 
@@ -63,7 +64,9 @@ def client(monkeypatch, isolated_profiles):
     from openagents_constants import get_openagents_home
     from openagents_cli.web_server import app, _SESSION_HEADER_NAME, _SESSION_TOKEN
 
-    monkeypatch.setattr(openagents_state, "DEFAULT_DB_PATH", get_openagents_home() / "state.db")
+    monkeypatch.setattr(
+        openagents_state, "DEFAULT_DB_PATH", get_openagents_home() / "state.db"
+    )
     c = TestClient(app)
     c.headers[_SESSION_HEADER_NAME] = _SESSION_TOKEN
     return c
@@ -97,7 +100,10 @@ class TestSkillCreate:
     def test_create_writes_skill_md(self, client, isolated_profiles):
         resp = client.post(
             "/api/skills",
-            json={"name": "my-new-skill", "content": SKILL_MD.format(name="my-new-skill")},
+            json={
+                "name": "my-new-skill",
+                "content": SKILL_MD.format(name="my-new-skill"),
+            },
         )
         assert resp.status_code == 200
         assert resp.json()["success"] is True
@@ -116,7 +122,11 @@ class TestSkillCreate:
         )
         assert resp.status_code == 200
         assert (
-            isolated_profiles["default"] / "skills" / "devops" / "cat-skill" / "SKILL.md"
+            isolated_profiles["default"]
+            / "skills"
+            / "devops"
+            / "cat-skill"
+            / "SKILL.md"
         ).exists()
 
     def test_create_scopes_to_profile(self, client, isolated_profiles):
@@ -133,9 +143,7 @@ class TestSkillCreate:
             isolated_profiles["worker_alpha"] / "skills" / "worker-new" / "SKILL.md"
         ).exists()
         # Dashboard's own skills dir stays clean.
-        assert not (
-            isolated_profiles["default"] / "skills" / "worker-new"
-        ).exists()
+        assert not (isolated_profiles["default"] / "skills" / "worker-new").exists()
 
     def test_create_rejects_missing_frontmatter(self, client, isolated_profiles):
         resp = client.post(

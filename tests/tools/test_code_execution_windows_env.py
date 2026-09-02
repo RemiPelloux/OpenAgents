@@ -81,7 +81,7 @@ class TestScrubChildEnvWindows:
         """A realistic subset of what os.environ looks like on Windows."""
         return {
             "SYSTEMROOT": r"C:\Windows",
-            "SystemDrive": "C:",        # Windows preserves native case
+            "SystemDrive": "C:",  # Windows preserves native case
             "WINDIR": r"C:\Windows",
             "ComSpec": r"C:\Windows\System32\cmd.exe",
             "PATHEXT": ".COM;.EXE;.BAT;.CMD;.PY",
@@ -101,9 +101,9 @@ class TestScrubChildEnvWindows:
 
     def test_windows_essentials_passed_through_when_is_windows_true(self):
         env = self._sample_windows_env()
-        scrubbed = _scrub_child_env(env,
-                                    is_passthrough=_no_passthrough,
-                                    is_windows=True)
+        scrubbed = _scrub_child_env(
+            env, is_passthrough=_no_passthrough, is_windows=True
+        )
 
         # Every essential var from the sample env should survive.
         assert scrubbed["SYSTEMROOT"] == r"C:\Windows"
@@ -129,27 +129,27 @@ class TestScrubChildEnvWindows:
         never sneak through just because we added Windows support.
         """
         env = self._sample_windows_env()
-        scrubbed = _scrub_child_env(env,
-                                    is_passthrough=_no_passthrough,
-                                    is_windows=True)
+        scrubbed = _scrub_child_env(
+            env, is_passthrough=_no_passthrough, is_windows=True
+        )
         assert "OPENAI_API_KEY" not in scrubbed
         assert "GITHUB_TOKEN" not in scrubbed
         assert "MY_PASSWORD" not in scrubbed
 
     def test_unknown_vars_still_dropped_on_windows(self):
         env = self._sample_windows_env()
-        scrubbed = _scrub_child_env(env,
-                                    is_passthrough=_no_passthrough,
-                                    is_windows=True)
+        scrubbed = _scrub_child_env(
+            env, is_passthrough=_no_passthrough, is_windows=True
+        )
         assert "RANDOM_UNKNOWN_VAR" not in scrubbed
 
     def test_essentials_blocked_when_is_windows_false(self):
         """On POSIX hosts, Windows-specific vars should not pass — they
         have no meaning and could confuse child tooling."""
         env = self._sample_windows_env()
-        scrubbed = _scrub_child_env(env,
-                                    is_passthrough=_no_passthrough,
-                                    is_windows=False)
+        scrubbed = _scrub_child_env(
+            env, is_passthrough=_no_passthrough, is_windows=False
+        )
         # Safe prefixes still match (PATH, HOME, TEMP).
         assert "PATH" in scrubbed
         assert "HOME" in scrubbed
@@ -165,13 +165,13 @@ class TestScrubChildEnvWindows:
         Python preserves whatever case os.environ reported.  The scrubber
         must normalize to uppercase for the membership check."""
         env = {
-            "SystemRoot": r"C:\Windows",       # mixed case
+            "SystemRoot": r"C:\Windows",  # mixed case
             "comspec": r"C:\Windows\System32\cmd.exe",  # lowercase
-            "APPDATA": r"C:\Users\x\AppData\Roaming",   # uppercase
+            "APPDATA": r"C:\Users\x\AppData\Roaming",  # uppercase
         }
-        scrubbed = _scrub_child_env(env,
-                                    is_passthrough=_no_passthrough,
-                                    is_windows=True)
+        scrubbed = _scrub_child_env(
+            env, is_passthrough=_no_passthrough, is_windows=True
+        )
         assert "SystemRoot" in scrubbed
         assert "comspec" in scrubbed
         assert "APPDATA" in scrubbed
@@ -184,9 +184,9 @@ class TestScrubChildEnvPassthroughInteraction:
 
     def test_passthrough_wins_over_secret_block(self):
         env = {"TENOR_API_KEY": "x", "PATH": "/bin"}
-        scrubbed = _scrub_child_env(env,
-                                    is_passthrough=lambda k: k == "TENOR_API_KEY",
-                                    is_windows=False)
+        scrubbed = _scrub_child_env(
+            env, is_passthrough=lambda k: k == "TENOR_API_KEY", is_windows=False
+        )
         assert scrubbed.get("TENOR_API_KEY") == "x"
         assert scrubbed.get("PATH") == "/bin"
 
@@ -252,6 +252,7 @@ class TestWindowsSocketSmokeTest:
 # POSIX equivalence guard
 # ---------------------------------------------------------------------------
 
+
 def _legacy_posix_scrubber(source_env, is_passthrough):
     """Independent oracle for TestPosixEquivalence — a from-scratch reimpl of
     _scrub_child_env's POSIX behavior, used to prove the production helper does
@@ -263,13 +264,39 @@ def _legacy_posix_scrubber(source_env, is_passthrough):
     legitimately needs to evolve, adjust this oracle on purpose so the churn is
     visible in review — that is what this change is.
     """
-    _SAFE_ENV_PREFIXES = ("PATH", "HOME", "USER", "LANG", "LC_", "TERM",
-                          "TMPDIR", "TMP", "TEMP", "SHELL", "LOGNAME",
-                          "XDG_", "PYTHONPATH", "VIRTUAL_ENV", "CONDA")
-    _SECRET_SUBSTRINGS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL",
-                          "PASSWD", "AUTH", "DSN", "WEBHOOK")
+    _SAFE_ENV_PREFIXES = (
+        "PATH",
+        "HOME",
+        "USER",
+        "LANG",
+        "LC_",
+        "TERM",
+        "TMPDIR",
+        "TMP",
+        "TEMP",
+        "SHELL",
+        "LOGNAME",
+        "XDG_",
+        "PYTHONPATH",
+        "VIRTUAL_ENV",
+        "CONDA",
+    )
+    _SECRET_SUBSTRINGS = (
+        "KEY",
+        "TOKEN",
+        "SECRET",
+        "PASSWORD",
+        "CREDENTIAL",
+        "PASSWD",
+        "AUTH",
+        "DSN",
+        "WEBHOOK",
+    )
     _HERMES_CHILD_ALLOWED = frozenset({
-        "OPENAGENTS_HOME", "HERMES_PROFILE", "HERMES_CONFIG", "HERMES_ENV",
+        "OPENAGENTS_HOME",
+        "HERMES_PROFILE",
+        "HERMES_CONFIG",
+        "HERMES_ENV",
     })
     out = {}
     for k, v in source_env.items():
@@ -317,18 +344,18 @@ class TestPosixEquivalence:
         "CONDA_PREFIX": "/opt/conda",
         # HERMES_* handling (#27303): only the operational allowlist passes;
         # every other HERMES_* is dropped (the broad prefix was removed).
-        "OPENAGENTS_HOME": "/home/alice/.hermes",        # allowlisted → kept
-        "HERMES_PROFILE": "default",                 # allowlisted → kept
-        "HERMES_INTERACTIVE": "1",                   # not allowlisted → dropped
-        "HERMES_BASE_URL": "https://api.internal",   # not allowlisted → dropped
-        "HERMES_KANBAN_DB": "postgres://u:p@h/db",   # not allowlisted → dropped
+        "OPENAGENTS_HOME": "/home/alice/.hermes",  # allowlisted → kept
+        "HERMES_PROFILE": "default",  # allowlisted → kept
+        "HERMES_INTERACTIVE": "1",  # not allowlisted → dropped
+        "HERMES_BASE_URL": "https://api.internal",  # not allowlisted → dropped
+        "HERMES_KANBAN_DB": "postgres://u:p@h/db",  # not allowlisted → dropped
         # Secret-substring blocks
         "OPENAI_API_KEY": "sk-xxx",
         "GITHUB_TOKEN": "ghp_xxx",
         "AWS_SECRET_ACCESS_KEY": "yyy",
         "MY_PASSWORD": "hunter2",
-        "SENTRY_DSN": "https://abc@sentry.io/1",     # DSN substring → blocked
-        "SLACK_WEBHOOK": "https://hooks.slack/x",    # WEBHOOK substring → blocked
+        "SENTRY_DSN": "https://abc@sentry.io/1",  # DSN substring → blocked
+        "SLACK_WEBHOOK": "https://hooks.slack/x",  # WEBHOOK substring → blocked
         # Uncategorized — must be dropped
         "RANDOM_UNKNOWN": "drop-me",
         "DISPLAY": ":0",
@@ -356,15 +383,21 @@ class TestPosixEquivalence:
         "GITHUB_TOKEN": "ghp_xxx",
     }
 
-    @pytest.mark.parametrize("env_name,env", [
-        ("posix_synthetic", _POSIX_SYNTHETIC_ENV),
-        ("windows_synthetic_on_posix", _WINDOWS_SYNTHETIC_ENV),
-    ])
-    @pytest.mark.parametrize("pt_name,pt", [
-        ("no_passthrough", lambda _: False),
-        ("tenor_passthrough", lambda k: k == "TENOR_API_KEY"),
-        ("all_passthrough", lambda _: True),
-    ])
+    @pytest.mark.parametrize(
+        "env_name,env",
+        [
+            ("posix_synthetic", _POSIX_SYNTHETIC_ENV),
+            ("windows_synthetic_on_posix", _WINDOWS_SYNTHETIC_ENV),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "pt_name,pt",
+        [
+            ("no_passthrough", lambda _: False),
+            ("tenor_passthrough", lambda k: k == "TENOR_API_KEY"),
+            ("all_passthrough", lambda _: True),
+        ],
+    )
     def test_posix_behavior_unchanged(self, env_name, env, pt_name, pt):
         """For every combination of (env shape × passthrough rule), the
         new helper with is_windows=False must produce the exact same dict
@@ -388,9 +421,9 @@ class TestPosixEquivalence:
         the test.  This covers vars we might not have thought to put in
         the synthetic fixtures."""
         expected = _legacy_posix_scrubber(os.environ, lambda _: False)
-        actual = _scrub_child_env(os.environ,
-                                  is_passthrough=lambda _: False,
-                                  is_windows=False)
+        actual = _scrub_child_env(
+            os.environ, is_passthrough=lambda _: False, is_windows=False
+        )
         assert actual == expected, (
             "POSIX-mode scrubber diverged from legacy behavior on real "
             f"os.environ (host platform={sys.platform})"
@@ -402,12 +435,12 @@ class TestPosixEquivalence:
         essentials.  It must never drop a var that POSIX mode would keep
         — if it did, we'd have broken same-host reuse of the scrubber."""
         env = {**self._POSIX_SYNTHETIC_ENV, **self._WINDOWS_SYNTHETIC_ENV}
-        posix_result = _scrub_child_env(env,
-                                        is_passthrough=lambda _: False,
-                                        is_windows=False)
-        windows_result = _scrub_child_env(env,
-                                          is_passthrough=lambda _: False,
-                                          is_windows=True)
+        posix_result = _scrub_child_env(
+            env, is_passthrough=lambda _: False, is_windows=False
+        )
+        windows_result = _scrub_child_env(
+            env, is_passthrough=lambda _: False, is_windows=True
+        )
         missing = set(posix_result) - set(windows_result)
         assert not missing, (
             f"is_windows=True dropped vars that is_windows=False kept: {missing}"
@@ -453,6 +486,7 @@ class TestSandboxWritesUtf8:
         """Both ``hermes_tools.py`` and ``script.py`` writes in
         ``_execute_local`` must pass ``encoding="utf-8"``."""
         import tools.code_execution_tool as cet
+
         src = open(cet.__file__, encoding="utf-8").read()
 
         # There should be no ``open(path, "w")`` without encoding= for
@@ -460,13 +494,14 @@ class TestSandboxWritesUtf8:
         # a .py file inside tmpdir and assert the line also contains
         # ``encoding="utf-8"`` within a short window.
         import re
+
         pattern = re.compile(
             r'open\(\s*os\.path\.join\(\s*tmpdir\s*,\s*"[^"]+\.py"\s*\)\s*,\s*"w"[^)]*\)'
         )
         for match in pattern.finditer(src):
             line = match.group(0)
             assert 'encoding="utf-8"' in line or "encoding='utf-8'" in line, (
-                f"Sandbox file write missing encoding=\"utf-8\" on Windows: {line!r}"
+                f'Sandbox file write missing encoding="utf-8" on Windows: {line!r}'
             )
 
     def test_file_rpc_stub_uses_utf8(self):
@@ -474,10 +509,11 @@ class TestSandboxWritesUtf8:
         reads/writes JSON response files.  Those must also specify UTF-8
         so non-ASCII tool results survive the round-trip intact."""
         from tools.code_execution_tool import generate_hermes_tools_module
+
         stub = generate_hermes_tools_module(["terminal"], transport="file")
         # The generated stub should open response + request files as UTF-8.
         assert 'encoding="utf-8"' in stub, (
-            "File-based RPC stub does not specify encoding=\"utf-8\" — "
+            'File-based RPC stub does not specify encoding="utf-8" — '
             "will corrupt non-ASCII tool results on non-UTF-8 locales."
         )
 
@@ -489,6 +525,7 @@ class TestSandboxWritesUtf8:
         """
         from tools.code_execution_tool import generate_hermes_tools_module
         import tempfile, ast
+
         stub = generate_hermes_tools_module(
             ["terminal", "read_file", "write_file"], transport="uds"
         )
@@ -537,9 +574,7 @@ class TestSandboxWritesUtf8:
             pytest.skip("stub has no non-ASCII chars — nothing to corrupt")
 
         # Write with default encoding (simulating the old buggy code).
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".py", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             try:
                 f.write(stub)
                 tmp_path = f.name
@@ -605,6 +640,7 @@ class TestChildStdioIsUtf8:
         """Source-level check: the Popen call site must set
         PYTHONIOENCODING=utf-8 in child_env."""
         import tools.code_execution_tool as cet
+
         src = open(cet.__file__, encoding="utf-8").read()
         assert 'child_env["PYTHONIOENCODING"] = "utf-8"' in src, (
             "PYTHONIOENCODING=utf-8 missing from child env — Windows "
@@ -616,6 +652,7 @@ class TestChildStdioIsUtf8:
         """Source-level check: PYTHONUTF8=1 must be set too — it makes
         open()'s default encoding UTF-8 in user-written file I/O."""
         import tools.code_execution_tool as cet
+
         src = open(cet.__file__, encoding="utf-8").read()
         assert 'child_env["PYTHONUTF8"] = "1"' in src, (
             "PYTHONUTF8=1 missing from child env — user scripts that "

@@ -36,9 +36,9 @@ from typing import Any, Dict
 # Hardcoded defaults — these match the pre-existing values, so adding
 # this module is behaviour-preserving for users who don't set
 # ``tool_output`` in config.yaml.
-DEFAULT_MAX_BYTES = 50_000       # terminal_tool.MAX_OUTPUT_CHARS
-DEFAULT_MAX_LINES = 2000         # file_operations.MAX_LINES
-DEFAULT_MAX_LINE_LENGTH = 2000   # file_operations.MAX_LINE_LENGTH
+DEFAULT_MAX_BYTES = 50_000  # terminal_tool.MAX_OUTPUT_CHARS
+DEFAULT_MAX_LINES = 2000  # file_operations.MAX_LINES
+DEFAULT_MAX_LINE_LENGTH = 2000  # file_operations.MAX_LINE_LENGTH
 
 # Module-level cache — populated on first call.
 # Avoids repeated config file I/O on every tool call.
@@ -72,6 +72,7 @@ def get_tool_output_limits() -> Dict[str, int]:
         return _cached_limits
     try:
         from openagents_cli.config import load_config
+
         cfg = load_config() or {}
         section = cfg.get("tool_output") if isinstance(cfg, dict) else None
         if not isinstance(section, dict):

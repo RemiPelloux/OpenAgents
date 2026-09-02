@@ -51,7 +51,9 @@ class NodeServer:
         self.host = host
         self.port = port
         self.display_name = display_name
-        self.token_path = Path(token_path) if token_path is not None else _default_token_path()
+        self.token_path = (
+            Path(token_path) if token_path is not None else _default_token_path()
+        )
         self._token: Optional[str] = None
 
     # ----- token management --------------------------------------------
@@ -117,15 +119,24 @@ class NodeServer:
 
         try:
             if t == "ping":
-                return {"type": "pong", "id": req_id,
-                        "payload": {"display_name": self.display_name,
-                                    "ts": time.time()}}
+                return {
+                    "type": "pong",
+                    "id": req_id,
+                    "payload": {"display_name": self.display_name, "ts": time.time()},
+                }
             if t == "start_bot":
                 # Whitelist kwargs we pass through to pm.start.
                 kwargs = {
                     k: payload[k]
-                    for k in ("url", "guest_name", "duration", "headed",
-                              "auth_state", "session_id", "out_dir")
+                    for k in (
+                        "url",
+                        "guest_name",
+                        "duration",
+                        "headed",
+                        "auth_state",
+                        "session_id",
+                        "out_dir",
+                    )
                     if k in payload
                 }
                 if "url" not in kwargs:
@@ -154,7 +165,9 @@ class NodeServer:
                     try:
                         queue.parent.mkdir(parents=True, exist_ok=True)
                         with queue.open("a", encoding="utf-8") as fh:
-                            fh.write(json.dumps({"text": text, "ts": time.time()}) + "\n")
+                            fh.write(
+                                json.dumps({"text": text, "ts": time.time()}) + "\n"
+                            )
                         enqueued = True
                     except OSError:
                         enqueued = False
@@ -187,9 +200,13 @@ class NodeServer:
         async def _handler(ws):
             async for raw in ws:
                 try:
-                    msg = _proto.decode(raw if isinstance(raw, str) else raw.decode("utf-8"))
+                    msg = _proto.decode(
+                        raw if isinstance(raw, str) else raw.decode("utf-8")
+                    )
                 except ValueError as exc:
-                    await ws.send(_proto.encode(_proto.make_error("", f"decode: {exc}")))
+                    await ws.send(
+                        _proto.encode(_proto.make_error("", f"decode: {exc}"))
+                    )
                     continue
                 reply = await self._handle_request(msg)
                 await ws.send(_proto.encode(reply))
@@ -197,4 +214,5 @@ class NodeServer:
         async with websockets.serve(_handler, self.host, self.port):
             # Run until cancelled.
             import asyncio
+
             await asyncio.Future()

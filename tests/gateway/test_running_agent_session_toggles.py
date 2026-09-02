@@ -96,6 +96,7 @@ def _make_runner():
     # dict with recent activity so the eviction path doesn't clear our
     # fake running agent before the toggle guard runs.
     import time
+
     sk = build_session_key(_make_source())
     agent_mock = MagicMock()
     agent_mock.get_activity_summary.return_value = {
@@ -113,7 +114,9 @@ def _make_runner():
 async def test_yolo_dispatches_mid_run(monkeypatch):
     """/yolo mid-run must dispatch to its handler, not hit the catch-all."""
     runner = _make_runner()
-    runner._handle_yolo_command = AsyncMock(return_value="⚡ YOLO mode **ON** for this session")
+    runner._handle_yolo_command = AsyncMock(
+        return_value="⚡ YOLO mode **ON** for this session"
+    )
 
     result = await runner._handle_message(_make_event("/yolo"))
 

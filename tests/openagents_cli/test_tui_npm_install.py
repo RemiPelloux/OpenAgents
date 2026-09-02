@@ -37,9 +37,13 @@ def test_need_install_when_ink_missing(tmp_path: Path, main_mod) -> None:
     assert main_mod._tui_need_npm_install(tmp_path) is True
 
 
-def test_no_install_when_lock_newer_but_hidden_lock_matches(tmp_path: Path, main_mod) -> None:
+def test_no_install_when_lock_newer_but_hidden_lock_matches(
+    tmp_path: Path, main_mod
+) -> None:
     _touch_ink(tmp_path)
-    (tmp_path / "package-lock.json").write_text('{"packages":{"node_modules/foo":{"version":"1.0.0"}}}')
+    (tmp_path / "package-lock.json").write_text(
+        '{"packages":{"node_modules/foo":{"version":"1.0.0"}}}'
+    )
     (tmp_path / "node_modules" / ".package-lock.json").write_text(
         '{"packages":{"node_modules/foo":{"version":"1.0.0","ideallyInert":true}}}'
     )
@@ -48,7 +52,9 @@ def test_no_install_when_lock_newer_but_hidden_lock_matches(tmp_path: Path, main
     assert main_mod._tui_need_npm_install(tmp_path) is False
 
 
-def test_need_install_when_required_package_missing_from_hidden_lock(tmp_path: Path, main_mod) -> None:
+def test_need_install_when_required_package_missing_from_hidden_lock(
+    tmp_path: Path, main_mod
+) -> None:
     _touch_ink(tmp_path)
     (tmp_path / "package-lock.json").write_text(
         '{"packages":{"node_modules/foo":{"version":"1.0.0"},"node_modules/bar":{"version":"1.0.0"}}}'
@@ -59,7 +65,9 @@ def test_need_install_when_required_package_missing_from_hidden_lock(tmp_path: P
     assert main_mod._tui_need_npm_install(tmp_path) is True
 
 
-def test_no_install_when_only_optional_peer_package_missing_from_hidden_lock(tmp_path: Path, main_mod) -> None:
+def test_no_install_when_only_optional_peer_package_missing_from_hidden_lock(
+    tmp_path: Path, main_mod
+) -> None:
     _touch_ink(tmp_path)
     (tmp_path / "package-lock.json").write_text(
         '{"packages":{"node_modules/foo":{"version":"1.0.0"},"node_modules/optional":{"version":"1.0.0","optional":true,"peer":true}}}'
@@ -81,17 +89,19 @@ def test_no_install_when_only_peer_annotation_differs(tmp_path: Path, main_mod) 
     (tmp_path / "package-lock.json").write_text(
         '{"packages":{'
         '"node_modules/foo":{"version":"1.0.0","dev":true,"peer":true,"resolved":"https://x/foo.tgz"}'
-        '}}'
+        "}}"
     )
     (tmp_path / "node_modules" / ".package-lock.json").write_text(
         '{"packages":{'
         '"node_modules/foo":{"version":"1.0.0","dev":true,"resolved":"https://x/foo.tgz"}'
-        '}}'
+        "}}"
     )
     assert main_mod._tui_need_npm_install(tmp_path) is False
 
 
-def test_install_when_version_differs_even_with_peer_drop(tmp_path: Path, main_mod) -> None:
+def test_install_when_version_differs_even_with_peer_drop(
+    tmp_path: Path, main_mod
+) -> None:
     """The peer-drop tolerance must not mask a real version skew."""
     _touch_ink(tmp_path)
     (tmp_path / "package-lock.json").write_text(
@@ -396,7 +406,9 @@ def test_make_tui_argv_restores_missing_workspace_from_git(
 # ── _workspace_root helper ──────────────────────────────────────────
 
 
-def test_workspace_root_returns_parent_when_subpackage(tmp_path: Path, main_mod) -> None:
+def test_workspace_root_returns_parent_when_subpackage(
+    tmp_path: Path, main_mod
+) -> None:
     """Sub-package has package.json, no lockfile; parent has lockfile → parent."""
     sub = tmp_path / "ui-tui"
     sub.mkdir()
@@ -530,6 +542,7 @@ def test_tui_launch_install_uses_workspace_scope(
     install_cmd = npm_calls[0]
     assert "--workspace" in install_cmd
     assert "ui-tui" in install_cmd
+
 
 def test_make_tui_argv_omits_workspace_when_tui_has_own_lockfile(
     tmp_path: Path, main_mod, monkeypatch

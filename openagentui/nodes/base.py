@@ -39,27 +39,40 @@ class NodeContext:
 
 
 def start_result(node_id: str, input_value: Any = None) -> NodeExecutionResult:
-    return NodeExecutionResult(node_id=node_id, status="running", input=input_value, started_at=_now_iso())
+    return NodeExecutionResult(
+        node_id=node_id, status="running", input=input_value, started_at=_now_iso()
+    )
 
 
 def ok(node_id: str, output: Any, *, input_value: Any = None) -> NodeExecutionResult:
     now = _now_iso()
     return NodeExecutionResult(
-        node_id=node_id, status="completed", input=input_value, output=output,
-        started_at=now, completed_at=now,
+        node_id=node_id,
+        status="completed",
+        input=input_value,
+        output=output,
+        started_at=now,
+        completed_at=now,
     )
 
 
 def failed(node_id: str, error: str, *, input_value: Any = None) -> NodeExecutionResult:
     now = _now_iso()
     return NodeExecutionResult(
-        node_id=node_id, status="failed", input=input_value, error=error,
-        started_at=now, completed_at=now,
+        node_id=node_id,
+        status="failed",
+        input=input_value,
+        error=error,
+        started_at=now,
+        completed_at=now,
     )
 
 
 def pending_approval(node_id: str, *, input_value: Any = None) -> NodeExecutionResult:
     now = _now_iso()
     return NodeExecutionResult(
-        node_id=node_id, status="pending-approval", input=input_value, started_at=now,
+        node_id=node_id,
+        status="pending-approval",
+        input=input_value,
+        started_at=now,
     )

@@ -173,7 +173,10 @@ class TestScanSkillCommands:
 
         with (
             patch("tools.skills_tool.SKILLS_DIR", tmp_path),
-            patch("tools.skills_tool._get_disabled_skill_names", side_effect=_disabled_skills),
+            patch(
+                "tools.skills_tool._get_disabled_skill_names",
+                side_effect=_disabled_skills,
+            ),
             patch.object(sc_mod, "_skill_commands", {}),
             patch.object(sc_mod, "_skill_commands_platform", None),
         ):
@@ -225,9 +228,8 @@ class TestScanSkillCommands:
         )
 
         def _disabled_skills():
-            platform = (
-                os.getenv("HERMES_PLATFORM")
-                or get_session_env("HERMES_SESSION_PLATFORM")
+            platform = os.getenv("HERMES_PLATFORM") or get_session_env(
+                "HERMES_SESSION_PLATFORM"
             )
             if platform == "telegram":
                 return {"telegram-only"}
@@ -237,7 +239,10 @@ class TestScanSkillCommands:
 
         with (
             patch("tools.skills_tool.SKILLS_DIR", tmp_path),
-            patch("tools.skills_tool._get_disabled_skill_names", side_effect=_disabled_skills),
+            patch(
+                "tools.skills_tool._get_disabled_skill_names",
+                side_effect=_disabled_skills,
+            ),
             patch.object(sc_mod, "_skill_commands", {}),
             patch.object(sc_mod, "_skill_commands_platform", None),
         ):
@@ -269,7 +274,9 @@ class TestScanSkillCommands:
             assert "/telegram-only" in discord_commands
             assert "/discord-only" not in discord_commands
 
-    def test_get_skill_commands_rescans_when_leaving_platform_scope(self, tmp_path, monkeypatch):
+    def test_get_skill_commands_rescans_when_leaving_platform_scope(
+        self, tmp_path, monkeypatch
+    ):
         """Returning to no-platform-scope (CLI / cron / RL) after a gateway
         session must rescan so the unfiltered view is repopulated (#14536).
 
@@ -287,7 +294,10 @@ class TestScanSkillCommands:
 
         with (
             patch("tools.skills_tool.SKILLS_DIR", tmp_path),
-            patch("tools.skills_tool._get_disabled_skill_names", side_effect=_disabled_skills),
+            patch(
+                "tools.skills_tool._get_disabled_skill_names",
+                side_effect=_disabled_skills,
+            ),
             patch.object(sc_mod, "_skill_commands", {}),
             patch.object(sc_mod, "_skill_commands_platform", None),
         ):
@@ -334,7 +344,6 @@ class TestScanSkillCommands:
                 get_skill_commands()
             assert scan_spy.call_count == 0
 
-
     def test_special_chars_stripped_from_cmd_key(self, tmp_path):
         """Skill names with +, /, or other special chars produce clean cmd keys."""
         with patch("tools.skills_tool.SKILLS_DIR", tmp_path):
@@ -370,8 +379,7 @@ class TestScanSkillCommands:
             skill_dir = tmp_path / "sonarr-api"
             skill_dir.mkdir()
             (skill_dir / "SKILL.md").write_text(
-                "---\nname: Sonarr v3/v4 API\n"
-                "description: Test skill\n---\n\nBody.\n"
+                "---\nname: Sonarr v3/v4 API\ndescription: Test skill\n---\n\nBody.\n"
             )
             result = scan_skill_commands()
         assert "/sonarr-v3v4-api" in result
@@ -430,9 +438,10 @@ class TestBuildPreloadedSkillsPrompt:
         with patch("tools.skills_tool.SKILLS_DIR", tmp_path):
             _make_skill(tmp_path, "first-skill")
             _make_skill(tmp_path, "second-skill")
-            prompt, loaded, missing = build_preloaded_skills_prompt(
-                ["first-skill", "second-skill"]
-            )
+            prompt, loaded, missing = build_preloaded_skills_prompt([
+                "first-skill",
+                "second-skill",
+            ])
 
         assert missing == []
         assert loaded == ["first-skill", "second-skill"]
@@ -443,9 +452,10 @@ class TestBuildPreloadedSkillsPrompt:
     def test_reports_missing_named_skills(self, tmp_path):
         with patch("tools.skills_tool.SKILLS_DIR", tmp_path):
             _make_skill(tmp_path, "present-skill")
-            prompt, loaded, missing = build_preloaded_skills_prompt(
-                ["present-skill", "missing-skill"]
-            )
+            prompt, loaded, missing = build_preloaded_skills_prompt([
+                "present-skill",
+                "missing-skill",
+            ])
 
         assert "present-skill" in prompt
         assert loaded == ["present-skill"]
@@ -471,7 +481,9 @@ Generate some audio.
 
         with patch("tools.skills_tool.SKILLS_DIR", tmp_path):
             scan_skill_commands()
-            msg = build_skill_invocation_message("/audiocraft-audio-generation", "compose")
+            msg = build_skill_invocation_message(
+                "/audiocraft-audio-generation", "compose"
+            )
 
         assert msg is not None
         assert "AudioCraft" in msg
@@ -676,9 +688,7 @@ class TestTemplateVarSubstitution:
                 body="Session: ${HERMES_SESSION_ID}",
             )
             scan_skill_commands()
-            msg = build_skill_invocation_message(
-                "/sess-templated", task_id="abc-123"
-            )
+            msg = build_skill_invocation_message("/sess-templated", task_id="abc-123")
 
         assert msg is not None
         assert "Session: abc-123" in msg
@@ -742,8 +752,11 @@ class TestInlineShellExpansion:
             patch("tools.skills_tool.SKILLS_DIR", tmp_path),
             patch(
                 "agent.skill_commands._load_skills_config",
-                return_value={"template_vars": True, "inline_shell": True,
-                              "inline_shell_timeout": 5},
+                return_value={
+                    "template_vars": True,
+                    "inline_shell": True,
+                    "inline_shell_timeout": 5,
+                },
             ),
         ):
             _make_skill(
@@ -764,8 +777,11 @@ class TestInlineShellExpansion:
             patch("tools.skills_tool.SKILLS_DIR", tmp_path),
             patch(
                 "agent.skill_commands._load_skills_config",
-                return_value={"template_vars": True, "inline_shell": True,
-                              "inline_shell_timeout": 5},
+                return_value={
+                    "template_vars": True,
+                    "inline_shell": True,
+                    "inline_shell_timeout": 5,
+                },
             ),
         ):
             skill_dir = _make_skill(
@@ -784,8 +800,11 @@ class TestInlineShellExpansion:
             patch("tools.skills_tool.SKILLS_DIR", tmp_path),
             patch(
                 "agent.skill_commands._load_skills_config",
-                return_value={"template_vars": True, "inline_shell": True,
-                              "inline_shell_timeout": 1},
+                return_value={
+                    "template_vars": True,
+                    "inline_shell": True,
+                    "inline_shell_timeout": 1,
+                },
             ),
         ):
             _make_skill(

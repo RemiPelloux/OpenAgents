@@ -20,6 +20,7 @@ from gateway.runtime_footer import (
 # _model_short + _home_relative_cwd
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     "model,expected",
     [
@@ -55,6 +56,7 @@ def test_home_relative_cwd_empty_returns_empty():
 # ---------------------------------------------------------------------------
 # format_runtime_footer
 # ---------------------------------------------------------------------------
+
 
 def test_format_footer_all_fields(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
@@ -109,8 +111,11 @@ def test_format_footer_context_pct_never_negative():
 
 def test_format_footer_empty_fields_returns_empty():
     out = format_runtime_footer(
-        model="m", context_tokens=0, context_length=100,
-        cwd="/x", fields=(),
+        model="m",
+        context_tokens=0,
+        context_length=100,
+        cwd="/x",
+        fields=(),
     )
     assert out == ""
 
@@ -119,7 +124,8 @@ def test_format_footer_drops_cwd_when_empty(monkeypatch):
     monkeypatch.delenv("TERMINAL_CWD", raising=False)
     out = format_runtime_footer(
         model="openai/gpt-5.4",
-        context_tokens=50, context_length=100,
+        context_tokens=50,
+        context_length=100,
         cwd="",
         fields=("model", "context_pct", "cwd"),
     )
@@ -130,7 +136,8 @@ def test_format_footer_drops_cwd_when_empty(monkeypatch):
 def test_format_footer_custom_field_order():
     out = format_runtime_footer(
         model="openai/gpt-5.4",
-        context_tokens=50, context_length=100,
+        context_tokens=50,
+        context_length=100,
         cwd="/opt/project",
         fields=("context_pct", "model"),  # swapped + no cwd
     )
@@ -140,7 +147,8 @@ def test_format_footer_custom_field_order():
 def test_format_footer_unknown_field_silently_ignored():
     out = format_runtime_footer(
         model="openai/gpt-5.4",
-        context_tokens=50, context_length=100,
+        context_tokens=50,
+        context_length=100,
         cwd="/x",
         fields=("model", "bogus", "context_pct"),
     )
@@ -150,6 +158,7 @@ def test_format_footer_unknown_field_silently_ignored():
 # ---------------------------------------------------------------------------
 # resolve_footer_config
 # ---------------------------------------------------------------------------
+
 
 def test_resolve_defaults_off_empty_config():
     cfg = resolve_footer_config({}, "telegram")
@@ -206,12 +215,14 @@ def test_resolve_ignores_malformed_config():
 # build_footer_line — top-level entry point used by gateway/run.py
 # ---------------------------------------------------------------------------
 
+
 def test_build_footer_empty_when_disabled():
     out = build_footer_line(
         user_config={},
         platform_key="telegram",
         model="openai/gpt-5.4",
-        context_tokens=10, context_length=100,
+        context_tokens=10,
+        context_length=100,
         cwd="/tmp",
     )
     assert out == ""
@@ -223,7 +234,8 @@ def test_build_footer_returns_rendered_when_enabled(monkeypatch, tmp_path):
         user_config={"display": {"runtime_footer": {"enabled": True}}},
         platform_key="telegram",
         model="openai/gpt-5.4",
-        context_tokens=25, context_length=100,
+        context_tokens=25,
+        context_length=100,
         cwd=str(tmp_path / "proj"),
     )
     (tmp_path / "proj").mkdir(exist_ok=True)
@@ -242,7 +254,8 @@ def test_build_footer_per_platform_off_suppresses():
         user_config=user,
         platform_key="slack",
         model="openai/gpt-5.4",
-        context_tokens=10, context_length=100,
+        context_tokens=10,
+        context_length=100,
         cwd="/tmp",
     )
     assert out == ""
@@ -254,7 +267,8 @@ def test_build_footer_no_data_returns_empty_even_when_enabled():
         user_config={"display": {"runtime_footer": {"enabled": True}}},
         platform_key="telegram",
         model="",
-        context_tokens=0, context_length=None,
+        context_tokens=0,
+        context_length=None,
         cwd="",
     )
     # With no TERMINAL_CWD env either

@@ -395,7 +395,9 @@ moa:
             {
                 "role": "assistant",
                 "content": "checking",
-                "tool_calls": [{"id": "x", "function": {"name": "lookup", "arguments": "{}"}}],
+                "tool_calls": [
+                    {"id": "x", "function": {"name": "lookup", "arguments": "{}"}}
+                ],
             },
             {"role": "tool", "tool_call_id": "x", "content": "tool output"},
         ],
@@ -454,7 +456,9 @@ moa:
     from agent.moa_loop import MoAChatCompletions
 
     facade = MoAChatCompletions("review")
-    facade.create(messages=[{"role": "user", "content": "question"}], tools=[{"type": "function"}])
+    facade.create(
+        messages=[{"role": "user", "content": "question"}], tools=[{"type": "function"}]
+    )
 
     tasks = [c["task"] for c in calls]
     # No reference fan-out — only the aggregator runs.
@@ -549,8 +553,12 @@ def test_moa_facade_emits_reference_then_aggregating(monkeypatch, tmp_path):
     from agent.moa_loop import MoAChatCompletions
 
     events = []
-    facade = MoAChatCompletions("review", reference_callback=lambda ev, **kw: events.append((ev, kw)))
-    facade.create(messages=[{"role": "user", "content": "q"}], tools=[{"type": "function"}])
+    facade = MoAChatCompletions(
+        "review", reference_callback=lambda ev, **kw: events.append((ev, kw))
+    )
+    facade.create(
+        messages=[{"role": "user", "content": "q"}], tools=[{"type": "function"}]
+    )
 
     ref_events = [e for e in events if e[0] == "moa.reference"]
     agg_events = [e for e in events if e[0] == "moa.aggregating"]
@@ -590,13 +598,19 @@ def test_moa_facade_reruns_references_on_new_tool_result(monkeypatch, tmp_path):
     from agent.moa_loop import MoAChatCompletions
 
     events = []
-    facade = MoAChatCompletions("review", reference_callback=lambda ev, **kw: events.append(ev))
+    facade = MoAChatCompletions(
+        "review", reference_callback=lambda ev, **kw: events.append(ev)
+    )
 
     base_msgs = [{"role": "user", "content": "do the thing"}]
     # Iteration 1: fresh user turn — references run (2 models).
     facade.create(messages=base_msgs, tools=[{"type": "function"}])
     after_tool = base_msgs + [
-        {"role": "assistant", "content": "", "tool_calls": [{"id": "c1", "function": {"name": "f", "arguments": "{}"}}]},
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [{"id": "c1", "function": {"name": "f", "arguments": "{}"}}],
+        },
         {"role": "tool", "tool_call_id": "c1", "content": "result"},
     ]
     # Iteration 2: a NEW tool result advanced the state → references re-run.

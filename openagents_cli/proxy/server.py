@@ -19,6 +19,7 @@ from typing import Optional
 try:
     import aiohttp
     from aiohttp import web
+
     AIOHTTP_AVAILABLE = True
 except ImportError:
     aiohttp = None  # type: ignore[assignment]
@@ -32,21 +33,19 @@ logger = logging.getLogger(__name__)
 # Headers we strip when forwarding to the upstream. ``host``/``content-length``
 # are recomputed by aiohttp; ``authorization`` is replaced with our bearer.
 # Everything else (content-type, accept, user-agent, x-* headers) passes through.
-_HOP_BY_HOP_HEADERS = frozenset(
-    {
-        "host",
-        "content-length",
-        "connection",
-        "keep-alive",
-        "proxy-authenticate",
-        "proxy-authorization",
-        "te",
-        "trailers",
-        "transfer-encoding",
-        "upgrade",
-        "authorization",  # we replace this one
-    }
-)
+_HOP_BY_HOP_HEADERS = frozenset({
+    "host",
+    "content-length",
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailers",
+    "transfer-encoding",
+    "upgrade",
+    "authorization",  # we replace this one
+})
 
 DEFAULT_PORT = 8645
 DEFAULT_HOST = "127.0.0.1"
@@ -96,13 +95,11 @@ def create_app(adapter: UpstreamAdapter) -> "web.Application":
     app[_adapter_key] = adapter
 
     async def handle_health(request: "web.Request") -> "web.Response":
-        return web.json_response(
-            {
-                "status": "ok",
-                "upstream": adapter.display_name,
-                "authenticated": adapter.is_authenticated(),
-            }
-        )
+        return web.json_response({
+            "status": "ok",
+            "upstream": adapter.display_name,
+            "authenticated": adapter.is_authenticated(),
+        })
 
     async def handle_proxy(request: "web.Request") -> "web.StreamResponse":
         # Extract the path *after* /v1
@@ -139,11 +136,16 @@ def create_app(adapter: UpstreamAdapter) -> "web.Application":
                 upstream_url = f"{upstream_url}?{request.query_string}"
 
             fwd_headers = _filter_request_headers(request.headers)
-            fwd_headers["Authorization"] = f"{active_cred.token_type} {active_cred.bearer}"
+            fwd_headers["Authorization"] = (
+                f"{active_cred.token_type} {active_cred.bearer}"
+            )
 
             logger.debug(
                 "proxy: forwarding %s %s -> %s (body=%d bytes)",
-                request.method, rel_path, upstream_url, len(body),
+                request.method,
+                rel_path,
+                upstream_url,
+                len(body),
             )
 
             try:
@@ -264,7 +266,9 @@ async def run_server(
 
     logger.info(
         "proxy: listening on http://%s:%d/v1 -> %s",
-        host, port, adapter.display_name,
+        host,
+        port,
+        adapter.display_name,
     )
 
     stop_event = shutdown_event or asyncio.Event()

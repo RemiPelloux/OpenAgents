@@ -79,9 +79,7 @@ def test_image_generate_tool_returns_actionable_error_when_no_backend(monkeypatc
 
     from tools import image_generation_tool
 
-    monkeypatch.setattr(
-        image_generation_tool, "fal_key_is_configured", lambda: False
-    )
+    monkeypatch.setattr(image_generation_tool, "fal_key_is_configured", lambda: False)
     monkeypatch.setattr(
         image_generation_tool, "_resolve_managed_fal_gateway", lambda: None
     )
@@ -89,9 +87,7 @@ def test_image_generate_tool_returns_actionable_error_when_no_backend(monkeypatc
         image_generation_tool, "managed_nous_tools_enabled", lambda: False
     )
 
-    result = json.loads(
-        image_generation_tool.image_generate_tool(prompt="a cat")
-    )
+    result = json.loads(image_generation_tool.image_generate_tool(prompt="a cat"))
 
     assert result["success"] is False
     assert "https://fal.ai" in result["error"]

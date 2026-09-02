@@ -27,10 +27,22 @@ Modifications by NousResearch for the OpenAgents plugin port:
     patterns.py at commit 0bde168 (2026-05-26). Hermes-side wiring lives in
     __init__.py.
 """
+
 from enum import IntEnum
 
 
-_JS_EXTS = (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte")
+_JS_EXTS = (
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".cjs",
+    ".mts",
+    ".cts",
+    ".vue",
+    ".svelte",
+)
 _PY_EXTS = (".py", ".pyi", ".ipynb")
 _DOC_EXTS = (".md", ".mdx", ".txt", ".rst", ".json", ".yaml", ".yml")
 
@@ -293,6 +305,7 @@ class RuleId(IntEnum):
 
     Values are frozen: do not renumber existing entries. Append new ones.
     """
+
     GITHUB_ACTIONS_WORKFLOW = 1
     CHILD_PROCESS_EXEC = 2
     NEW_FUNCTION_INJECTION = 3

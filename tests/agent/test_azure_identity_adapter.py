@@ -26,12 +26,14 @@ from typing import cast
 
 import pytest
 
+
 # Ensure we always import a fresh adapter module — credential caches in
 # the adapter persist across tests otherwise, polluting assertions
 # about cache invalidation.
 @pytest.fixture(autouse=True)
 def _reset_adapter_cache():
     from agent.azure_identity_adapter import reset_credential_cache
+
     reset_credential_cache()
     yield
     reset_credential_cache()
@@ -61,6 +63,7 @@ class TestEntraScopeConstant:
 
     def test_default_scope_matches_microsoft_documentation(self):
         from agent.azure_identity_adapter import SCOPE_AI_AZURE_DEFAULT
+
         assert SCOPE_AI_AZURE_DEFAULT == "https://ai.azure.com/.default"
 
 
@@ -87,15 +90,18 @@ class TestMaterializeBearerForHttp:
 
     def test_string_passes_through(self):
         from agent.azure_identity_adapter import materialize_bearer_for_http
+
         assert materialize_bearer_for_http("plain-key") == "plain-key"
 
     def test_callable_returning_empty_raises(self):
         from agent.azure_identity_adapter import materialize_bearer_for_http
+
         with pytest.raises(ValueError):
             materialize_bearer_for_http(lambda: "")
 
     def test_empty_string_raises(self):
         from agent.azure_identity_adapter import materialize_bearer_for_http
+
         with pytest.raises(ValueError):
             materialize_bearer_for_http("")
         with pytest.raises(ValueError):
@@ -141,7 +147,8 @@ class TestBuildBearerHttpClient:
             # Build a request with conflicting pre-set headers and verify
             # the hook strips them and installs the fresh bearer.
             req = httpx.Request(
-                "POST", "https://example.com/v1/messages",
+                "POST",
+                "https://example.com/v1/messages",
                 headers={
                     "Authorization": "Bearer stale-token",
                     "api-key": "static-key",
@@ -188,20 +195,24 @@ class TestBuildBearerHttpClient:
         try:
             hook = client.event_hooks["request"][0]
             req = httpx.Request(
-                "POST", "https://example.com/v1/messages",
+                "POST",
+                "https://example.com/v1/messages",
                 headers={
                     "Authorization": "Bearer entra-id-bearer-via-http-hook",
                     "api-key": "leaked-placeholder",
                 },
             )
-            with caplog.at_level(logging.WARNING, logger="agent.azure_identity_adapter"):
+            with caplog.at_level(
+                logging.WARNING, logger="agent.azure_identity_adapter"
+            ):
                 hook(req)  # Must not raise.
             # Pre-set auth headers stripped — no sentinel makes it to Azure.
             assert "Authorization" not in req.headers
             assert "api-key" not in req.headers
             # WARNING was logged so the user sees the misconfiguration.
             assert any(
-                rec.levelno == logging.WARNING and "Entra ID token provider" in rec.message
+                rec.levelno == logging.WARNING
+                and "Entra ID token provider" in rec.message
                 for rec in caplog.records
             )
         finally:
@@ -209,8 +220,11 @@ class TestBuildBearerHttpClient:
 
     def test_rejects_non_callable_provider(self):
         from agent.azure_identity_adapter import build_bearer_http_client
+
         with pytest.raises(ValueError):
-            build_bearer_http_client(cast(Callable[[], str], "plain-string-not-callable"))
+            build_bearer_http_client(
+                cast(Callable[[], str], "plain-string-not-callable")
+            )
         with pytest.raises(ValueError):
             build_bearer_http_client(cast(Callable[[], str], None))
 
@@ -231,10 +245,12 @@ class TestBuildBearerHttpClient:
 class TestIsTokenProvider:
     def test_callable_is_token_provider(self):
         from agent.azure_identity_adapter import is_token_provider
+
         assert is_token_provider(lambda: "x") is True
 
     def test_string_is_not_token_provider(self):
         from agent.azure_identity_adapter import is_token_provider
+
         assert is_token_provider("static-key") is False
         # ``str`` instances are technically callable in some edge cases
         # — confirm they're never classified as token providers.
@@ -252,6 +268,7 @@ class TestEntraIdentityConfig:
 
     def test_to_dict_round_trip(self):
         from agent.azure_identity_adapter import EntraIdentityConfig
+
         cfg = EntraIdentityConfig(
             scope="https://ai.azure.com/.default",
             exclude_interactive_browser=False,
@@ -261,6 +278,7 @@ class TestEntraIdentityConfig:
 
     def test_from_dict_handles_empty_strings(self):
         from agent.azure_identity_adapter import EntraIdentityConfig
+
         cfg = EntraIdentityConfig.from_dict({
             "scope": "",
             "client_id": None,
@@ -273,6 +291,7 @@ class TestEntraIdentityConfig:
         tenant_id / authority should not crash from_dict — those values
         are now read from AZURE_* env vars by azure-identity directly."""
         from agent.azure_identity_adapter import EntraIdentityConfig
+
         cfg = EntraIdentityConfig.from_dict({
             "tenant_id": "legacy-tenant",
             "authority": "https://login.partner.microsoftonline.cn",
@@ -285,11 +304,13 @@ class TestEntraIdentityConfig:
 
     def test_constructor_normalizes_empty_scope(self):
         from agent.azure_identity_adapter import EntraIdentityConfig
+
         cfg = EntraIdentityConfig(scope="")
         assert cfg.scope.endswith("/.default")
 
     def test_from_dict_default_scope_override(self):
         from agent.azure_identity_adapter import EntraIdentityConfig
+
         cfg = EntraIdentityConfig.from_dict(
             {"scope": ""},
             default_scope="https://custom.example/.default",
@@ -299,6 +320,7 @@ class TestEntraIdentityConfig:
     def test_dataclass_is_frozen(self):
         # Frozen dataclasses are hashable / safe to pass through caches.
         from agent.azure_identity_adapter import EntraIdentityConfig
+
         cfg = EntraIdentityConfig()
         with pytest.raises((AttributeError, Exception)):
             setattr(cfg, "scope", "mutated")
@@ -325,7 +347,9 @@ class _FakeAzureIdentity:
         self.last_credential_kwargs = kwargs
         self.credential_count += 1
         return SimpleNamespace(
-            get_token=lambda scope: SimpleNamespace(token="fake-jwt", expires_on=9999999999),
+            get_token=lambda scope: SimpleNamespace(
+                token="fake-jwt", expires_on=9999999999
+            ),
             kwargs=kwargs,
         )
 
@@ -352,6 +376,7 @@ def fake_azure_identity(monkeypatch):
     # patch that too to make sure tests never hit the real package's
     # singleton state.
     from agent import azure_identity_adapter as _adapter
+
     monkeypatch.setattr(_adapter, "_require_azure_identity", lambda: fake_module)
 
     return fake
@@ -365,6 +390,7 @@ class TestBuildCredential:
         flow through the standard ``AZURE_*`` env vars (read by
         azure-identity directly), not OpenAgents config kwargs."""
         from agent.azure_identity_adapter import EntraIdentityConfig, build_credential
+
         cred = build_credential(EntraIdentityConfig())
         kwargs = fake_azure_identity.last_credential_kwargs
         # Default config should produce empty kwargs — SDK uses its own
@@ -378,12 +404,14 @@ class TestBuildCredential:
         False. Without the opt-in we don't pass the kwarg at all (SDK
         default is True / browser excluded)."""
         from agent.azure_identity_adapter import EntraIdentityConfig, build_credential
+
         build_credential(EntraIdentityConfig(exclude_interactive_browser=False))
         kwargs = fake_azure_identity.last_credential_kwargs
         assert kwargs["exclude_interactive_browser_credential"] is False
 
     def test_credential_is_cached_per_config(self, fake_azure_identity):
         from agent.azure_identity_adapter import EntraIdentityConfig, build_credential
+
         cfg = EntraIdentityConfig(scope="s1")
         c1 = build_credential(cfg)
         c2 = build_credential(cfg)
@@ -392,6 +420,7 @@ class TestBuildCredential:
 
     def test_distinct_configs_get_distinct_credentials(self, fake_azure_identity):
         from agent.azure_identity_adapter import EntraIdentityConfig, build_credential
+
         c1 = build_credential(EntraIdentityConfig(scope="s1"))
         c2 = build_credential(EntraIdentityConfig(scope="s2"))
         assert c1 is not c2
@@ -403,6 +432,7 @@ class TestBuildCredential:
             build_credential,
             reset_credential_cache,
         )
+
         cfg = EntraIdentityConfig(scope="x")
         c1 = build_credential(cfg)
         reset_credential_cache()
@@ -413,6 +443,7 @@ class TestBuildCredential:
 class TestBuildTokenProvider:
     def test_returns_callable_for_scope(self, fake_azure_identity):
         from agent.azure_identity_adapter import build_token_provider
+
         provider = build_token_provider(scope="https://ai.azure.com/.default")
         assert callable(provider)
         assert provider() == "jwt-for-https://ai.azure.com/.default"
@@ -427,11 +458,13 @@ class TestBuildTokenProvider:
             SCOPE_AI_AZURE_DEFAULT,
             build_token_provider,
         )
+
         build_token_provider(base_url="https://r.openai.azure.com/openai/v1")
         assert fake_azure_identity.last_scope == SCOPE_AI_AZURE_DEFAULT
 
     def test_explicit_scope_wins_over_base_url(self, fake_azure_identity):
         from agent.azure_identity_adapter import build_token_provider
+
         build_token_provider(
             scope="https://override.example/.default",
             base_url="https://r.openai.azure.com/openai/v1",
@@ -443,6 +476,7 @@ class TestBuildTokenProvider:
             EntraIdentityConfig,
             build_token_provider,
         )
+
         cfg = EntraIdentityConfig(scope="cfg-scope")
         build_token_provider(scope="ignored", config=cfg)
         assert fake_azure_identity.last_scope == "cfg-scope"
@@ -462,7 +496,10 @@ class TestRequireAzureIdentityMissing:
         from agent import azure_identity_adapter as _adapter
 
         # Force the import path to fail.
-        original_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __import__
+        original_import = (
+            __builtins__["__import__"] if isinstance(__builtins__, dict) else __import__
+        )
+
         def _fake_import(name, *args, **kwargs):
             if name == "azure.identity" or name.startswith("azure.identity."):
                 raise ImportError("simulated missing azure-identity")
@@ -499,10 +536,15 @@ class TestRequireAzureIdentityMissing:
 class TestHasAzureIdentityCredentials:
     def test_returns_false_when_package_missing_and_install_disabled(self, monkeypatch):
         from agent import azure_identity_adapter as _adapter
+
         monkeypatch.setattr(_adapter, "has_azure_identity_installed", lambda: False)
-        assert _adapter.has_azure_identity_credentials(
-            "https://x/.default", allow_install=False,
-        ) is False
+        assert (
+            _adapter.has_azure_identity_credentials(
+                "https://x/.default",
+                allow_install=False,
+            )
+            is False
+        )
 
     def test_lazy_install_triggered_when_package_missing(self, monkeypatch):
         """With allow_install=True (default), the probe must trigger the
@@ -520,7 +562,9 @@ class TestHasAzureIdentityCredentials:
             return SimpleNamespace(
                 DefaultAzureCredential=lambda **kw: SimpleNamespace(
                     kwargs=kw,
-                    get_token=lambda scope: SimpleNamespace(token="post-install-jwt", expires_on=0),
+                    get_token=lambda scope: SimpleNamespace(
+                        token="post-install-jwt", expires_on=0
+                    ),
                 ),
                 get_bearer_token_provider=lambda c, s: lambda: "x",
             )
@@ -530,24 +574,31 @@ class TestHasAzureIdentityCredentials:
 
         # Provide a credential factory so the probe proceeds after install.
         monkeypatch.setattr(
-            _adapter, "build_credential",
+            _adapter,
+            "build_credential",
             lambda config: SimpleNamespace(
-                get_token=lambda scope: SimpleNamespace(token="probe-jwt", expires_on=0),
+                get_token=lambda scope: SimpleNamespace(
+                    token="probe-jwt", expires_on=0
+                ),
             ),
         )
 
         result = _adapter.has_azure_identity_credentials(
-            "https://x/.default", timeout_seconds=0.5,
+            "https://x/.default",
+            timeout_seconds=0.5,
         )
         assert installed["called"] is True, (
-            "has_azure_identity_credentials must trigger lazy install "
-            "before bailing"
+            "has_azure_identity_credentials must trigger lazy install before bailing"
         )
         assert result is True
 
     def test_returns_true_on_successful_token_mint(self, fake_azure_identity):
         from agent.azure_identity_adapter import has_azure_identity_credentials
-        assert has_azure_identity_credentials("https://x/.default", timeout_seconds=0.5) is True
+
+        assert (
+            has_azure_identity_credentials("https://x/.default", timeout_seconds=0.5)
+            is True
+        )
 
     def test_returns_false_when_get_token_raises(self, monkeypatch):
         from agent import azure_identity_adapter as _adapter
@@ -556,11 +607,17 @@ class TestHasAzureIdentityCredentials:
             class _Cred:
                 def get_token(self, scope):
                     raise RuntimeError("simulated chain exhaustion")
+
             return _Cred()
 
         monkeypatch.setattr(_adapter, "build_credential", _failing_credential)
         monkeypatch.setattr(_adapter, "has_azure_identity_installed", lambda: True)
-        assert _adapter.has_azure_identity_credentials("https://x/.default", timeout_seconds=0.5) is False
+        assert (
+            _adapter.has_azure_identity_credentials(
+                "https://x/.default", timeout_seconds=0.5
+            )
+            is False
+        )
 
     def test_returns_false_on_timeout(self, monkeypatch):
         """Slow IMDS / network must time out, not hang the caller."""
@@ -576,14 +633,18 @@ class TestHasAzureIdentityCredentials:
                     # adapter must give up via its thread-bounded probe.
                     slow_release.wait(timeout=10)
                     return SimpleNamespace(token="never-returned", expires_on=0)
+
             return _Cred()
 
         monkeypatch.setattr(_adapter, "build_credential", _slow_credential)
         monkeypatch.setattr(_adapter, "has_azure_identity_installed", lambda: True)
         try:
-            assert _adapter.has_azure_identity_credentials(
-                "https://x/.default", timeout_seconds=0.1
-            ) is False
+            assert (
+                _adapter.has_azure_identity_credentials(
+                    "https://x/.default", timeout_seconds=0.1
+                )
+                is False
+            )
         finally:
             slow_release.set()
 
@@ -596,9 +657,11 @@ class TestHasAzureIdentityCredentials:
 class TestDescribeActiveCredential:
     def test_reports_not_installed(self, monkeypatch):
         from agent import azure_identity_adapter as _adapter
+
         monkeypatch.setattr(_adapter, "has_azure_identity_installed", lambda: False)
         info = _adapter.describe_active_credential(
-            scope="https://x/.default", allow_install=False,
+            scope="https://x/.default",
+            allow_install=False,
         )
         assert info["ok"] is False
         assert "not installed" in info["error"].lower()
@@ -608,6 +671,7 @@ class TestDescribeActiveCredential:
         """When lazy install is allowed but fails (e.g. lazy installs
         disabled), the diagnostic surfaces the failure as the error."""
         from agent import azure_identity_adapter as _adapter
+
         monkeypatch.setattr(_adapter, "has_azure_identity_installed", lambda: False)
 
         def _fail_install():
@@ -615,33 +679,51 @@ class TestDescribeActiveCredential:
 
         monkeypatch.setattr(_adapter, "_require_azure_identity", _fail_install)
         info = _adapter.describe_active_credential(
-            scope="https://x/.default", allow_install=True,
+            scope="https://x/.default",
+            allow_install=True,
         )
         assert info["ok"] is False
         assert "lazy installs disabled" in info["error"]
         assert "lazy" in info["hint"].lower()
 
-    def test_reports_env_sources_for_managed_identity(self, fake_azure_identity, monkeypatch):
+    def test_reports_env_sources_for_managed_identity(
+        self, fake_azure_identity, monkeypatch
+    ):
         from agent.azure_identity_adapter import describe_active_credential
+
         monkeypatch.setenv("IDENTITY_ENDPOINT", "http://169.254.169.254")
-        info = describe_active_credential(scope="https://x/.default", timeout_seconds=0.5)
+        info = describe_active_credential(
+            scope="https://x/.default", timeout_seconds=0.5
+        )
         assert info["ok"] is True
         sources = info.get("env_sources") or []
         assert any("ManagedIdentity" in s for s in sources)
 
-    def test_reports_env_sources_for_workload_identity(self, fake_azure_identity, monkeypatch):
+    def test_reports_env_sources_for_workload_identity(
+        self, fake_azure_identity, monkeypatch
+    ):
         from agent.azure_identity_adapter import describe_active_credential
-        monkeypatch.setenv("AZURE_FEDERATED_TOKEN_FILE", "/var/secrets/azure/federated-token")
-        info = describe_active_credential(scope="https://x/.default", timeout_seconds=0.5)
+
+        monkeypatch.setenv(
+            "AZURE_FEDERATED_TOKEN_FILE", "/var/secrets/azure/federated-token"
+        )
+        info = describe_active_credential(
+            scope="https://x/.default", timeout_seconds=0.5
+        )
         sources = info.get("env_sources") or []
         assert any("WorkloadIdentity" in s for s in sources)
 
-    def test_reports_env_sources_for_service_principal(self, fake_azure_identity, monkeypatch):
+    def test_reports_env_sources_for_service_principal(
+        self, fake_azure_identity, monkeypatch
+    ):
         from agent.azure_identity_adapter import describe_active_credential
+
         monkeypatch.setenv("AZURE_TENANT_ID", "t")
         monkeypatch.setenv("AZURE_CLIENT_ID", "c")
         monkeypatch.setenv("AZURE_CLIENT_SECRET", "s")
-        info = describe_active_credential(scope="https://x/.default", timeout_seconds=0.5)
+        info = describe_active_credential(
+            scope="https://x/.default", timeout_seconds=0.5
+        )
         sources = info.get("env_sources") or []
         assert any("EnvironmentCredential" in s for s in sources)
 
@@ -652,10 +734,13 @@ class TestDescribeActiveCredential:
             class _Cred:
                 def get_token(self, scope):
                     raise RuntimeError("auth failed")
+
             return _Cred()
 
         monkeypatch.setattr(_adapter, "build_credential", _failing_credential)
         monkeypatch.setattr(_adapter, "has_azure_identity_installed", lambda: True)
-        info = _adapter.describe_active_credential(scope="https://x/.default", timeout_seconds=0.5)
+        info = _adapter.describe_active_credential(
+            scope="https://x/.default", timeout_seconds=0.5
+        )
         assert info["ok"] is False
         assert "auth failed" in info.get("error", "")

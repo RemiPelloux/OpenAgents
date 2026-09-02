@@ -6,7 +6,10 @@ import json
 import os
 from typing import Any, Dict
 
-from plugins.openpro_prospection.enrichment import analyze_tiktok_lead, filter_tiktok_leads
+from plugins.openpro_prospection.enrichment import (
+    analyze_tiktok_lead,
+    filter_tiktok_leads,
+)
 from plugins.openpro_prospection.openpro_client import (
     check_company_duplicate,
     create_job_post,
@@ -15,14 +18,18 @@ from plugins.openpro_prospection.openpro_client import (
     send_tiktok_dm,
 )
 from plugins.openpro_prospection.openteam_client import report_prospection_status
-from plugins.opencrm_sales.opencrm_client import check_account_duplicate as check_crm_account_duplicate
+from plugins.opencrm_sales.opencrm_client import (
+    check_account_duplicate as check_crm_account_duplicate,
+)
 from plugins.opencrm_sales.opencrm_client import upsert_from_prospection_lead
 
 CORRELATION_ENV = "PROSPECTION_CORRELATION_ID"
 
 
 def _corr(args: Dict[str, Any]) -> str | None:
-    return str(args.get("correlation_id") or os.environ.get(CORRELATION_ENV) or "") or None
+    return (
+        str(args.get("correlation_id") or os.environ.get(CORRELATION_ENV) or "") or None
+    )
 
 
 def check_openpro_prospection_available() -> bool:
@@ -71,7 +78,9 @@ def handle_provision_openpro_company(args: Dict[str, Any], **_: Any) -> str:
 
 def handle_create_job_post_with_media(args: Dict[str, Any], **_: Any) -> str:
     video_url = str(args.get("video_url") or "").strip()
-    recruiter_id = str(args.get("recruiter_id") or args.get("openpro_recruiter_id") or "").strip()
+    recruiter_id = str(
+        args.get("recruiter_id") or args.get("openpro_recruiter_id") or ""
+    ).strip()
     title = str(args.get("title") or "Offre recrutée depuis TikTok").strip()
     if not video_url or not recruiter_id:
         return "Error: video_url and recruiter_id are required"

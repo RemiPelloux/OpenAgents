@@ -61,17 +61,20 @@ def strip_interrupted_tool_tails(
                 tool_results.append(agent_history[j])
                 j += 1
             if tool_results and any(
-                is_interrupted_tool_result(m.get("content", ""))
-                for m in tool_results
+                is_interrupted_tool_result(m.get("content", "")) for m in tool_results
             ):
                 logger.debug(
                     "Stripping interrupted assistant→tool replay block "
                     "(indices %d–%d, tool_results=%d)",
-                    i, j - 1, len(tool_results),
+                    i,
+                    j - 1,
+                    len(tool_results),
                 )
                 i = j
                 continue
-        if msg.get("role") == "tool" and is_interrupted_tool_result(msg.get("content", "")):
+        if msg.get("role") == "tool" and is_interrupted_tool_result(
+            msg.get("content", "")
+        ):
             logger.debug("Stripping orphan interrupted tool result from replay history")
             i += 1
             continue

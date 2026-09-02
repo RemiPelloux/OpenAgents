@@ -21,7 +21,7 @@ from tools.environments.local import (
 class TestResolveShellInitFiles:
     def test_auto_sources_bashrc_when_present(self, tmp_path, monkeypatch):
         bashrc = tmp_path / ".bashrc"
-        bashrc.write_text('export MARKER=seen\n')
+        bashrc.write_text("export MARKER=seen\n")
         monkeypatch.setenv("HOME", str(tmp_path))
 
         # Default config: auto_source_bashrc on, no explicit list.
@@ -52,7 +52,7 @@ class TestResolveShellInitFiles:
 
     def test_auto_sources_bash_profile_when_present(self, tmp_path, monkeypatch):
         bash_profile = tmp_path / ".bash_profile"
-        bash_profile.write_text('export MARKER=bp\n')
+        bash_profile.write_text("export MARKER=bp\n")
         monkeypatch.setenv("HOME", str(tmp_path))
 
         with patch(
@@ -69,11 +69,11 @@ class TestResolveShellInitFiles:
         non-interactive ``case $- in *i*) ;; *) return;; esac`` guard.
         """
         profile = tmp_path / ".profile"
-        profile.write_text('export FROM_PROFILE=1\n')
+        profile.write_text("export FROM_PROFILE=1\n")
         bash_profile = tmp_path / ".bash_profile"
-        bash_profile.write_text('export FROM_BASH_PROFILE=1\n')
+        bash_profile.write_text("export FROM_BASH_PROFILE=1\n")
         bashrc = tmp_path / ".bashrc"
-        bashrc.write_text('export FROM_BASHRC=1\n')
+        bashrc.write_text("export FROM_BASHRC=1\n")
         monkeypatch.setenv("HOME", str(tmp_path))
 
         with patch(
@@ -98,9 +98,9 @@ class TestResolveShellInitFiles:
 
     def test_auto_source_bashrc_off_suppresses_default(self, tmp_path, monkeypatch):
         bashrc = tmp_path / ".bashrc"
-        bashrc.write_text('export MARKER=seen\n')
+        bashrc.write_text("export MARKER=seen\n")
         profile = tmp_path / ".profile"
-        profile.write_text('export MARKER=p\n')
+        profile.write_text("export MARKER=p\n")
         monkeypatch.setenv("HOME", str(tmp_path))
 
         with patch(
@@ -113,9 +113,9 @@ class TestResolveShellInitFiles:
 
     def test_explicit_list_wins_over_auto(self, tmp_path, monkeypatch):
         bashrc = tmp_path / ".bashrc"
-        bashrc.write_text('export FROM_BASHRC=1\n')
+        bashrc.write_text("export FROM_BASHRC=1\n")
         custom = tmp_path / "custom.sh"
-        custom.write_text('export FROM_CUSTOM=1\n')
+        custom.write_text("export FROM_CUSTOM=1\n")
         monkeypatch.setenv("HOME", str(tmp_path))
 
         # auto_source_bashrc stays True but the explicit list takes precedence.
@@ -131,7 +131,7 @@ class TestResolveShellInitFiles:
     def test_expands_home_and_env_vars(self, tmp_path, monkeypatch):
         target = tmp_path / "rc" / "custom.sh"
         target.parent.mkdir()
-        target.write_text('export A=1\n')
+        target.write_text("export A=1\n")
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.setenv("CUSTOM_RC_DIR", str(tmp_path / "rc"))
 
@@ -277,16 +277,15 @@ class TestSnapshotEndToEnd:
 
         profile = tmp_path / ".profile"
         profile.write_text(
-            f'export PATH="{fake_n_bin}:$PATH"\n'
-            'export FROM_PROFILE=profile-ok\n'
+            f'export PATH="{fake_n_bin}:$PATH"\nexport FROM_PROFILE=profile-ok\n'
         )
         bashrc = tmp_path / ".bashrc"
         bashrc.write_text(
-            'case $- in\n'
-            '    *i*) ;;\n'
-            '      *) return;;\n'
-            'esac\n'
-            'export FROM_BASHRC=bashrc-should-not-appear\n'
+            "case $- in\n"
+            "    *i*) ;;\n"
+            "      *) return;;\n"
+            "esac\n"
+            "export FROM_BASHRC=bashrc-should-not-appear\n"
         )
 
         monkeypatch.setenv("HOME", str(tmp_path))

@@ -40,15 +40,19 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 try:
     from openagents_constants import get_openagents_home
 except ImportError:
+
     def get_openagents_home() -> Path:  # type: ignore[misc]
         val = (os.environ.get("OPENAGENTS_HOME") or "").strip()
         return Path(val) if val else Path.home() / ".hermes"
+
 
 DEFAULT_TUI_DIR = Path(
     os.environ.get("HERMES_TUI_DIR")
     or str(Path(__file__).resolve().parent.parent / "ui-tui")
 )
-DEFAULT_LOG = Path(os.environ.get("HERMES_PERF_LOG", str(get_openagents_home() / "perf.log")))
+DEFAULT_LOG = Path(
+    os.environ.get("HERMES_PERF_LOG", str(get_openagents_home() / "perf.log"))
+)
 DEFAULT_STATE_DB = get_openagents_home() / "state.db"
 
 # Keystroke escape sequences.  Matches what xterm/VT220 send when the
@@ -56,7 +60,7 @@ DEFAULT_STATE_DB = get_openagents_home() / "state.db"
 KEYS = {
     "page_up": b"\x1b[5~",
     "page_down": b"\x1b[6~",
-    "wheel_up": b"\x1b[M`!!",      # mouse wheel up (SGR-less) — best-effort
+    "wheel_up": b"\x1b[M`!!",  # mouse wheel up (SGR-less) — best-effort
     "shift_up": b"\x1b[1;2A",
     "shift_down": b"\x1b[1;2B",
 }
@@ -156,11 +160,13 @@ def format_report(data: dict[str, Any]) -> str:
         by_id: dict[str, list[float]] = {}
         for r in react:
             by_id.setdefault(r["id"], []).append(r["actualMs"])
-        out.append(f"  {'pane':<14} {'count':>6} {'p50':>8} {'p95':>8} {'p99':>8} {'max':>8}")
+        out.append(
+            f"  {'pane':<14} {'count':>6} {'p50':>8} {'p95':>8} {'p99':>8} {'max':>8}"
+        )
         for pid, ms in sorted(by_id.items(), key=lambda kv: -pct(kv[1], 0.99)):
             out.append(
-                f"  {pid:<14} {len(ms):>6} {pct(ms,0.50):>8.2f} {pct(ms,0.95):>8.2f} "
-                f"{pct(ms,0.99):>8.2f} {max(ms):>8.2f}"
+                f"  {pid:<14} {len(ms):>6} {pct(ms, 0.50):>8.2f} {pct(ms, 0.95):>8.2f} "
+                f"{pct(ms, 0.99):>8.2f} {max(ms):>8.2f}"
             )
 
     out.append("")
@@ -172,44 +178,49 @@ def format_report(data: dict[str, Any]) -> str:
         phases_present = any(f.get("phases") for f in frames)
         out.append(f"  frames captured: {len(frames)}")
         out.append(
-            f"  durationMs  p50={pct(dur,0.50):.2f}  p95={pct(dur,0.95):.2f}  "
-            f"p99={pct(dur,0.99):.2f}  max={max(dur):.2f}"
+            f"  durationMs  p50={pct(dur, 0.50):.2f}  p95={pct(dur, 0.95):.2f}  "
+            f"p99={pct(dur, 0.99):.2f}  max={max(dur):.2f}"
         )
         # Effective FPS during the run: frames / elapsed seconds.
         ts = sorted(f["ts"] for f in frames)
         if len(ts) >= 2:
             elapsed_s = (ts[-1] - ts[0]) / 1000.0
             fps = len(frames) / elapsed_s if elapsed_s > 0 else float("inf")
-            out.append(f"  throughput: {len(frames)} frames / {elapsed_s:.2f}s = {fps:.1f} fps")
+            out.append(
+                f"  throughput: {len(frames)} frames / {elapsed_s:.2f}s = {fps:.1f} fps"
+            )
 
         if phases_present:
             fields = ["yoga", "renderer", "diff", "optimize", "write", "commit"]
             out.append("")
-            out.append(f"  {'phase':<10} {'p50':>8} {'p95':>8} {'p99':>8} {'max':>8}   (ms)")
+            out.append(
+                f"  {'phase':<10} {'p50':>8} {'p95':>8} {'p99':>8} {'max':>8}   (ms)"
+            )
             for field in fields:
                 vals = [f["phases"][field] for f in frames if f.get("phases")]
                 if vals:
                     out.append(
-                        f"  {field:<10} {pct(vals,0.50):>8.2f} {pct(vals,0.95):>8.2f} "
-                        f"{pct(vals,0.99):>8.2f} {max(vals):>8.2f}"
+                        f"  {field:<10} {pct(vals, 0.50):>8.2f} {pct(vals, 0.95):>8.2f} "
+                        f"{pct(vals, 0.99):>8.2f} {max(vals):>8.2f}"
                     )
             # Derived: sum of phases vs durationMs (reveals hidden time).
             sum_ps = [
-                sum(f["phases"][k] for k in fields)
-                for f in frames if f.get("phases")
+                sum(f["phases"][k] for k in fields) for f in frames if f.get("phases")
             ]
             if sum_ps:
                 dur_match = [f["durationMs"] for f in frames if f.get("phases")]
                 deltas = [d - s for d, s in zip(dur_match, sum_ps)]
                 out.append(
-                    f"  {'dur-Σphases':<10} {pct(deltas,0.50):>8.2f} {pct(deltas,0.95):>8.2f} "
-                    f"{pct(deltas,0.99):>8.2f} {max(deltas):>8.2f}   (unaccounted-for time)"
+                    f"  {'dur-Σphases':<10} {pct(deltas, 0.50):>8.2f} {pct(deltas, 0.95):>8.2f} "
+                    f"{pct(deltas, 0.99):>8.2f} {max(deltas):>8.2f}   (unaccounted-for time)"
                 )
 
             # Yoga counters
             visited = [f["phases"]["yogaVisited"] for f in frames if f.get("phases")]
             measured = [f["phases"]["yogaMeasured"] for f in frames if f.get("phases")]
-            cache_hits = [f["phases"]["yogaCacheHits"] for f in frames if f.get("phases")]
+            cache_hits = [
+                f["phases"]["yogaCacheHits"] for f in frames if f.get("phases")
+            ]
             live = [f["phases"]["yogaLive"] for f in frames if f.get("phases")]
             out.append("")
             out.append("  Yoga counters (per frame):")
@@ -220,53 +231,58 @@ def format_report(data: dict[str, Any]) -> str:
                 ("live", live),
             ):
                 if vals:
-                    out.append(f"    {name:<11} p50={pct(vals,0.5):.0f}  p99={pct(vals,0.99):.0f}  max={max(vals)}")
+                    out.append(
+                        f"    {name:<11} p50={pct(vals, 0.5):.0f}  p99={pct(vals, 0.99):.0f}  max={max(vals)}"
+                    )
 
             # Patch counts — proxy for "how much changed each frame"
             patches = [f["phases"]["patches"] for f in frames if f.get("phases")]
             if patches:
                 out.append(
-                    f"  patches     p50={pct(patches,0.5):.0f}  p99={pct(patches,0.99):.0f}  "
+                    f"  patches     p50={pct(patches, 0.5):.0f}  p99={pct(patches, 0.99):.0f}  "
                     f"max={max(patches)}  total={sum(patches)}"
                 )
             optimized = [
                 f["phases"].get("optimizedPatches", 0)
-                for f in frames if f.get("phases")
+                for f in frames
+                if f.get("phases")
             ]
             if any(optimized):
                 out.append(
-                    f"  optimized   p50={pct(optimized,0.5):.0f}  p99={pct(optimized,0.99):.0f}  "
+                    f"  optimized   p50={pct(optimized, 0.5):.0f}  p99={pct(optimized, 0.99):.0f}  "
                     f"max={max(optimized)}  total={sum(optimized)}"
-                    f"  (ratio: {sum(optimized)/max(1,sum(patches)):.2f})"
+                    f"  (ratio: {sum(optimized) / max(1, sum(patches)):.2f})"
                 )
 
             # Write bytes + drain telemetry — the outer-terminal bottleneck gauge.
             bytes_written = [
-                f["phases"].get("writeBytes", 0)
-                for f in frames if f.get("phases")
+                f["phases"].get("writeBytes", 0) for f in frames if f.get("phases")
             ]
             if any(bytes_written):
                 total_b = sum(bytes_written)
                 kb = total_b / 1024
                 out.append(
-                    f"  writeBytes  p50={pct(bytes_written,0.5):.0f}B  p99={pct(bytes_written,0.99):.0f}B  "
+                    f"  writeBytes  p50={pct(bytes_written, 0.5):.0f}B  p99={pct(bytes_written, 0.99):.0f}B  "
                     f"max={max(bytes_written)}B  total={kb:.1f}KB"
                 )
             drains = [
                 f["phases"].get("prevFrameDrainMs", 0)
-                for f in frames if f.get("phases")
+                for f in frames
+                if f.get("phases")
             ]
             if any(d > 0 for d in drains):
                 nonzero = [d for d in drains if d > 0]
                 out.append(
-                    f"  drainMs     p50={pct(nonzero,0.5):.2f}  p95={pct(nonzero,0.95):.2f}  "
-                    f"p99={pct(nonzero,0.99):.2f}  max={max(nonzero):.2f}   (terminal flush latency)"
+                    f"  drainMs     p50={pct(nonzero, 0.5):.2f}  p95={pct(nonzero, 0.95):.2f}  "
+                    f"p99={pct(nonzero, 0.99):.2f}  max={max(nonzero):.2f}   (terminal flush latency)"
                 )
-            backpressure = sum(1 for f in frames if f.get("phases", {}).get("backpressure"))
+            backpressure = sum(
+                1 for f in frames if f.get("phases", {}).get("backpressure")
+            )
             if backpressure:
                 out.append(
                     f"  backpressure: {backpressure}/{len(frames)} frames "
-                    f"({100*backpressure/len(frames):.0f}%)   (Node stdout buffer full — terminal slow)"
+                    f"({100 * backpressure / len(frames):.0f}%)   (Node stdout buffer full — terminal slow)"
                 )
 
         # Flickers
@@ -334,8 +350,7 @@ def key_metrics(data: dict[str, Any]) -> dict[str, float]:
             metrics["writeBytes_total"] = sum(bytes_list)
 
         drains = [
-            f["phases"].get("prevFrameDrainMs", 0)
-            for f in frames if f.get("phases")
+            f["phases"].get("prevFrameDrainMs", 0) for f in frames if f.get("phases")
         ]
         drain_nonzero = [d for d in drains if d > 0]
         if drain_nonzero:
@@ -363,7 +378,9 @@ def format_diff(before: dict[str, float], after: dict[str, float]) -> str:
         b = before.get(k, 0.0)
         a = after.get(k, 0.0)
         d = a - b
-        pct_change = ((a / b) - 1) * 100 if b not in {0, 0.0} else float("inf") if a else 0
+        pct_change = (
+            ((a / b) - 1) * 100 if b not in {0, 0.0} else float("inf") if a else 0
+        )
 
         # Flag improvements vs regressions. For _p99 / _max / _total / gaps_over /
         # patches / writeBytes / backpressure, LOWER is better.  For fps / gaps_under,
@@ -395,9 +412,7 @@ def format_diff(before: dict[str, float], after: dict[str, float]) -> str:
             mark = "↓"  # regression
 
         pct_str = "—" if pct_change == float("inf") else f"{pct_change:+6.1f}%"
-        lines.append(
-            f"{k:<28} {b:>12.2f} {a:>12.2f} {d:>+12.2f}  {pct_str} {mark}"
-        )
+        lines.append(f"{k:<28} {b:>12.2f} {a:>12.2f} {d:>+12.2f}  {pct_str} {mark}")
 
     return "\n".join(lines)
 
@@ -410,7 +425,9 @@ def run_once(args: argparse.Namespace) -> dict[str, Any]:
 
     sid = args.session or pick_longest_session(DEFAULT_STATE_DB)
     print(f"• session: {sid}")
-    print(f"• hold: {args.hold} x {args.rate}Hz for {args.seconds}s after {args.warmup}s warmup")
+    print(
+        f"• hold: {args.hold} x {args.rate}Hz for {args.seconds}s after {args.warmup}s warmup"
+    )
     print(f"• terminal: {args.cols}x{args.rows}")
 
     log = Path(args.log)
@@ -439,6 +456,7 @@ def run_once(args: argparse.Namespace) -> dict[str, Any]:
 
     try:
         import fcntl, struct, termios
+
         winsize = struct.pack("HHHH", args.rows, args.cols, 0, 0)
         fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
 
@@ -460,7 +478,9 @@ def run_once(args: argparse.Namespace) -> dict[str, Any]:
                     break
                 time.sleep(0.1)
             else:
-                os.kill(pid, signal.SIGKILL)  # windows-footgun: ok — POSIX-only script (imports pty at top)
+                os.kill(
+                    pid, signal.SIGKILL
+                )  # windows-footgun: ok — POSIX-only script (imports pty at top)
                 os.waitpid(pid, 0)
         except (ProcessLookupError, ChildProcessError):
             pass
@@ -476,24 +496,54 @@ def run_once(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--session", help="session id to resume (default: longest in db)")
-    p.add_argument("--hold", default="page_up", choices=sorted(KEYS.keys()), help="key to hold")
-    p.add_argument("--seconds", type=float, default=8.0, help="how long to hold the key")
+    p.add_argument(
+        "--hold", default="page_up", choices=sorted(KEYS.keys()), help="key to hold"
+    )
+    p.add_argument(
+        "--seconds", type=float, default=8.0, help="how long to hold the key"
+    )
     p.add_argument("--rate", type=int, default=30, help="keystrokes per second")
-    p.add_argument("--warmup", type=float, default=3.0, help="seconds to wait after launch before input")
-    p.add_argument("--threshold-ms", type=float, default=0.0, help="HERMES_DEV_PERF_MS (0 = capture all)")
+    p.add_argument(
+        "--warmup",
+        type=float,
+        default=3.0,
+        help="seconds to wait after launch before input",
+    )
+    p.add_argument(
+        "--threshold-ms",
+        type=float,
+        default=0.0,
+        help="HERMES_DEV_PERF_MS (0 = capture all)",
+    )
     p.add_argument("--cols", type=int, default=120)
     p.add_argument("--rows", type=int, default=40)
-    p.add_argument("--keep-log", action="store_true", help="don't wipe perf.log before run")
+    p.add_argument(
+        "--keep-log", action="store_true", help="don't wipe perf.log before run"
+    )
     p.add_argument("--tui-dir", default=str(DEFAULT_TUI_DIR))
     p.add_argument("--log", default=str(DEFAULT_LOG))
-    p.add_argument("--save", metavar="LABEL",
-                   help="save the final metrics as /tmp/perf-<LABEL>.json for later --compare")
-    p.add_argument("--compare", metavar="LABEL",
-                   help="diff against /tmp/perf-<LABEL>.json after running")
-    p.add_argument("--loop", action="store_true",
-                   help="watch for source changes, rebuild, rerun, and diff vs previous run")
-    p.add_argument("--extra-flag", dest="extra_flags", action="append", default=[],
-                   help="pass through to node dist/entry.js (repeatable)")
+    p.add_argument(
+        "--save",
+        metavar="LABEL",
+        help="save the final metrics as /tmp/perf-<LABEL>.json for later --compare",
+    )
+    p.add_argument(
+        "--compare",
+        metavar="LABEL",
+        help="diff against /tmp/perf-<LABEL>.json after running",
+    )
+    p.add_argument(
+        "--loop",
+        action="store_true",
+        help="watch for source changes, rebuild, rerun, and diff vs previous run",
+    )
+    p.add_argument(
+        "--extra-flag",
+        dest="extra_flags",
+        action="append",
+        default=[],
+        help="pass through to node dist/entry.js (repeatable)",
+    )
     args = p.parse_args()
 
     if args.loop:
@@ -608,9 +658,7 @@ def wait_for_change(prev: dict[str, float], collect) -> dict[str, float]:
         time.sleep(1)
         current = collect()
 
-        changed = [
-            path for path, mtime in current.items() if prev.get(path) != mtime
-        ]
+        changed = [path for path, mtime in current.items() if prev.get(path) != mtime]
 
         if changed:
             print(f"  ↻ {len(changed)} file(s) changed:")

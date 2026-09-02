@@ -114,7 +114,9 @@ class TestTopLevelCwdAlias:
 
     def test_no_cwd_falls_back_to_messaging_cwd(self):
         cfg = {}
-        result = _simulate_config_bridge(cfg, {"MESSAGING_CWD": "/home/hermes/projects"})
+        result = _simulate_config_bridge(
+            cfg, {"MESSAGING_CWD": "/home/hermes/projects"}
+        )
         assert result["TERMINAL_CWD"] == "/home/hermes/projects"
 
     def test_no_cwd_no_messaging_cwd_falls_back_to_home(self):
@@ -152,7 +154,9 @@ class TestTopLevelCwdAlias:
     def test_messaging_cwd_env_var_works(self):
         """MESSAGING_CWD in initial env should be picked up as fallback."""
         cfg = {}
-        result = _simulate_config_bridge(cfg, {"MESSAGING_CWD": "/home/hermes/projects"})
+        result = _simulate_config_bridge(
+            cfg, {"MESSAGING_CWD": "/home/hermes/projects"}
+        )
         assert result["TERMINAL_CWD"] == "/home/hermes/projects"
 
     def test_top_level_cwd_beats_messaging_cwd(self):
@@ -202,10 +206,13 @@ class TestNestedTerminalCwdPlaceholderSkip:
     def test_terminal_dot_cwd_and_messaging_cwd_both_set(self):
         """Pre-set TERMINAL_CWD from .env wins over terminal.cwd: '.'."""
         cfg = {"terminal": {"cwd": ".", "backend": "local"}}
-        result = _simulate_config_bridge(cfg, {
-            "TERMINAL_CWD": "/my/project",
-            "MESSAGING_CWD": "/fallback",
-        })
+        result = _simulate_config_bridge(
+            cfg,
+            {
+                "TERMINAL_CWD": "/my/project",
+                "MESSAGING_CWD": "/fallback",
+            },
+        )
         assert result["TERMINAL_CWD"] == "/my/project"
 
     def test_non_cwd_terminal_keys_still_bridge(self):

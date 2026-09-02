@@ -32,12 +32,11 @@ class TestGoogleWorkspaceCredentialFiles:
         content = SKILL_MD.read_text(encoding="utf-8")
         fm = _parse_frontmatter(content)
         entries = fm.get("required_credential_files")
-        assert entries, "required_credential_files missing from google-workspace SKILL.md"
+        assert entries, (
+            "required_credential_files missing from google-workspace SKILL.md"
+        )
         assert isinstance(entries, list), "required_credential_files must be a list"
-        paths = {
-            (e["path"] if isinstance(e, dict) else e)
-            for e in entries
-        }
+        paths = {(e["path"] if isinstance(e, dict) else e) for e in entries}
         assert _EXPECTED_PATHS <= paths, (
             f"Missing entries in required_credential_files: {_EXPECTED_PATHS - paths}"
         )

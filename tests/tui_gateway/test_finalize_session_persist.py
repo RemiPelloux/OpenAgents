@@ -76,7 +76,9 @@ class TestFinalizeSessionPersist:
         called_with = agent._persist_session.call_args[0][0]
         assert called_with == history
         # conversation_history kwarg passed for correct flush indexing
-        assert agent._persist_session.call_args[1].get("conversation_history") == history
+        assert (
+            agent._persist_session.call_args[1].get("conversation_history") == history
+        )
 
     def test_persist_uses_session_messages_when_available(self):
         """agent._session_messages takes priority over session['history']."""
@@ -96,7 +98,9 @@ class TestFinalizeSessionPersist:
         agent._persist_session.assert_called_once()
         called_with = agent._persist_session.call_args[0][0]
         assert called_with == session_msgs  # _session_messages wins
-        assert agent._persist_session.call_args[1].get("conversation_history") == history
+        assert (
+            agent._persist_session.call_args[1].get("conversation_history") == history
+        )
 
     def test_commit_memory_still_called(self):
         """Existing memory commit path is preserved."""
@@ -195,7 +199,9 @@ class TestOnSessionEndHook:
         agent = _make_agent(session_id="hook_test_001")
         agent.model = "claude-sonnet-4"
         agent.platform = "tui"
-        session = _make_session(agent=agent, history=[{"role": "user", "content": "test"}])
+        session = _make_session(
+            agent=agent, history=[{"role": "user", "content": "test"}]
+        )
 
         _finalize_session(session, end_reason="tui_close")
 

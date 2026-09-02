@@ -61,7 +61,7 @@ class Component:
     name: str
     version: str
     ecosystem: str  # "PyPI" | "npm" — exactly as OSV expects
-    source: str    # human-readable origin, e.g. "venv", "plugin:foo", "mcp:bar"
+    source: str  # human-readable origin, e.g. "venv", "plugin:foo", "mcp:bar"
 
 
 @dataclass
@@ -99,7 +99,9 @@ def _discover_venv() -> list[Component]:
         if key in seen:
             continue
         seen.add(key)
-        out.append(Component(name=name, version=version, ecosystem="PyPI", source="venv"))
+        out.append(
+            Component(name=name, version=version, ecosystem="PyPI", source="venv")
+        )
     return out
 
 
@@ -184,19 +186,31 @@ def _discover_plugins(hermes_home: Path) -> list[Component]:
             path = plugin_dir / req_file
             if path.is_file():
                 try:
-                    pins = _parse_requirements(path.read_text(encoding="utf-8", errors="replace"))
+                    pins = _parse_requirements(
+                        path.read_text(encoding="utf-8", errors="replace")
+                    )
                 except OSError:
                     continue
                 for name, version in pins:
-                    out.append(Component(name=name, version=version, ecosystem="PyPI", source=source))
+                    out.append(
+                        Component(
+                            name=name, version=version, ecosystem="PyPI", source=source
+                        )
+                    )
         pyproject = plugin_dir / "pyproject.toml"
         if pyproject.is_file():
             try:
-                pins = _parse_pyproject_pins(pyproject.read_text(encoding="utf-8", errors="replace"))
+                pins = _parse_pyproject_pins(
+                    pyproject.read_text(encoding="utf-8", errors="replace")
+                )
             except OSError:
                 continue
             for name, version in pins:
-                out.append(Component(name=name, version=version, ecosystem="PyPI", source=source))
+                out.append(
+                    Component(
+                        name=name, version=version, ecosystem="PyPI", source=source
+                    )
+                )
     return out
 
 
@@ -206,14 +220,18 @@ def _discover_plugins(hermes_home: Path) -> list[Component]:
 #   npx pkg@1.2.3 [...args]
 # We deliberately don't try to resolve unversioned names — that maps to
 # "latest" at runtime and isn't a stable audit subject.
-_NPX_PKG = re.compile(r"^(@[A-Za-z0-9._-]+/[A-Za-z0-9._-]+|[A-Za-z0-9._-]+)@([A-Za-z0-9._+-]+)$")
+_NPX_PKG = re.compile(
+    r"^(@[A-Za-z0-9._-]+/[A-Za-z0-9._-]+|[A-Za-z0-9._-]+)@([A-Za-z0-9._+-]+)$"
+)
 # uvx forms:
 #   uvx pkg==1.2.3
 #   uvx --with pkg==1.2.3 entrypoint
 _UVX_PKG = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([A-Za-z0-9._+!-]+)$")
 
 
-def _extract_mcp_component(server_name: str, command: str, args: list[str]) -> Optional[Component]:
+def _extract_mcp_component(
+    server_name: str, command: str, args: list[str]
+) -> Optional[Component]:
     """Best-effort: parse `command/args` into a (name, version, ecosystem).
 
     Returns None when the entry doesn't pin a version we can audit (local
@@ -306,7 +324,7 @@ def _osv_query_batch(components: list[Component]) -> dict[Component, list[str]]:
         return {}
     findings: dict[Component, list[str]] = {}
     for chunk_start in range(0, len(components), OSV_BATCH_MAX):
-        chunk = components[chunk_start:chunk_start + OSV_BATCH_MAX]
+        chunk = components[chunk_start : chunk_start + OSV_BATCH_MAX]
         payload = {
             "queries": [
                 {
@@ -542,12 +560,21 @@ def cmd_security_audit(args: argparse.Namespace) -> int:
         return 2
 
     total = _count_components(
-        skip_venv=skip_venv, skip_plugins=skip_plugins, skip_mcp=skip_mcp, hermes_home=home
+        skip_venv=skip_venv,
+        skip_plugins=skip_plugins,
+        skip_mcp=skip_mcp,
+        hermes_home=home,
     )
     if total == 0:
         msg = "No components discovered (everything skipped, or empty environment)."
         if output_json:
-            print(json.dumps({"total_components_scanned": 0, "finding_count": 0, "findings": []}))
+            print(
+                json.dumps({
+                    "total_components_scanned": 0,
+                    "finding_count": 0,
+                    "findings": [],
+                })
+            )
         else:
             print(msg)
         return 0

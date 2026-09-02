@@ -12,19 +12,27 @@ from openagentui.schema import WorkflowExecution, WorkflowNode
 
 def _ctx(node_type: str, data: dict, variables: dict | None = None) -> NodeContext:
     node = WorkflowNode(id="n1", type=node_type, data=data)
-    execution = WorkflowExecution(id="exec1", workflow_id="wf1", variables=dict(variables or {}))
+    execution = WorkflowExecution(
+        id="exec1", workflow_id="wf1", variables=dict(variables or {})
+    )
     return NodeContext(node=node, execution=execution)
 
 
 def test_start_seeds_default_variables():
-    ctx = _ctx("start", {"inputVariables": [{"name": "greeting", "defaultValue": "hi"}]})
+    ctx = _ctx(
+        "start", {"inputVariables": [{"name": "greeting", "defaultValue": "hi"}]}
+    )
     result = execute_start(ctx)
     assert result.status == "completed"
     assert ctx.execution.variables["greeting"] == "hi"
 
 
 def test_start_keeps_supplied_runtime_input():
-    ctx = _ctx("start", {"inputVariables": [{"name": "greeting", "defaultValue": "hi"}]}, {"greeting": "yo"})
+    ctx = _ctx(
+        "start",
+        {"inputVariables": [{"name": "greeting", "defaultValue": "hi"}]},
+        {"greeting": "yo"},
+    )
     execute_start(ctx)
     assert ctx.execution.variables["greeting"] == "yo"
 
@@ -37,7 +45,9 @@ def test_start_missing_required_variable_fails():
 
 
 def test_end_uses_output_mapping_with_templating():
-    ctx = _ctx("end", {"outputMapping": {"final": "{{ greeting }}"}}, {"greeting": "hi"})
+    ctx = _ctx(
+        "end", {"outputMapping": {"final": "{{ greeting }}"}}, {"greeting": "hi"}
+    )
     result = execute_end(ctx)
     assert result.output == {"final": "hi"}
 

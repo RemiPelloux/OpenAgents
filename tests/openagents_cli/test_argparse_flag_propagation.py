@@ -28,8 +28,13 @@ def _build_parser():
     parser = argparse.ArgumentParser(prog="openagents")
     parser.add_argument("--resume", "-r", metavar="SESSION", default=None)
     parser.add_argument(
-        "--continue", "-c", dest="continue_last", nargs="?",
-        const=True, default=None, metavar="SESSION_NAME",
+        "--continue",
+        "-c",
+        dest="continue_last",
+        nargs="?",
+        const=True,
+        default=None,
+        metavar="SESSION_NAME",
     )
     parser.add_argument("--worktree", "-w", action="store_true", default=False)
     parser.add_argument("--skills", "-s", action="append", default=None)
@@ -39,19 +44,23 @@ def _build_parser():
     subparsers = parser.add_subparsers(dest="command")
     chat = subparsers.add_parser("chat")
     # These MUST use argparse.SUPPRESS to avoid overwriting parent values
-    chat.add_argument("--yolo", action="store_true",
-                      default=argparse.SUPPRESS)
-    chat.add_argument("--worktree", "-w", action="store_true",
-                      default=argparse.SUPPRESS)
-    chat.add_argument("--skills", "-s", action="append",
-                      default=argparse.SUPPRESS)
-    chat.add_argument("--pass-session-id", action="store_true",
-                      default=argparse.SUPPRESS)
-    chat.add_argument("--resume", "-r", metavar="SESSION_ID",
-                      default=argparse.SUPPRESS)
+    chat.add_argument("--yolo", action="store_true", default=argparse.SUPPRESS)
     chat.add_argument(
-        "--continue", "-c", dest="continue_last", nargs="?",
-        const=True, default=argparse.SUPPRESS, metavar="SESSION_NAME",
+        "--worktree", "-w", action="store_true", default=argparse.SUPPRESS
+    )
+    chat.add_argument("--skills", "-s", action="append", default=argparse.SUPPRESS)
+    chat.add_argument(
+        "--pass-session-id", action="store_true", default=argparse.SUPPRESS
+    )
+    chat.add_argument("--resume", "-r", metavar="SESSION_ID", default=argparse.SUPPRESS)
+    chat.add_argument(
+        "--continue",
+        "-c",
+        dest="continue_last",
+        nargs="?",
+        const=True,
+        default=argparse.SUPPRESS,
+        metavar="SESSION_NAME",
     )
     return parser
 
@@ -153,23 +162,27 @@ class TestAcceptHooksOnAgentSubparsers:
     parser and `chat`, so `hermes gateway run --accept-hooks` failed
     with `unrecognized arguments`."""
 
-    @pytest.mark.parametrize("argv", [
-        ["--accept-hooks", "gateway", "run", "--help"],
-        ["gateway", "--accept-hooks", "run", "--help"],
-        ["gateway", "run", "--accept-hooks", "--help"],
-        ["--accept-hooks", "cron", "tick", "--help"],
-        ["cron", "--accept-hooks", "tick", "--help"],
-        ["cron", "tick", "--accept-hooks", "--help"],
-        ["cron", "run", "--accept-hooks", "dummy-id", "--help"],
-        ["--accept-hooks", "mcp", "serve", "--help"],
-        ["mcp", "--accept-hooks", "serve", "--help"],
-        ["mcp", "serve", "--accept-hooks", "--help"],
-        ["acp", "--accept-hooks", "--help"],
-    ])
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["--accept-hooks", "gateway", "run", "--help"],
+            ["gateway", "--accept-hooks", "run", "--help"],
+            ["gateway", "run", "--accept-hooks", "--help"],
+            ["--accept-hooks", "cron", "tick", "--help"],
+            ["cron", "--accept-hooks", "tick", "--help"],
+            ["cron", "tick", "--accept-hooks", "--help"],
+            ["cron", "run", "--accept-hooks", "dummy-id", "--help"],
+            ["--accept-hooks", "mcp", "serve", "--help"],
+            ["mcp", "--accept-hooks", "serve", "--help"],
+            ["mcp", "serve", "--accept-hooks", "--help"],
+            ["acp", "--accept-hooks", "--help"],
+        ],
+    )
     def test_accepted_at_every_position(self, argv):
         """Invoking `hermes <argv>` must exit 0 (help) rather than
         failing with `unrecognized arguments`."""
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "openagents_cli.main", *argv],
             capture_output=True,

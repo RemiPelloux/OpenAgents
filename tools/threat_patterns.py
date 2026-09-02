@@ -48,48 +48,85 @@ from typing import List, Optional, Tuple
 # scope ∈ {"all", "context", "strict"}
 _PATTERNS: List[Tuple[str, str, str]] = [
     # ── Classic prompt injection (applies everywhere) ────────────────
-    (r'ignore\s+(?:\w+\s+)*(previous|all|above|prior)\s+(?:\w+\s+)*instructions', "prompt_injection", "all"),
-    (r'system\s+prompt\s+override', "sys_prompt_override", "all"),
-    (r'disregard\s+(?:\w+\s+)*(your|all|any)\s+(?:\w+\s+)*(instructions|rules|guidelines)', "disregard_rules", "all"),
-    (r'act\s+as\s+(if|though)\s+(?:\w+\s+)*you\s+(?:\w+\s+)*(have\s+no|don\'t\s+have)\s+(?:\w+\s+)*(restrictions|limits|rules)', "bypass_restrictions", "all"),
-    (r'<!--[^>]*(?:ignore|override|system|secret|hidden)[^>]*-->', "html_comment_injection", "all"),
+    (
+        r"ignore\s+(?:\w+\s+)*(previous|all|above|prior)\s+(?:\w+\s+)*instructions",
+        "prompt_injection",
+        "all",
+    ),
+    (r"system\s+prompt\s+override", "sys_prompt_override", "all"),
+    (
+        r"disregard\s+(?:\w+\s+)*(your|all|any)\s+(?:\w+\s+)*(instructions|rules|guidelines)",
+        "disregard_rules",
+        "all",
+    ),
+    (
+        r"act\s+as\s+(if|though)\s+(?:\w+\s+)*you\s+(?:\w+\s+)*(have\s+no|don\'t\s+have)\s+(?:\w+\s+)*(restrictions|limits|rules)",
+        "bypass_restrictions",
+        "all",
+    ),
+    (
+        r"<!--[^>]*(?:ignore|override|system|secret|hidden)[^>]*-->",
+        "html_comment_injection",
+        "all",
+    ),
     (r'<\s*div\s+style\s*=\s*["\'][\s\S]*?display\s*:\s*none', "hidden_div", "all"),
-    (r'translate\s+.*\s+into\s+.*\s+and\s+(execute|run|eval)', "translate_execute", "all"),
-    (r'do\s+not\s+(?:\w+\s+)*tell\s+(?:\w+\s+)*the\s+user', "deception_hide", "all"),
-
+    (
+        r"translate\s+.*\s+into\s+.*\s+and\s+(execute|run|eval)",
+        "translate_execute",
+        "all",
+    ),
+    (r"do\s+not\s+(?:\w+\s+)*tell\s+(?:\w+\s+)*the\s+user", "deception_hide", "all"),
     # ── Role-play / identity hijack (context + strict; common attack
     #    surface in scraped web content and poisoned context files) ──
-    (r'you\s+are\s+(?:\w+\s+)*now\s+(?:a|an|the)\s+', "role_hijack", "context"),
-    (r'pretend\s+(?:\w+\s+)*(you\s+are|to\s+be)\s+', "role_pretend", "context"),
-    (r'output\s+(?:\w+\s+)*(system|initial)\s+prompt', "leak_system_prompt", "context"),
-    (r'(respond|answer|reply)\s+without\s+(?:\w+\s+)*(restrictions|limitations|filters|safety)', "remove_filters", "context"),
-    (r'you\s+have\s+been\s+(?:\w+\s+)*(updated|upgraded|patched)\s+to', "fake_update", "context"),
+    (r"you\s+are\s+(?:\w+\s+)*now\s+(?:a|an|the)\s+", "role_hijack", "context"),
+    (r"pretend\s+(?:\w+\s+)*(you\s+are|to\s+be)\s+", "role_pretend", "context"),
+    (r"output\s+(?:\w+\s+)*(system|initial)\s+prompt", "leak_system_prompt", "context"),
+    (
+        r"(respond|answer|reply)\s+without\s+(?:\w+\s+)*(restrictions|limitations|filters|safety)",
+        "remove_filters",
+        "context",
+    ),
+    (
+        r"you\s+have\s+been\s+(?:\w+\s+)*(updated|upgraded|patched)\s+to",
+        "fake_update",
+        "context",
+    ),
     # "name yourself X" is a Brainworm-specific tell — identity override
     # via spec instead of jailbreak.  Anchored on the verb pair so it
     # doesn't match "name your variables" etc.
-    (r'\bname\s+yourself\s+\w+', "identity_override", "context"),
-
+    (r"\bname\s+yourself\s+\w+", "identity_override", "context"),
     # ── C2 / Brainworm-style promptware (context scope) ──────────────
     # These anchor on C2-specific vocabulary.  "register as a node" appears
     # in legitimate distributed-systems docs, but in combination with the
     # other patterns the signal is strong; we WARN, not block, so a security
     # researcher reading the Brainworm post in a webpage doesn't break their
     # session.
-    (r'register\s+(as\s+)?a?\s*node', "c2_node_registration", "context"),
-    (r'(heartbeat|beacon|check[\s\-]?in)\s+(to|with)\s+', "c2_heartbeat", "context"),
-    (r'pull\s+(down\s+)?(?:new\s+)?task(?:ing|s)?\b', "c2_task_pull", "context"),
-    (r'connect\s+to\s+the\s+network\b', "c2_network_connect", "context"),
+    (r"register\s+(as\s+)?a?\s*node", "c2_node_registration", "context"),
+    (r"(heartbeat|beacon|check[\s\-]?in)\s+(to|with)\s+", "c2_heartbeat", "context"),
+    (r"pull\s+(down\s+)?(?:new\s+)?task(?:ing|s)?\b", "c2_task_pull", "context"),
+    (r"connect\s+to\s+the\s+network\b", "c2_network_connect", "context"),
     # Verb-anchored "you must register/connect/report/beacon" — the verbs
     # are C2-specific so this avoids the broader "you must X" false positive.
-    (r'you\s+must\s+(?:\w+\s+){0,3}(register|connect|report|beacon)\b', "forced_action", "context"),
+    (
+        r"you\s+must\s+(?:\w+\s+){0,3}(register|connect|report|beacon)\b",
+        "forced_action",
+        "context",
+    ),
     # Anti-forensic instructions ("never write to disk", "one-liners only")
     # — extremely unusual in legitimate content; near-zero false positive.
-    (r'only\s+use\s+one[\s\-]?liners?\b', "anti_forensic_oneliner", "context"),
-    (r'never\s+(?:\w+\s+)*(?:create|write)\s+(?:\w+\s+)*(?:script|file)\s+(?:\w+\s+)*disk', "anti_forensic_disk", "context"),
+    (r"only\s+use\s+one[\s\-]?liners?\b", "anti_forensic_oneliner", "context"),
+    (
+        r"never\s+(?:\w+\s+)*(?:create|write)\s+(?:\w+\s+)*(?:script|file)\s+(?:\w+\s+)*disk",
+        "anti_forensic_disk",
+        "context",
+    ),
     # Environment-variable unsetting targeting known agent runtimes —
     # this is pure attack behavior (Brainworm sub-session bypass).
-    (r'unset\s+\w*(?:CLAUDE|CODEX|HERMES|AGENT|OPENAI|ANTHROPIC)\w*', "env_var_unset_agent", "context"),
-
+    (
+        r"unset\s+\w*(?:CLAUDE|CODEX|HERMES|AGENT|OPENAI|ANTHROPIC)\w*",
+        "env_var_unset_agent",
+        "context",
+    ),
     # ── Known C2 / red-team framework names (near-zero false positive
     #    outside security research; warn-only by default) ─────────────
     # NOTE: do not add common English words here. Every token must be a
@@ -98,26 +135,59 @@ _PATTERNS: List[Tuple[str, str, str]] = [
     # blocked. "praxis" was removed for exactly this reason — it's a common
     # word and a legitimate agent name (Greek for practice/action), not a
     # C2-specific tell like the brands below.
-    (r'\b(?:cobalt\s*strike|sliver|havoc|mythic|metasploit|brainworm)\b', "known_c2_framework", "context"),
-    (r'\bc2\s+(?:server|channel|infrastructure|beacon)\b', "c2_explicit", "context"),
-    (r'\bcommand\s+and\s+control\b', "c2_explicit_long", "context"),
-
+    (
+        r"\b(?:cobalt\s*strike|sliver|havoc|mythic|metasploit|brainworm)\b",
+        "known_c2_framework",
+        "context",
+    ),
+    (r"\bc2\s+(?:server|channel|infrastructure|beacon)\b", "c2_explicit", "context"),
+    (r"\bcommand\s+and\s+control\b", "c2_explicit_long", "context"),
     # ── Exfiltration via curl/wget/cat with secrets (applies everywhere) ──
-    (r'curl\s+[^\n]*\$\{?\w*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|API)', "exfil_curl", "all"),
-    (r'wget\s+[^\n]*\$\{?\w*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|API)', "exfil_wget", "all"),
-    (r'cat\s+[^\n]*(\.env|credentials|\.netrc|\.pgpass|\.npmrc|\.pypirc)', "read_secrets", "all"),
-    (r'(send|post|upload|transmit)\s+.*\s+(to|at)\s+https?://', "send_to_url", "strict"),
-    (r'(include|output|print|share)\s+(?:\w+\s+)*(conversation|chat\s+history|previous\s+messages|full\s+context|entire\s+context)', "context_exfil", "strict"),
-
+    (
+        r"curl\s+[^\n]*\$\{?\w*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|API)",
+        "exfil_curl",
+        "all",
+    ),
+    (
+        r"wget\s+[^\n]*\$\{?\w*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|API)",
+        "exfil_wget",
+        "all",
+    ),
+    (
+        r"cat\s+[^\n]*(\.env|credentials|\.netrc|\.pgpass|\.npmrc|\.pypirc)",
+        "read_secrets",
+        "all",
+    ),
+    (
+        r"(send|post|upload|transmit)\s+.*\s+(to|at)\s+https?://",
+        "send_to_url",
+        "strict",
+    ),
+    (
+        r"(include|output|print|share)\s+(?:\w+\s+)*(conversation|chat\s+history|previous\s+messages|full\s+context|entire\s+context)",
+        "context_exfil",
+        "strict",
+    ),
     # ── Persistence / SSH backdoor (strict scope — memory + skills) ──
-    (r'authorized_keys', "ssh_backdoor", "strict"),
-    (r'\$HOME/\.ssh|\~/\.ssh', "ssh_access", "strict"),
-    (r'\$HOME/\.hermes/\.env|\~/\.hermes/\.env', "hermes_env", "strict"),
-    (r'(update|modify|edit|write|change|append|add\s+to)\s+.*(?:AGENTS\.md|CLAUDE\.md|\.cursorrules|\.clinerules)', "agent_config_mod", "strict"),
-    (r'(update|modify|edit|write|change|append|add\s+to)\s+.*\.hermes/(config\.yaml|SOUL\.md)', "hermes_config_mod", "strict"),
-
+    (r"authorized_keys", "ssh_backdoor", "strict"),
+    (r"\$HOME/\.ssh|\~/\.ssh", "ssh_access", "strict"),
+    (r"\$HOME/\.hermes/\.env|\~/\.hermes/\.env", "hermes_env", "strict"),
+    (
+        r"(update|modify|edit|write|change|append|add\s+to)\s+.*(?:AGENTS\.md|CLAUDE\.md|\.cursorrules|\.clinerules)",
+        "agent_config_mod",
+        "strict",
+    ),
+    (
+        r"(update|modify|edit|write|change|append|add\s+to)\s+.*\.hermes/(config\.yaml|SOUL\.md)",
+        "hermes_config_mod",
+        "strict",
+    ),
     # ── Hardcoded secrets ────────────────────────────────────────────
-    (r'(?:api[_-]?key|token|secret|password)\s*[=:]\s*["\'][A-Za-z0-9+/=_-]{20,}', "hardcoded_secret", "strict"),
+    (
+        r'(?:api[_-]?key|token|secret|password)\s*[=:]\s*["\'][A-Za-z0-9+/=_-]{20,}',
+        "hardcoded_secret",
+        "strict",
+    ),
 ]
 
 # Invisible / bidirectional unicode characters used in injection attacks.
@@ -125,23 +195,23 @@ _PATTERNS: List[Tuple[str, str, str]] = [
 # (U+2066-U+2069) and invisible math operators (U+2062-U+2064) are real
 # attack tools.
 INVISIBLE_CHARS = frozenset({
-    '\u200b',  # zero-width space
-    '\u200c',  # zero-width non-joiner
-    '\u200d',  # zero-width joiner
-    '\u2060',  # word joiner
-    '\u2062',  # invisible times
-    '\u2063',  # invisible separator
-    '\u2064',  # invisible plus
-    '\ufeff',  # zero-width no-break space (BOM)
-    '\u202a',  # left-to-right embedding
-    '\u202b',  # right-to-left embedding
-    '\u202c',  # pop directional formatting
-    '\u202d',  # left-to-right override
-    '\u202e',  # right-to-left override
-    '\u2066',  # left-to-right isolate
-    '\u2067',  # right-to-left isolate
-    '\u2068',  # first strong isolate
-    '\u2069',  # pop directional isolate
+    "\u200b",  # zero-width space
+    "\u200c",  # zero-width non-joiner
+    "\u200d",  # zero-width joiner
+    "\u2060",  # word joiner
+    "\u2062",  # invisible times
+    "\u2063",  # invisible separator
+    "\u2064",  # invisible plus
+    "\ufeff",  # zero-width no-break space (BOM)
+    "\u202a",  # left-to-right embedding
+    "\u202b",  # right-to-left embedding
+    "\u202c",  # pop directional formatting
+    "\u202d",  # left-to-right override
+    "\u202e",  # right-to-left override
+    "\u2066",  # left-to-right isolate
+    "\u2067",  # right-to-left isolate
+    "\u2068",  # first strong isolate
+    "\u2069",  # pop directional isolate
 })
 
 
@@ -178,7 +248,9 @@ def _compile() -> None:
         elif scope == "strict":
             strict_patterns.append(entry)
         else:
-            raise ValueError(f"threat_patterns: unknown scope {scope!r} for pattern {pid!r}")
+            raise ValueError(
+                f"threat_patterns: unknown scope {scope!r} for pattern {pid!r}"
+            )
 
     _COMPILED = {
         "all": all_patterns,

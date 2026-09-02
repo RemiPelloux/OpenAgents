@@ -161,7 +161,9 @@ class XAIWebSearchProvider(WebSearchProvider):
 
         creds = resolve_xai_http_credentials()
         api_key = str(creds.get("api_key") or "").strip()
-        base_url = str(creds.get("base_url") or "https://api.x.ai/v1").strip().rstrip("/")
+        base_url = (
+            str(creds.get("base_url") or "https://api.x.ai/v1").strip().rstrip("/")
+        )
         if not api_key:
             return {
                 "success": False,
@@ -236,7 +238,10 @@ class XAIWebSearchProvider(WebSearchProvider):
 
         logger.info(
             "xAI web search via %s: '%s' (limit=%d, model=%s)",
-            base_url, query, limit, model,
+            base_url,
+            query,
+            limit,
+            model,
         )
 
         # Two-attempt loop: if the first call returns 401 and our creds came
@@ -250,7 +255,7 @@ class XAIWebSearchProvider(WebSearchProvider):
         #     is still in the future.
         # Env-var (`XAI_API_KEY`) credentials skip the retry entirely — we
         # can't refresh those and an immediate retry would just burn quota.
-        is_oauth_path = (creds.get("provider") == "xai-oauth")
+        is_oauth_path = creds.get("provider") == "xai-oauth"
         resp = None
         for attempt in range(2):
             try:
@@ -318,9 +323,7 @@ class XAIWebSearchProvider(WebSearchProvider):
         api_error = data.get("error") if isinstance(data, dict) else None
         if isinstance(api_error, dict):
             err_msg = (
-                api_error.get("message")
-                or api_error.get("code")
-                or "unknown error"
+                api_error.get("message") or api_error.get("code") or "unknown error"
             )
             logger.warning("xAI web search returned error envelope: %s", err_msg)
             return {"success": False, "error": f"xAI returned an error: {err_msg}"}
@@ -351,7 +354,7 @@ class XAIWebSearchProvider(WebSearchProvider):
             "fences, no inline citation links — matching this exact schema:\n\n"
             '{"results": [{"title": "string", "url": "string", '
             '"description": "1-2 sentence summary"}]}\n\n'
-            f'Return at most {limit} results, ordered by relevance, with absolute '
+            f"Return at most {limit} results, ordered by relevance, with absolute "
             "https:// URLs. If no usable results exist, return "
             '{"results": []}.\n\n'
             f"Query: {query}"
@@ -393,7 +396,9 @@ class XAIWebSearchProvider(WebSearchProvider):
         if annotations:
             joined_text = "\n".join(text_blocks)
             annotation_results = cls._results_from_annotations(
-                annotations, joined_text, limit=limit,
+                annotations,
+                joined_text,
+                limit=limit,
             )
             if annotation_results:
                 return annotation_results
@@ -480,17 +485,15 @@ class XAIWebSearchProvider(WebSearchProvider):
                 url = str(row.get("url", "")).strip()
                 if not url:
                     continue
-                normalized.append(
-                    {
-                        "title": str(row.get("title", "")).strip(),
-                        "url": url,
-                        "description": str(row.get("description", "")).strip(),
-                        # Renumber from the kept results, not the raw input
-                        # index, so a dropped malformed row doesn't leave a
-                        # gap in the positions handed back to the agent.
-                        "position": len(normalized) + 1,
-                    }
-                )
+                normalized.append({
+                    "title": str(row.get("title", "")).strip(),
+                    "url": url,
+                    "description": str(row.get("description", "")).strip(),
+                    # Renumber from the kept results, not the raw input
+                    # index, so a dropped malformed row doesn't leave a
+                    # gap in the positions handed back to the agent.
+                    "position": len(normalized) + 1,
+                })
             if normalized:
                 return normalized
         return None
@@ -521,20 +524,22 @@ class XAIWebSearchProvider(WebSearchProvider):
             description = ""
             start = ann.get("start_index")
             end = ann.get("end_index")
-            if isinstance(start, int) and isinstance(end, int) and 0 <= start < end <= len(joined_text):
+            if (
+                isinstance(start, int)
+                and isinstance(end, int)
+                and 0 <= start < end <= len(joined_text)
+            ):
                 window_start = max(0, start - 200)
                 description = joined_text[window_start:start].strip()
                 if len(description) > 200:
                     description = description[-200:].strip()
 
-            results.append(
-                {
-                    "title": "",
-                    "url": url,
-                    "description": description,
-                    "position": len(results) + 1,
-                }
-            )
+            results.append({
+                "title": "",
+                "url": url,
+                "description": description,
+                "position": len(results) + 1,
+            })
             if len(results) >= limit:
                 break
         return results

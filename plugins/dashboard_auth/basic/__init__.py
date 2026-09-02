@@ -241,9 +241,7 @@ class BasicAuthProvider(DashboardAuthProvider):
 
     # ---- password login ----------------------------------------------------
 
-    def complete_password_login(
-        self, *, username: str, password: str
-    ) -> Session:
+    def complete_password_login(self, *, username: str, password: str) -> Session:
         # Constant-time-ish: always run a scrypt verify (against the real
         # hash if the username matches, else a dummy hash) so an unknown
         # username and a wrong password take comparable time. Compare the
@@ -368,9 +366,7 @@ def _resolve_secret(cfg_section: dict) -> bytes:
     generates a random per-process secret (sessions then don't survive a
     restart or span multiple workers — logged at INFO).
     """
-    raw = _resolve(
-        "HERMES_DASHBOARD_BASIC_AUTH_SECRET", cfg_section, "secret"
-    )
+    raw = _resolve("HERMES_DASHBOARD_BASIC_AUTH_SECRET", cfg_section, "secret")
     if not raw:
         logger.info(
             "dashboard-auth-basic: no 'secret' configured; generating a "
@@ -404,15 +400,11 @@ def register(ctx) -> None:
     LAST_SKIP_REASON = ""
 
     section = _load_config_basic_auth_section()
-    username = _resolve(
-        "HERMES_DASHBOARD_BASIC_AUTH_USERNAME", section, "username"
-    )
+    username = _resolve("HERMES_DASHBOARD_BASIC_AUTH_USERNAME", section, "username")
     password_hash = _resolve(
         "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH", section, "password_hash"
     )
-    plaintext = _resolve(
-        "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD", section, "password"
-    )
+    plaintext = _resolve("HERMES_DASHBOARD_BASIC_AUTH_PASSWORD", section, "password")
     ttl_raw = _resolve(
         "HERMES_DASHBOARD_BASIC_AUTH_TTL_SECONDS", section, "session_ttl_seconds"
     )

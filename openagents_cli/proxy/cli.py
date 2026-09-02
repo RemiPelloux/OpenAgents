@@ -46,8 +46,7 @@ def cmd_proxy_start(args: Any) -> int:
     if not adapter.is_authenticated():
         auth_hint = getattr(adapter, "auth_hint", f"hermes auth add {adapter.name}")
         print(
-            f"Not logged into {adapter.display_name}. "
-            f"Run `{auth_hint}` first.",
+            f"Not logged into {adapter.display_name}. Run `{auth_hint}` first.",
             file=sys.stderr,
         )
         return 2
@@ -93,9 +92,7 @@ def cmd_proxy_status(args: Any) -> int:
             continue
         expires = f" (bearer expires {cred.expires_at})" if cred.expires_at else ""
         print(f"  [{name:8s}] {adapter.display_name} — ready{expires}")
-    print(
-        "\nStart the proxy with: hermes proxy start [--provider <name>]"
-    )
+    print("\nStart the proxy with: hermes proxy start [--provider <name>]")
     return 0
 
 

@@ -18,11 +18,13 @@ import re
 # Effort level parsing
 # ---------------------------------------------------------------------------
 
+
 class TestParseReasoningConfig(unittest.TestCase):
     """Verify _parse_reasoning_config handles all effort levels."""
 
     def _parse(self, effort):
         from cli import _parse_reasoning_config
+
         return _parse_reasoning_config(effort)
 
     def test_none_disables(self):
@@ -53,6 +55,7 @@ class TestParseReasoningConfig(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # /reasoning command handler (combined effort + display)
 # ---------------------------------------------------------------------------
+
 
 class TestHandleReasoningCommand(unittest.TestCase):
     """Test the combined _handle_reasoning_command method."""
@@ -102,6 +105,7 @@ class TestHandleReasoningCommand(unittest.TestCase):
     def test_effort_level_sets_config(self):
         """Setting an effort level should update reasoning_config."""
         from cli import _parse_reasoning_config
+
         stub = self._make_cli()
         arg = "high"
         parsed = _parse_reasoning_config(arg)
@@ -110,6 +114,7 @@ class TestHandleReasoningCommand(unittest.TestCase):
 
     def test_effort_none_disables_reasoning(self):
         from cli import _parse_reasoning_config
+
         stub = self._make_cli()
         parsed = _parse_reasoning_config("none")
         stub.reasoning_config = parsed
@@ -118,6 +123,7 @@ class TestHandleReasoningCommand(unittest.TestCase):
     def test_invalid_argument_rejected(self):
         """Invalid arguments should be rejected (parsed returns None)."""
         from cli import _parse_reasoning_config
+
         parsed = _parse_reasoning_config("turbo")
         self.assertIsNone(parsed)
 
@@ -159,6 +165,7 @@ class TestHandleReasoningCommand(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Reasoning extraction and result dict
 # ---------------------------------------------------------------------------
+
 
 class TestLastReasoningInResult(unittest.TestCase):
     """Verify reasoning extraction from the messages list."""
@@ -228,6 +235,7 @@ class TestLastReasoningInResult(unittest.TestCase):
 # Reasoning display collapse
 # ---------------------------------------------------------------------------
 
+
 class TestReasoningCollapse(unittest.TestCase):
     """Verify long reasoning is collapsed to 10 lines in the box."""
 
@@ -270,6 +278,7 @@ class TestReasoningCollapse(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Reasoning callback
 # ---------------------------------------------------------------------------
+
 
 class TestReasoningCallback(unittest.TestCase):
     """Verify reasoning_callback invocation."""
@@ -351,7 +360,9 @@ class TestReasoningPreviewBuffering(unittest.TestCase):
 
     @patch("cli._cprint")
     @patch("cli.shutil.get_terminal_size", return_value=SimpleNamespace(columns=50))
-    def test_reasoning_preview_compacts_newlines_and_wraps_to_terminal(self, _mock_term, mock_cprint):
+    def test_reasoning_preview_compacts_newlines_and_wraps_to_terminal(
+        self, _mock_term, mock_cprint
+    ):
         cli = self._make_cli()
 
         cli._emit_reasoning_preview(
@@ -375,7 +386,9 @@ class TestReasoningPreviewBuffering(unittest.TestCase):
 
 
 class TestReasoningDisplayModeSelection(unittest.TestCase):
-    def _make_cli(self, *, show_reasoning=False, streaming_enabled=False, verbose=False):
+    def _make_cli(
+        self, *, show_reasoning=False, streaming_enabled=False, verbose=False
+    ):
         from cli import HermesCLI
 
         cli = HermesCLI.__new__(HermesCLI)
@@ -387,7 +400,9 @@ class TestReasoningDisplayModeSelection(unittest.TestCase):
         return cli
 
     def test_show_reasoning_non_streaming_uses_final_box_only(self):
-        cli = self._make_cli(show_reasoning=True, streaming_enabled=False, verbose=False)
+        cli = self._make_cli(
+            show_reasoning=True, streaming_enabled=False, verbose=False
+        )
 
         self.assertIsNone(cli._current_reasoning_callback())
 
@@ -399,7 +414,9 @@ class TestReasoningDisplayModeSelection(unittest.TestCase):
         self.assertEqual(callback("x"), ("stream", "x"))
 
     def test_verbose_without_show_reasoning_uses_preview_callback(self):
-        cli = self._make_cli(show_reasoning=False, streaming_enabled=False, verbose=True)
+        cli = self._make_cli(
+            show_reasoning=False, streaming_enabled=False, verbose=True
+        )
 
         callback = cli._current_reasoning_callback()
         self.assertIsNotNone(callback)
@@ -410,11 +427,13 @@ class TestReasoningDisplayModeSelection(unittest.TestCase):
 # Real provider format extraction
 # ---------------------------------------------------------------------------
 
+
 class TestExtractReasoningFormats(unittest.TestCase):
     """Test _extract_reasoning with real provider response formats."""
 
     def _get_extractor(self):
         from run_agent import AIAgent
+
         return AIAgent._extract_reasoning
 
     def test_openrouter_reasoning_details(self):
@@ -457,11 +476,19 @@ class TestExtractReasoningFormats(unittest.TestCase):
 # Inline <think> block extraction fallback
 # ---------------------------------------------------------------------------
 
+
 class TestInlineThinkBlockExtraction(unittest.TestCase):
     """Test _build_assistant_message extracts inline <think> blocks as reasoning
     when no structured API-level reasoning fields are present."""
 
-    def _build_msg(self, content, reasoning=None, reasoning_content=None, reasoning_details=None, tool_calls=None):
+    def _build_msg(
+        self,
+        content,
+        reasoning=None,
+        reasoning_content=None,
+        reasoning_details=None,
+        tool_calls=None,
+    ):
         """Create a mock API response message."""
         msg = SimpleNamespace(content=content, tool_calls=tool_calls)
         if reasoning is not None:
@@ -475,6 +502,7 @@ class TestInlineThinkBlockExtraction(unittest.TestCase):
     def _make_agent(self):
         """Create a minimal agent with _build_assistant_message."""
         from run_agent import AIAgent
+
         agent = MagicMock(spec=AIAgent)
         agent._build_assistant_message = AIAgent._build_assistant_message.__get__(agent)
         agent._extract_reasoning = AIAgent._extract_reasoning.__get__(agent)
@@ -486,13 +514,17 @@ class TestInlineThinkBlockExtraction(unittest.TestCase):
 
     def test_single_think_block_extracted(self):
         agent = self._make_agent()
-        api_msg = self._build_msg("<think>Let me calculate 2+2=4.</think>The answer is 4.")
+        api_msg = self._build_msg(
+            "<think>Let me calculate 2+2=4.</think>The answer is 4."
+        )
         result = agent._build_assistant_message(api_msg, "stop")
         self.assertEqual(result["reasoning"], "Let me calculate 2+2=4.")
 
     def test_multiple_think_blocks_extracted(self):
         agent = self._make_agent()
-        api_msg = self._build_msg("<think>First thought.</think>Some text<think>Second thought.</think>More text")
+        api_msg = self._build_msg(
+            "<think>First thought.</think>Some text<think>Second thought.</think>More text"
+        )
         result = agent._build_assistant_message(api_msg, "stop")
         self.assertIn("First thought.", result["reasoning"])
         self.assertIn("Second thought.", result["reasoning"])
@@ -523,7 +555,9 @@ class TestInlineThinkBlockExtraction(unittest.TestCase):
 
     def test_multiline_think_block(self):
         agent = self._make_agent()
-        api_msg = self._build_msg("<think>\nStep 1: Analyze.\nStep 2: Solve.\n</think>Done.")
+        api_msg = self._build_msg(
+            "<think>\nStep 1: Analyze.\nStep 2: Solve.\n</think>Done."
+        )
         result = agent._build_assistant_message(api_msg, "stop")
         self.assertIn("Step 1: Analyze.", result["reasoning"])
         self.assertIn("Step 2: Solve.", result["reasoning"])
@@ -543,11 +577,13 @@ class TestInlineThinkBlockExtraction(unittest.TestCase):
 # Config defaults
 # ---------------------------------------------------------------------------
 
+
 class TestConfigDefault(unittest.TestCase):
     """Verify config default for show_reasoning."""
 
     def test_default_config_has_show_reasoning(self):
         from openagents_cli.config import DEFAULT_CONFIG
+
         display = DEFAULT_CONFIG.get("display", {})
         self.assertIn("show_reasoning", display)
         self.assertFalse(display["show_reasoning"])
@@ -558,12 +594,14 @@ class TestCommandRegistered(unittest.TestCase):
 
     def test_reasoning_in_commands(self):
         from openagents_cli.commands import COMMANDS
+
         self.assertIn("/reasoning", COMMANDS)
 
 
 # ---------------------------------------------------------------------------
 # End-to-end pipeline
 # ---------------------------------------------------------------------------
+
 
 class TestEndToEndPipeline(unittest.TestCase):
     """Simulate the full pipeline: extraction -> result dict -> display."""
@@ -587,7 +625,11 @@ class TestEndToEndPipeline(unittest.TestCase):
 
         messages = [
             {"role": "user", "content": "How do I add items?"},
-            {"role": "assistant", "content": api_message.content, "reasoning": reasoning},
+            {
+                "role": "assistant",
+                "content": api_message.content,
+                "reasoning": reasoning,
+            },
         ]
 
         last_reasoning = None
@@ -621,12 +663,14 @@ class TestEndToEndPipeline(unittest.TestCase):
 # Duplicate reasoning box prevention (Bug fix: 3 boxes for 1 reasoning)
 # ---------------------------------------------------------------------------
 
+
 class TestReasoningDeltasFiredFlag(unittest.TestCase):
     """_build_assistant_message should not re-fire reasoning_callback when
     reasoning was already streamed via _fire_reasoning_delta."""
 
     def _make_agent(self):
         from run_agent import AIAgent
+
         agent = AIAgent.__new__(AIAgent)
         agent.reasoning_callback = None
         agent.stream_delta_callback = None
@@ -715,6 +759,7 @@ class TestReasoningShownThisTurnFlag(unittest.TestCase):
 
     def _make_cli(self):
         from cli import HermesCLI
+
         cli = HermesCLI.__new__(HermesCLI)
         cli.show_reasoning = True
         cli.streaming_enabled = True

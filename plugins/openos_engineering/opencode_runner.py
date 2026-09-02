@@ -31,10 +31,14 @@ def _managed_workspace(
     try:
         requested.relative_to(root)
     except ValueError as exc:
-        raise ValueError(f"workspace path {requested} is outside managed root {root}") from exc
+        raise ValueError(
+            f"workspace path {requested} is outside managed root {root}"
+        ) from exc
 
     run_key = run_id or correlation_id or "local"
-    safe_key = "".join(ch if ch.isalnum() or ch in "._-" else "-" for ch in run_key)[:96]
+    safe_key = "".join(ch if ch.isalnum() or ch in "._-" else "-" for ch in run_key)[
+        :96
+    ]
     worktree = root / "runs" / safe_key
     worktree.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -51,14 +55,28 @@ def _managed_workspace(
     branch = f"agent/{safe_key}"
     if repo_root and not worktree.exists():
         subprocess.run(
-            ["git", "-C", str(repo_root), "worktree", "add", "-B", branch, str(worktree), "HEAD"],
+            [
+                "git",
+                "-C",
+                str(repo_root),
+                "worktree",
+                "add",
+                "-B",
+                branch,
+                str(worktree),
+                "HEAD",
+            ],
             check=True,
             capture_output=True,
             text=True,
         )
     elif not worktree.exists():
         worktree.mkdir(parents=True)
-    return worktree, branch if repo_root else None, str(repo_root) if repo_root else None
+    return (
+        worktree,
+        branch if repo_root else None,
+        str(repo_root) if repo_root else None,
+    )
 
 
 def _scope_prompt_to_worktree(
@@ -91,10 +109,14 @@ def _git_metadata(workdir: Path, branch: Optional[str]) -> Dict[str, Any]:
     metadata: Dict[str, Any] = {"branch": branch, "commit_sha": None, "git_clean": None}
     try:
         metadata["commit_sha"] = subprocess.check_output(
-            ["git", "-C", str(workdir), "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+            ["git", "-C", str(workdir), "rev-parse", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
         status = subprocess.check_output(
-            ["git", "-C", str(workdir), "status", "--porcelain"], text=True, stderr=subprocess.DEVNULL
+            ["git", "-C", str(workdir), "status", "--porcelain"],
+            text=True,
+            stderr=subprocess.DEVNULL,
         )
         metadata["git_clean"] = not bool(status.strip())
     except (OSError, subprocess.CalledProcessError):
@@ -122,7 +144,9 @@ def resolve_opencode_binary() -> List[str]:
             )
             return ["bun", str(cli)]
 
-    repo_guess = Path(__file__).resolve().parents[4] / "OpenCode" / "entrypoints" / "cli.tsx"
+    repo_guess = (
+        Path(__file__).resolve().parents[4] / "OpenCode" / "entrypoints" / "cli.tsx"
+    )
     if repo_guess.is_file():
         warnings.warn(
             "OpenCode: using bun entrypoints/cli.tsx fallback — "
@@ -226,20 +250,34 @@ def run_opencode_headless(
     timeout = max(30, int(os.environ.get("OPENOS_OPENCODE_TIMEOUT_SECONDS", "3600")))
     try:
         proc = subprocess.run(
-            cmd + [scoped_prompt], cwd=str(workdir_path), env=env,
-            capture_output=True, text=True, timeout=timeout,
+            cmd + [scoped_prompt],
+            cwd=str(workdir_path),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired as exc:
         metadata = _git_metadata(workdir_path, branch)
         return {
-            "ok": False, "exit_code": None, "summary": "OpenCode timed out",
-            "stderr": str(exc), "events": [], "files_edited": [],
-            "session_id": None, "workdir": str(workdir_path), "source_repo": source_repo,
+            "ok": False,
+            "exit_code": None,
+            "summary": "OpenCode timed out",
+            "stderr": str(exc),
+            "events": [],
+            "files_edited": [],
+            "session_id": None,
+            "workdir": str(workdir_path),
+            "source_repo": source_repo,
             **metadata,
         }
 
     events = parse_stream_json_lines(proc.stdout)
-    summary = extract_summary_from_stream(events) or proc.stdout.strip() or proc.stderr.strip()
+    summary = (
+        extract_summary_from_stream(events)
+        or proc.stdout.strip()
+        or proc.stderr.strip()
+    )
 
     return {
         "ok": proc.returncode == 0,
@@ -266,7 +304,9 @@ def _extract_session_id(events: List[Dict[str, Any]]) -> Optional[str]:
     return None
 
 
-def _extract_edited_files(events: List[Dict[str, Any]], workdir: Optional[Path] = None) -> List[str]:
+def _extract_edited_files(
+    events: List[Dict[str, Any]], workdir: Optional[Path] = None
+) -> List[str]:
     files: List[str] = []
     for event in events:
         if event.get("type") != "assistant":
@@ -283,9 +323,13 @@ def _extract_edited_files(events: List[Dict[str, Any]], workdir: Optional[Path] 
                     candidate = Path(str(path)).expanduser()
                     if workdir:
                         try:
-                            files.append(str(candidate.resolve().relative_to(workdir.resolve())))
+                            files.append(
+                                str(candidate.resolve().relative_to(workdir.resolve()))
+                            )
                         except ValueError:
-                            logger.warning("OpenCode reported edit outside workdir: %s", path)
+                            logger.warning(
+                                "OpenCode reported edit outside workdir: %s", path
+                            )
                     else:
                         files.append(str(path))
     return list(dict.fromkeys(files))

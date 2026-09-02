@@ -33,6 +33,7 @@ def _make_cli(with_app=True):
     cli_obj._skip_paste_collapse = False
     return cli_obj
 
+
 def test_open_external_editor_uses_prompt_toolkit_buffer_editor():
     cli_obj = _make_cli()
 
@@ -59,6 +60,7 @@ def test_open_external_editor_rejects_modal_prompts():
 
     assert mock_cprint.called
     assert "active prompt" in str(mock_cprint.call_args).lower()
+
 
 def test_open_external_editor_uses_explicit_buffer_when_provided():
     cli_obj = _make_cli()

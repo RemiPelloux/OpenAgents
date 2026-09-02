@@ -19,8 +19,16 @@ import pytest
 from openagents_cli import model_switch
 
 
-def _make_provider(slug, name=None, models=None, *, is_current=False,
-                   is_user_defined=False, source="built-in", api_url=None):
+def _make_provider(
+    slug,
+    name=None,
+    models=None,
+    *,
+    is_current=False,
+    is_user_defined=False,
+    source="built-in",
+    api_url=None,
+):
     """Build a dict shaped like ``list_authenticated_providers`` output."""
     entry = {
         "slug": slug,
@@ -43,10 +51,12 @@ def test_openrouter_models_replaced_with_live_catalog(monkeypatch):
     ]
     live = [("openai/gpt-5.4", "recommended"), ("moonshotai/kimi-k2.6", "")]
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: list(live))
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models", lambda *a, **kw: list(live)
+    )
 
     result = model_switch.list_picker_providers(max_models=50)
 
@@ -65,8 +75,9 @@ def test_openrouter_falls_back_to_base_models_on_fetch_failure(monkeypatch):
     def _raise(*_a, **_kw):
         raise RuntimeError("network down")
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
     monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models", _raise)
 
     result = model_switch.list_picker_providers(max_models=50)
@@ -79,10 +90,12 @@ def test_openrouter_empty_live_catalog_drops_row(monkeypatch):
     """If the live catalog returns nothing for OpenRouter, drop the row."""
     base = [_make_provider("openrouter", models=["something/stale"])]
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: [])
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models", lambda *a, **kw: []
+    )
 
     result = model_switch.list_picker_providers(max_models=50)
 
@@ -96,11 +109,14 @@ def test_non_openrouter_rows_passed_through_unchanged(monkeypatch):
         _make_provider("gemini", models=["gemini-3-flash-preview"]),
     ]
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
     # fetch_openrouter_models must not be consulted when there's no openrouter row
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: pytest.fail("should not be called"))
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models",
+        lambda *a, **kw: pytest.fail("should not be called"),
+    )
 
     result = model_switch.list_picker_providers(max_models=50)
 
@@ -122,11 +138,14 @@ def test_include_moa_adds_virtual_provider_with_named_presets(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
     monkeypatch.setattr("openagents_cli.config.load_config", lambda: moa_config)
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: pytest.fail("should not be called"))
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models",
+        lambda *a, **kw: pytest.fail("should not be called"),
+    )
 
     result = model_switch.list_picker_providers(
         current_provider="moa",
@@ -150,10 +169,13 @@ def test_empty_models_row_dropped(monkeypatch):
         _make_provider("openrouter", models=["anything"]),  # replaced by live
     ]
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: [("openai/gpt-5.4", "recommended")])
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models",
+        lambda *a, **kw: [("openai/gpt-5.4", "recommended")],
+    )
 
     result = model_switch.list_picker_providers(max_models=50)
 
@@ -167,15 +189,21 @@ def test_custom_endpoint_with_api_url_kept_when_models_empty(monkeypatch):
     the picker still shows the row so the user can enter one manually.
     """
     base = [
-        _make_provider("local-ollama", is_user_defined=True,
-                       api_url="http://localhost:11434/v1", models=[],
-                       source="user-config"),
+        _make_provider(
+            "local-ollama",
+            is_user_defined=True,
+            api_url="http://localhost:11434/v1",
+            models=[],
+            source="user-config",
+        ),
     ]
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: [])
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models", lambda *a, **kw: []
+    )
 
     result = model_switch.list_picker_providers(max_models=50)
 
@@ -194,10 +222,12 @@ def test_user_defined_without_api_url_and_empty_models_dropped(monkeypatch):
         _make_provider("orphan", is_user_defined=True, api_url=None, models=[]),
     ]
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: [])
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models", lambda *a, **kw: []
+    )
 
     result = model_switch.list_picker_providers(max_models=50)
 
@@ -209,10 +239,12 @@ def test_max_models_caps_openrouter_live_output(monkeypatch):
     live = [(f"vendor/model-{i}", "") for i in range(20)]
     base = [_make_provider("openrouter", models=["placeholder"])]
 
-    monkeypatch.setattr(model_switch, "list_authenticated_providers",
-                        lambda **kw: list(base))
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: list(live))
+    monkeypatch.setattr(
+        model_switch, "list_authenticated_providers", lambda **kw: list(base)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models", lambda *a, **kw: list(live)
+    )
 
     result = model_switch.list_picker_providers(max_models=5)
 
@@ -237,8 +269,9 @@ def test_passthrough_kwargs_to_base(monkeypatch):
         return []
 
     monkeypatch.setattr(model_switch, "list_authenticated_providers", _capture)
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: [])
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models", lambda *a, **kw: []
+    )
 
     model_switch.list_picker_providers(
         current_provider="openrouter",
@@ -262,8 +295,9 @@ def test_current_custom_endpoint_passthrough_marks_current_row(monkeypatch):
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
     monkeypatch.setattr("agent.models_dev.PROVIDER_TO_MODELS_DEV", {})
     monkeypatch.setattr("openagents_cli.providers.HERMES_OVERLAYS", {})
-    monkeypatch.setattr("openagents_cli.models.fetch_openrouter_models",
-                        lambda *a, **kw: [])
+    monkeypatch.setattr(
+        "openagents_cli.models.fetch_openrouter_models", lambda *a, **kw: []
+    )
 
     result = model_switch.list_picker_providers(
         current_provider="custom:ollama",

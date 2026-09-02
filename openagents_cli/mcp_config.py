@@ -43,14 +43,18 @@ _MCP_PRESETS: Dict[str, Dict[str, Any]] = {
 
 # ─── UI Helpers ───────────────────────────────────────────────────────────────
 
+
 def _info(text: str):
     print(color(f"  {text}", Colors.DIM))
+
 
 def _success(text: str):
     print(color(f"  ✓ {text}", Colors.GREEN))
 
+
 def _warning(text: str):
     print(color(f"  ⚠ {text}", Colors.YELLOW))
+
 
 def _error(text: str):
     print(color(f"  ✗ {text}", Colors.RED))
@@ -59,7 +63,11 @@ def _error(text: str):
 def _confirm(question: str, default: bool = True) -> bool:
     default_str = "Y/n" if default else "y/N"
     try:
-        val = input(color(f"  {question} [{default_str}]: ", Colors.YELLOW)).strip().lower()
+        val = (
+            input(color(f"  {question} [{default_str}]: ", Colors.YELLOW))
+            .strip()
+            .lower()
+        )
     except (KeyboardInterrupt, EOFError):
         print()
         return default
@@ -70,10 +78,12 @@ def _confirm(question: str, default: bool = True) -> bool:
 
 def _prompt(question: str, *, password: bool = False, default: str = "") -> str:
     from openagents_cli.cli_output import prompt as _shared_prompt
+
     return _shared_prompt(question, default=default, password=password)
 
 
 # ─── Config Helpers ───────────────────────────────────────────────────────────
+
 
 def _get_mcp_servers(config: Optional[dict] = None) -> Dict[str, dict]:
     """Return the ``mcp_servers`` dict from config, or empty dict."""
@@ -192,6 +202,7 @@ def _apply_mcp_preset(
 
 # ─── Discovery (temporary connect) ───────────────────────────────────────────
 
+
 def _resolve_mcp_server_config(config: dict) -> dict:
     """Resolve ``${ENV}`` placeholders in a server config before connecting.
 
@@ -207,6 +218,7 @@ def _resolve_mcp_server_config(config: dict) -> dict:
 
     try:
         from openagents_cli.env_loader import load_openagents_dotenv
+
         load_openagents_dotenv()
     except Exception:  # pragma: no cover — defensive
         pass
@@ -271,6 +283,7 @@ def _oauth_tokens_present(name: str) -> bool:
     """
     try:
         from tools.mcp_oauth import HermesTokenStorage
+
         return HermesTokenStorage(name).has_cached_tokens()
     except Exception as exc:  # pragma: no cover — defensive
         logger.debug("Could not check OAuth tokens for '%s': %s", name, exc)
@@ -295,6 +308,7 @@ def _unwrap_exception_group(exc: BaseException) -> Exception:
 
 
 # ─── hermes mcp add ──────────────────────────────────────────────────────────
+
 
 def cmd_mcp_add(args):
     """Add a new MCP server with discovery-first tool selection."""
@@ -327,7 +341,9 @@ def cmd_mcp_add(args):
         return
 
     if url and explicit_env:
-        _error("--env is only supported for stdio MCP servers (--command or stdio presets)")
+        _error(
+            "--env is only supported for stdio MCP servers (--command or stdio presets)"
+        )
         return
 
     # Validate transport
@@ -335,8 +351,10 @@ def cmd_mcp_add(args):
         _error("Must specify --url <endpoint>, --command <cmd>, or --preset <name>")
         _info("Examples:")
         _info('  hermes mcp add ink --url "https://mcp.ml.ink/mcp"')
-        _info('  hermes mcp add github --command npx --args @modelcontextprotocol/server-github')
-        _info('  hermes mcp add myserver --preset mypreset')
+        _info(
+            "  hermes mcp add github --command npx --args @modelcontextprotocol/server-github"
+        )
+        _info("  hermes mcp add myserver --preset mypreset")
         return
 
     # Check if server already exists
@@ -371,11 +389,14 @@ def cmd_mcp_add(args):
         oauth_ok = False
         try:
             from tools.mcp_oauth_manager import get_manager
+
             oauth_auth = get_manager().get_or_build_provider(name, url, None)
             if oauth_auth:
                 server_config["auth"] = "oauth"
-                _success("OAuth configured (tokens will be acquired on first connection)")
-                oauth_ok=True
+                _success(
+                    "OAuth configured (tokens will be acquired on first connection)"
+                )
+                oauth_ok = True
             else:
                 _warning("OAuth setup failed — MCP SDK auth module not available")
         except Exception as exc:
@@ -407,7 +428,9 @@ def cmd_mcp_add(args):
                     if api_key:
                         api_key = _strip_bearer_prefix(api_key)
                         save_env_value(env_key, api_key)
-                        _success(f"Saved to {display_openagents_home()}/.env as {env_key}")
+                        _success(
+                            f"Saved to {display_openagents_home()}/.env as {env_key}"
+                        )
 
                 # Set header with env var interpolation
                 if api_key or existing_key:
@@ -450,9 +473,13 @@ def cmd_mcp_add(args):
 
     # Ask: enable all, select, or cancel
     try:
-        choice = input(
-            color(f"  Enable all {len(tools)} tools? [Y/n/select]: ", Colors.YELLOW)
-        ).strip().lower()
+        choice = (
+            input(
+                color(f"  Enable all {len(tools)} tools? [Y/n/select]: ", Colors.YELLOW)
+            )
+            .strip()
+            .lower()
+        )
     except (KeyboardInterrupt, EOFError):
         print()
         _info("Cancelled.")
@@ -494,11 +521,14 @@ def cmd_mcp_add(args):
     server_config["enabled"] = True
     if _save_mcp_server(name, server_config):
         print()
-        _success(f"Saved '{name}' to {display_openagents_home()}/config.yaml ({tool_count}/{total} tools enabled)")
+        _success(
+            f"Saved '{name}' to {display_openagents_home()}/config.yaml ({tool_count}/{total} tools enabled)"
+        )
         _info("Start a new session to use these tools.")
 
 
 # ─── hermes mcp remove ───────────────────────────────────────────────────────
+
 
 def cmd_mcp_remove(args):
     """Remove an MCP server from config."""
@@ -524,6 +554,7 @@ def cmd_mcp_remove(args):
     # earlier `hermes mcp test` in the same session) is evicted too.
     try:
         from tools.mcp_oauth_manager import get_manager
+
         get_manager().remove(name)
         _success("Cleaned up OAuth tokens")
     except Exception:
@@ -531,6 +562,7 @@ def cmd_mcp_remove(args):
 
 
 # ─── hermes mcp list ──────────────────────────────────────────────────────────
+
 
 def cmd_mcp_list(args=None):
     """List all configured MCP servers."""
@@ -541,8 +573,8 @@ def cmd_mcp_list(args=None):
         _info("No MCP servers configured.")
         print()
         _info("Add one with:")
-        _info('  hermes mcp add <name> --url <endpoint>')
-        _info('  hermes mcp add <name> --command <cmd> --args <args...>')
+        _info("  hermes mcp add <name> --url <endpoint>")
+        _info("  hermes mcp add <name> --command <cmd> --args <args...>")
         print()
         return
 
@@ -592,7 +624,11 @@ def cmd_mcp_list(args=None):
         enabled = cfg.get("enabled", True)
         if isinstance(enabled, str):
             enabled = enabled.lower() in {"true", "1", "yes"}
-        status = color("✓ enabled", Colors.GREEN) if enabled else color("✗ disabled", Colors.DIM)
+        status = (
+            color("✓ enabled", Colors.GREEN)
+            if enabled
+            else color("✗ disabled", Colors.DIM)
+        )
 
         print(f"  {name:<16} {transport:<30} {tools_str:<12} {status}")
 
@@ -600,6 +636,7 @@ def cmd_mcp_list(args=None):
 
 
 # ─── hermes mcp test ──────────────────────────────────────────────────────────
+
 
 def cmd_mcp_test(args):
     """Test connection to an MCP server."""
@@ -665,6 +702,7 @@ def cmd_mcp_test(args):
 
 # ─── hermes mcp login ────────────────────────────────────────────────────────
 
+
 def _reauth_oauth_server(name: str, server_config: dict) -> bool:
     """Force a fresh OAuth flow for one server. Returns True on success.
 
@@ -678,7 +716,9 @@ def _reauth_oauth_server(name: str, server_config: dict) -> bool:
         _error(f"Server '{name}' has no URL — not an OAuth-capable server")
         return False
     if server_config.get("auth") != "oauth":
-        _error(f"Server '{name}' is not configured for OAuth (auth={server_config.get('auth')})")
+        _error(
+            f"Server '{name}' is not configured for OAuth (auth={server_config.get('auth')})"
+        )
         _info("Use `hermes mcp remove` + `hermes mcp add` to reconfigure auth.")
         return False
 
@@ -686,6 +726,7 @@ def _reauth_oauth_server(name: str, server_config: dict) -> bool:
     # OAuth flow.
     try:
         from tools.mcp_oauth_manager import get_manager
+
         get_manager().remove(name)
     except Exception as exc:
         _warning(f"Could not clear existing OAuth state: {exc}")
@@ -721,8 +762,12 @@ def _reauth_oauth_server(name: str, server_config: dict) -> bool:
             print(color(f"        url: {url}", Colors.DIM))
             print(color(f"        auth: oauth", Colors.DIM))
             print(color(f"        oauth:", Colors.DIM))
-            print(color(f"          client_id: \"<your-oauth-client-id>\"", Colors.DIM))
-            print(color(f"          client_secret: \"<your-oauth-client-secret>\"", Colors.DIM))
+            print(color(f'          client_id: "<your-oauth-client-id>"', Colors.DIM))
+            print(
+                color(
+                    f'          client_secret: "<your-oauth-client-secret>"', Colors.DIM
+                )
+            )
             print()
             _info("Then re-run `hermes mcp login " + name + "`.")
             return False
@@ -780,14 +825,17 @@ def cmd_mcp_reauth(args):
 
     if do_all:
         oauth_servers = [
-            (n, c) for n, c in servers.items()
+            (n, c)
+            for n, c in servers.items()
             if c.get("auth") == "oauth" and c.get("url")
         ]
         if not oauth_servers:
             _info("No OAuth-based MCP servers found in config.")
             return
         print()
-        _info(f"Re-authenticating {len(oauth_servers)} OAuth server(s) one at a time...")
+        _info(
+            f"Re-authenticating {len(oauth_servers)} OAuth server(s) one at a time..."
+        )
         succeeded = 0
         for n, c in oauth_servers:
             print()
@@ -813,11 +861,16 @@ def cmd_mcp_reauth(args):
 
 # ─── hermes mcp configure ────────────────────────────────────────────────────
 
+
 def cmd_mcp_configure(args):
     """Reconfigure which tools are enabled for an existing MCP server."""
     import sys as _sys
+
     if not _sys.stdin.isatty():
-        print("Error: 'hermes mcp configure' requires an interactive terminal.", file=_sys.stderr)
+        print(
+            "Error: 'hermes mcp configure' requires an interactive terminal.",
+            file=_sys.stderr,
+        )
         _sys.exit(1)
     name = args.name
     servers = _get_mcp_servers()
@@ -858,14 +911,10 @@ def cmd_mcp_configure(args):
 
     if include and isinstance(include, list):
         include_set = set(include)
-        pre_selected = {
-            i for i, tn in enumerate(tool_names) if tn in include_set
-        }
+        pre_selected = {i for i, tn in enumerate(tool_names) if tn in include_set}
     elif exclude and isinstance(exclude, list):
         exclude_set = set(exclude)
-        pre_selected = {
-            i for i, tn in enumerate(tool_names) if tn not in exclude_set
-        }
+        pre_selected = {i for i, tn in enumerate(tool_names) if tn not in exclude_set}
     else:
         pre_selected = set(range(len(all_tools)))
 
@@ -912,12 +961,14 @@ def cmd_mcp_configure(args):
 
 # ─── Dispatcher ───────────────────────────────────────────────────────────────
 
+
 def mcp_command(args):
     """Main dispatcher for ``hermes mcp`` subcommands."""
     action = getattr(args, "mcp_action", None)
 
     if action == "serve":
         from mcp_serve import run_mcp_server
+
         run_mcp_server(verbose=getattr(args, "verbose", False))
         return
 
@@ -925,15 +976,18 @@ def mcp_command(args):
     # the original `mcp_config` module stays import-cheap.
     if action == "picker":
         from openagents_cli.mcp_picker import run_picker
+
         run_picker()
         return
     if action == "catalog":
         from openagents_cli.mcp_picker import show_catalog
+
         show_catalog()
         return
     if action == "install":
         from openagents_cli.mcp_picker import install_by_name
         import sys as _sys
+
         rc = install_by_name(getattr(args, "identifier", "") or "")
         if rc:
             _sys.exit(rc)
@@ -959,9 +1013,12 @@ def mcp_command(args):
         # No subcommand — drop the user into the catalog picker. This is the
         # "try enabling and it flows you into setup" UX matching `hermes plugin`.
         from openagents_cli.mcp_picker import run_picker
+
         run_picker()
         print(color("  Commands:", Colors.CYAN))
-        _info("hermes mcp                                    Open the catalog picker (default)")
+        _info(
+            "hermes mcp                                    Open the catalog picker (default)"
+        )
         _info("hermes mcp catalog                            List Nous-approved MCPs")
         _info("hermes mcp install <name>                     Install a catalog MCP")
         _info("hermes mcp serve                              Run as MCP server")
@@ -973,5 +1030,7 @@ def mcp_command(args):
         _info("hermes mcp test <name>                        Test connection")
         _info("hermes mcp configure <name>                   Toggle tools")
         _info("hermes mcp login <name>                       Re-authenticate OAuth")
-        _info("hermes mcp reauth <name> | --all              Re-auth one or all OAuth servers")
+        _info(
+            "hermes mcp reauth <name> | --all              Re-auth one or all OAuth servers"
+        )
         print()

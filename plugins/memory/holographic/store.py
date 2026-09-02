@@ -76,17 +76,17 @@ CREATE TABLE IF NOT EXISTS memory_banks (
 """
 
 # Trust adjustment constants
-_HELPFUL_DELTA   =  0.05
+_HELPFUL_DELTA = 0.05
 _UNHELPFUL_DELTA = -0.10
-_TRUST_MIN       =  0.0
-_TRUST_MAX       =  1.0
+_TRUST_MIN = 0.0
+_TRUST_MAX = 1.0
 
 # Entity extraction patterns
-_RE_CAPITALIZED  = re.compile(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b')
+_RE_CAPITALIZED = re.compile(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b")
 _RE_DOUBLE_QUOTE = re.compile(r'"([^"]+)"')
 _RE_SINGLE_QUOTE = re.compile(r"'([^']+)'")
-_RE_AKA          = re.compile(
-    r'(\w+(?:\s+\w+)*)\s+(?:aka|also known as)\s+(\w+(?:\s+\w+)*)',
+_RE_AKA = re.compile(
+    r"(\w+(?:\s+\w+)*)\s+(?:aka|also known as)\s+(\w+(?:\s+\w+)*)",
     re.IGNORECASE,
 )
 
@@ -106,6 +106,7 @@ class MemoryStore:
     ) -> None:
         if db_path is None:
             from openagents_constants import get_openagents_home
+
             db_path = str(get_openagents_home() / "memory_store.db")
         self.db_path = Path(db_path).expanduser()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -131,10 +132,13 @@ class MemoryStore:
         # gracefully on NFS/SMB/FUSE-mounted OPENAGENTS_HOME (same issue as
         # state.db / kanban.db — see openagents_state._WAL_INCOMPAT_MARKERS).
         from openagents_state import apply_wal_with_fallback
+
         apply_wal_with_fallback(self._conn, db_label="memory_store.db (holographic)")
         self._conn.executescript(_SCHEMA)
         # Migrate: add hrr_vector column if missing (safe for existing databases)
-        columns = {row[1] for row in self._conn.execute("PRAGMA table_info(facts)").fetchall()}
+        columns = {
+            row[1] for row in self._conn.execute("PRAGMA table_info(facts)").fetchall()
+        }
         if "hrr_vector" not in columns:
             self._conn.execute("ALTER TABLE facts ADD COLUMN hrr_vector BLOB")
         self._conn.commit()
@@ -296,9 +300,12 @@ class MemoryStore:
             if content is not None:
                 self._compute_hrr_vector(fact_id, content)
             # Rebuild bank for relevant category
-            cat = category or self._conn.execute(
-                "SELECT category FROM facts WHERE fact_id = ?", (fact_id,)
-            ).fetchone()["category"]
+            cat = (
+                category
+                or self._conn.execute(
+                    "SELECT category FROM facts WHERE fact_id = ?", (fact_id,)
+                ).fetchone()["category"]
+            )
             self._rebuild_bank(cat)
 
             return True
@@ -385,9 +392,9 @@ class MemoryStore:
             self._conn.commit()
 
             return {
-                "fact_id":      fact_id,
-                "old_trust":    old_trust,
-                "new_trust":    new_trust,
+                "fact_id": fact_id,
+                "old_trust": old_trust,
+                "new_trust": new_trust,
                 "helpful_count": row["helpful_count"] + helpful_increment,
             }
 
@@ -454,9 +461,7 @@ class MemoryStore:
             return int(alias_row["entity_id"])
 
         # Create new entity
-        cur = self._conn.execute(
-            "INSERT INTO entities (name) VALUES (?)", (name,)
-        )
+        cur = self._conn.execute("INSERT INTO entities (name) VALUES (?)", (name,))
         self._conn.commit()
         return int(cur.lastrowid)  # type: ignore[return-value]
 
@@ -508,7 +513,9 @@ class MemoryStore:
             ).fetchall()
 
             if not rows:
-                self._conn.execute("DELETE FROM memory_banks WHERE bank_name = ?", (bank_name,))
+                self._conn.execute(
+                    "DELETE FROM memory_banks WHERE bank_name = ?", (bank_name,)
+                )
                 self._conn.commit()
                 return
 

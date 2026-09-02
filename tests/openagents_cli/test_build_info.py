@@ -73,6 +73,8 @@ def test_get_build_sha_swallows_read_errors(tmp_path):
     sha_file = tmp_path / ".hermes_build_sha"
     sha_file.write_text("abcdef1234567890\n")
 
-    with patch.object(build_info, "_BUILD_SHA_FILE", sha_file), \
-         patch.object(Path, "read_text", side_effect=OSError("boom")):
+    with (
+        patch.object(build_info, "_BUILD_SHA_FILE", sha_file),
+        patch.object(Path, "read_text", side_effect=OSError("boom")),
+    ):
         assert build_info.get_build_sha() is None

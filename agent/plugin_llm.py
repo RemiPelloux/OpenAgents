@@ -211,6 +211,7 @@ def _resolve_trust_policy(plugin_id: str) -> _TrustPolicy:
 
     try:
         from openagents_cli.config import load_config
+
         config = load_config() or {}
     except Exception:  # pragma: no cover — config IO failure
         return _TrustPolicy(plugin_id=plugin_id)
@@ -472,6 +473,7 @@ def _parse_structured_text(
     if json_schema is not None:
         try:
             import jsonschema  # type: ignore[import-untyped]
+
             jsonschema.validate(parsed, json_schema)
         except ImportError:
             # jsonschema is optional; skip strict validation when absent.
@@ -511,9 +513,13 @@ def _extract_usage(response: Any) -> PluginLlmUsage:
 
     usage.input_tokens = _g("prompt_tokens") or _g("input_tokens")
     usage.output_tokens = _g("completion_tokens") or _g("output_tokens")
-    usage.total_tokens = _g("total_tokens") or (usage.input_tokens + usage.output_tokens)
+    usage.total_tokens = _g("total_tokens") or (
+        usage.input_tokens + usage.output_tokens
+    )
     usage.cache_read_tokens = _g("cache_read_input_tokens") or _g("cache_read_tokens")
-    usage.cache_write_tokens = _g("cache_creation_input_tokens") or _g("cache_write_tokens")
+    usage.cache_write_tokens = _g("cache_creation_input_tokens") or _g(
+        "cache_write_tokens"
+    )
     return usage
 
 
@@ -571,6 +577,7 @@ def _resolve_attribution(
     else:
         try:
             from agent.auxiliary_client import _read_main_provider
+
             provider = (_read_main_provider() or "").strip() or "auto"
         except Exception:  # pragma: no cover — defensive
             provider = "auto"
@@ -583,6 +590,7 @@ def _resolve_attribution(
     else:
         try:
             from agent.auxiliary_client import _read_main_model
+
             model = (_read_main_model() or "").strip() or "default"
         except Exception:  # pragma: no cover — defensive
             model = "default"
@@ -673,9 +681,11 @@ class PluginLlm:
             },
         )
         logger.info(
-            "plugin_llm.complete plugin=%s provider=%s model=%s purpose=%s "
-            "tokens=%d",
-            self._plugin_id, real_provider, real_model, purpose or "",
+            "plugin_llm.complete plugin=%s provider=%s model=%s purpose=%s tokens=%d",
+            self._plugin_id,
+            real_provider,
+            real_model,
+            purpose or "",
             usage.total_tokens,
         )
         return result
@@ -732,7 +742,9 @@ class PluginLlm:
             schema_name=schema_name,
             system_prompt=system_prompt,
         )
-        extra_body = self._json_response_format(json_mode=json_mode, json_schema=json_schema)
+        extra_body = self._json_response_format(
+            json_mode=json_mode, json_schema=json_schema
+        )
 
         real_provider, real_model, response = self._invoke_sync(
             messages=messages,
@@ -767,8 +779,12 @@ class PluginLlm:
         logger.info(
             "plugin_llm.complete_structured plugin=%s provider=%s model=%s "
             "purpose=%s content_type=%s tokens=%d",
-            self._plugin_id, real_provider, real_model, purpose or "",
-            content_type, usage.total_tokens,
+            self._plugin_id,
+            real_provider,
+            real_model,
+            purpose or "",
+            content_type,
+            usage.total_tokens,
         )
         return result
 
@@ -860,7 +876,9 @@ class PluginLlm:
             schema_name=schema_name,
             system_prompt=system_prompt,
         )
-        extra_body = self._json_response_format(json_mode=json_mode, json_schema=json_schema)
+        extra_body = self._json_response_format(
+            json_mode=json_mode, json_schema=json_schema
+        )
         real_provider, real_model, response = await self._invoke_async(
             messages=messages,
             provider_override=eff_provider,
@@ -943,6 +961,7 @@ class PluginLlm:
                 extra_body=extra_body,
             )
         from agent.auxiliary_client import call_llm
+
         merged_extra = dict(extra_body or {})
         if profile_override:
             merged_extra.setdefault("metadata", {})["auth_profile"] = profile_override
@@ -987,6 +1006,7 @@ class PluginLlm:
                 extra_body=extra_body,
             )
         from agent.auxiliary_client import async_call_llm
+
         merged_extra = dict(extra_body or {})
         if profile_override:
             merged_extra.setdefault("metadata", {})["auth_profile"] = profile_override

@@ -19,27 +19,33 @@ def test_submit_ticket_result_patches_and_comments():
         "linked_agent_run_ids": [],
     }
 
-    with patch(
-        "plugins.openos_engineering.tools.get_ticket",
-        return_value=ticket,
-    ), patch(
-        "plugins.openos_engineering.tools.patch_ticket",
-        return_value={**ticket, "deliverables": [{"kind": "csv", "summary": "42 rows"}]},
-    ) as patch_mock, patch(
-        "plugins.openos_engineering.tools.add_ticket_comment",
-        return_value={"id": "c1"},
-    ) as comment_mock, patch(
-        "plugins.openos_engineering.tools.update_ticket_status",
-        return_value={**ticket, "status": "in_review"},
-    ) as status_mock:
-        result = handle_submit_ticket_result(
-            {
-                "ticket_id": "OP-9",
+    with (
+        patch(
+            "plugins.openos_engineering.tools.get_ticket",
+            return_value=ticket,
+        ),
+        patch(
+            "plugins.openos_engineering.tools.patch_ticket",
+            return_value={
+                **ticket,
                 "deliverables": [{"kind": "csv", "summary": "42 rows"}],
-                "comment": "Scrape complete",
-                "agent_run_id": "run-abc",
-            }
-        )
+            },
+        ) as patch_mock,
+        patch(
+            "plugins.openos_engineering.tools.add_ticket_comment",
+            return_value={"id": "c1"},
+        ) as comment_mock,
+        patch(
+            "plugins.openos_engineering.tools.update_ticket_status",
+            return_value={**ticket, "status": "in_review"},
+        ) as status_mock,
+    ):
+        result = handle_submit_ticket_result({
+            "ticket_id": "OP-9",
+            "deliverables": [{"kind": "csv", "summary": "42 rows"}],
+            "comment": "Scrape complete",
+            "agent_run_id": "run-abc",
+        })
 
     assert "OP-9" in result
     patch_mock.assert_called_once()

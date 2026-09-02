@@ -58,7 +58,9 @@ class TeamsPipelineStore:
             if not isinstance(data, dict):
                 return
             self._state["subscriptions"] = dict(data.get("subscriptions") or {})
-            self._state["notification_receipts"] = dict(data.get("notification_receipts") or {})
+            self._state["notification_receipts"] = dict(
+                data.get("notification_receipts") or {}
+            )
             self._state["event_timestamps"] = dict(data.get("event_timestamps") or {})
             self._state["jobs"] = dict(data.get("jobs") or {})
             self._state["sink_records"] = dict(data.get("sink_records") or {})
@@ -85,12 +87,16 @@ class TeamsPipelineStore:
             record = self._state["subscriptions"].get(subscription_id)
             return deepcopy(record) if isinstance(record, dict) else None
 
-    def upsert_subscription(self, subscription_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def upsert_subscription(
+        self, subscription_id: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
         with self._lock:
             existing = self._state["subscriptions"].get(subscription_id, {})
             merged = {**existing, **deepcopy(payload)}
             merged["subscription_id"] = subscription_id
-            merged.setdefault("created_at", existing.get("created_at") or _utc_now_iso())
+            merged.setdefault(
+                "created_at", existing.get("created_at") or _utc_now_iso()
+            )
             merged["updated_at"] = _utc_now_iso()
             self._state["subscriptions"][subscription_id] = merged
             self._persist()
@@ -134,7 +140,9 @@ class TeamsPipelineStore:
             self._persist()
             return True
 
-    def record_event_timestamp(self, event_key: str, timestamp: Optional[str] = None) -> str:
+    def record_event_timestamp(
+        self, event_key: str, timestamp: Optional[str] = None
+    ) -> str:
         with self._lock:
             value = timestamp or _utc_now_iso()
             self._state["event_timestamps"][event_key] = value
@@ -161,7 +169,9 @@ class TeamsPipelineStore:
             existing = self._state["jobs"].get(job_id, {})
             merged = {**existing, **deepcopy(payload)}
             merged["job_id"] = job_id
-            merged.setdefault("created_at", existing.get("created_at") or _utc_now_iso())
+            merged.setdefault(
+                "created_at", existing.get("created_at") or _utc_now_iso()
+            )
             merged["updated_at"] = _utc_now_iso()
             self._state["jobs"][job_id] = merged
             self._persist()
@@ -176,12 +186,16 @@ class TeamsPipelineStore:
         with self._lock:
             return deepcopy(self._state["jobs"])
 
-    def upsert_sink_record(self, sink_key: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def upsert_sink_record(
+        self, sink_key: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
         with self._lock:
             existing = self._state["sink_records"].get(sink_key, {})
             merged = {**existing, **deepcopy(payload)}
             merged["sink_key"] = sink_key
-            merged.setdefault("created_at", existing.get("created_at") or _utc_now_iso())
+            merged.setdefault(
+                "created_at", existing.get("created_at") or _utc_now_iso()
+            )
             merged["updated_at"] = _utc_now_iso()
             self._state["sink_records"][sink_key] = merged
             self._persist()

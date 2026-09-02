@@ -5,7 +5,13 @@ import pytest
 from rich.console import Console
 
 from cli import ChatConsole
-from openagents_cli.skills_hub import do_check, do_install, do_list, do_update, handle_skills_slash
+from openagents_cli.skills_hub import (
+    do_check,
+    do_install,
+    do_list,
+    do_update,
+    handle_skills_slash,
+)
 
 
 class _DummyLockFile:
@@ -56,7 +62,9 @@ def three_source_env(monkeypatch, hub_env):
     import tools.skills_tool as skills_tool
 
     monkeypatch.setattr(hub, "HubLockFile", lambda: _DummyLockFile([_HUB_ENTRY]))
-    monkeypatch.setattr(skills_tool, "_find_all_skills", lambda **_kwargs: list(_ALL_THREE_SKILLS))
+    monkeypatch.setattr(
+        skills_tool, "_find_all_skills", lambda **_kwargs: list(_ALL_THREE_SKILLS)
+    )
     monkeypatch.setattr(skills_sync, "_read_manifest", lambda: dict(_BUILTIN_MANIFEST))
 
     return hub_env
@@ -89,10 +97,24 @@ def _capture_update(monkeypatch, results) -> tuple[str, list[tuple[str, str, boo
     installs = []
 
     monkeypatch.setattr(hub, "check_for_skill_updates", lambda **_kwargs: results)
-    monkeypatch.setattr(hub, "HubLockFile", lambda: type("L", (), {
-        "get_installed": lambda self, name: {"install_path": "category/" + name}
-    })())
-    monkeypatch.setattr(cli_hub, "do_install", lambda identifier, category="", force=False, console=None: installs.append((identifier, category, force)))
+    monkeypatch.setattr(
+        hub,
+        "HubLockFile",
+        lambda: type(
+            "L",
+            (),
+            {"get_installed": lambda self, name: {"install_path": "category/" + name}},
+        )(),
+    )
+    monkeypatch.setattr(
+        cli_hub,
+        "do_install",
+        lambda identifier, category="", force=False, console=None: installs.append((
+            identifier,
+            category,
+            force,
+        )),
+    )
 
     do_update(console=console)
     return sink.getvalue(), installs
@@ -159,7 +181,9 @@ def test_do_list_renders_status_column(three_source_env, monkeypatch):
     answered Mr Mochizuki's 'I just want to see what's live' question)."""
     from agent import skill_utils
 
-    monkeypatch.setattr(skill_utils, "get_disabled_skill_names", lambda platform=None: set())
+    monkeypatch.setattr(
+        skill_utils, "get_disabled_skill_names", lambda platform=None: set()
+    )
     output = _capture()
 
     assert "Status" in output
@@ -173,7 +197,8 @@ def test_do_list_marks_disabled_skills(three_source_env, monkeypatch):
 
     # Simulate `skills.disabled: [hub-skill]` in config.
     monkeypatch.setattr(
-        skill_utils, "get_disabled_skill_names",
+        skill_utils,
+        "get_disabled_skill_names",
         lambda platform=None: {"hub-skill"},
     )
     output = _capture()
@@ -188,7 +213,8 @@ def test_do_list_enabled_only_hides_disabled(three_source_env, monkeypatch):
     from agent import skill_utils
 
     monkeypatch.setattr(
-        skill_utils, "get_disabled_skill_names",
+        skill_utils,
+        "get_disabled_skill_names",
         lambda platform=None: {"hub-skill"},
     )
     sink = StringIO()
@@ -223,10 +249,13 @@ def test_do_list_platform_env_is_ignored(three_source_env, monkeypatch):
 
 
 def test_do_check_reports_available_updates(monkeypatch):
-    output = _capture_check(monkeypatch, [
-        {"name": "hub-skill", "source": "skills.sh", "status": "update_available"},
-        {"name": "other-skill", "source": "github", "status": "up_to_date"},
-    ])
+    output = _capture_check(
+        monkeypatch,
+        [
+            {"name": "hub-skill", "source": "skills.sh", "status": "update_available"},
+            {"name": "other-skill", "source": "github", "status": "up_to_date"},
+        ],
+    )
 
     assert "hub-skill" in output
     assert "update_available" in output
@@ -240,27 +269,46 @@ def test_do_check_handles_no_installed_updates(monkeypatch):
 
 
 def test_do_update_reinstalls_outdated_skills(monkeypatch):
-    output, installs = _capture_update(monkeypatch, [
-        {"name": "hub-skill", "identifier": "skills-sh/example/repo/hub-skill", "status": "update_available"},
-        {"name": "other-skill", "identifier": "github/example/other-skill", "status": "up_to_date"},
-    ])
+    output, installs = _capture_update(
+        monkeypatch,
+        [
+            {
+                "name": "hub-skill",
+                "identifier": "skills-sh/example/repo/hub-skill",
+                "status": "update_available",
+            },
+            {
+                "name": "other-skill",
+                "identifier": "github/example/other-skill",
+                "status": "up_to_date",
+            },
+        ],
+    )
 
     assert installs == [("skills-sh/example/repo/hub-skill", "category", True)]
     assert "Updated 1 skill" in output
 
 
 def test_handle_skills_slash_search_accepts_chatconsole_without_status_errors():
-    results = [type("R", (), {
-        "name": "kubernetes",
-        "description": "Cluster orchestration",
-        "source": "skills.sh",
-        "trust_level": "community",
-        "identifier": "skills-sh/example/kubernetes",
-    })()]
+    results = [
+        type(
+            "R",
+            (),
+            {
+                "name": "kubernetes",
+                "description": "Cluster orchestration",
+                "source": "skills.sh",
+                "trust_level": "community",
+                "identifier": "skills-sh/example/kubernetes",
+            },
+        )()
+    ]
 
-    with patch("tools.skills_hub.unified_search", return_value=results), \
-         patch("tools.skills_hub.create_source_router", return_value={}), \
-         patch("tools.skills_hub.GitHubAuth"):
+    with (
+        patch("tools.skills_hub.unified_search", return_value=results),
+        patch("tools.skills_hub.create_source_router", return_value={}),
+        patch("tools.skills_hub.GitHubAuth"),
+    ):
         handle_skills_slash("/skills search kubernetes", console=ChatConsole())
 
 
@@ -272,20 +320,29 @@ def test_do_install_scans_with_resolved_identifier(monkeypatch, tmp_path, hub_en
 
     class _ResolvedSource:
         def inspect(self, identifier):
-            return type("Meta", (), {
-                "extra": {},
-                "identifier": canonical_identifier,
-            })()
+            return type(
+                "Meta",
+                (),
+                {
+                    "extra": {},
+                    "identifier": canonical_identifier,
+                },
+            )()
 
         def fetch(self, identifier):
-            return type("Bundle", (), {
-                "name": "frontend-design",
-                "files": {"SKILL.md": "# Frontend Design"},
-                "source": "skills.sh",
-                "identifier": canonical_identifier,
-                "trust_level": "trusted",
-                "metadata": {},
-            })()
+            return type(
+                "Bundle",
+                (),
+                {
+                    "name": "frontend-design",
+                    "files": {"SKILL.md": "# Frontend Design"},
+                    "source": "skills.sh",
+                    "identifier": canonical_identifier,
+                    "trust_level": "trusted",
+                    "metadata": {},
+                },
+            )()
+
     q_path = tmp_path / "skills" / ".hub" / "quarantine" / "frontend-design"
     q_path.mkdir(parents=True)
     (q_path / "SKILL.md").write_text("# Frontend Design")
@@ -304,15 +361,25 @@ def test_do_install_scans_with_resolved_identifier(monkeypatch, tmp_path, hub_en
     monkeypatch.setattr(hub, "ensure_hub_dirs", lambda: None)
     monkeypatch.setattr(hub, "create_source_router", lambda auth: [_ResolvedSource()])
     monkeypatch.setattr(hub, "quarantine_bundle", lambda bundle: q_path)
-    monkeypatch.setattr(hub, "HubLockFile", lambda: type("Lock", (), {"get_installed": lambda self, name: None})())
+    monkeypatch.setattr(
+        hub,
+        "HubLockFile",
+        lambda: type("Lock", (), {"get_installed": lambda self, name: None})(),
+    )
     monkeypatch.setattr(guard, "scan_skill", _scan_skill)
     monkeypatch.setattr(guard, "format_scan_report", lambda result: "scan ok")
-    monkeypatch.setattr(guard, "should_allow_install", lambda result, force=False: (False, "stop after scan"))
+    monkeypatch.setattr(
+        guard,
+        "should_allow_install",
+        lambda result, force=False: (False, "stop after scan"),
+    )
 
     sink = StringIO()
     console = Console(file=sink, force_terminal=False, color_system=None)
 
-    do_install("skils-sh/anthropics/skills/frontend-design", console=console, skip_confirm=True)
+    do_install(
+        "skils-sh/anthropics/skills/frontend-design", console=console, skip_confirm=True
+    )
 
     assert scanned["source"] == canonical_identifier
 
@@ -325,20 +392,28 @@ def test_do_install_scans_official_bundles_with_source_provenance(
 
     class _OfficialSource:
         def inspect(self, identifier):
-            return type("Meta", (), {
-                "extra": {},
-                "identifier": "official/agent/prunus-gaia",
-            })()
+            return type(
+                "Meta",
+                (),
+                {
+                    "extra": {},
+                    "identifier": "official/agent/prunus-gaia",
+                },
+            )()
 
         def fetch(self, identifier):
-            return type("Bundle", (), {
-                "name": "prunus-gaia",
-                "files": {"SKILL.md": "# Prunus Gaia"},
-                "source": "official",
-                "identifier": "official/agent/prunus-gaia",
-                "trust_level": "builtin",
-                "metadata": {},
-            })()
+            return type(
+                "Bundle",
+                (),
+                {
+                    "name": "prunus-gaia",
+                    "files": {"SKILL.md": "# Prunus Gaia"},
+                    "source": "official",
+                    "identifier": "official/agent/prunus-gaia",
+                    "trust_level": "builtin",
+                    "metadata": {},
+                },
+            )()
 
     q_path = tmp_path / "skills" / ".hub" / "quarantine" / "prunus-gaia"
     q_path.mkdir(parents=True)
@@ -358,10 +433,18 @@ def test_do_install_scans_official_bundles_with_source_provenance(
     monkeypatch.setattr(hub, "ensure_hub_dirs", lambda: None)
     monkeypatch.setattr(hub, "create_source_router", lambda auth: [_OfficialSource()])
     monkeypatch.setattr(hub, "quarantine_bundle", lambda bundle: q_path)
-    monkeypatch.setattr(hub, "HubLockFile", lambda: type("Lock", (), {"get_installed": lambda self, name: None})())
+    monkeypatch.setattr(
+        hub,
+        "HubLockFile",
+        lambda: type("Lock", (), {"get_installed": lambda self, name: None})(),
+    )
     monkeypatch.setattr(guard, "scan_skill", _scan_skill)
     monkeypatch.setattr(guard, "format_scan_report", lambda result: "scan ok")
-    monkeypatch.setattr(guard, "should_allow_install", lambda result, force=False: (False, "stop after scan"))
+    monkeypatch.setattr(
+        guard,
+        "should_allow_install",
+        lambda result, force=False: (False, "stop after scan"),
+    )
 
     sink = StringIO()
     console = Console(file=sink, force_terminal=False, color_system=None)
@@ -376,20 +459,28 @@ def test_do_install_preserves_nested_official_optional_path(
 ):
     class _OfficialNestedSource:
         def inspect(self, identifier):
-            return type("Meta", (), {
-                "extra": {},
-                "identifier": "official/mlops/training/trl-fine-tuning",
-            })()
+            return type(
+                "Meta",
+                (),
+                {
+                    "extra": {},
+                    "identifier": "official/mlops/training/trl-fine-tuning",
+                },
+            )()
 
         def fetch(self, identifier):
-            return type("Bundle", (), {
-                "name": "trl-fine-tuning",
-                "files": {"SKILL.md": "# TRL"},
-                "source": "official",
-                "identifier": "official/mlops/training/trl-fine-tuning",
-                "trust_level": "builtin",
-                "metadata": {},
-            })()
+            return type(
+                "Bundle",
+                (),
+                {
+                    "name": "trl-fine-tuning",
+                    "files": {"SKILL.md": "# TRL"},
+                    "source": "official",
+                    "identifier": "official/mlops/training/trl-fine-tuning",
+                    "trust_level": "builtin",
+                    "metadata": {},
+                },
+            )()
 
     installs = _install_mocks(monkeypatch, tmp_path, _OfficialNestedSource)
 
@@ -410,28 +501,38 @@ def test_do_install_preserves_nested_official_optional_path(
 # ---------------------------------------------------------------------------
 
 
-def _make_url_bundle_fetcher(name="", awaiting_name=True, url="https://example.com/SKILL.md"):
+def _make_url_bundle_fetcher(
+    name="", awaiting_name=True, url="https://example.com/SKILL.md"
+):
     """Return a fake source that simulates ``UrlSource.fetch`` for a
     URL-sourced skill whose name hasn't been auto-resolved."""
 
     class _UrlSource:
         def inspect(self, identifier):
-            return type("Meta", (), {
-                "extra": {"url": url, "awaiting_name": awaiting_name},
-                "identifier": url,
-                "name": name,
-                "path": name,
-            })()
+            return type(
+                "Meta",
+                (),
+                {
+                    "extra": {"url": url, "awaiting_name": awaiting_name},
+                    "identifier": url,
+                    "name": name,
+                    "path": name,
+                },
+            )()
 
         def fetch(self, identifier):
-            return type("Bundle", (), {
-                "name": name,
-                "files": {"SKILL.md": "---\ndescription: ok\n---\n# body\n"},
-                "source": "url",
-                "identifier": url,
-                "trust_level": "community",
-                "metadata": {"url": url, "awaiting_name": awaiting_name},
-            })()
+            return type(
+                "Bundle",
+                (),
+                {
+                    "name": name,
+                    "files": {"SKILL.md": "---\ndescription: ok\n---\n# body\n"},
+                    "source": "url",
+                    "identifier": url,
+                    "trust_level": "community",
+                    "metadata": {"url": url, "awaiting_name": awaiting_name},
+                },
+            )()
 
     return _UrlSource
 
@@ -457,28 +558,38 @@ def _install_mocks(monkeypatch, tmp_path, source_factory, category_hint=""):
     monkeypatch.setattr(hub, "quarantine_bundle", lambda bundle: q_path)
     monkeypatch.setattr(hub, "install_from_quarantine", _install_from_quarantine)
     monkeypatch.setattr(
-        hub, "HubLockFile",
+        hub,
+        "HubLockFile",
         lambda: type("Lock", (), {"get_installed": lambda self, n: None})(),
     )
     monkeypatch.setattr(
-        guard, "scan_skill",
+        guard,
+        "scan_skill",
         lambda skill_path, source="community": guard.ScanResult(
-            skill_name="pending", source=source, trust_level="community", verdict="safe",
+            skill_name="pending",
+            source=source,
+            trust_level="community",
+            verdict="safe",
         ),
     )
     monkeypatch.setattr(guard, "format_scan_report", lambda result: "scan ok")
-    monkeypatch.setattr(guard, "should_allow_install", lambda result, force=False: (True, "ok"))
+    monkeypatch.setattr(
+        guard, "should_allow_install", lambda result, force=False: (True, "ok")
+    )
     return install_calls
 
 
-def test_url_install_uses_name_override_on_non_interactive_surface(monkeypatch, tmp_path, hub_env):
+def test_url_install_uses_name_override_on_non_interactive_surface(
+    monkeypatch, tmp_path, hub_env
+):
     installs = _install_mocks(monkeypatch, tmp_path, _make_url_bundle_fetcher())
 
     sink = StringIO()
     console = Console(file=sink, force_terminal=False, color_system=None)
     do_install(
         "https://example.com/SKILL.md",
-        console=console, skip_confirm=True,
+        console=console,
+        skip_confirm=True,
         name_override="my-url-skill",
     )
 
@@ -492,7 +603,8 @@ def test_url_install_rejects_invalid_name_override(monkeypatch, tmp_path, hub_en
     console = Console(file=sink, force_terminal=False, color_system=None)
     do_install(
         "https://example.com/SKILL.md",
-        console=console, skip_confirm=True,
+        console=console,
+        skip_confirm=True,
         name_override="SKILL",  # rejected by _is_valid_installed_skill_name
     )
 
@@ -500,14 +612,17 @@ def test_url_install_rejects_invalid_name_override(monkeypatch, tmp_path, hub_en
     assert "Invalid --name" in sink.getvalue()
 
 
-def test_url_install_actionable_error_on_non_interactive_with_no_name(monkeypatch, tmp_path, hub_env):
+def test_url_install_actionable_error_on_non_interactive_with_no_name(
+    monkeypatch, tmp_path, hub_env
+):
     installs = _install_mocks(monkeypatch, tmp_path, _make_url_bundle_fetcher())
 
     sink = StringIO()
     console = Console(file=sink, force_terminal=False, color_system=None)
     do_install(
         "https://example.com/SKILL.md",
-        console=console, skip_confirm=True,
+        console=console,
+        skip_confirm=True,
         # No name_override — should error out with a retry hint.
     )
 
@@ -528,17 +643,22 @@ def test_url_install_prompts_interactively_when_tty(monkeypatch, tmp_path, hub_e
     console = Console(file=sink, force_terminal=False, color_system=None)
     do_install(
         "https://example.com/SKILL.md",
-        console=console, skip_confirm=False,  # interactive
+        console=console,
+        skip_confirm=False,  # interactive
         force=True,  # skip the final confirm prompt (tested elsewhere)
     )
 
     assert installs == [{"name": "my-interactive", "category": ""}]
 
 
-def test_url_install_prompts_category_and_uses_typed_value(monkeypatch, tmp_path, hub_env):
+def test_url_install_prompts_category_and_uses_typed_value(
+    monkeypatch, tmp_path, hub_env
+):
     import tools.skills_hub as hub
+
     installs = _install_mocks(
-        monkeypatch, tmp_path,
+        monkeypatch,
+        tmp_path,
         _make_url_bundle_fetcher(name="sharethis-chat", awaiting_name=False),
     )
 
@@ -554,7 +674,9 @@ def test_url_install_prompts_category_and_uses_typed_value(monkeypatch, tmp_path
     console = Console(file=sink, force_terminal=False, color_system=None)
     do_install(
         "https://example.com/sharethis-chat/SKILL.md",
-        console=console, skip_confirm=False, force=True,
+        console=console,
+        skip_confirm=False,
+        force=True,
     )
 
     assert installs == [{"name": "sharethis-chat", "category": "productivity"}]
@@ -571,7 +693,9 @@ def test_url_install_cancel_name_prompt_aborts(monkeypatch, tmp_path, hub_env):
     console = Console(file=sink, force_terminal=False, color_system=None)
     do_install(
         "https://example.com/SKILL.md",
-        console=console, skip_confirm=False, force=True,
+        console=console,
+        skip_confirm=False,
+        force=True,
     )
 
     assert installs == []
@@ -603,12 +727,16 @@ def test_existing_categories_skips_top_level_skills(monkeypatch, tmp_path, hub_e
     assert cats == ["productivity"]
 
 
-def test_existing_categories_returns_empty_when_skills_dir_missing(monkeypatch, tmp_path, hub_env):
+def test_existing_categories_returns_empty_when_skills_dir_missing(
+    monkeypatch, tmp_path, hub_env
+):
     # hub_env creates tmp_path/skills/.hub — we point SKILLS_DIR at a missing sibling.
     import tools.skills_hub as hub
+
     monkeypatch.setattr(hub, "SKILLS_DIR", tmp_path / "does-not-exist")
 
     from openagents_cli.skills_hub import _existing_categories
+
     assert _existing_categories() == []
 
 
@@ -628,18 +756,28 @@ def test_browse_skills_dedup_uses_identifier_not_name(monkeypatch):
     from openagents_cli.skills_hub import browse_skills
 
     airbnb = SkillMeta(
-        name="search-listings", description="Airbnb search", source="browse-sh",
-        identifier="browse-sh/airbnb.com/search-listings-ddgioa", trust_level="community",
+        name="search-listings",
+        description="Airbnb search",
+        source="browse-sh",
+        identifier="browse-sh/airbnb.com/search-listings-ddgioa",
+        trust_level="community",
     )
     booking = SkillMeta(
-        name="search-listings", description="Booking.com search", source="browse-sh",
-        identifier="browse-sh/booking.com/search-listings-xyzab", trust_level="community",
+        name="search-listings",
+        description="Booking.com search",
+        source="browse-sh",
+        identifier="browse-sh/booking.com/search-listings-xyzab",
+        trust_level="community",
     )
 
-    mock_src = type("S", (), {
-        "source_id": lambda self: "browse-sh",
-        "search": lambda self, q, limit=500: [airbnb, booking],
-    })()
+    mock_src = type(
+        "S",
+        (),
+        {
+            "source_id": lambda self: "browse-sh",
+            "search": lambda self, q, limit=500: [airbnb, booking],
+        },
+    )()
 
     # browse_skills() imports create_source_router locally from tools.skills_hub,
     # so the patch must target the source module, not openagents_cli.skills_hub.
@@ -662,15 +800,23 @@ def test_do_browse_reports_live_per_source_progress():
     from tools.skills_hub import SkillMeta
 
     meta = SkillMeta(
-        name="demo", description="d", source="official",
-        identifier="official/demo", trust_level="builtin",
+        name="demo",
+        description="d",
+        source="official",
+        identifier="official/demo",
+        trust_level="builtin",
     )
 
     captured = {}
 
-    def fake_parallel(sources, query="", per_source_limits=None,
-                      source_filter="all", overall_timeout=30,
-                      on_source_done=None):
+    def fake_parallel(
+        sources,
+        query="",
+        per_source_limits=None,
+        source_filter="all",
+        overall_timeout=30,
+        on_source_done=None,
+    ):
         # Simulate two sources completing — the callback must be wired through.
         assert on_source_done is not None, "do_browse must pass on_source_done"
         on_source_done("official", 1)
@@ -681,9 +827,11 @@ def test_do_browse_reports_live_per_source_progress():
     sink = StringIO()
     console = Console(file=sink, force_terminal=False, color_system=None, width=120)
 
-    with patch("tools.skills_hub.create_source_router", return_value=[]), \
-         patch("tools.skills_hub.GitHubAuth"), \
-         patch("tools.skills_hub.parallel_search_sources", side_effect=fake_parallel):
+    with (
+        patch("tools.skills_hub.create_source_router", return_value=[]),
+        patch("tools.skills_hub.GitHubAuth"),
+        patch("tools.skills_hub.parallel_search_sources", side_effect=fake_parallel),
+    ):
         do_browse(page=1, page_size=20, console=console)
 
     assert captured.get("called"), "parallel_search_sources was not invoked"
@@ -699,13 +847,17 @@ def test_do_browse_reports_live_per_source_progress():
 # A real browse-sh-style slug whose trailing -XXXXXX hash matters for install
 _LONG_SLUG = "browse-sh/weather.gov/get-forecast-1uezib"
 
-_LONG_RESULT = type("R", (), {
-    "name": "get-forecast",
-    "description": "Fetch the forecast",
-    "source": "browse-sh",
-    "trust_level": "community",
-    "identifier": _LONG_SLUG,
-})()
+_LONG_RESULT = type(
+    "R",
+    (),
+    {
+        "name": "get-forecast",
+        "description": "Fetch the forecast",
+        "source": "browse-sh",
+        "trust_level": "community",
+        "identifier": _LONG_SLUG,
+    },
+)()
 
 
 def test_do_search_identifier_column_does_not_truncate_long_slug():
@@ -723,9 +875,11 @@ def test_do_search_identifier_column_does_not_truncate_long_slug():
     # wrapped (not ellipsis-truncated).
     console = Console(file=sink, force_terminal=False, color_system=None, width=40)
 
-    with patch("tools.skills_hub.unified_search", return_value=[_LONG_RESULT]), \
-         patch("tools.skills_hub.create_source_router", return_value={}), \
-         patch("tools.skills_hub.GitHubAuth"):
+    with (
+        patch("tools.skills_hub.unified_search", return_value=[_LONG_RESULT]),
+        patch("tools.skills_hub.create_source_router", return_value={}),
+        patch("tools.skills_hub.GitHubAuth"),
+    ):
         do_search("weather", console=console)
 
     output = sink.getvalue()
@@ -765,14 +919,17 @@ def test_do_search_json_flag_emits_full_identifiers(capsys):
     sink = StringIO()
     console = Console(file=sink, force_terminal=False, color_system=None, width=40)
 
-    with patch("tools.skills_hub.unified_search", return_value=[_LONG_RESULT]), \
-         patch("tools.skills_hub.create_source_router", return_value={}), \
-         patch("tools.skills_hub.GitHubAuth"):
+    with (
+        patch("tools.skills_hub.unified_search", return_value=[_LONG_RESULT]),
+        patch("tools.skills_hub.create_source_router", return_value={}),
+        patch("tools.skills_hub.GitHubAuth"),
+    ):
         do_search("weather", console=console, as_json=True)
 
     # JSON goes to stdout via print(), not the Rich console sink.
     captured = capsys.readouterr().out
     import json as _json
+
     payload = _json.loads(captured)
     assert isinstance(payload, list) and len(payload) == 1
     assert payload[0]["identifier"] == _LONG_SLUG
@@ -780,4 +937,3 @@ def test_do_search_json_flag_emits_full_identifiers(capsys):
     assert payload[0]["source"] == "browse-sh"
     # Table render must be suppressed — sink should be empty (no "Searching for:" header).
     assert "Searching for:" not in sink.getvalue()
-

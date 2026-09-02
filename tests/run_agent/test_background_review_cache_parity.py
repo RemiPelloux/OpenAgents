@@ -34,6 +34,7 @@ def _make_agent_stub(agent_cls):
         "for prefix-cache parity"
     )
     import datetime as _dt
+
     agent.session_start = _dt.datetime(2026, 1, 1, 12, 0, 0)
     agent._MEMORY_REVIEW_PROMPT = "review memory"
     agent._SKILL_REVIEW_PROMPT = "review skills"
@@ -103,8 +104,10 @@ def test_review_fork_inherits_parent_cached_system_prompt():
         # so we need to capture it on attribute set. Use a property-style sentinel
         # via __setattr__ on this instance.
 
-    with patch.object(run_agent, "AIAgent", _ReviewAgentRecorder), \
-         patch("threading.Thread", _SyncThread):
+    with (
+        patch.object(run_agent, "AIAgent", _ReviewAgentRecorder),
+        patch("threading.Thread", _SyncThread),
+    ):
         # Wrap the recorder's __setattr__ so we can see the _cached_system_prompt
         # write that _spawn_background_review performs after construction.
         orig_setattr = _ReviewAgentRecorder.__setattr__
@@ -170,8 +173,10 @@ def test_review_fork_pins_session_start_and_session_id():
         def close(self):
             pass
 
-    with patch.object(run_agent, "AIAgent", _Recorder), \
-         patch("threading.Thread", _SyncThread):
+    with (
+        patch.object(run_agent, "AIAgent", _Recorder),
+        patch("threading.Thread", _SyncThread),
+    ):
         agent._spawn_background_review(
             messages_snapshot=[],
             review_memory=True,
@@ -221,8 +226,10 @@ def test_review_fork_inherits_parent_toolset_config():
         def close(self):
             pass
 
-    with patch.object(run_agent, "AIAgent", _Recorder), \
-         patch("threading.Thread", _SyncThread):
+    with (
+        patch.object(run_agent, "AIAgent", _Recorder),
+        patch("threading.Thread", _SyncThread),
+    ):
         agent._spawn_background_review(
             messages_snapshot=[],
             review_memory=True,

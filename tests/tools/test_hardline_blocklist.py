@@ -154,6 +154,7 @@ def test_hardline_detection_allows(command):
 # Integration with the approval flow
 # -------------------------------------------------------------------------
 
+
 @pytest.fixture
 def clean_session(monkeypatch):
     """Reset session-scoped approval state around each test."""
@@ -191,11 +192,15 @@ def test_yolo_env_var_cannot_bypass_hardline(clean_session, monkeypatch):
 
     for cmd in ["rm -rf /", "shutdown -h now", "mkfs.ext4 /dev/sda", "reboot"]:
         r1 = check_dangerous_command(cmd, "local")
-        assert r1["approved"] is False, f"yolo leaked hardline on {cmd!r} (check_dangerous_command)"
+        assert r1["approved"] is False, (
+            f"yolo leaked hardline on {cmd!r} (check_dangerous_command)"
+        )
         assert r1.get("hardline") is True
 
         r2 = check_all_command_guards(cmd, "local")
-        assert r2["approved"] is False, f"yolo leaked hardline on {cmd!r} (check_all_command_guards)"
+        assert r2["approved"] is False, (
+            f"yolo leaked hardline on {cmd!r} (check_all_command_guards)"
+        )
         assert r2.get("hardline") is True
 
 
@@ -212,10 +217,13 @@ def test_session_yolo_cannot_bypass_hardline(clean_session):
     assert result.get("hardline") is True
 
 
-def test_approvals_mode_off_cannot_bypass_hardline(clean_session, monkeypatch, tmp_path):
+def test_approvals_mode_off_cannot_bypass_hardline(
+    clean_session, monkeypatch, tmp_path
+):
     """config approvals.mode=off (yolo-equivalent) must not bypass hardline."""
     # _get_approval_mode() reads from hermes config; simplest path: monkeypatch the helper.
     import tools.approval as approval_mod
+
     monkeypatch.setattr(approval_mod, "_get_approval_mode", lambda: "off")
 
     result = check_all_command_guards("rm -rf /", "local")
@@ -227,6 +235,7 @@ def test_cron_approve_mode_cannot_bypass_hardline(clean_session, monkeypatch):
     """Cron sessions with cron_mode=approve must not bypass hardline."""
     monkeypatch.setenv("HERMES_CRON_SESSION", "1")
     import tools.approval as approval_mod
+
     monkeypatch.setattr(approval_mod, "_get_cron_approval_mode", lambda: "approve")
 
     result = check_all_command_guards("rm -rf /", "local")
@@ -264,7 +273,12 @@ def test_recoverable_dangerous_commands_still_pass_yolo(clean_session, monkeypat
     monkeypatch.setenv("HERMES_YOLO_MODE", "1")
 
     # These are dangerous but NOT hardline — yolo should still pass them.
-    for cmd in ["rm -rf /tmp/x", "chmod -R 777 .", "git reset --hard", "git push --force"]:
+    for cmd in [
+        "rm -rf /tmp/x",
+        "chmod -R 777 .",
+        "git reset --hard",
+        "git push --force",
+    ]:
         # Sanity: still flagged as dangerous
         is_dangerous, _, _ = detect_dangerous_command(cmd)
         assert is_dangerous, f"precondition: {cmd!r} should be in DANGEROUS_PATTERNS"
@@ -356,7 +370,10 @@ def test_sudo_stdin_guard_blocks_via_check_all_command_guards(clean_session):
         # Should NOT be marked as hardline (it's sudo-specific)
         assert result.get("hardline") is not True
         assert "BLOCKED" in result["message"]
-        assert "sudo -S" in result["message"].lower() or "sudo password" in result["message"].lower()
+        assert (
+            "sudo -S" in result["message"].lower()
+            or "sudo password" in result["message"].lower()
+        )
 
 
 def test_sudo_stdin_guard_not_blocked_by_yolo(clean_session, monkeypatch):
@@ -373,4 +390,6 @@ def test_sudo_stdin_guard_container_bypass(clean_session):
     for env in ("docker", "singularity", "modal", "daytona"):
         for cmd in _SUDO_STDIN_BLOCK:
             result = check_all_command_guards(cmd, env)
-            assert result["approved"] is True, f"container {env} should bypass sudo guard on {cmd!r}"
+            assert result["approved"] is True, (
+                f"container {env} should bypass sudo guard on {cmd!r}"
+            )

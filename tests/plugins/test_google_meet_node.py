@@ -28,6 +28,7 @@ def _isolate_home(tmp_path, monkeypatch):
 # protocol.py
 # ---------------------------------------------------------------------------
 
+
 def test_protocol_encode_decode_roundtrip():
     from plugins.google_meet.node import protocol
 
@@ -129,6 +130,7 @@ def test_protocol_error_envelope_shape():
 # registry.py
 # ---------------------------------------------------------------------------
 
+
 def test_registry_add_get_roundtrip_persists(tmp_path):
     from plugins.google_meet.node.registry import NodeRegistry
 
@@ -226,6 +228,7 @@ def test_registry_defaults_to_hermes_home(tmp_path, monkeypatch):
 # server.py — token + dispatch
 # ---------------------------------------------------------------------------
 
+
 def test_server_ensure_token_generates_and_persists(tmp_path):
     from plugins.google_meet.node.server import NodeServer
 
@@ -252,7 +255,11 @@ def test_server_get_token_is_idempotent(tmp_path):
 
 
 def _run(coro):
-    return asyncio.new_event_loop().run_until_complete(coro) if False else asyncio.run(coro)
+    return (
+        asyncio.new_event_loop().run_until_complete(coro)
+        if False
+        else asyncio.run(coro)
+    )
 
 
 def test_server_handle_request_rejects_bad_token(tmp_path):
@@ -285,8 +292,9 @@ def test_server_handle_request_status_dispatches_to_pm(tmp_path, monkeypatch):
     from plugins.google_meet.node import protocol
     from plugins.google_meet import process_manager as pm
 
-    monkeypatch.setattr(pm, "status",
-                        lambda: {"ok": True, "alive": True, "meetingId": "abc"})
+    monkeypatch.setattr(
+        pm, "status", lambda: {"ok": True, "alive": True, "meetingId": "abc"}
+    )
 
     s = NodeServer(token_path=tmp_path / "t.json")
     tok = s.ensure_token()
@@ -312,11 +320,15 @@ def test_server_handle_request_start_bot_dispatches(tmp_path, monkeypatch):
 
     s = NodeServer(token_path=tmp_path / "t.json")
     tok = s.ensure_token()
-    req = protocol.make_request("start_bot", tok, {
-        "url": "https://meet.google.com/abc-defg-hij",
-        "guest_name": "Bot",
-        "duration": "30m",
-    })
+    req = protocol.make_request(
+        "start_bot",
+        tok,
+        {
+            "url": "https://meet.google.com/abc-defg-hij",
+            "guest_name": "Bot",
+            "duration": "30m",
+        },
+    )
     resp = asyncio.run(s._handle_request(req))
     assert resp["type"] == "response"
     assert resp["payload"]["ok"] is True
@@ -387,8 +399,9 @@ def test_server_handle_request_say_enqueues_when_active(tmp_path, monkeypatch):
 
     out = tmp_path / "meet-out"
     out.mkdir()
-    monkeypatch.setattr(pm, "_read_active",
-                        lambda: {"pid": 1, "meeting_id": "m", "out_dir": str(out)})
+    monkeypatch.setattr(
+        pm, "_read_active", lambda: {"pid": 1, "meeting_id": "m", "out_dir": str(out)}
+    )
 
     s = NodeServer(token_path=tmp_path / "t.json")
     tok = s.ensure_token()
@@ -440,6 +453,7 @@ def test_server_handle_request_wraps_pm_exceptions(tmp_path, monkeypatch):
 # client.py
 # ---------------------------------------------------------------------------
 
+
 class _FakeWS:
     """Minimal context-manager stand-in for websockets.sync.client.connect."""
 
@@ -472,6 +486,7 @@ def _install_fake_ws(monkeypatch, reply_builder):
 
     # Patch the concrete import site inside client._rpc
     import websockets.sync.client as wsc  # type: ignore
+
     monkeypatch.setattr(wsc, "connect", _connect)
     return fake_ws_holder
 
@@ -482,7 +497,9 @@ def test_client_rpc_sends_correct_envelope_and_parses_response(monkeypatch):
 
     def reply(raw_out):
         req = protocol.decode(raw_out)
-        return protocol.encode(protocol.make_response(req["id"], {"ok": True, "echo": req["type"]}))
+        return protocol.encode(
+            protocol.make_response(req["id"], {"ok": True, "echo": req["type"]})
+        )
 
     holder = _install_fake_ws(monkeypatch, reply)
 
@@ -570,6 +587,7 @@ def test_client_init_rejects_bad_args():
 # ---------------------------------------------------------------------------
 # cli.py
 # ---------------------------------------------------------------------------
+
 
 def _build_parser():
     from plugins.google_meet.node.cli import register_cli

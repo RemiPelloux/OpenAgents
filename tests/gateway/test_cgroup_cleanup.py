@@ -14,20 +14,27 @@ from gateway import cgroup_cleanup
 class TestOwnCgroupPath:
     def test_parses_v2_cgroup_path(self, tmp_path, monkeypatch):
         proc_self = tmp_path / "cgroup"
-        proc_self.write_text("0::/user.slice/user-1000.slice/openagents-gateway.service\n")
+        proc_self.write_text(
+            "0::/user.slice/user-1000.slice/openagents-gateway.service\n"
+        )
         monkeypatch.setattr(
             cgroup_cleanup,
             "Path",
             lambda p: proc_self if p == "/proc/self/cgroup" else Path(p),
         )
 
-        assert cgroup_cleanup._own_cgroup_path() == "/user.slice/user-1000.slice/openagents-gateway.service"
+        assert (
+            cgroup_cleanup._own_cgroup_path()
+            == "/user.slice/user-1000.slice/openagents-gateway.service"
+        )
 
     def test_returns_none_when_proc_missing(self, monkeypatch):
         def _raise(_path):
             raise FileNotFoundError
 
-        monkeypatch.setattr(cgroup_cleanup.Path, "read_text", lambda self, *a, **k: _raise(self))
+        monkeypatch.setattr(
+            cgroup_cleanup.Path, "read_text", lambda self, *a, **k: _raise(self)
+        )
         assert cgroup_cleanup._own_cgroup_path() is None
 
 
@@ -46,7 +53,9 @@ class TestReapCgroup:
         monkeypatch.setattr(cgroup_cleanup, "Path", _fake_path)
 
         killed_pids: list[tuple[int, int]] = []
-        monkeypatch.setattr(cgroup_cleanup.os, "kill", lambda pid, sig: killed_pids.append((pid, sig)))
+        monkeypatch.setattr(
+            cgroup_cleanup.os, "kill", lambda pid, sig: killed_pids.append((pid, sig))
+        )
 
         count = cgroup_cleanup.reap_cgroup(cgroup_path)
 

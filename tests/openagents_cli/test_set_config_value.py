@@ -31,24 +31,28 @@ def _read_config(tmp_path):
 # Explicit allowlist keys → .env
 # ---------------------------------------------------------------------------
 
+
 class TestExplicitAllowlist:
     """Keys in the hardcoded allowlist should always go to .env."""
 
-    @pytest.mark.parametrize("key", [
-        "OPENROUTER_API_KEY",
-        "OPENAI_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "HONCHO_API_KEY",
-        "FIRECRAWL_API_KEY",
-        "BROWSERBASE_API_KEY",
-        "FAL_KEY",
-        "SUDO_PASSWORD",
-        "GITHUB_TOKEN",
-        "TELEGRAM_BOT_TOKEN",
-        "DISCORD_BOT_TOKEN",
-        "SLACK_BOT_TOKEN",
-        "SLACK_APP_TOKEN",
-    ])
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "OPENROUTER_API_KEY",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "HONCHO_API_KEY",
+            "FIRECRAWL_API_KEY",
+            "BROWSERBASE_API_KEY",
+            "FAL_KEY",
+            "SUDO_PASSWORD",
+            "GITHUB_TOKEN",
+            "TELEGRAM_BOT_TOKEN",
+            "DISCORD_BOT_TOKEN",
+            "SLACK_BOT_TOKEN",
+            "SLACK_APP_TOKEN",
+        ],
+    )
     def test_explicit_key_routes_to_env(self, key, _isolated_hermes_home):
         set_config_value(key, "test-value-123")
         env_content = _read_env(_isolated_hermes_home)
@@ -61,16 +65,20 @@ class TestExplicitAllowlist:
 # Catch-all patterns → .env
 # ---------------------------------------------------------------------------
 
+
 class TestCatchAllPatterns:
     """Any key ending in _API_KEY or _TOKEN should route to .env."""
 
-    @pytest.mark.parametrize("key", [
-        "DAYTONA_API_KEY",
-        "ELEVENLABS_API_KEY",
-        "SOME_FUTURE_SERVICE_API_KEY",
-        "MY_CUSTOM_TOKEN",
-        "WHATSAPP_BOT_TOKEN",
-    ])
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "DAYTONA_API_KEY",
+            "ELEVENLABS_API_KEY",
+            "SOME_FUTURE_SERVICE_API_KEY",
+            "MY_CUSTOM_TOKEN",
+            "WHATSAPP_BOT_TOKEN",
+        ],
+    )
     def test_api_key_suffix_routes_to_env(self, key, _isolated_hermes_home):
         set_config_value(key, "secret-456")
         env_content = _read_env(_isolated_hermes_home)
@@ -93,6 +101,7 @@ class TestCatchAllPatterns:
 # Non-secret keys → config.yaml
 # ---------------------------------------------------------------------------
 
+
 class TestConfigYamlRouting:
     """Regular config keys should go to config.yaml, NOT .env."""
 
@@ -114,11 +123,16 @@ class TestConfigYamlRouting:
         config = _read_config(_isolated_hermes_home)
         assert "python:3.12" in config
 
-    def test_terminal_docker_cwd_mount_flag_goes_to_config_and_env(self, _isolated_hermes_home):
+    def test_terminal_docker_cwd_mount_flag_goes_to_config_and_env(
+        self, _isolated_hermes_home
+    ):
         set_config_value("terminal.docker_mount_cwd_to_workspace", "true")
         config = _read_config(_isolated_hermes_home)
         env_content = _read_env(_isolated_hermes_home)
-        assert "docker_mount_cwd_to_workspace: 'true'" in config or "docker_mount_cwd_to_workspace: true" in config
+        assert (
+            "docker_mount_cwd_to_workspace: 'true'" in config
+            or "docker_mount_cwd_to_workspace: true" in config
+        )
         assert (
             "TERMINAL_DOCKER_MOUNT_CWD_TO_WORKSPACE=true" in env_content
             or "TERMINAL_DOCKER_MOUNT_CWD_TO_WORKSPACE=True" in env_content
@@ -128,6 +142,7 @@ class TestConfigYamlRouting:
 # ---------------------------------------------------------------------------
 # Empty / falsy values — regression tests for #4277
 # ---------------------------------------------------------------------------
+
 
 class TestFalsyValues:
     """config set should accept empty strings and falsy values like '0'."""
@@ -142,7 +157,7 @@ class TestFalsyValues:
         """Blanking a config key should write an empty string to config.yaml."""
         set_config_value("model", "")
         config = _read_config(_isolated_hermes_home)
-        assert "model: ''" in config or "model: \"\"" in config
+        assert "model: ''" in config or 'model: ""' in config
 
     def test_zero_routes_to_config(self, _isolated_hermes_home):
         """Setting a config key to '0' should write 0 to config.yaml."""
@@ -168,6 +183,7 @@ class TestFalsyValues:
 # List navigation — regression tests for #17876
 # ---------------------------------------------------------------------------
 
+
 class TestListNavigation:
     """hermes config set must preserve YAML list fields when using numeric
     indices.  Before #17876, _set_nested would silently replace the entire
@@ -179,19 +195,23 @@ class TestListNavigation:
 
     def test_indexed_set_preserves_sibling_list_entries(self, _isolated_hermes_home):
         """Setting custom_providers.0.api_key must not destroy entry 1."""
-        self._write_config(_isolated_hermes_home, (
-            "custom_providers:\n"
-            "- name: provider-a\n"
-            "  api_key: old-a\n"
-            "  base_url: https://a.example.com\n"
-            "- name: provider-b\n"
-            "  api_key: old-b\n"
-            "  base_url: https://b.example.com\n"
-        ))
+        self._write_config(
+            _isolated_hermes_home,
+            (
+                "custom_providers:\n"
+                "- name: provider-a\n"
+                "  api_key: old-a\n"
+                "  base_url: https://a.example.com\n"
+                "- name: provider-b\n"
+                "  api_key: old-b\n"
+                "  base_url: https://b.example.com\n"
+            ),
+        )
 
         set_config_value("custom_providers.0.api_key", "new-a")
 
         import yaml
+
         reloaded = yaml.safe_load(_read_config(_isolated_hermes_home))
         # The list must still be a list
         assert isinstance(reloaded["custom_providers"], list)
@@ -207,19 +227,23 @@ class TestListNavigation:
 
     def test_indexed_set_preserves_non_targeted_fields(self, _isolated_hermes_home):
         """Setting one field in a list entry must not drop other fields."""
-        self._write_config(_isolated_hermes_home, (
-            "custom_providers:\n"
-            "- name: provider-a\n"
-            "  api_key: old\n"
-            "  base_url: https://a.example.com\n"
-            "  models:\n"
-            "    foo: {}\n"
-            "    bar: {}\n"
-        ))
+        self._write_config(
+            _isolated_hermes_home,
+            (
+                "custom_providers:\n"
+                "- name: provider-a\n"
+                "  api_key: old\n"
+                "  base_url: https://a.example.com\n"
+                "  models:\n"
+                "    foo: {}\n"
+                "    bar: {}\n"
+            ),
+        )
 
         set_config_value("custom_providers.0.api_key", "rotated")
 
         import yaml
+
         reloaded = yaml.safe_load(_read_config(_isolated_hermes_home))
         entry = reloaded["custom_providers"][0]
         assert entry["api_key"] == "rotated"
@@ -229,19 +253,23 @@ class TestListNavigation:
 
     def test_deeper_nesting_through_list(self, _isolated_hermes_home):
         """Navigation path mixing dict → list → dict → scalar."""
-        self._write_config(_isolated_hermes_home, (
-            "platforms:\n"
-            "  telegram:\n"
-            "    allowlist:\n"
-            "    - name: alice\n"
-            "      role: admin\n"
-            "    - name: bob\n"
-            "      role: user\n"
-        ))
+        self._write_config(
+            _isolated_hermes_home,
+            (
+                "platforms:\n"
+                "  telegram:\n"
+                "    allowlist:\n"
+                "    - name: alice\n"
+                "      role: admin\n"
+                "    - name: bob\n"
+                "      role: user\n"
+            ),
+        )
 
         set_config_value("platforms.telegram.allowlist.1.role", "admin")
 
         import yaml
+
         reloaded = yaml.safe_load(_read_config(_isolated_hermes_home))
         allowlist = reloaded["platforms"]["telegram"]["allowlist"]
         assert isinstance(allowlist, list)
@@ -253,11 +281,13 @@ class TestListNavigation:
 # Secret redaction in display output (issue #50245)
 # ---------------------------------------------------------------------------
 
+
 class TestSecretRedactionInDisplay:
     """`config set`/`config show` must not echo credential values in plaintext."""
 
     def test_redact_config_value_masks_nested_api_key(self):
         from openagents_cli.config import redact_config_value
+
         secret = "cfut_SUPERSECRETTOKEN1234567890abcdef"
         model = {"default": "@cf/foo", "provider": "custom", "api_key": secret}
 
@@ -271,6 +301,7 @@ class TestSecretRedactionInDisplay:
 
     def test_redact_config_value_walks_lists(self):
         from openagents_cli.config import redact_config_value
+
         secret = "sk-deadbeefdeadbeefdeadbeef"
         cfg = {"custom_providers": [{"name": "p", "api_key": secret}]}
 
@@ -281,6 +312,7 @@ class TestSecretRedactionInDisplay:
 
     def test_redact_config_value_ignores_benign_keys(self):
         from openagents_cli.config import redact_config_value
+
         cfg = {"token_count": 1234, "secret_santa": "alice", "max_turns": 90}
 
         out = redact_config_value(cfg)

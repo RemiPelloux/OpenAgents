@@ -29,7 +29,11 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
         return failed(ctx.node.id, f"codex exec failed: {exc}")
 
     if not result.get("ok"):
-        return failed(ctx.node.id, result.get("summary") or "codex exited with error", input_value=prompt)
+        return failed(
+            ctx.node.id,
+            result.get("summary") or "codex exited with error",
+            input_value=prompt,
+        )
 
     output_field = ctx.data.get("outputField")
     if output_field:

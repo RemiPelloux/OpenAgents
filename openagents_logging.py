@@ -79,7 +79,9 @@ _session_context = threading.local()
 # logger name, and message.  The ``%(session_tag)s`` field is guaranteed to
 # exist on every LogRecord via _install_session_record_factory() below.
 _LOG_FORMAT = "%(asctime)s %(levelname)s%(session_tag)s %(name)s: %(message)s"
-_LOG_FORMAT_VERBOSE = "%(asctime)s - %(name)s - %(levelname)s%(session_tag)s - %(message)s"
+_LOG_FORMAT_VERBOSE = (
+    "%(asctime)s - %(name)s - %(levelname)s%(session_tag)s - %(message)s"
+)
 
 
 def _safe_stderr():  # type: ignore[return]
@@ -158,6 +160,7 @@ _NOISY_LOGGERS = (
 # Public session context API
 # ---------------------------------------------------------------------------
 
+
 def set_session_context(session_id: str) -> None:
     """Set the session ID for the current thread.
 
@@ -175,6 +178,7 @@ def clear_session_context() -> None:
 # ---------------------------------------------------------------------------
 # Record factory — injects session_tag into every LogRecord at creation
 # ---------------------------------------------------------------------------
+
 
 def _install_session_record_factory() -> None:
     """Replace the global LogRecord factory with one that adds ``session_tag``.
@@ -211,6 +215,7 @@ _install_session_record_factory()
 # ---------------------------------------------------------------------------
 # Filters
 # ---------------------------------------------------------------------------
+
 
 class _ComponentFilter(logging.Filter):
     """Only pass records whose logger name starts with one of *prefixes*.
@@ -251,6 +256,7 @@ COMPONENT_PREFIXES = {
 # ---------------------------------------------------------------------------
 # Main setup
 # ---------------------------------------------------------------------------
+
 
 def setup_logging(
     *,
@@ -383,7 +389,9 @@ def setup_verbose_logging() -> None:
 
     # Avoid adding duplicate stream handlers.
     for h in root.handlers:
-        if isinstance(h, logging.StreamHandler) and not isinstance(h, RotatingFileHandler):
+        if isinstance(h, logging.StreamHandler) and not isinstance(
+            h, RotatingFileHandler
+        ):
             if getattr(h, "_hermes_verbose", False):
                 return
 
@@ -407,6 +415,7 @@ def setup_verbose_logging() -> None:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 class _ManagedRotatingFileHandler(RotatingFileHandler):
     """RotatingFileHandler that ensures group-writable perms in managed mode
@@ -435,6 +444,7 @@ class _ManagedRotatingFileHandler(RotatingFileHandler):
 
     def __init__(self, *args, **kwargs):
         from openagents_cli.config import is_managed
+
         self._managed = is_managed()
         super().__init__(*args, **kwargs)
         # Snapshot the inode of the currently open stream so emit() can
@@ -572,7 +582,9 @@ def _add_rotating_handler(
 
     path.parent.mkdir(parents=True, exist_ok=True)
     handler = _ManagedRotatingFileHandler(
-        str(path), maxBytes=max_bytes, backupCount=backup_count,
+        str(path),
+        maxBytes=max_bytes,
+        backupCount=backup_count,
         encoding="utf-8",
     )
     handler.setLevel(level)
@@ -589,6 +601,7 @@ def _read_logging_config():
     """
     try:
         from utils import fast_safe_load
+
         config_path = get_config_path()
         if config_path.exists():
             with open(config_path, "r", encoding="utf-8") as f:
@@ -597,6 +610,7 @@ def _read_logging_config():
             # the shared helper (fail-open) since this reads config.yaml directly.
             try:
                 from openagents_cli import managed_scope
+
                 cfg = managed_scope.apply_managed_overlay(cfg)
             except Exception:
                 pass

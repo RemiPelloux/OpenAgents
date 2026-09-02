@@ -48,6 +48,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+
 # Where memory files live — resolved dynamically so profile overrides
 # (OPENAGENTS_HOME env var changes) are always respected.  The old module-level
 # constant was cached at import time and could go stale if a profile switch
@@ -55,6 +56,7 @@ logger = logging.getLogger(__name__)
 def get_memory_dir() -> Path:
     """Return the profile-scoped memories directory."""
     return get_openagents_home() / "memories"
+
 
 ENTRY_DELIMITER = "\n§\n"
 
@@ -159,8 +161,12 @@ class MemoryStore:
         # Sanitize entries for the system-prompt snapshot only.  Live state
         # (memory_entries / user_entries) keeps the raw text so the user
         # can see + remove poisoned entries via the memory tool.
-        sanitized_memory = self._sanitize_entries_for_snapshot(self.memory_entries, "MEMORY.md")
-        sanitized_user = self._sanitize_entries_for_snapshot(self.user_entries, "USER.md")
+        sanitized_memory = self._sanitize_entries_for_snapshot(
+            self.memory_entries, "MEMORY.md"
+        )
+        sanitized_user = self._sanitize_entries_for_snapshot(
+            self.user_entries, "USER.md"
+        )
 
         # Capture frozen snapshot for system prompt injection
         self._system_prompt_snapshot = {
@@ -192,7 +198,8 @@ class MemoryStore:
             if findings:
                 logger.warning(
                     "Memory entry from %s blocked at load time: %s",
-                    filename, ", ".join(findings),
+                    filename,
+                    ", ".join(findings),
                 )
                 sanitized.append(
                     f"[BLOCKED: {filename} entry contained threat pattern(s): "
@@ -322,7 +329,9 @@ class MemoryStore:
 
             # Reject exact duplicates
             if content in entries:
-                return self._success_response(target, "Entry already exists (no duplicate added).")
+                return self._success_response(
+                    target, "Entry already exists (no duplicate added)."
+                )
 
             # Calculate what the new total would be
             new_entries = entries + [content]
@@ -356,7 +365,10 @@ class MemoryStore:
         if not old_text:
             return {"success": False, "error": "old_text cannot be empty."}
         if not new_content:
-            return {"success": False, "error": "new_content cannot be empty. Use 'remove' to delete entries."}
+            return {
+                "success": False,
+                "error": "new_content cannot be empty. Use 'remove' to delete entries.",
+            }
 
         # Scan replacement content for injection/exfiltration
         scan_error = _scan_memory_content(new_content)
@@ -378,7 +390,9 @@ class MemoryStore:
                 # If all matches are identical (exact duplicates), operate on the first one
                 unique_texts = {e for _, e in matches}
                 if len(unique_texts) > 1:
-                    previews = [e[:80] + ("..." if len(e) > 80 else "") for _, e in matches]
+                    previews = [
+                        e[:80] + ("..." if len(e) > 80 else "") for _, e in matches
+                    ]
                     return {
                         "success": False,
                         "error": f"Multiple entries matched '{old_text}'. Be more specific.",
@@ -435,7 +449,9 @@ class MemoryStore:
                 # If all matches are identical (exact duplicates), remove the first one
                 unique_texts = {e for _, e in matches}
                 if len(unique_texts) > 1:
-                    previews = [e[:80] + ("..." if len(e) > 80 else "") for _, e in matches]
+                    previews = [
+                        e[:80] + ("..." if len(e) > 80 else "") for _, e in matches
+                    ]
                     return {
                         "success": False,
                         "error": f"Multiple entries matched '{old_text}'. Be more specific.",
@@ -450,7 +466,9 @@ class MemoryStore:
 
         return self._success_response(target, "Entry removed.")
 
-    def apply_batch(self, target: str, operations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def apply_batch(
+        self, target: str, operations: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Apply a sequence of add/replace/remove ops to one target atomically.
 
         All operations are validated and applied against the FINAL budget --
@@ -474,7 +492,10 @@ class MemoryStore:
             if act in {"add", "replace"} and new_content:
                 scan_error = _scan_memory_content(new_content)
                 if scan_error:
-                    return {"success": False, "error": f"Operation {i + 1}: {scan_error}"}
+                    return {
+                        "success": False,
+                        "error": f"Operation {i + 1}: {scan_error}",
+                    }
 
         with self._file_lock(self._path_for(target)):
             bak = self._reload_target(target)
@@ -501,7 +522,9 @@ class MemoryStore:
 
                 elif act == "replace":
                     if not old_text:
-                        return self._batch_error(target, f"{pos}: old_text is required.")
+                        return self._batch_error(
+                            target, f"{pos}: old_text is required."
+                        )
                     if not content:
                         return self._batch_error(
                             target,
@@ -509,7 +532,9 @@ class MemoryStore:
                         )
                     matches = [j for j, e in enumerate(working) if old_text in e]
                     if not matches:
-                        return self._batch_error(target, f"{pos}: no entry matched '{old_text}'.")
+                        return self._batch_error(
+                            target, f"{pos}: no entry matched '{old_text}'."
+                        )
                     if len({working[j] for j in matches}) > 1:
                         return self._batch_error(
                             target,
@@ -519,10 +544,14 @@ class MemoryStore:
 
                 elif act == "remove":
                     if not old_text:
-                        return self._batch_error(target, f"{pos}: old_text is required.")
+                        return self._batch_error(
+                            target, f"{pos}: old_text is required."
+                        )
                     matches = [j for j, e in enumerate(working) if old_text in e]
                     if not matches:
-                        return self._batch_error(target, f"{pos}: no entry matched '{old_text}'.")
+                        return self._batch_error(
+                            target, f"{pos}: no entry matched '{old_text}'."
+                        )
                     if len({working[j] for j in matches}) > 1:
                         return self._batch_error(
                             target,
@@ -555,7 +584,9 @@ class MemoryStore:
             self._set_entries(target, working)
             self.save_to_disk(target)
 
-        return self._success_response(target, f"Applied {len(operations)} operation(s).")
+        return self._success_response(
+            target, f"Applied {len(operations)} operation(s)."
+        )
 
     def _batch_error(self, target: str, message: str) -> Dict[str, Any]:
         """Build a batch-abort error that reports live (uncommitted) state."""
@@ -619,9 +650,13 @@ class MemoryStore:
         pct = min(100, int((current / limit) * 100)) if limit > 0 else 0
 
         if target == "user":
-            header = f"USER PROFILE (who the user is) [{pct}% — {current:,}/{limit:,} chars]"
+            header = (
+                f"USER PROFILE (who the user is) [{pct}% — {current:,}/{limit:,} chars]"
+            )
         else:
-            header = f"MEMORY (your personal notes) [{pct}% — {current:,}/{limit:,} chars]"
+            header = (
+                f"MEMORY (your personal notes) [{pct}% — {current:,}/{limit:,} chars]"
+            )
 
         separator = "═" * 46
         return f"{separator}\n{header}\n{separator}\n{content}"
@@ -767,8 +802,9 @@ def load_on_disk_store() -> "MemoryStore":
     return store
 
 
-def _apply_write_gate(action: str, target: str, content: Optional[str],
-                      old_text: Optional[str]) -> Optional[str]:
+def _apply_write_gate(
+    action: str, target: str, content: Optional[str], old_text: Optional[str]
+) -> Optional[str]:
     """Evaluate the memory write gate. Returns a JSON tool-result string when
     the write should NOT proceed normally (blocked or staged), or None when the
     caller should perform the real write.
@@ -813,18 +849,25 @@ def _apply_write_gate(action: str, target: str, content: Optional[str],
         "old_text": old_text,
     }
     record = wa.stage_write(
-        wa.MEMORY, payload,
+        wa.MEMORY,
+        payload,
         summary=f"{summary}: {detail[:120]}",
         origin=wa.current_origin(),
     )
     return json.dumps(
-        {"success": True, "staged": True, "pending_id": record["id"],
-         "message": decision.message},
+        {
+            "success": True,
+            "staged": True,
+            "pending_id": record["id"],
+            "message": decision.message,
+        },
         ensure_ascii=False,
     )
 
 
-def _apply_batch_write_gate(target: str, operations: List[Dict[str, Any]]) -> Optional[str]:
+def _apply_batch_write_gate(
+    target: str, operations: List[Dict[str, Any]]
+) -> Optional[str]:
     """Evaluate the write gate for a batch of memory operations.
 
     Returns a JSON tool-result string when the batch should NOT proceed
@@ -845,7 +888,9 @@ def _apply_batch_write_gate(target: str, operations: List[Dict[str, Any]]) -> Op
         if act == "remove":
             detail_lines.append(f"- remove: {op.get('old_text', '')}")
         elif act == "replace":
-            detail_lines.append(f"- replace: {op.get('old_text', '')} -> {op.get('content', '')}")
+            detail_lines.append(
+                f"- replace: {op.get('old_text', '')} -> {op.get('content', '')}"
+            )
         else:
             detail_lines.append(f"- {act}: {op.get('content', '')}")
     detail = "\n".join(detail_lines)
@@ -860,13 +905,18 @@ def _apply_batch_write_gate(target: str, operations: List[Dict[str, Any]]) -> Op
 
     payload = {"action": "batch", "target": target, "operations": operations}
     record = wa.stage_write(
-        wa.MEMORY, payload,
+        wa.MEMORY,
+        payload,
         summary=f"{summary}: {detail[:120]}",
         origin=wa.current_origin(),
     )
     return json.dumps(
-        {"success": True, "staged": True, "pending_id": record["id"],
-         "message": decision.message},
+        {
+            "success": True,
+            "staged": True,
+            "pending_id": record["id"],
+            "message": decision.message,
+        },
         ensure_ascii=False,
     )
 
@@ -922,15 +972,23 @@ def memory_tool(
     Returns JSON string with results.
     """
     if store is None:
-        return tool_error("Memory is not available. It may be disabled in config or this environment.", success=False)
+        return tool_error(
+            "Memory is not available. It may be disabled in config or this environment.",
+            success=False,
+        )
 
     if target not in {"memory", "user"}:
-        return tool_error(f"Invalid target '{target}'. Use 'memory' or 'user'.", success=False)
+        return tool_error(
+            f"Invalid target '{target}'. Use 'memory' or 'user'.", success=False
+        )
 
     # --- Batch path -------------------------------------------------------
     if operations:
         if not isinstance(operations, list):
-            return tool_error("operations must be a list of {action, content?, old_text?} objects.", success=False)
+            return tool_error(
+                "operations must be a list of {action, content?, old_text?} objects.",
+                success=False,
+            )
         gate_result = _apply_batch_write_gate(target, operations)
         if gate_result is not None:
             return gate_result
@@ -970,7 +1028,9 @@ def memory_tool(
         result = store.remove(target, old_text)
 
     else:
-        return tool_error(f"Unknown action '{action}'. Use: add, replace, remove", success=False)
+        return tool_error(
+            f"Unknown action '{action}'. Use: add, replace, remove", success=False
+        )
 
     return json.dumps(result, ensure_ascii=False)
 
@@ -980,7 +1040,9 @@ def check_memory_requirements() -> bool:
     return True
 
 
-def apply_memory_pending(payload: Dict[str, Any], store: "MemoryStore") -> Dict[str, Any]:
+def apply_memory_pending(
+    payload: Dict[str, Any], store: "MemoryStore"
+) -> Dict[str, Any]:
     """Replay a staged memory write directly against the store, bypassing the
     write gate. Called by the /memory approve handler.
 
@@ -999,6 +1061,8 @@ def apply_memory_pending(payload: Dict[str, Any], store: "MemoryStore") -> Dict[
     if action == "remove":
         return store.remove(target, old_text)
     return {"success": False, "error": f"Unknown staged action '{action}'."}
+
+
 # OpenAI Function-Calling Schema
 # =============================================================================
 
@@ -1032,20 +1096,20 @@ MEMORY_SCHEMA = {
             "action": {
                 "type": "string",
                 "enum": ["add", "replace", "remove"],
-                "description": "The action to perform (single-op shape). Omit when using 'operations'."
+                "description": "The action to perform (single-op shape). Omit when using 'operations'.",
             },
             "target": {
                 "type": "string",
                 "enum": ["memory", "user"],
-                "description": "Which memory store: 'memory' for personal notes, 'user' for user profile."
+                "description": "Which memory store: 'memory' for personal notes, 'user' for user profile.",
             },
             "content": {
                 "type": "string",
-                "description": "The entry content. Required for 'add' and 'replace' (single-op shape)."
+                "description": "The entry content. Required for 'add' and 'replace' (single-op shape).",
             },
             "old_text": {
                 "type": "string",
-                "description": "REQUIRED for 'replace' and 'remove' (single-op shape): a short unique substring identifying the existing entry to modify. Omit only for 'add'."
+                "description": "REQUIRED for 'replace' and 'remove' (single-op shape): a short unique substring identifying the existing entry to modify. Omit only for 'add'.",
             },
             "operations": {
                 "type": "array",
@@ -1057,9 +1121,18 @@ MEMORY_SCHEMA = {
                 "items": {
                     "type": "object",
                     "properties": {
-                        "action": {"type": "string", "enum": ["add", "replace", "remove"]},
-                        "content": {"type": "string", "description": "Entry content for add/replace."},
-                        "old_text": {"type": "string", "description": "Substring identifying the entry for replace/remove."},
+                        "action": {
+                            "type": "string",
+                            "enum": ["add", "replace", "remove"],
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Entry content for add/replace.",
+                        },
+                        "old_text": {
+                            "type": "string",
+                            "description": "Substring identifying the entry for replace/remove.",
+                        },
                     },
                     "required": ["action"],
                 },
@@ -1083,11 +1156,8 @@ registry.register(
         content=args.get("content"),
         old_text=args.get("old_text"),
         operations=args.get("operations"),
-        store=kw.get("store")),
+        store=kw.get("store"),
+    ),
     check_fn=check_memory_requirements,
     emoji="🧠",
 )
-
-
-
-

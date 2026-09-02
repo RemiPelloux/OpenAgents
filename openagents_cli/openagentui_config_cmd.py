@@ -58,7 +58,9 @@ def _format_list() -> str:
     for wf in workflows:
         tag = " [template]" if wf.is_template else ""
         lines.append(f"  • {wf.name} ({wf.id}){tag} — {len(wf.nodes)} nodes")
-    lines.append("\n`/OpenAgentConfig show <name>` for details · `/OpenAgentConfig run <name> key=value ...`")
+    lines.append(
+        "\n`/OpenAgentConfig show <name>` for details · `/OpenAgentConfig run <name> key=value ...`"
+    )
     return "\n".join(lines)
 
 
@@ -193,8 +195,12 @@ def build_parser(parent_subparsers):
     show_p.add_argument("name")
     run_p = sub.add_parser("run", help="Run a workflow headlessly")
     run_p.add_argument("name")
-    run_p.add_argument("inputs", nargs="*", help="key=value pairs seeding workflow variables")
-    approve_p = sub.add_parser("approve", help="Approve a paused execution and resume it")
+    run_p.add_argument(
+        "inputs", nargs="*", help="key=value pairs seeding workflow variables"
+    )
+    approve_p = sub.add_parser(
+        "approve", help="Approve a paused execution and resume it"
+    )
     approve_p.add_argument("execution_id")
     reject_p = sub.add_parser("reject", help="Reject a paused execution and resume it")
     reject_p.add_argument("execution_id")

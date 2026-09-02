@@ -21,7 +21,10 @@ from typing import Dict, List, Optional, Set
 
 from openagents_cli.config import (
     cfg_get,
-    load_config, save_config, get_env_value, save_env_value,
+    load_config,
+    save_config,
+    get_env_value,
+    save_env_value,
 )
 from openagents_cli.colors import Colors, color
 from openagents_cli.nous_subscription import (
@@ -58,31 +61,59 @@ from openagents_cli.cli_output import (  # noqa: E402 — late import block
 # Each entry: (toolset_name, label, description)
 # These map to keys in toolsets.py TOOLSETS dict.
 CONFIGURABLE_TOOLSETS = [
-    ("web",             "🔍 Web Search & Scraping",    "web_search, web_extract"),
-    ("browser",         "🌐 Browser Automation",       "navigate, click, type, scroll"),
-    ("terminal",        "💻 Terminal & Processes",      "terminal, process"),
-    ("file",            "📁 File Operations",           "read, write, patch, search"),
-    ("code_execution",  "⚡ Code Execution",            "execute_code"),
-    ("vision",          "👁️  Vision / Image Analysis",  "vision_analyze"),
-    ("video",           "🎬 Video Analysis",            "video_analyze (requires video-capable model)"),
-    ("image_gen",       "🎨 Image Generation",          "image_generate"),
-    ("video_gen",       "🎬 Video Generation",          "video_generate (text-to-video + image-to-video)"),
-    ("x_search",        "🐦 X (Twitter) Search",        "x_search (requires xAI OAuth or XAI_API_KEY)"),
-    ("tts",             "🔊 Text-to-Speech",            "text_to_speech"),
-    ("skills",          "📚 Skills",                    "list, view, manage"),
-    ("todo",            "📋 Task Planning",             "todo"),
-    ("memory",          "💾 Memory",                    "persistent memory across sessions"),
-    ("context_engine",  "🧩 Context Engine",            "runtime tools from the active context engine"),
-    ("session_search",  "🔎 Session Search",            "search past conversations"),
-    ("clarify",         "❓ Clarifying Questions",      "clarify"),
-    ("delegation",      "👥 Task Delegation",           "delegate_task"),
-    ("cronjob",         "⏰ Cron Jobs",                 "create/list/update/pause/resume/run, with optional attached skills"),
-    ("homeassistant",    "🏠 Home Assistant",           "smart home device control"),
-    ("spotify",          "🎵 Spotify",                  "playback, search, playlists, library"),
-    ("discord",         "💬 Discord (read/participate)", "fetch messages, search members, create thread"),
-    ("discord_admin",   "🛡️  Discord Server Admin",    "list channels/roles, pin, assign roles"),
-    ("yuanbao",          "🤖 Yuanbao",                  "group info, member queries, DM"),
-    ("computer_use",     "🖱️  Computer Use (macOS/Windows/Linux)", "background desktop control via cua-driver"),
+    ("web", "🔍 Web Search & Scraping", "web_search, web_extract"),
+    ("browser", "🌐 Browser Automation", "navigate, click, type, scroll"),
+    ("terminal", "💻 Terminal & Processes", "terminal, process"),
+    ("file", "📁 File Operations", "read, write, patch, search"),
+    ("code_execution", "⚡ Code Execution", "execute_code"),
+    ("vision", "👁️  Vision / Image Analysis", "vision_analyze"),
+    ("video", "🎬 Video Analysis", "video_analyze (requires video-capable model)"),
+    ("image_gen", "🎨 Image Generation", "image_generate"),
+    (
+        "video_gen",
+        "🎬 Video Generation",
+        "video_generate (text-to-video + image-to-video)",
+    ),
+    (
+        "x_search",
+        "🐦 X (Twitter) Search",
+        "x_search (requires xAI OAuth or XAI_API_KEY)",
+    ),
+    ("tts", "🔊 Text-to-Speech", "text_to_speech"),
+    ("skills", "📚 Skills", "list, view, manage"),
+    ("todo", "📋 Task Planning", "todo"),
+    ("memory", "💾 Memory", "persistent memory across sessions"),
+    (
+        "context_engine",
+        "🧩 Context Engine",
+        "runtime tools from the active context engine",
+    ),
+    ("session_search", "🔎 Session Search", "search past conversations"),
+    ("clarify", "❓ Clarifying Questions", "clarify"),
+    ("delegation", "👥 Task Delegation", "delegate_task"),
+    (
+        "cronjob",
+        "⏰ Cron Jobs",
+        "create/list/update/pause/resume/run, with optional attached skills",
+    ),
+    ("homeassistant", "🏠 Home Assistant", "smart home device control"),
+    ("spotify", "🎵 Spotify", "playback, search, playlists, library"),
+    (
+        "discord",
+        "💬 Discord (read/participate)",
+        "fetch messages, search members, create thread",
+    ),
+    (
+        "discord_admin",
+        "🛡️  Discord Server Admin",
+        "list channels/roles, pin, assign roles",
+    ),
+    ("yuanbao", "🤖 Yuanbao", "group info, member queries, DM"),
+    (
+        "computer_use",
+        "🖱️  Computer Use (macOS/Windows/Linux)",
+        "background desktop control via cua-driver",
+    ),
 ]
 
 
@@ -96,7 +127,11 @@ def gui_toolset_label(label: str) -> str:
     if not text:
         return text
     parts = text.split(None, 1)
-    if len(parts) == 2 and parts[0] and not any(ch.isascii() and ch.isalnum() for ch in parts[0]):
+    if (
+        len(parts) == 2
+        and parts[0]
+        and not any(ch.isascii() and ch.isalnum() for ch in parts[0])
+    ):
         return parts[1].strip()
     return text
 
@@ -115,7 +150,15 @@ def gui_toolset_label(label: str) -> str:
 # `hermes tools` → X (Twitter) Search setup walks users through credential
 # setup. The tool's check_fn means the schema still won't appear to the
 # model if the credential later goes missing or expires.
-_DEFAULT_OFF_TOOLSETS = {"homeassistant", "spotify", "discord", "discord_admin", "video", "video_gen", "x_search"}
+_DEFAULT_OFF_TOOLSETS = {
+    "homeassistant",
+    "spotify",
+    "discord",
+    "discord_admin",
+    "video",
+    "video_gen",
+    "x_search",
+}
 
 
 def _xai_credentials_present() -> bool:
@@ -142,6 +185,7 @@ def _xai_credentials_present() -> bool:
     except Exception:
         pass
     return bool(str(os.environ.get("XAI_API_KEY") or "").strip())
+
 
 # Platform-scoped toolsets: only appear in the `hermes tools` checklist for
 # these platforms, and only resolve/save for these platforms.  A toolset
@@ -180,6 +224,7 @@ def _get_effective_configurable_toolsets():
     seen = {ts_key for ts_key, _, _ in result}
     try:
         from openagents_cli.plugins import discover_plugins, get_plugin_toolsets
+
         discover_plugins()  # idempotent — ensures plugins are loaded
         for entry in get_plugin_toolsets():
             if entry[0] in seen:
@@ -195,6 +240,7 @@ def _get_plugin_toolset_keys() -> set:
     """Return the set of toolset keys provided by plugins."""
     try:
         from openagents_cli.plugins import discover_plugins, get_plugin_toolsets
+
         discover_plugins()  # idempotent — ensures plugins are loaded
         return {ts_key for ts_key, _, _ in get_plugin_toolsets()}
     except Exception:
@@ -223,6 +269,7 @@ def _checklist_toolset_keys(platform: str) -> Set[str]:
         for ts_key, _, _ in _get_effective_configurable_toolsets()
         if _toolset_allowed_for_platform(ts_key, platform)
     }
+
 
 # Platform display config — derived from the canonical registry so every
 # module shares the same data.  Kept as dict-of-dicts for backward
@@ -267,7 +314,11 @@ TOOL_CATEGORIES = {
                 "badge": "paid",
                 "tag": "High quality voices",
                 "env_vars": [
-                    {"key": "VOICE_TOOLS_OPENAI_KEY", "prompt": "OpenAI API key", "url": "https://platform.openai.com/api-keys"},
+                    {
+                        "key": "VOICE_TOOLS_OPENAI_KEY",
+                        "prompt": "OpenAI API key",
+                        "url": "https://platform.openai.com/api-keys",
+                    },
                 ],
                 "tts_provider": "openai",
             },
@@ -283,7 +334,11 @@ TOOL_CATEGORIES = {
                 "badge": "paid",
                 "tag": "Most natural voices",
                 "env_vars": [
-                    {"key": "ELEVENLABS_API_KEY", "prompt": "ElevenLabs API key", "url": "https://elevenlabs.io/app/settings/api-keys"},
+                    {
+                        "key": "ELEVENLABS_API_KEY",
+                        "prompt": "ElevenLabs API key",
+                        "url": "https://elevenlabs.io/app/settings/api-keys",
+                    },
                 ],
                 "tts_provider": "elevenlabs",
             },
@@ -293,7 +348,11 @@ TOOL_CATEGORIES = {
                 "badge": "paid",
                 "tag": "Multilingual, native Opus",
                 "env_vars": [
-                    {"key": "MISTRAL_API_KEY", "prompt": "Mistral API key", "url": "https://console.mistral.ai/"},
+                    {
+                        "key": "MISTRAL_API_KEY",
+                        "prompt": "Mistral API key",
+                        "url": "https://console.mistral.ai/",
+                    },
                 ],
                 "tts_provider": "mistral",
             },
@@ -302,7 +361,11 @@ TOOL_CATEGORIES = {
                 "badge": "preview",
                 "tag": "30 prebuilt voices, controllable via prompts",
                 "env_vars": [
-                    {"key": "GEMINI_API_KEY", "prompt": "Gemini API key", "url": "https://aistudio.google.com/app/apikey"},
+                    {
+                        "key": "GEMINI_API_KEY",
+                        "prompt": "Gemini API key",
+                        "url": "https://aistudio.google.com/app/apikey",
+                    },
                 ],
                 "tts_provider": "gemini",
             },
@@ -355,7 +418,10 @@ TOOL_CATEGORIES = {
                 "tag": "Run your own Firecrawl instance (Docker)",
                 "web_backend": "firecrawl",
                 "env_vars": [
-                    {"key": "FIRECRAWL_API_URL", "prompt": "Your Firecrawl instance URL (e.g., http://localhost:3002)"},
+                    {
+                        "key": "FIRECRAWL_API_URL",
+                        "prompt": "Your Firecrawl instance URL (e.g., http://localhost:3002)",
+                    },
                 ],
             },
         ],
@@ -485,8 +551,12 @@ TOOL_CATEGORIES = {
                 "badge": "free · local",
                 "tag": "Anti-detection browser (Firefox/Camoufox)",
                 "env_vars": [
-                    {"key": "CAMOFOX_URL", "prompt": "Camofox server URL", "default": "http://localhost:9377",
-                     "url": "https://github.com/jo-inc/camofox-browser"},
+                    {
+                        "key": "CAMOFOX_URL",
+                        "prompt": "Camofox server URL",
+                        "default": "http://localhost:9377",
+                        "url": "https://github.com/jo-inc/camofox-browser",
+                    },
                 ],
                 "browser_provider": "camofox",
                 "post_setup": "camofox",
@@ -501,8 +571,15 @@ TOOL_CATEGORIES = {
                 "name": "Home Assistant",
                 "tag": "REST API integration",
                 "env_vars": [
-                    {"key": "HASS_TOKEN", "prompt": "Home Assistant Long-Lived Access Token"},
-                    {"key": "HASS_URL", "prompt": "Home Assistant URL", "default": "http://homeassistant.local:8123"},
+                    {
+                        "key": "HASS_TOKEN",
+                        "prompt": "Home Assistant Long-Lived Access Token",
+                    },
+                    {
+                        "key": "HASS_URL",
+                        "prompt": "Home Assistant URL",
+                        "default": "http://homeassistant.local:8123",
+                    },
                 ],
             },
         ],
@@ -551,8 +628,16 @@ TOOL_CATEGORIES = {
                 "name": "Langfuse Cloud",
                 "tag": "Hosted Langfuse (cloud.langfuse.com)",
                 "env_vars": [
-                    {"key": "HERMES_LANGFUSE_PUBLIC_KEY", "prompt": "Langfuse public key (pk-lf-...)", "url": "https://cloud.langfuse.com"},
-                    {"key": "HERMES_LANGFUSE_SECRET_KEY", "prompt": "Langfuse secret key (sk-lf-...)", "url": "https://cloud.langfuse.com"},
+                    {
+                        "key": "HERMES_LANGFUSE_PUBLIC_KEY",
+                        "prompt": "Langfuse public key (pk-lf-...)",
+                        "url": "https://cloud.langfuse.com",
+                    },
+                    {
+                        "key": "HERMES_LANGFUSE_SECRET_KEY",
+                        "prompt": "Langfuse secret key (sk-lf-...)",
+                        "url": "https://cloud.langfuse.com",
+                    },
                 ],
                 "post_setup": "langfuse",
             },
@@ -560,9 +645,19 @@ TOOL_CATEGORIES = {
                 "name": "Langfuse Self-Hosted",
                 "tag": "Self-hosted Langfuse instance",
                 "env_vars": [
-                    {"key": "HERMES_LANGFUSE_PUBLIC_KEY", "prompt": "Langfuse public key (pk-lf-...)"},
-                    {"key": "HERMES_LANGFUSE_SECRET_KEY", "prompt": "Langfuse secret key (sk-lf-...)"},
-                    {"key": "HERMES_LANGFUSE_BASE_URL", "prompt": "Langfuse server URL (e.g. http://localhost:3000)", "default": "http://localhost:3000"},
+                    {
+                        "key": "HERMES_LANGFUSE_PUBLIC_KEY",
+                        "prompt": "Langfuse public key (pk-lf-...)",
+                    },
+                    {
+                        "key": "HERMES_LANGFUSE_SECRET_KEY",
+                        "prompt": "Langfuse secret key (sk-lf-...)",
+                    },
+                    {
+                        "key": "HERMES_LANGFUSE_BASE_URL",
+                        "prompt": "Langfuse server URL (e.g. http://localhost:3000)",
+                        "default": "http://localhost:3000",
+                    },
                 ],
                 "post_setup": "langfuse",
             },
@@ -581,7 +676,7 @@ TOOL_CATEGORIES = {
 # resolves via `resolve_vision_provider_client()`, so the tuple below is never
 # prompted or read for vision; it's purely a presence marker.
 TOOLSET_ENV_REQUIREMENTS = {
-    "vision":     [("OPENROUTER_API_KEY",   "https://openrouter.ai/keys")],
+    "vision": [("OPENROUTER_API_KEY", "https://openrouter.ai/keys")],
 }
 
 
@@ -639,7 +734,9 @@ def _pip_install(
         try:
             result = subprocess.run(
                 [uv_bin, "pip", "install", *args],
-                capture_output=capture_output, text=True, timeout=timeout,
+                capture_output=capture_output,
+                text=True,
+                timeout=timeout,
                 env=uv_env,
             )
             if result.returncode == 0:
@@ -654,7 +751,9 @@ def _pip_install(
         # Probe for pip; bootstrap via ensurepip if missing (uv venv lacks it).
         probe = subprocess.run(
             pip_cmd + ["--version"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if probe.returncode != 0:
             raise FileNotFoundError("pip not in venv")
@@ -662,20 +761,26 @@ def _pip_install(
         try:
             subprocess.run(
                 [sys.executable, "-m", "ensurepip", "--upgrade", "--default-pip"],
-                capture_output=True, text=True, timeout=120, check=True,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=True,
             )
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             # Synthesize a result so callers see a clean failure path.
             return subprocess.CompletedProcess(
-                pip_cmd, returncode=1, stdout="",
+                pip_cmd,
+                returncode=1,
+                stdout="",
                 stderr=f"pip not available and ensurepip failed: {e}",
             )
 
     return subprocess.run(
         pip_cmd + ["install", *args],
-        capture_output=capture_output, text=True, timeout=timeout,
+        capture_output=capture_output,
+        text=True,
+        timeout=timeout,
     )
-
 
 
 # The asset-probe that lived here used to hit `/releases/latest` on
@@ -732,7 +837,9 @@ def install_cua_driver(upgrade: bool = False) -> bool:
             # Silent on unsupported platforms — `hermes update` calls this
             # for every user; only macOS/Windows/Linux users care.
             return False
-        _print_warning("    Computer Use (cua-driver) is unsupported on this platform; skipping.")
+        _print_warning(
+            "    Computer Use (cua-driver) is unsupported on this platform; skipping."
+        )
         return False
 
     is_windows = system == "Windows"
@@ -749,7 +856,9 @@ def install_cua_driver(upgrade: bool = False) -> bool:
     if not binary and not upgrade:
         if not shutil.which(fetch_tool):
             _print_warning(f"    {fetch_tool} not found — install manually:")
-            _print_info("      https://github.com/trycua/cua/blob/main/libs/cua-driver/README.md")
+            _print_info(
+                "      https://github.com/trycua/cua/blob/main/libs/cua-driver/README.md"
+            )
             return False
         # Pre-install asset probe deleted — see comment near the top of
         # tools_config.py for why. install.sh has CUA_DRIVER_RS_BAKED_VERSION
@@ -761,13 +870,20 @@ def install_cua_driver(upgrade: bool = False) -> bool:
         try:
             version = subprocess.run(
                 [driver_cmd, "--version"],
-                capture_output=True, text=True, timeout=5, env=_cua_driver_env(),
+                capture_output=True,
+                text=True,
+                timeout=5,
+                env=_cua_driver_env(),
             ).stdout.strip()
-            _print_success(f"    {driver_cmd} already installed: {version or 'unknown version'}")
+            _print_success(
+                f"    {driver_cmd} already installed: {version or 'unknown version'}"
+            )
         except Exception:
             _print_success(f"    {driver_cmd} already installed.")
         if is_windows:
-            _print_info("    cua-driver may spawn a UIAccess worker (cua-driver-uia.exe);")
+            _print_info(
+                "    cua-driver may spawn a UIAccess worker (cua-driver-uia.exe);"
+            )
             _print_info("    Windows/SmartScreen may prompt the first time it runs.")
         elif is_linux:
             _print_warning("    Linux support is alpha.")
@@ -794,6 +910,7 @@ def install_cua_driver(upgrade: bool = False) -> bool:
     if binary:
         try:
             from tools.computer_use.cua_backend import cua_driver_update_check
+
             _state = cua_driver_update_check()
             if _state is not None and not _state.get("update_available"):
                 _print_success(
@@ -809,7 +926,10 @@ def install_cua_driver(upgrade: bool = False) -> bool:
         try:
             before = subprocess.run(
                 [driver_cmd, "--version"],
-                capture_output=True, text=True, timeout=5, env=_cua_driver_env(),
+                capture_output=True,
+                text=True,
+                timeout=5,
+                env=_cua_driver_env(),
             ).stdout.strip()
         except Exception:
             before = ""
@@ -821,7 +941,10 @@ def install_cua_driver(upgrade: bool = False) -> bool:
         try:
             after = subprocess.run(
                 [driver_cmd, "--version"],
-                capture_output=True, text=True, timeout=5, env=_cua_driver_env(),
+                capture_output=True,
+                text=True,
+                timeout=5,
+                env=_cua_driver_env(),
             ).stdout.strip()
             if after and after != before:
                 _print_success(f"    {driver_cmd} upgraded: {before} → {after}")
@@ -857,19 +980,22 @@ def _run_cua_driver_installer(label: str = "Installing", verbose: bool = True) -
             "libs/cua-driver/scripts/install.ps1 | iex"
         )
         install_cmd = [
-            "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-            "-Command", ps_oneliner,
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            ps_oneliner,
         ]
         use_shell = False
         manual_hint = (
-            'powershell -NoProfile -ExecutionPolicy Bypass -Command '
-            f'"{ps_oneliner}"'
+            f'powershell -NoProfile -ExecutionPolicy Bypass -Command "{ps_oneliner}"'
         )
     else:
         install_cmd = (
-            "/bin/bash -c \"$(curl -fsSL "
+            '/bin/bash -c "$(curl -fsSL '
             "https://raw.githubusercontent.com/trycua/cua/main/"
-            "libs/cua-driver/scripts/install.sh)\""
+            'libs/cua-driver/scripts/install.sh)"'
         )
         use_shell = True
         manual_hint = install_cmd
@@ -886,12 +1012,20 @@ def _run_cua_driver_installer(label: str = "Installing", verbose: bool = True) -
         # debuggable. Verbose installs (interactive `computer-use install`)
         # keep streaming live.
         if verbose:
-            result = subprocess.run(install_cmd, shell=use_shell, timeout=300, env=_cua_driver_env())
+            result = subprocess.run(
+                install_cmd, shell=use_shell, timeout=300, env=_cua_driver_env()
+            )
         else:
             result = subprocess.run(
-                install_cmd, shell=use_shell, timeout=300, env=_cua_driver_env(),
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, encoding="utf-8", errors="replace",
+                install_cmd,
+                shell=use_shell,
+                timeout=300,
+                env=_cua_driver_env(),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             # Preserve the full installer output. During `hermes update`,
             # sys.stdout is the mirroring _UpdateOutputStream whose `_log`
@@ -916,17 +1050,29 @@ def _run_cua_driver_installer(label: str = "Installing", verbose: bool = True) -
             if verbose:
                 _print_success(f"    {driver_cmd} installed.")
                 if is_windows:
-                    _print_info("    cua-driver may spawn a UIAccess worker (cua-driver-uia.exe);")
-                    _print_info("    Windows/SmartScreen may prompt the first time it runs.")
+                    _print_info(
+                        "    cua-driver may spawn a UIAccess worker (cua-driver-uia.exe);"
+                    )
+                    _print_info(
+                        "    Windows/SmartScreen may prompt the first time it runs."
+                    )
                 elif is_linux:
                     _print_warning("    Linux support is alpha.")
                 else:
                     _print_info("    IMPORTANT — grant macOS permissions now:")
-                    _print_info("      System Settings > Privacy & Security > Accessibility")
-                    _print_info("      System Settings > Privacy & Security > Screen Recording")
-                    _print_info("    Both must allow the terminal / OpenAgents process.")
+                    _print_info(
+                        "      System Settings > Privacy & Security > Accessibility"
+                    )
+                    _print_info(
+                        "      System Settings > Privacy & Security > Screen Recording"
+                    )
+                    _print_info(
+                        "    Both must allow the terminal / OpenAgents process."
+                    )
             return True
-        _print_warning(f"    cua-driver {label.lower()} did not complete. Re-run manually:")
+        _print_warning(
+            f"    cua-driver {label.lower()} did not complete. Re-run manually:"
+        )
         _print_info(f"      {manual_hint}")
         return False
     except subprocess.TimeoutExpired:
@@ -940,6 +1086,7 @@ def _run_cua_driver_installer(label: str = "Installing", verbose: bool = True) -
 def _run_post_setup(post_setup_key: str):
     """Run post-setup hooks for tools that need extra installation steps."""
     import shutil
+
     if post_setup_key in {"agent_browser", "browserbase"}:
         node_modules = PROJECT_ROOT / "node_modules" / "agent-browser"
         npm_bin = shutil.which("npm")
@@ -948,6 +1095,7 @@ def _run_post_setup(post_setup_key: str):
         if not node_modules.exists() and npm_bin:
             _print_info("    Installing Node.js dependencies for browser tools...")
             import subprocess
+
             # Use the resolved npm_bin absolute path so subprocess.Popen can
             # execute npm.cmd on Windows (CreateProcessW otherwise rejects
             # batch shims).  On POSIX npm_bin is the plain path — same
@@ -957,17 +1105,24 @@ def _run_post_setup(post_setup_key: str):
                 # only, avoiding the apps/* glob which would pull in
                 # apps/desktop (Electron + node-pty) unnecessarily. See #38772.
                 [npm_bin, "install", "--silent", "--workspaces=false"],
-                capture_output=True, text=True, cwd=str(PROJECT_ROOT)
+                capture_output=True,
+                text=True,
+                cwd=str(PROJECT_ROOT),
             )
             if result.returncode == 0:
                 _print_success("    Node.js dependencies installed")
             else:
                 from openagents_constants import display_openagents_home
-                _print_warning(f"    npm install failed - run manually: cd {display_openagents_home()}/openagents && npm install --workspaces=false")
+
+                _print_warning(
+                    f"    npm install failed - run manually: cd {display_openagents_home()}/openagents && npm install --workspaces=false"
+                )
                 if result.stderr:
                     _print_info(f"      {result.stderr.strip()[:200]}")
         elif not node_modules.exists():
-            _print_warning("    Node.js not found - browser tools require: npm install (in openagents directory)")
+            _print_warning(
+                "    Node.js not found - browser tools require: npm install (in openagents directory)"
+            )
             return
 
         # Step 2: only the local browser provider actually needs Chromium on
@@ -997,15 +1152,9 @@ def _run_post_setup(post_setup_key: str):
             return
 
         if _running_in_docker():
-            _print_warning(
-                "    Chromium is missing but you're running in Docker."
-            )
-            _print_info(
-                "    Pull the latest image to get the bundled Chromium:"
-            )
-            _print_info(
-                "      docker pull ghcr.io/nousresearch/openagents:latest"
-            )
+            _print_warning("    Chromium is missing but you're running in Docker.")
+            _print_info("    Pull the latest image to get the bundled Chromium:")
+            _print_info("      docker pull ghcr.io/nousresearch/openagents:latest")
             return
 
         if not npx_bin:
@@ -1016,6 +1165,7 @@ def _run_post_setup(post_setup_key: str):
 
         _print_info("    Installing Chromium (~170MB one-time download)...")
         import subprocess
+
         # Prefer the bundled agent-browser install subcommand so the
         # version of Chromium matches the CLI. Fall back to npx shim on
         # setups where the local bin stub isn't present.
@@ -1032,13 +1182,17 @@ def _run_post_setup(post_setup_key: str):
         try:
             result = subprocess.run(
                 install_cmd,
-                capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=600,
+                capture_output=True,
+                text=True,
+                cwd=str(PROJECT_ROOT),
+                timeout=600,
             )
             if result.returncode == 0:
                 _print_success("    Chromium installed")
                 # Invalidate the cached "missing" result so subsequent
                 # check_browser_requirements() calls see the new install.
                 import tools.browser_tool as _bt
+
                 _bt._cached_chromium_installed = None
             else:
                 _print_warning("    Chromium install failed:")
@@ -1059,24 +1213,33 @@ def _run_post_setup(post_setup_key: str):
         if not camofox_dir.exists() and _npm_bin:
             _print_info("    Installing Camofox browser server...")
             import subprocess
+
             # Absolute npm path so .cmd shim executes on Windows.
             result = subprocess.run(
                 # --workspaces=false avoids resolving apps/desktop. See #38772.
                 [_npm_bin, "install", "--silent", "--workspaces=false"],
-                capture_output=True, text=True, cwd=str(PROJECT_ROOT)
+                capture_output=True,
+                text=True,
+                cwd=str(PROJECT_ROOT),
             )
             if result.returncode == 0:
                 _print_success("    Camofox installed")
             else:
-                _print_warning("    npm install failed - run manually: npm install --workspaces=false")
+                _print_warning(
+                    "    npm install failed - run manually: npm install --workspaces=false"
+                )
         if camofox_dir.exists():
             _print_info("    Start the Camofox server:")
             _print_info("      npx @askjo/camofox-browser")
             _print_info("    First run downloads the Camoufox engine (~300MB)")
-            _print_info("    Or use Docker: docker run -p 9377:9377 -e CAMOFOX_PORT=9377 jo-inc/camofox-browser")
+            _print_info(
+                "    Or use Docker: docker run -p 9377:9377 -e CAMOFOX_PORT=9377 jo-inc/camofox-browser"
+            )
         elif not shutil.which("npm"):
             _print_warning("    Node.js not found. Install Camofox via Docker:")
-            _print_info("      docker run -p 9377:9377 -e CAMOFOX_PORT=9377 jo-inc/camofox-browser")
+            _print_info(
+                "      docker run -p 9377:9377 -e CAMOFOX_PORT=9377 jo-inc/camofox-browser"
+            )
 
     elif post_setup_key == "cua_driver":
         install_cua_driver(upgrade=False)
@@ -1094,15 +1257,23 @@ def _run_post_setup(post_setup_key: str):
             "0.8.1/kittentts-0.8.1-py3-none-any.whl"
         )
         try:
-            result = _pip_install(["-U", wheel_url, "soundfile", "--quiet"], timeout=300)
+            result = _pip_install(
+                ["-U", wheel_url, "soundfile", "--quiet"], timeout=300
+            )
             if result.returncode == 0:
                 _print_success("    kittentts installed")
-                _print_info("    Voices: Jasper, Bella, Luna, Bruno, Rosie, Hugo, Kiki, Leo")
-                _print_info("    Models: KittenML/kitten-tts-nano-0.8-int8 (25MB), micro (41MB), mini (80MB)")
+                _print_info(
+                    "    Voices: Jasper, Bella, Luna, Bruno, Rosie, Hugo, Kiki, Leo"
+                )
+                _print_info(
+                    "    Models: KittenML/kitten-tts-nano-0.8-int8 (25MB), micro (41MB), mini (80MB)"
+                )
             else:
                 _print_warning("    kittentts install failed:")
                 _print_info(f"      {(result.stderr or '').strip()[:300]}")
-                _print_info(f"    Run manually: uv pip install -U '{wheel_url}' soundfile")
+                _print_info(
+                    f"    Run manually: uv pip install -U '{wheel_url}' soundfile"
+                )
         except subprocess.TimeoutExpired:
             _print_warning("    kittentts install timed out (>5min)")
             _print_info(f"    Run manually: uv pip install -U '{wheel_url}' soundfile")
@@ -1112,7 +1283,9 @@ def _run_post_setup(post_setup_key: str):
             __import__("piper")
             _print_success("    piper-tts is already installed")
         except ImportError:
-            _print_info("    Installing piper-tts (~14MB wheel, voices downloaded on first use)...")
+            _print_info(
+                "    Installing piper-tts (~14MB wheel, voices downloaded on first use)..."
+            )
             try:
                 result = _pip_install(["-U", "piper-tts", "--quiet"], timeout=300)
                 if result.returncode == 0:
@@ -1126,9 +1299,15 @@ def _run_post_setup(post_setup_key: str):
                 _print_warning("    piper-tts install timed out (>5min)")
                 _print_info("    Run manually: uv pip install -U piper-tts")
                 return
-        _print_info("    Default voice: en_US-lessac-medium (downloaded on first TTS call)")
-        _print_info("    Full voice list: https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md")
-        _print_info("    Switch voices by setting tts.piper.voice in ~/.openagents/config.yaml")
+        _print_info(
+            "    Default voice: en_US-lessac-medium (downloaded on first TTS call)"
+        )
+        _print_info(
+            "    Full voice list: https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md"
+        )
+        _print_info(
+            "    Switch voices by setting tts.piper.voice in ~/.openagents/config.yaml"
+        )
 
     elif post_setup_key == "ddgs":
         try:
@@ -1149,7 +1328,9 @@ def _run_post_setup(post_setup_key: str):
                 _print_warning("    ddgs install timed out (>5min)")
                 _print_info("    Run manually: uv pip install -U ddgs")
                 return
-        _print_info("    No API key required. DuckDuckGo enforces server-side rate limits.")
+        _print_info(
+            "    No API key required. DuckDuckGo enforces server-side rate limits."
+        )
         _print_info("    Pair with an extract provider if you also need web_extract.")
 
     elif post_setup_key == "spotify":
@@ -1159,6 +1340,7 @@ def _run_post_setup(post_setup_key: str):
         # to ~/.openagents/.env), then continues straight into PKCE. If they
         # already have an app, it skips the wizard and just does OAuth.
         from types import SimpleNamespace
+
         try:
             from openagents_cli.auth import login_spotify_command
         except Exception as exc:
@@ -1167,10 +1349,15 @@ def _run_post_setup(post_setup_key: str):
             return
         _print_info("    Starting Spotify login...")
         try:
-            login_spotify_command(SimpleNamespace(
-                client_id=None, redirect_uri=None, scope=None,
-                no_browser=False, timeout=None,
-            ))
+            login_spotify_command(
+                SimpleNamespace(
+                    client_id=None,
+                    redirect_uri=None,
+                    scope=None,
+                    no_browser=False,
+                    timeout=None,
+                )
+            )
             _print_success("    Spotify authenticated")
         except SystemExit as exc:
             # User aborted the wizard, or OAuth failed — don't fail the
@@ -1192,12 +1379,15 @@ def _run_post_setup(post_setup_key: str):
             if result.returncode == 0:
                 _print_success("    langfuse SDK installed")
             else:
-                _print_warning("    langfuse SDK install failed — run manually: uv pip install langfuse")
+                _print_warning(
+                    "    langfuse SDK install failed — run manually: uv pip install langfuse"
+                )
         # Opt the bundled observability/langfuse plugin into plugins.enabled.
         # The plugin ships in the repo but doesn't load until the user enables
         # it (standalone plugins are opt-in).
         try:
             from openagents_cli.plugins_cmd import _get_enabled_set, _save_enabled_set
+
             enabled = _get_enabled_set()
             if "observability/langfuse" in enabled or "langfuse" in enabled:
                 _print_success("    Plugin observability/langfuse already enabled")
@@ -1207,7 +1397,9 @@ def _run_post_setup(post_setup_key: str):
                 _print_success("    Plugin observability/langfuse enabled")
         except Exception as exc:
             _print_warning(f"    Could not enable plugin automatically: {exc}")
-            _print_info("    Run manually: hermes plugins enable observability/langfuse")
+            _print_info(
+                "    Run manually: hermes plugins enable observability/langfuse"
+            )
         _print_info("    Restart OpenAgents for tracing to take effect.")
         _print_info("    Verify: hermes plugins list")
 
@@ -1220,6 +1412,7 @@ def _run_post_setup(post_setup_key: str):
         # drive the full auth UX here.
         try:
             from openagents_cli.auth import get_xai_oauth_auth_status
+
             oauth_logged_in = bool(get_xai_oauth_auth_status().get("logged_in"))
         except Exception:
             oauth_logged_in = False
@@ -1244,7 +1437,9 @@ def _run_post_setup(post_setup_key: str):
             from openagents_cli.config import save_env_value
         except Exception as exc:
             _print_warning(f"    Could not load setup helpers: {exc}")
-            _print_info("    Run later: hermes auth add xai-oauth   (or set XAI_API_KEY)")
+            _print_info(
+                "    Run later: hermes auth add xai-oauth   (or set XAI_API_KEY)"
+            )
             return
 
         idx = prompt_choice(
@@ -1258,9 +1453,7 @@ def _run_post_setup(post_setup_key: str):
         )
         if idx == 0:
             if _run_xai_oauth_login_from_setup():
-                _print_success(
-                    "    Logged in — xAI will use these OAuth credentials"
-                )
+                _print_success("    Logged in — xAI will use these OAuth credentials")
             else:
                 _print_warning(
                     "    xAI Grok OAuth login did not complete. "
@@ -1276,7 +1469,9 @@ def _run_post_setup(post_setup_key: str):
                     "    No API key provided. Run later: hermes auth add xai-oauth"
                 )
         else:
-            _print_info("    xAI will remain inactive until credentials are configured.")
+            _print_info(
+                "    xAI will remain inactive until credentials are configured."
+            )
 
 
 def valid_post_setup_keys() -> Set[str]:
@@ -1343,6 +1538,7 @@ def run_post_setup_command(args) -> int:
 
 # ─── Platform / Toolset Helpers ───────────────────────────────────────────────
 
+
 def _get_enabled_platforms() -> List[str]:
     """Return platform keys that are configured (have tokens or are CLI)."""
     enabled = ["cli"]
@@ -1359,7 +1555,9 @@ def _get_enabled_platforms() -> List[str]:
     return enabled
 
 
-def _platform_toolset_summary(config: dict, platforms: Optional[List[str]] = None) -> Dict[str, Set[str]]:
+def _platform_toolset_summary(
+    config: dict, platforms: Optional[List[str]] = None
+) -> Dict[str, Set[str]]:
     """Return a summary of enabled toolsets per platform.
 
     When ``platforms`` is None, this uses ``_get_enabled_platforms`` to
@@ -1448,7 +1646,8 @@ def _get_platform_tools(
 
     if has_explicit_config:
         enabled_toolsets = {
-            ts for ts in toolset_names
+            ts
+            for ts in toolset_names
             if ts in configurable_keys and _toolset_allowed_for_platform(ts, platform)
         }
         # Mixed config: composite toolset alongside configurables (e.g.
@@ -1476,7 +1675,10 @@ def _get_platform_tools(
                     expanded.add(ts_key)
 
             default_off = set(_DEFAULT_OFF_TOOLSETS)
-            if platform in default_off and platform not in _TOOLSET_PLATFORM_RESTRICTIONS:
+            if (
+                platform in default_off
+                and platform not in _TOOLSET_PLATFORM_RESTRICTIONS
+            ):
                 default_off.remove(platform)
             if "homeassistant" in default_off and os.getenv("HASS_TOKEN"):
                 default_off.remove("homeassistant")
@@ -1612,7 +1814,11 @@ def _get_platform_tools(
         and isinstance(platform_toolsets.get(platform), list)
         and not toolset_names
     )
-    if context_engine_name and context_engine_name != "compressor" and not explicit_empty_selection:
+    if (
+        context_engine_name
+        and context_engine_name != "compressor"
+        and not explicit_empty_selection
+    ):
         enabled_toolsets.add("context_engine")
 
     # Preserve any explicit non-configurable toolset entries (for example,
@@ -1695,8 +1901,7 @@ def _save_platform_tools(config: dict, platform: str, enabled_toolset_keys: Set[
     # "Configure all platforms" checklist (or a hand-edited config.yaml)
     # from turning on, say, the `discord` toolset for Telegram.
     enabled_toolset_keys = {
-        ts for ts in enabled_toolset_keys
-        if _toolset_allowed_for_platform(ts, platform)
+        ts for ts in enabled_toolset_keys if _toolset_allowed_for_platform(ts, platform)
     }
 
     # Get the set of all configurable toolset keys (built-in + plugin)
@@ -1718,7 +1923,8 @@ def _save_platform_tools(config: dict, platform: str, enabled_toolset_keys: Set[
     # Preserve any entries that are NOT configurable toolsets and NOT platform
     # defaults (i.e. only MCP server names should be preserved)
     preserved_entries = {
-        entry for entry in existing_toolsets
+        entry
+        for entry in existing_toolsets
         if entry not in configurable_keys and entry not in platform_default_keys
     }
     # Opening `hermes tools` is the user's opt-in to reconfigure tools, so treat
@@ -1728,7 +1934,9 @@ def _save_platform_tools(config: dict, platform: str, enabled_toolset_keys: Set[
     preserved_entries.discard("no_mcp")
 
     # Merge preserved entries with new enabled toolsets
-    config["platform_toolsets"][platform] = sorted(enabled_toolset_keys | preserved_entries)
+    config["platform_toolsets"][platform] = sorted(
+        enabled_toolset_keys | preserved_entries
+    )
 
     # Track which plugin toolsets are "known" for this platform so we can
     # distinguish "new plugin, default enabled" from "user disabled it".
@@ -1756,8 +1964,7 @@ def _save_platform_tools(config: dict, platform: str, enabled_toolset_keys: Set[
             newly_enabled = enabled_toolset_keys - preserved_entries
             if newly_enabled:
                 remaining = [
-                    ts for ts in disabled_toolsets
-                    if str(ts) not in newly_enabled
+                    ts for ts in disabled_toolsets if str(ts) not in newly_enabled
                 ]
                 if remaining != disabled_toolsets:
                     agent_cfg["disabled_toolsets"] = remaining
@@ -1810,9 +2017,11 @@ def _toolset_has_keys(
 
 # ─── Menu Helpers ─────────────────────────────────────────────────────────────
 
+
 def _prompt_choice(question: str, choices: list, default: int = 0) -> int:
     """Single-select menu (arrow keys). Delegates to curses_radiolist."""
     from openagents_cli.curses_ui import curses_radiolist
+
     return curses_radiolist(question, choices, selected=default, cancel_returns=default)
 
 
@@ -1837,6 +2046,7 @@ def _estimate_tool_tokens() -> Dict[str, int]:
 
     try:
         import tiktoken
+
         enc = tiktoken.get_encoding("cl100k_base")
     except Exception:
         logger.debug("tiktoken unavailable; skipping tool token estimation")
@@ -1881,23 +2091,22 @@ def _prompt_toolset_checklist(
     effective_all = _get_effective_configurable_toolsets()
     # Drop platform-scoped toolsets that don't apply to this platform.
     effective = [
-        (k, l, d) for (k, l, d) in effective_all
+        (k, l, d)
+        for (k, l, d) in effective_all
         if _toolset_allowed_for_platform(k, platform)
     ]
 
     labels = []
     for ts_key, ts_label, ts_desc in effective:
         suffix = ""
-        if (
-            not _toolset_has_keys(ts_key, force_fresh=force_fresh)
-            and (TOOL_CATEGORIES.get(ts_key) or TOOLSET_ENV_REQUIREMENTS.get(ts_key))
+        if not _toolset_has_keys(ts_key, force_fresh=force_fresh) and (
+            TOOL_CATEGORIES.get(ts_key) or TOOLSET_ENV_REQUIREMENTS.get(ts_key)
         ):
             suffix = "  [no API key]"
         labels.append(f"{ts_label}  ({ts_desc}){suffix}")
 
     pre_selected = {
-        i for i, (ts_key, _, _) in enumerate(effective)
-        if ts_key in enabled
+        i for i, (ts_key, _, _) in enumerate(effective) if ts_key in enabled
     }
 
     # Build a live status function that shows deduplicated total token cost.
@@ -1927,6 +2136,7 @@ def _prompt_toolset_checklist(
 
 # ─── Provider-Aware Configuration ────────────────────────────────────────────
 
+
 def _configure_toolset(
     ts_key: str,
     config: dict,
@@ -1934,7 +2144,7 @@ def _configure_toolset(
     force_fresh: bool = True,
 ):
     """Configure a toolset - provider selection + API keys.
-    
+
     Uses TOOL_CATEGORIES for provider-aware config, falls back to simple
     env var prompts for toolsets not in TOOL_CATEGORIES.
     """
@@ -2420,7 +2630,9 @@ def _configure_tool_category(
         req = cat["requires_python"]
         if sys.version_info < req:
             print()
-            _print_error(f"  {name} requires Python {req[0]}.{req[1]}+ (current: {sys.version_info.major}.{sys.version_info.minor})")
+            _print_error(
+                f"  {name} requires Python {req[0]}.{req[1]}+ (current: {sys.version_info.major}.{sys.version_info.minor})"
+            )
             _print_info("  Upgrade Python and reinstall to enable this tool.")
             return
 
@@ -2526,7 +2738,10 @@ def _is_provider_active(
     video_plugin_name = provider.get("video_gen_plugin_name")
     if video_plugin_name and not provider.get("managed_nous_feature"):
         video_cfg = config.get("video_gen", {})
-        return isinstance(video_cfg, dict) and video_cfg.get("provider") == video_plugin_name
+        return (
+            isinstance(video_cfg, dict)
+            and video_cfg.get("provider") == video_plugin_name
+        )
 
     managed_feature = provider.get("managed_nous_feature")
     if managed_feature:
@@ -2540,7 +2755,9 @@ def _is_provider_active(
                 configured_provider = image_cfg.get("provider")
                 if configured_provider not in {None, "", "fal"}:
                     return False
-                if image_cfg.get("use_gateway") is not None and not is_truthy_value(image_cfg.get("use_gateway"), default=False):
+                if image_cfg.get("use_gateway") is not None and not is_truthy_value(
+                    image_cfg.get("use_gateway"), default=False
+                ):
                     return False
             return feature.managed_by_nous
         if managed_feature == "video_gen":
@@ -2549,7 +2766,9 @@ def _is_provider_active(
                 configured_provider = video_cfg.get("provider")
                 if configured_provider not in {None, "", "fal"}:
                     return False
-                if video_cfg.get("use_gateway") is not None and not is_truthy_value(video_cfg.get("use_gateway"), default=False):
+                if video_cfg.get("use_gateway") is not None and not is_truthy_value(
+                    video_cfg.get("use_gateway"), default=False
+                ):
                     return False
             return feature.managed_by_nous
         if provider.get("tts_provider"):
@@ -2619,6 +2838,7 @@ def _detect_active_provider_index(
 def _fal_model_catalog():
     """Lazy-load the FAL model catalog from the tool module."""
     from tools.image_generation_tool import FAL_MODELS, DEFAULT_MODEL
+
     return FAL_MODELS, DEFAULT_MODEL
 
 
@@ -2673,7 +2893,9 @@ def _configure_imagegen_model(backend_name: str, config: dict) -> None:
     widths = {
         "model": max(len(m) for m in model_ids),
         "speed": max((len(catalog[m].get("speed", "")) for m in model_ids), default=6),
-        "strengths": max((len(catalog[m].get("strengths", "")) for m in model_ids), default=0),
+        "strengths": max(
+            (len(catalog[m].get("strengths", "")) for m in model_ids), default=0
+        ),
     }
 
     print()
@@ -2755,7 +2977,9 @@ def _configure_imagegen_model_for_plugin(plugin_name: str, config: dict) -> None
     widths = {
         "model": max(len(m) for m in model_ids),
         "speed": max((len(catalog[m].get("speed", "")) for m in model_ids), default=6),
-        "strengths": max((len(catalog[m].get("strengths", "")) for m in model_ids), default=0),
+        "strengths": max(
+            (len(catalog[m].get("strengths", "")) for m in model_ids), default=0
+        ),
     }
 
     print()
@@ -2849,7 +3073,9 @@ def _configure_videogen_model_for_plugin(plugin_name: str, config: dict) -> None
     widths = {
         "model": max(len(m) for m in model_ids),
         "speed": max((len(catalog[m].get("speed", "")) for m in model_ids), default=6),
-        "strengths": max((len(catalog[m].get("strengths", "")) for m in model_ids), default=0),
+        "strengths": max(
+            (len(catalog[m].get("strengths", "")) for m in model_ids), default=0
+        ),
     }
 
     print()
@@ -2885,7 +3111,9 @@ def _configure_videogen_model_for_plugin(plugin_name: str, config: dict) -> None
     _print_success(f"  Model set to: {chosen}")
 
 
-def _select_plugin_video_gen_provider(plugin_name: str, config: dict, *, use_gateway: bool = False) -> None:
+def _select_plugin_video_gen_provider(
+    plugin_name: str, config: dict, *, use_gateway: bool = False
+) -> None:
     """Persist a plugin-backed video generation provider selection."""
     vid_cfg = config.setdefault("video_gen", {})
     if not isinstance(vid_cfg, dict):
@@ -2994,7 +3222,11 @@ def apply_provider_selection(ts_key: str, provider_name: str, config: dict) -> N
     # path (mirrors _configure_provider).
     if provider.get("imagegen_backend"):
         img_cfg = config.setdefault("image_gen", {})
-        if isinstance(img_cfg, dict) and img_cfg.get("provider") not in {None, "", "fal"}:
+        if isinstance(img_cfg, dict) and img_cfg.get("provider") not in {
+            None,
+            "",
+            "fal",
+        }:
             img_cfg["provider"] = "fal"
 
 
@@ -3074,7 +3306,9 @@ def _configure_provider(
             _run_post_setup(provider["post_setup"])
         _print_success(f"  {provider['name']} - no configuration needed!")
         if managed_feature:
-            _print_info("  Requests for this tool will be billed to your Nous subscription.")
+            _print_info(
+                "  Requests for this tool will be billed to your Nous subscription."
+            )
         # Plugin-registered image_gen provider: write image_gen.provider
         # and route model selection to the plugin's own catalog.
         plugin_name = provider.get("image_gen_plugin_name")
@@ -3085,7 +3319,9 @@ def _configure_provider(
         # registry.
         video_plugin = provider.get("video_gen_plugin_name")
         if video_plugin:
-            _select_plugin_video_gen_provider(video_plugin, config, use_gateway=bool(managed_feature))
+            _select_plugin_video_gen_provider(
+                video_plugin, config, use_gateway=bool(managed_feature)
+            )
             return
         # Imagegen backends prompt for model selection after backend pick.
         backend = provider.get("imagegen_backend")
@@ -3095,7 +3331,11 @@ def _configure_provider(
             # image_gen.provider clear so the dispatch shim falls through
             # to the legacy FAL path.
             img_cfg = config.setdefault("image_gen", {})
-            if isinstance(img_cfg, dict) and img_cfg.get("provider") not in {None, "", "fal"}:
+            if isinstance(img_cfg, dict) and img_cfg.get("provider") not in {
+                None,
+                "",
+                "fal",
+            }:
                 img_cfg["provider"] = "fal"
         return
 
@@ -3164,14 +3404,20 @@ def _configure_provider(
             return
         video_plugin = provider.get("video_gen_plugin_name")
         if video_plugin:
-            _select_plugin_video_gen_provider(video_plugin, config, use_gateway=bool(managed_feature))
+            _select_plugin_video_gen_provider(
+                video_plugin, config, use_gateway=bool(managed_feature)
+            )
             return
         # Imagegen backends prompt for model selection after env vars are in.
         backend = provider.get("imagegen_backend")
         if backend:
             _configure_imagegen_model(backend, config)
             img_cfg = config.setdefault("image_gen", {})
-            if isinstance(img_cfg, dict) and img_cfg.get("provider") not in {None, "", "fal"}:
+            if isinstance(img_cfg, dict) and img_cfg.get("provider") not in {
+                None,
+                "",
+                "fal",
+            }:
                 img_cfg["provider"] = "fal"
 
 
@@ -3188,10 +3434,12 @@ def _configure_vision_backend() -> None:
     """
     print()
     print(color("  Vision / Image Analysis needs a multimodal model.", Colors.YELLOW))
-    print(color(
-        "  Pick any provider + model (like /model), or let it auto-detect.",
-        Colors.DIM,
-    ))
+    print(
+        color(
+            "  Pick any provider + model (like /model), or let it auto-detect.",
+            Colors.DIM,
+        )
+    )
 
     choices = [
         "Auto — use your main model / aggregator fallback (recommended)",
@@ -3224,7 +3472,10 @@ def _configure_vision_backend() -> None:
         return
 
     if idx == 2:
-        base_url = _prompt("    Base URL (blank for OpenAI)").strip() or "https://api.openai.com/v1"
+        base_url = (
+            _prompt("    Base URL (blank for OpenAI)").strip()
+            or "https://api.openai.com/v1"
+        )
         is_native_openai = base_url_hostname(base_url) == "api.openai.com"
         key_label = "    OPENAI_API_KEY" if is_native_openai else "    API key"
         api_key = _prompt(key_label, password=True)
@@ -3232,9 +3483,12 @@ def _configure_vision_backend() -> None:
             _print_warning("    Skipped")
             return
         default_model = "gpt-4o-mini" if is_native_openai else ""
-        model = _prompt(
-            f"    Vision model{f' (blank for {default_model})' if default_model else ''}"
-        ).strip() or default_model
+        model = (
+            _prompt(
+                f"    Vision model{f' (blank for {default_model})' if default_model else ''}"
+            ).strip()
+            or default_model
+        )
         save_env_value("OPENAI_API_KEY", api_key.strip())
         # Only base_url + model go to config.yaml; the key is the secret.
         # Pin provider="custom" so the resolver routes through this endpoint —
@@ -3248,7 +3502,9 @@ def _configure_vision_backend() -> None:
         else:
             vision_cfg.pop("model", None)
         save_config(config)
-        _print_success(f"  Vision set to custom endpoint{f' ({model})' if model else ''}")
+        _print_success(
+            f"  Vision set to custom endpoint{f' ({model})' if model else ''}"
+        )
         return
 
     # Skip
@@ -3336,7 +3592,9 @@ def _configure_simple_requirements(ts_key: str):
     if not missing:
         return
 
-    ts_label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts_key), ts_key)
+    ts_label = next(
+        (l for k, l, _ in _get_effective_configurable_toolsets() if k == ts_key), ts_key
+    )
     print()
     print(color(f"  {ts_label} requires configuration:", Colors.YELLOW))
 
@@ -3363,10 +3621,9 @@ def _reconfigure_tool(
         cat = TOOL_CATEGORIES.get(ts_key)
         reqs = TOOLSET_ENV_REQUIREMENTS.get(ts_key)
         if cat or reqs:
-            if (
-                _toolset_has_keys(ts_key, config, force_fresh=force_fresh)
-                or _toolset_enabled_for_reconfigure(ts_key, config)
-            ):
+            if _toolset_has_keys(
+                ts_key, config, force_fresh=force_fresh
+            ) or _toolset_enabled_for_reconfigure(ts_key, config):
                 configurable.append((ts_key, ts_label))
 
     if not configurable:
@@ -3376,7 +3633,9 @@ def _reconfigure_tool(
     choices = [label for _, label in configurable]
     choices.append("Cancel")
 
-    idx = _prompt_choice("  Which tool would you like to reconfigure?", choices, len(choices) - 1)
+    idx = _prompt_choice(
+        "  Which tool would you like to reconfigure?", choices, len(choices) - 1
+    )
 
     if idx >= len(configurable):
         return  # Cancel
@@ -3474,7 +3733,9 @@ def _configure_tool_category_for_reconfig(
             force_fresh=force_fresh,
         )
 
-        provider_idx = _prompt_choice("  Select provider:", provider_choices, default_idx)
+        provider_idx = _prompt_choice(
+            "  Select provider:", provider_choices, default_idx
+        )
         _reconfigure_provider(
             providers[provider_idx],
             config,
@@ -3569,7 +3830,9 @@ def _reconfigure_provider(
             _run_post_setup(provider["post_setup"])
         _print_success(f"  {provider['name']} - no configuration needed!")
         if managed_feature:
-            _print_info("  Requests for this tool will be billed to your Nous subscription.")
+            _print_info(
+                "  Requests for this tool will be billed to your Nous subscription."
+            )
         plugin_name = provider.get("image_gen_plugin_name")
         if plugin_name:
             _select_plugin_image_gen_provider(plugin_name, config)
@@ -3577,7 +3840,9 @@ def _reconfigure_provider(
         # Plugin-registered video_gen provider — same flow, different registry.
         video_plugin = provider.get("video_gen_plugin_name")
         if video_plugin:
-            _select_plugin_video_gen_provider(video_plugin, config, use_gateway=bool(managed_feature))
+            _select_plugin_video_gen_provider(
+                video_plugin, config, use_gateway=bool(managed_feature)
+            )
             return
         # Imagegen backends prompt for model selection on reconfig too.
         backend = provider.get("imagegen_backend")
@@ -3598,7 +3863,10 @@ def _reconfigure_provider(
         if url:
             _print_info(f"  Get yours at: {url}")
         default_val = var.get("default", "")
-        value = _prompt(f"    {var.get('prompt', var['key'])} (Enter to keep current)", password=not default_val)
+        value = _prompt(
+            f"    {var.get('prompt', var['key'])} (Enter to keep current)",
+            password=not default_val,
+        )
         if value and value.strip():
             save_env_value(var["key"], value.strip())
             _print_success("    Updated")
@@ -3617,7 +3885,9 @@ def _reconfigure_provider(
     # Plugin-registered video_gen provider — same flow, different registry.
     video_plugin = provider.get("video_gen_plugin_name")
     if video_plugin:
-        _select_plugin_video_gen_provider(video_plugin, config, use_gateway=bool(managed_feature))
+        _select_plugin_video_gen_provider(
+            video_plugin, config, use_gateway=bool(managed_feature)
+        )
         return
 
     backend = provider.get("imagegen_backend")
@@ -3643,7 +3913,9 @@ def _reconfigure_simple_requirements(ts_key: str):
     if not requirements:
         return
 
-    ts_label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts_key), ts_key)
+    ts_label = next(
+        (l for k, l, _ in _get_effective_configurable_toolsets() if k == ts_key), ts_key
+    )
     print()
     print(color(f"  {ts_label}:", Colors.CYAN))
 
@@ -3662,6 +3934,7 @@ def _reconfigure_simple_requirements(ts_key: str):
 
 
 # ─── Main Entry Point ─────────────────────────────────────────────────────────
+
 
 def tools_command(args=None, first_install: bool = False, config: dict = None):
     """Entry point for `hermes tools` and `hermes setup tools`.
@@ -3690,10 +3963,20 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
             pinfo = PLATFORMS[pkey]
             enabled = summary.get(pkey, set())
             count = len(enabled)
-            print(color(f"  {pinfo['label']}", Colors.BOLD) + color(f"  ({count}/{total})", Colors.DIM))
+            print(
+                color(f"  {pinfo['label']}", Colors.BOLD)
+                + color(f"  ({count}/{total})", Colors.DIM)
+            )
             if enabled:
                 for ts_key in sorted(enabled):
-                    label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts_key), ts_key)
+                    label = next(
+                        (
+                            l
+                            for k, l, _ in _get_effective_configurable_toolsets()
+                            if k == ts_key
+                        ),
+                        ts_key,
+                    )
                     print(color(f"    ✓ {label}", Colors.GREEN))
             else:
                 print(color("    (none enabled)", Colors.DIM))
@@ -3701,21 +3984,32 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
         return
     print(color("⚕ OpenAgents Tool Configuration", Colors.CYAN, Colors.BOLD))
     print(color("  Enable or disable tools per platform.", Colors.DIM))
-    print(color("  Tools that need API keys will be configured when enabled.", Colors.DIM))
-    print(color("  Guide: https://openagents.nousresearch.com/docs/user-guide/features/tools", Colors.DIM))
+    print(
+        color("  Tools that need API keys will be configured when enabled.", Colors.DIM)
+    )
+    print(
+        color(
+            "  Guide: https://openagents.nousresearch.com/docs/user-guide/features/tools",
+            Colors.DIM,
+        )
+    )
     print()
 
     # ── First-time install: linear flow, no platform menu ──
     if first_install:
         for pkey in enabled_platforms:
             pinfo = PLATFORMS[pkey]
-            current_enabled = _get_platform_tools(config, pkey, include_default_mcp_servers=False)
+            current_enabled = _get_platform_tools(
+                config, pkey, include_default_mcp_servers=False
+            )
 
             # Uncheck toolsets that should be off by default
             checklist_preselected = current_enabled - _DEFAULT_OFF_TOOLSETS
 
             # Show checklist
-            new_enabled = _prompt_toolset_checklist(pinfo["label"], checklist_preselected, pkey)
+            new_enabled = _prompt_toolset_checklist(
+                pinfo["label"], checklist_preselected, pkey
+            )
 
             # Only diff against toolsets the checklist actually offered. The
             # resolved ``current_enabled`` can include non-configurable toolsets
@@ -3728,11 +4022,25 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
             removed = (current_enabled - new_enabled) & _diff_universe
             if added:
                 for ts in sorted(added):
-                    label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts), ts)
+                    label = next(
+                        (
+                            l
+                            for k, l, _ in _get_effective_configurable_toolsets()
+                            if k == ts
+                        ),
+                        ts,
+                    )
                     print(color(f"  + {label}", Colors.GREEN))
             if removed:
                 for ts in sorted(removed):
-                    label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts), ts)
+                    label = next(
+                        (
+                            l
+                            for k, l, _ in _get_effective_configurable_toolsets()
+                            if k == ts
+                        ),
+                        ts,
+                    )
                     print(color(f"  - {label}", Colors.RED))
 
             auto_configured = apply_nous_managed_defaults(
@@ -3741,26 +4049,47 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
                 force_fresh=True,
             )
             for ts_key in sorted(auto_configured):
-                label = next((l for k, l, _ in CONFIGURABLE_TOOLSETS if k == ts_key), ts_key)
-                print(color(f"  ✓ {label}: using your Nous subscription defaults", Colors.GREEN))
+                label = next(
+                    (l for k, l, _ in CONFIGURABLE_TOOLSETS if k == ts_key), ts_key
+                )
+                print(
+                    color(
+                        f"  ✓ {label}: using your Nous subscription defaults",
+                        Colors.GREEN,
+                    )
+                )
 
             # Walk through ALL selected tools that have provider options or
             # need API keys.  This ensures browser (Local vs Browserbase),
             # TTS (Edge vs OpenAI vs ElevenLabs), etc. are shown even when
             # a free provider exists.
             to_configure = [
-                ts_key for ts_key in sorted(new_enabled)
+                ts_key
+                for ts_key in sorted(new_enabled)
                 if (TOOL_CATEGORIES.get(ts_key) or TOOLSET_ENV_REQUIREMENTS.get(ts_key))
                 and ts_key not in auto_configured
             ]
 
             if to_configure:
                 print()
-                print(color(f"  Configuring {len(to_configure)} tool(s):", Colors.YELLOW))
+                print(
+                    color(f"  Configuring {len(to_configure)} tool(s):", Colors.YELLOW)
+                )
                 for ts_key in to_configure:
-                    label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts_key), ts_key)
+                    label = next(
+                        (
+                            l
+                            for k, l, _ in _get_effective_configurable_toolsets()
+                            if k == ts_key
+                        ),
+                        ts_key,
+                    )
                     print(color(f"    • {label}", Colors.DIM))
-                print(color("  You can skip any tool you don't need right now.", Colors.DIM))
+                print(
+                    color(
+                        "  You can skip any tool you don't need right now.", Colors.DIM
+                    )
+                )
                 print()
                 for ts_key in to_configure:
                     _configure_toolset(ts_key, config)
@@ -3781,7 +4110,9 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
         current = _get_platform_tools(config, pkey, include_default_mcp_servers=False)
         count = len(current)
         total = len(_get_effective_configurable_toolsets())
-        platform_choices.append(f"Configure {pinfo['label']}  ({count}/{total} enabled)")
+        platform_choices.append(
+            f"Configure {pinfo['label']}  ({count}/{total} enabled)"
+        )
         platform_keys.append(pkey)
 
     if len(platform_keys) > 1:
@@ -3825,7 +4156,9 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
             # Use the union of all platforms' current tools as the starting state
             all_current = set()
             for pk in platform_keys:
-                all_current |= _get_platform_tools(config, pk, include_default_mcp_servers=False)
+                all_current |= _get_platform_tools(
+                    config, pk, include_default_mcp_servers=False
+                )
             new_enabled = _prompt_toolset_checklist(
                 "All platforms",
                 all_current,
@@ -3833,7 +4166,9 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
             )
             if new_enabled != all_current:
                 for pk in platform_keys:
-                    prev = _get_platform_tools(config, pk, include_default_mcp_servers=False)
+                    prev = _get_platform_tools(
+                        config, pk, include_default_mcp_servers=False
+                    )
                     # Scope the printed diff to the checklist's universe (see
                     # _checklist_toolset_keys) so non-configurable toolsets like
                     # ``kanban`` aren't reported as added/removed.
@@ -3844,14 +4179,30 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
                     if added or removed:
                         print(color(f"  {pinfo_inner['label']}:", Colors.DIM))
                         for ts in sorted(added):
-                            label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts), ts)
+                            label = next(
+                                (
+                                    l
+                                    for k, l, _ in _get_effective_configurable_toolsets()
+                                    if k == ts
+                                ),
+                                ts,
+                            )
                             print(color(f"    + {label}", Colors.GREEN))
                         for ts in sorted(removed):
-                            label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts), ts)
+                            label = next(
+                                (
+                                    l
+                                    for k, l, _ in _get_effective_configurable_toolsets()
+                                    if k == ts
+                                ),
+                                ts,
+                            )
                             print(color(f"    - {label}", Colors.RED))
                     # Configure API keys for newly enabled tools
                     for ts_key in sorted(added):
-                        if (TOOL_CATEGORIES.get(ts_key) or TOOLSET_ENV_REQUIREMENTS.get(ts_key)):
+                        if TOOL_CATEGORIES.get(ts_key) or TOOLSET_ENV_REQUIREMENTS.get(
+                            ts_key
+                        ):
                             if _toolset_needs_configuration_prompt(
                                 ts_key,
                                 config,
@@ -3863,9 +4214,15 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
                 print(color("  ✓ Saved configuration for all platforms", Colors.GREEN))
                 # Update choice labels
                 for ci, pk in enumerate(platform_keys):
-                    new_count = len(_get_platform_tools(config, pk, include_default_mcp_servers=False))
+                    new_count = len(
+                        _get_platform_tools(
+                            config, pk, include_default_mcp_servers=False
+                        )
+                    )
                     total = len(_get_effective_configurable_toolsets())
-                    platform_choices[ci] = f"Configure {PLATFORMS[pk]['label']}  ({new_count}/{total} enabled)"
+                    platform_choices[ci] = (
+                        f"Configure {PLATFORMS[pk]['label']}  ({new_count}/{total} enabled)"
+                    )
             else:
                 print(color("  No changes", Colors.DIM))
             print()
@@ -3875,7 +4232,9 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
         pinfo = PLATFORMS[pkey]
 
         # Get current enabled toolsets for this platform
-        current_enabled = _get_platform_tools(config, pkey, include_default_mcp_servers=False)
+        current_enabled = _get_platform_tools(
+            config, pkey, include_default_mcp_servers=False
+        )
 
         # Show checklist
         new_enabled = _prompt_toolset_checklist(
@@ -3894,16 +4253,30 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
 
             if added:
                 for ts in sorted(added):
-                    label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts), ts)
+                    label = next(
+                        (
+                            l
+                            for k, l, _ in _get_effective_configurable_toolsets()
+                            if k == ts
+                        ),
+                        ts,
+                    )
                     print(color(f"  + {label}", Colors.GREEN))
             if removed:
                 for ts in sorted(removed):
-                    label = next((l for k, l, _ in _get_effective_configurable_toolsets() if k == ts), ts)
+                    label = next(
+                        (
+                            l
+                            for k, l, _ in _get_effective_configurable_toolsets()
+                            if k == ts
+                        ),
+                        ts,
+                    )
                     print(color(f"  - {label}", Colors.RED))
 
             # Configure newly enabled toolsets that need API keys
             for ts_key in sorted(added):
-                if (TOOL_CATEGORIES.get(ts_key) or TOOLSET_ENV_REQUIREMENTS.get(ts_key)):
+                if TOOL_CATEGORIES.get(ts_key) or TOOLSET_ENV_REQUIREMENTS.get(ts_key):
                     if _toolset_needs_configuration_prompt(
                         ts_key,
                         config,
@@ -3920,14 +4293,28 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
         print()
 
         # Update the choice label with new count
-        new_count = len(_get_platform_tools(config, pkey, include_default_mcp_servers=False))
+        new_count = len(
+            _get_platform_tools(config, pkey, include_default_mcp_servers=False)
+        )
         total = len(_get_effective_configurable_toolsets())
-        platform_choices[idx] = f"Configure {pinfo['label']}  ({new_count}/{total} enabled)"
+        platform_choices[idx] = (
+            f"Configure {pinfo['label']}  ({new_count}/{total} enabled)"
+        )
 
     print()
     from openagents_constants import display_openagents_home
-    print(color(f"  Tool configuration saved to {display_openagents_home()}/config.yaml", Colors.DIM))
-    print(color("  Changes take effect on next 'openagents' or gateway restart.", Colors.DIM))
+
+    print(
+        color(
+            f"  Tool configuration saved to {display_openagents_home()}/config.yaml",
+            Colors.DIM,
+        )
+    )
+    print(
+        color(
+            "  Changes take effect on next 'openagents' or gateway restart.", Colors.DIM
+        )
+    )
     print()
 
 
@@ -3950,7 +4337,8 @@ def _configure_mcp_tools_interactive(config: dict):
 
     # Count enabled servers
     enabled_names = [
-        k for k, v in mcp_servers.items()
+        k
+        for k, v in mcp_servers.items()
         if v.get("enabled", True) not in {False, "false", "0", "no", "off"}
     ]
     if not enabled_names:
@@ -3959,10 +4347,16 @@ def _configure_mcp_tools_interactive(config: dict):
 
     print()
     print(color("  Discovering tools from MCP servers...", Colors.YELLOW))
-    print(color(f"  Connecting to {len(enabled_names)} server(s): {', '.join(enabled_names)}", Colors.DIM))
+    print(
+        color(
+            f"  Connecting to {len(enabled_names)} server(s): {', '.join(enabled_names)}",
+            Colors.DIM,
+        )
+    )
 
     try:
         from tools.mcp_tool import probe_mcp_server_tools
+
         server_tools = probe_mcp_server_tools()
     except Exception as exc:
         _print_error(f"Failed to probe MCP servers: {exc}")
@@ -3970,7 +4364,9 @@ def _configure_mcp_tools_interactive(config: dict):
 
     if not server_tools:
         _print_warning("Could not discover tools from any MCP server.")
-        _print_info("Check that server commands/URLs are correct and dependencies are installed.")
+        _print_info(
+            "Check that server commands/URLs are correct and dependencies are installed."
+        )
         return
 
     # Report discovery results
@@ -3980,7 +4376,12 @@ def _configure_mcp_tools_interactive(config: dict):
             _print_warning(f"  Could not connect to '{name}'")
 
     total_tools = sum(len(tools) for tools in server_tools.values())
-    print(color(f"  Found {total_tools} tool(s) across {len(server_tools)} server(s)", Colors.GREEN))
+    print(
+        color(
+            f"  Found {total_tools} tool(s) across {len(server_tools)} server(s)",
+            Colors.GREEN,
+        )
+    )
     print()
 
     any_changes = False
@@ -3998,7 +4399,9 @@ def _configure_mcp_tools_interactive(config: dict):
         # Build checklist labels
         labels = []
         for tool_name, description in tools:
-            desc_short = description[:70] + "..." if len(description) > 70 else description
+            desc_short = (
+                description[:70] + "..." if len(description) > 70 else description
+            )
             if desc_short:
                 labels.append(f"{tool_name}  ({desc_short})")
             else:
@@ -4070,7 +4473,9 @@ def _configure_mcp_tools_interactive(config: dict):
 # ─── Non-interactive disable/enable ──────────────────────────────────────────
 
 
-def _apply_toolset_change(config: dict, platform: str, toolset_names: List[str], action: str):
+def _apply_toolset_change(
+    config: dict, platform: str, toolset_names: List[str], action: str
+):
     """Add or remove built-in toolsets for a platform."""
     enabled = _get_platform_tools(config, platform, include_default_mcp_servers=False)
     if action == "disable":
@@ -4109,7 +4514,8 @@ def _print_tools_list(enabled_toolsets: set, mcp_servers: dict, platform: str = 
     """Print a summary of enabled/disabled toolsets and MCP tool filters."""
     effective_all = _get_effective_configurable_toolsets()
     effective = [
-        (k, l, d) for (k, l, d) in effective_all
+        (k, l, d)
+        for (k, l, d) in effective_all
         if _toolset_allowed_for_platform(k, platform)
     ]
     builtin_keys = {ts_key for ts_key, _, _ in CONFIGURABLE_TOOLSETS}
@@ -4118,8 +4524,11 @@ def _print_tools_list(enabled_toolsets: set, mcp_servers: dict, platform: str = 
     for ts_key, label, _ in effective:
         if ts_key not in builtin_keys:
             continue
-        status = (color("✓ enabled", Colors.GREEN) if ts_key in enabled_toolsets
-                  else color("✗ disabled", Colors.RED))
+        status = (
+            color("✓ enabled", Colors.GREEN)
+            if ts_key in enabled_toolsets
+            else color("✗ disabled", Colors.RED)
+        )
         print(f"  {status}  {ts_key}  {color(label, Colors.DIM)}")
 
     # Plugin toolsets
@@ -4128,8 +4537,11 @@ def _print_tools_list(enabled_toolsets: set, mcp_servers: dict, platform: str = 
         print()
         print(f"Plugin toolsets ({platform}):")
         for ts_key, label in plugin_entries:
-            status = (color("✓ enabled", Colors.GREEN) if ts_key in enabled_toolsets
-                      else color("✗ disabled", Colors.RED))
+            status = (
+                color("✓ enabled", Colors.GREEN)
+                if ts_key in enabled_toolsets
+                else color("✗ disabled", Colors.RED)
+            )
             print(f"  {status}  {ts_key}  {color(label, Colors.DIM)}")
 
     if mcp_servers:
@@ -4142,7 +4554,9 @@ def _print_tools_list(enabled_toolsets: set, mcp_servers: dict, platform: str = 
             if include:
                 _print_info(f"{srv_name}  [include only: {', '.join(include)}]")
             elif exclude:
-                _print_info(f"{srv_name}  [excluded: {color(', '.join(exclude), Colors.YELLOW)}]")
+                _print_info(
+                    f"{srv_name}  [excluded: {color(', '.join(exclude), Colors.YELLOW)}]"
+                )
             else:
                 _print_info(f"{srv_name}  {color('all tools enabled', Colors.DIM)}")
 
@@ -4162,15 +4576,20 @@ def tools_disable_enable_command(args):
         return
 
     if action == "list":
-        _print_tools_list(_get_platform_tools(config, platform, include_default_mcp_servers=False),
-                          config.get("mcp_servers") or {}, platform)
+        _print_tools_list(
+            _get_platform_tools(config, platform, include_default_mcp_servers=False),
+            config.get("mcp_servers") or {},
+            platform,
+        )
         return
 
     targets: List[str] = args.names
     toolset_targets = [t for t in targets if ":" not in t]
     mcp_targets = [t for t in targets if ":" in t]
 
-    valid_toolsets = {ts_key for ts_key, _, _ in CONFIGURABLE_TOOLSETS} | _get_plugin_toolset_keys()
+    valid_toolsets = {
+        ts_key for ts_key, _, _ in CONFIGURABLE_TOOLSETS
+    } | _get_plugin_toolset_keys()
     unknown_toolsets = [t for t in toolset_targets if t not in valid_toolsets]
     if unknown_toolsets:
         for name in unknown_toolsets:
@@ -4179,8 +4598,7 @@ def tools_disable_enable_command(args):
 
     # Reject platform-scoped toolsets on platforms that don't allow them.
     restricted_targets = [
-        t for t in toolset_targets
-        if not _toolset_allowed_for_platform(t, platform)
+        t for t in toolset_targets if not _toolset_allowed_for_platform(t, platform)
     ]
     if restricted_targets:
         for name in restricted_targets:
@@ -4203,8 +4621,10 @@ def tools_disable_enable_command(args):
     save_config(config)
 
     successful = [
-        t for t in targets
-        if t not in unknown_toolsets and (":" not in t or t.split(":")[0] not in failed_servers)
+        t
+        for t in targets
+        if t not in unknown_toolsets
+        and (":" not in t or t.split(":")[0] not in failed_servers)
     ]
     if successful:
         verb = "Disabled" if action == "disable" else "Enabled"

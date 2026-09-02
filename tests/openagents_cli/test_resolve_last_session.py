@@ -11,7 +11,11 @@ class _FakeDB:
         self.closed = False
 
     def search_sessions(self, source=None, limit=20, **_kw):
-        rows = [r for r in self._rows if r.get("source") == source] if source else list(self._rows)
+        rows = (
+            [r for r in self._rows if r.get("source") == source]
+            if source
+            else list(self._rows)
+        )
         rows.sort(
             key=lambda r: float(r.get("last_active") or r.get("started_at") or 0),
             reverse=True,
@@ -62,8 +66,14 @@ def test_search_sessions_exposes_last_active_column(tmp_path, monkeypatch):
         # Force started_at ordering so the test is deterministic regardless
         # of how quickly the two inserts land.
         with db._lock:
-            db._conn.execute("UPDATE sessions SET started_at=? WHERE id=?", (2000.0, "s_started_later"))
-            db._conn.execute("UPDATE sessions SET started_at=? WHERE id=?", (1000.0, "s_active_later"))
+            db._conn.execute(
+                "UPDATE sessions SET started_at=? WHERE id=?",
+                (2000.0, "s_started_later"),
+            )
+            db._conn.execute(
+                "UPDATE sessions SET started_at=? WHERE id=?",
+                (1000.0, "s_active_later"),
+            )
             db._conn.commit()
 
         db.append_message("s_active_later", role="user", content="hi")
@@ -153,5 +163,7 @@ def test_resolve_last_session_not_limited_to_newest_started_20(tmp_path, monkeyp
     finally:
         db.close()
 
-    monkeypatch.setattr("openagents_state.SessionDB", lambda: real_session_db(db_path=state_db))
+    monkeypatch.setattr(
+        "openagents_state.SessionDB", lambda: real_session_db(db_path=state_db)
+    )
     assert _resolve_last_session("cli") == target

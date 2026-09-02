@@ -36,12 +36,14 @@ def _inject_fake_openagents_cli(monkeypatch):
     monkeypatch.setitem(sys.modules, "openagents_cli.memory_setup", fake_setup_mod)
 
     monkeypatch.setattr("plugins.memory.mem0._setup._curses_select", lambda *a, **kw: 0)
-    monkeypatch.setattr("plugins.memory.mem0._setup._prompt", lambda label, default=None, secret=False: default or "")
+    monkeypatch.setattr(
+        "plugins.memory.mem0._setup._prompt",
+        lambda label, default=None, secret=False: default or "",
+    )
     return fake_config_mod
 
 
 class TestParseFlags:
-
     def test_mode_platform(self):
         flags = parse_flags(["--mode", "platform", "--api-key", "sk-test"])
         assert flags["mode"] == "platform"
@@ -56,18 +58,30 @@ class TestParseFlags:
 
     def test_mode_oss_all_flags(self):
         flags = parse_flags([
-            "--mode", "oss",
-            "--oss-llm", "ollama",
-            "--oss-llm-model", "llama3:latest",
-            "--oss-embedder", "ollama",
-            "--oss-embedder-model", "nomic-embed-text",
-            "--oss-vector", "pgvector",
-            "--oss-vector-host", "db.local",
-            "--oss-vector-port", "5433",
-            "--oss-vector-user", "pguser",
-            "--oss-vector-password", "secret",
-            "--oss-vector-dbname", "memdb",
-            "--user-id", "my-user",
+            "--mode",
+            "oss",
+            "--oss-llm",
+            "ollama",
+            "--oss-llm-model",
+            "llama3:latest",
+            "--oss-embedder",
+            "ollama",
+            "--oss-embedder-model",
+            "nomic-embed-text",
+            "--oss-vector",
+            "pgvector",
+            "--oss-vector-host",
+            "db.local",
+            "--oss-vector-port",
+            "5433",
+            "--oss-vector-user",
+            "pguser",
+            "--oss-vector-password",
+            "secret",
+            "--oss-vector-dbname",
+            "memdb",
+            "--user-id",
+            "my-user",
         ])
         assert flags["oss_llm"] == "ollama"
         assert flags["oss_llm_model"] == "llama3:latest"
@@ -85,7 +99,6 @@ class TestParseFlags:
 
 
 class TestBuildOSSConfig:
-
     def test_openai_defaults(self):
         flags = parse_flags(["--mode", "oss", "--oss-llm-key", "sk-oai"])
         oss, env_writes = build_oss_config(flags)
@@ -97,7 +110,14 @@ class TestBuildOSSConfig:
         assert env_writes["OPENAI_API_KEY"] == "sk-oai"
 
     def test_ollama_no_key_needed(self):
-        flags = parse_flags(["--mode", "oss", "--oss-llm", "ollama", "--oss-embedder", "ollama"])
+        flags = parse_flags([
+            "--mode",
+            "oss",
+            "--oss-llm",
+            "ollama",
+            "--oss-embedder",
+            "ollama",
+        ])
         oss, env_writes = build_oss_config(flags)
         assert oss["llm"]["provider"] == "ollama"
         assert "model" in oss["llm"]["config"]
@@ -111,19 +131,34 @@ class TestBuildOSSConfig:
 
     def test_different_embedder_needs_separate_key(self):
         flags = parse_flags([
-            "--mode", "oss",
-            "--oss-llm", "ollama",
-            "--oss-embedder", "openai", "--oss-embedder-key", "sk-oai",
+            "--mode",
+            "oss",
+            "--oss-llm",
+            "ollama",
+            "--oss-embedder",
+            "openai",
+            "--oss-embedder-key",
+            "sk-oai",
         ])
         _, env_writes = build_oss_config(flags)
         assert env_writes == {"OPENAI_API_KEY": "sk-oai"}
 
     def test_pgvector_config(self):
         flags = parse_flags([
-            "--mode", "oss", "--oss-llm-key", "sk-oai",
-            "--oss-vector", "pgvector",
-            "--oss-vector-host", "db.local", "--oss-vector-port", "5433",
-            "--oss-vector-user", "pg", "--oss-vector-dbname", "memdb",
+            "--mode",
+            "oss",
+            "--oss-llm-key",
+            "sk-oai",
+            "--oss-vector",
+            "pgvector",
+            "--oss-vector-host",
+            "db.local",
+            "--oss-vector-port",
+            "5433",
+            "--oss-vector-user",
+            "pg",
+            "--oss-vector-dbname",
+            "memdb",
         ])
         oss, _ = build_oss_config(flags)
         vs = oss["vector_store"]
@@ -140,15 +175,18 @@ class TestBuildOSSConfig:
 
     def test_custom_qdrant_path(self):
         flags = parse_flags([
-            "--mode", "oss", "--oss-llm-key", "sk-oai",
-            "--oss-vector-path", "/data/qdrant",
+            "--mode",
+            "oss",
+            "--oss-llm-key",
+            "sk-oai",
+            "--oss-vector-path",
+            "/data/qdrant",
         ])
         oss, _ = build_oss_config(flags)
         assert oss["vector_store"]["config"]["path"] == "/data/qdrant"
 
 
 class TestWriteEnv:
-
     def test_write_new_vars(self, tmp_path):
         env_path = tmp_path / ".env"
         _write_env(env_path, {"OPENAI_API_KEY": "sk-test"})
@@ -166,10 +204,13 @@ class TestWriteEnv:
 
 
 class TestPostSetup:
-
     def test_platform_flag_mode(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["openagents", "--mode", "platform", "--api-key", "sk-test"])
-        monkeypatch.setattr("plugins.memory.mem0._setup.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "sys.argv", ["openagents", "--mode", "platform", "--api-key", "sk-test"]
+        )
+        monkeypatch.setattr(
+            "plugins.memory.mem0._setup.get_openagents_home", lambda: tmp_path
+        )
         _inject_fake_openagents_cli(monkeypatch)
         config = {"memory": {}}
         post_setup(str(tmp_path), config)
@@ -180,12 +221,23 @@ class TestPostSetup:
         assert mem0_json["mode"] == "platform"
 
     def test_oss_flag_mode(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("sys.argv", [
-            "openagents", "--mode", "oss", "--oss-llm-key", "sk-oai",
-        ])
-        monkeypatch.setattr("plugins.memory.mem0._setup.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "openagents",
+                "--mode",
+                "oss",
+                "--oss-llm-key",
+                "sk-oai",
+            ],
+        )
+        monkeypatch.setattr(
+            "plugins.memory.mem0._setup.get_openagents_home", lambda: tmp_path
+        )
         _inject_fake_openagents_cli(monkeypatch)
-        monkeypatch.setattr("plugins.memory.mem0._setup._install_provider_deps", lambda l, e, v: None)
+        monkeypatch.setattr(
+            "plugins.memory.mem0._setup._install_provider_deps", lambda l, e, v: None
+        )
         config = {"memory": {}}
         post_setup(str(tmp_path), config)
         assert config["memory"]["provider"] == "mem0"
@@ -195,7 +247,6 @@ class TestPostSetup:
 
 
 class TestDryRun:
-
     def test_dry_run_flag_parsed(self):
         flags = parse_flags(["--mode", "oss", "--oss-llm-key", "sk-oai", "--dry-run"])
         assert flags["dry_run"] is True
@@ -205,8 +256,13 @@ class TestDryRun:
         assert flags["dry_run"] is False
 
     def test_dry_run_platform_no_files(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["openagents", "--mode", "platform", "--api-key", "sk-test", "--dry-run"])
-        monkeypatch.setattr("plugins.memory.mem0._setup.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "sys.argv",
+            ["openagents", "--mode", "platform", "--api-key", "sk-test", "--dry-run"],
+        )
+        monkeypatch.setattr(
+            "plugins.memory.mem0._setup.get_openagents_home", lambda: tmp_path
+        )
         _inject_fake_openagents_cli(monkeypatch)
         config = {"memory": {}}
         post_setup(str(tmp_path), config)
@@ -215,12 +271,24 @@ class TestDryRun:
         assert "provider" not in config["memory"]
 
     def test_dry_run_oss_no_files(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("sys.argv", [
-            "openagents", "--mode", "oss", "--oss-llm-key", "sk-oai", "--dry-run",
-        ])
-        monkeypatch.setattr("plugins.memory.mem0._setup.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "openagents",
+                "--mode",
+                "oss",
+                "--oss-llm-key",
+                "sk-oai",
+                "--dry-run",
+            ],
+        )
+        monkeypatch.setattr(
+            "plugins.memory.mem0._setup.get_openagents_home", lambda: tmp_path
+        )
         _inject_fake_openagents_cli(monkeypatch)
-        monkeypatch.setattr("plugins.memory.mem0._setup._install_provider_deps", lambda l, e, v: None)
+        monkeypatch.setattr(
+            "plugins.memory.mem0._setup._install_provider_deps", lambda l, e, v: None
+        )
         config = {"memory": {}}
         post_setup(str(tmp_path), config)
         assert not (tmp_path / ".env").exists()
@@ -229,7 +297,6 @@ class TestDryRun:
 
 
 class TestConnectivityChecks:
-
     def test_qdrant_path_writable(self, tmp_path):
         ok, msg = _check_qdrant_path(str(tmp_path / "qdrant"))
         assert ok is True
@@ -237,6 +304,7 @@ class TestConnectivityChecks:
     def test_qdrant_path_not_writable(self, tmp_path, monkeypatch):
         def _raise_oserror(*a, **kw):
             raise OSError("Permission denied")
+
         monkeypatch.setattr(Path, "mkdir", _raise_oserror)
         ok, msg = _check_qdrant_path(str(tmp_path / "qdrant"))
         assert ok is False

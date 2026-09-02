@@ -17,6 +17,7 @@ docstring. ``/run/service`` is chowned hermes-writable by the
 ``02-reconcile-profiles`` cont-init.d script, so register/unregister
 operations work correctly under UID 10000.
 """
+
 from __future__ import annotations
 
 from tests.docker.conftest import docker_exec, start_container
@@ -43,7 +44,8 @@ print("UNREGISTERED")
 
 
 def test_s6_register_creates_service_dir_in_live_container(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """S6ServiceManager.register_profile_gateway must create
     ``/run/service/gateway-<profile>/`` and trigger s6-svscan rescan
@@ -62,27 +64,35 @@ def test_s6_register_creates_service_dir_in_live_container(
     r = docker_exec(container_name, "test", "-f", "/run/service/gateway-phase3test/run")
     assert r.returncode == 0, "run script not created"
 
-    r = docker_exec(container_name, "test", "-f",
-              "/run/service/gateway-phase3test/log/run")
+    r = docker_exec(
+        container_name, "test", "-f", "/run/service/gateway-phase3test/log/run"
+    )
     assert r.returncode == 0, "log/run script not created"
 
     # s6-svscan picked it up — s6-svstat works against the dir.
     # `docker exec` doesn't put /command/ on PATH (only the supervision
     # tree does), so call s6-svstat by absolute path.
-    r = docker_exec(container_name, "/command/s6-svstat",
-              "/run/service/gateway-phase3test")
+    r = docker_exec(
+        container_name, "/command/s6-svstat", "/run/service/gateway-phase3test"
+    )
     assert r.returncode == 0, f"s6-svstat failed: {r.stderr or r.stdout}"
 
     # list_profile_gateways picks it up.
-    r = docker_exec(container_name, "python3", "-c", (
-        "from openagents_cli.service_manager import S6ServiceManager;"
-        "print(S6ServiceManager().list_profile_gateways())"
-    ))
+    r = docker_exec(
+        container_name,
+        "python3",
+        "-c",
+        (
+            "from openagents_cli.service_manager import S6ServiceManager;"
+            "print(S6ServiceManager().list_profile_gateways())"
+        ),
+    )
     assert "phase3test" in r.stdout, f"list output: {r.stdout!r}"
 
 
 def test_s6_unregister_removes_service_dir_in_live_container(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """unregister_profile_gateway must stop the service, remove the
     directory, and trigger s6-svscan rescan so the supervise process
@@ -104,8 +114,13 @@ def test_s6_unregister_removes_service_dir_in_live_container(
     assert r.returncode != 0, "service directory still exists after unregister"
 
     # list_profile_gateways no longer includes it.
-    r = docker_exec(container_name, "python3", "-c", (
-        "from openagents_cli.service_manager import S6ServiceManager;"
-        "print(S6ServiceManager().list_profile_gateways())"
-    ))
+    r = docker_exec(
+        container_name,
+        "python3",
+        "-c",
+        (
+            "from openagents_cli.service_manager import S6ServiceManager;"
+            "print(S6ServiceManager().list_profile_gateways())"
+        ),
+    )
     assert "phase3test" not in r.stdout

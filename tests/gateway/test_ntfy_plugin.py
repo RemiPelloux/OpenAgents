@@ -50,6 +50,7 @@ def _run(coro):
 def test_platform_enum_resolves_via_plugin_scan():
     """The plugin filesystem scan should expose Platform("ntfy")."""
     from gateway.config import Platform
+
     p = Platform("ntfy")
     assert p.value == "ntfy"
     # Identity stability — repeated lookups return the same pseudo-member
@@ -62,7 +63,6 @@ def test_platform_enum_resolves_via_plugin_scan():
 
 
 class TestNtfyRequirements:
-
     def test_returns_false_when_httpx_unavailable(self, monkeypatch):
         monkeypatch.setenv("NTFY_TOPIC", "hermes-test")
         monkeypatch.setattr(_ntfy, "HTTPX_AVAILABLE", False)
@@ -81,9 +81,9 @@ class TestNtfyRequirements:
     def test_validate_config_requires_topic(self, monkeypatch):
         monkeypatch.delenv("NTFY_TOPIC", raising=False)
         assert validate_config(PlatformConfig(enabled=True, extra={})) is False
-        assert validate_config(
-            PlatformConfig(enabled=True, extra={"topic": "t"})
-        ) is True
+        assert (
+            validate_config(PlatformConfig(enabled=True, extra={"topic": "t"})) is True
+        )
 
     def test_is_connected_from_extra(self, monkeypatch):
         monkeypatch.delenv("NTFY_TOPIC", raising=False)
@@ -101,7 +101,6 @@ class TestNtfyRequirements:
 
 
 class TestNtfyAdapterInit:
-
     def test_default_server_url(self, monkeypatch):
         monkeypatch.delenv("NTFY_SERVER_URL", raising=False)
         config = PlatformConfig(enabled=True, extra={"topic": "hermes-in"})
@@ -166,7 +165,6 @@ class TestNtfyAdapterInit:
 
 
 class TestAuthHeaders:
-
     def _make_adapter(self, token=""):
         config = PlatformConfig(enabled=True, extra={"topic": "t", "token": token})
         return NtfyAdapter(config)
@@ -185,6 +183,7 @@ class TestAuthHeaders:
         headers = adapter._auth_headers()
         assert headers["Authorization"].startswith("Basic ")
         import base64
+
         expected = "Basic " + base64.b64encode(b"user:pass").decode()
         assert headers["Authorization"] == expected
 
@@ -205,7 +204,6 @@ class TestAuthHeaders:
 
 
 class TestDeduplication:
-
     def _make_adapter(self):
         return NtfyAdapter(PlatformConfig(enabled=True, extra={"topic": "t"}))
 
@@ -237,6 +235,7 @@ class TestDeduplication:
 
     def test_expired_id_can_be_seen_again(self):
         import time
+
         adapter = self._make_adapter()
         adapter._seen_messages["old-msg"] = time.time() - DEDUP_WINDOW_SECONDS - 1
         for i in range(DEDUP_MAX_SIZE + 1):
@@ -250,7 +249,6 @@ class TestDeduplication:
 
 
 class TestConnect:
-
     def test_connect_fails_when_httpx_unavailable(self, monkeypatch):
         monkeypatch.setattr(_ntfy, "HTTPX_AVAILABLE", False)
         adapter = NtfyAdapter(PlatformConfig(enabled=True, extra={"topic": "t"}))
@@ -317,8 +315,9 @@ class TestConnect:
 
 
 class TestSend:
-
-    def _make_adapter(self, topic="hermes-in", publish_topic="", token="", markdown=False):
+    def _make_adapter(
+        self, topic="hermes-in", publish_topic="", token="", markdown=False
+    ):
         extra: dict = {"topic": topic, "token": token}
         if publish_topic:
             extra["publish_topic"] = publish_topic
@@ -377,9 +376,9 @@ class TestSend:
         mock_client.post = AsyncMock(return_value=mock_resp)
         adapter._http_client = mock_client
 
-        result = _run(adapter.send(
-            "hermes-in", "Hi!", metadata={"publish_topic": "override-out"}
-        ))
+        result = _run(
+            adapter.send("hermes-in", "Hi!", metadata={"publish_topic": "override-out"})
+        )
         assert result.success is True
         posted_url = mock_client.post.call_args[0][0]
         assert posted_url.endswith("/override-out")
@@ -509,7 +508,6 @@ class TestSend:
 
 
 class TestOnMessage:
-
     def _make_adapter(self):
         return NtfyAdapter(PlatformConfig(enabled=True, extra={"topic": "hermes-in"}))
 
@@ -541,9 +539,15 @@ class TestOnMessage:
             calls.append(event)
 
         adapter.set_message_handler(handler)
-        _run(adapter._on_message({
-            "id": "x", "event": "message", "topic": "t", "message": "", "time": None
-        }))
+        _run(
+            adapter._on_message({
+                "id": "x",
+                "event": "message",
+                "topic": "t",
+                "message": "",
+                "time": None,
+            })
+        )
         assert calls == []
 
     def test_duplicate_message_skipped(self):
@@ -554,7 +558,13 @@ class TestOnMessage:
             calls.append(event)
 
         adapter.set_message_handler(handler)
-        event = {"id": "dup-1", "event": "message", "topic": "hermes-in", "message": "hi", "time": None}
+        event = {
+            "id": "dup-1",
+            "event": "message",
+            "topic": "hermes-in",
+            "message": "hi",
+            "time": None,
+        }
         _run(adapter._on_message(event))
         _run(adapter._on_message(event))
         assert len(calls) == 1
@@ -570,14 +580,16 @@ class TestOnMessage:
             calls.append(event)
 
         adapter.set_message_handler(handler)
-        _run(adapter._on_message({
-            "id": "echo-1",
-            "event": "message",
-            "topic": "hermes-in",
-            "message": "my own reply",
-            "tags": [_ntfy._ECHO_TAG],
-            "time": None,
-        }))
+        _run(
+            adapter._on_message({
+                "id": "echo-1",
+                "event": "message",
+                "topic": "hermes-in",
+                "message": "my own reply",
+                "tags": [_ntfy._ECHO_TAG],
+                "time": None,
+            })
+        )
         assert calls == []
 
     def test_message_with_other_tags_still_dispatched(self):
@@ -590,18 +602,21 @@ class TestOnMessage:
             calls.append(event)
 
         adapter.set_message_handler(handler)
-        _run(adapter._on_message({
-            "id": "user-1",
-            "event": "message",
-            "topic": "hermes-in",
-            "message": "hello",
-            "tags": ["warning", "skull"],
-            "time": None,
-        }))
+        _run(
+            adapter._on_message({
+                "id": "user-1",
+                "event": "message",
+                "topic": "hermes-in",
+                "message": "hello",
+                "tags": ["warning", "skull"],
+                "time": None,
+            })
+        )
         assert len(calls) == 1
 
     def test_timestamp_parsed_from_event(self):
         from datetime import timezone
+
         adapter = self._make_adapter()
         captured = []
 
@@ -609,13 +624,15 @@ class TestOnMessage:
             captured.append(event)
 
         adapter.set_message_handler(handler)
-        _run(adapter._on_message({
-            "id": "ts-1",
-            "event": "message",
-            "topic": "hermes-in",
-            "message": "ping",
-            "time": 1700000000,
-        }))
+        _run(
+            adapter._on_message({
+                "id": "ts-1",
+                "event": "message",
+                "topic": "hermes-in",
+                "message": "ping",
+                "time": 1700000000,
+            })
+        )
         ts = captured[0].timestamp
         assert ts.tzinfo == timezone.utc
 
@@ -627,13 +644,15 @@ class TestOnMessage:
             captured.append(event)
 
         adapter.set_message_handler(handler)
-        _run(adapter._on_message({
-            "id": "ntfy-id-42",
-            "event": "message",
-            "topic": "hermes-in",
-            "message": "test",
-            "time": None,
-        }))
+        _run(
+            adapter._on_message({
+                "id": "ntfy-id-42",
+                "event": "message",
+                "topic": "hermes-in",
+                "message": "test",
+                "time": None,
+            })
+        )
         assert captured[0].message_id == "ntfy-id-42"
 
     def test_title_not_used_as_user_id(self):
@@ -645,14 +664,16 @@ class TestOnMessage:
             captured.append(event)
 
         adapter.set_message_handler(handler)
-        _run(adapter._on_message({
-            "id": "u-1",
-            "event": "message",
-            "topic": "hermes-in",
-            "message": "hello",
-            "title": "Alice",
-            "time": None,
-        }))
+        _run(
+            adapter._on_message({
+                "id": "u-1",
+                "event": "message",
+                "topic": "hermes-in",
+                "message": "hello",
+                "title": "Alice",
+                "time": None,
+            })
+        )
         assert captured[0].source.user_id == "hermes-in"
         assert captured[0].source.user_name == "hermes-in"
 
@@ -665,14 +686,16 @@ class TestOnMessage:
             captured.append(event)
 
         adapter.set_message_handler(handler)
-        _run(adapter._on_message({
-            "id": "u-2",
-            "event": "message",
-            "topic": "hermes-in",
-            "message": "sensitive command",
-            "title": "admin",
-            "time": None,
-        }))
+        _run(
+            adapter._on_message({
+                "id": "u-2",
+                "event": "message",
+                "topic": "hermes-in",
+                "message": "sensitive command",
+                "title": "admin",
+                "time": None,
+            })
+        )
         assert captured[0].source.user_id == "hermes-in"
         assert captured[0].source.user_id != "admin"
 
@@ -684,13 +707,15 @@ class TestOnMessage:
             captured.append(event)
 
         adapter.set_message_handler(handler)
-        _run(adapter._on_message({
-            "id": "s-1",
-            "event": "message",
-            "topic": "hermes-in",
-            "message": "hello",
-            "time": None,
-        }))
+        _run(
+            adapter._on_message({
+                "id": "s-1",
+                "event": "message",
+                "topic": "hermes-in",
+                "message": "hello",
+                "time": None,
+            })
+        )
         assert captured[0].source.chat_id == "hermes-in"
 
 
@@ -700,7 +725,6 @@ class TestOnMessage:
 
 
 class TestEnvEnablement:
-
     def test_returns_none_without_topic(self, monkeypatch):
         monkeypatch.delenv("NTFY_TOPIC", raising=False)
         assert _env_enablement() is None
@@ -765,7 +789,6 @@ class TestEnvEnablement:
 
 
 class TestStandaloneSend:
-
     def test_errors_without_topic(self, monkeypatch):
         monkeypatch.delenv("NTFY_TOPIC", raising=False)
         monkeypatch.delenv("NTFY_PUBLISH_TOPIC", raising=False)
@@ -929,10 +952,14 @@ class TestTokenHygiene:
     tokens often carry trailing newlines that break the Authorization line."""
 
     def test_trailing_whitespace_stripped(self):
-        assert _ntfy._build_auth_header("  tok123  ") == {"Authorization": "Bearer tok123"}
+        assert _ntfy._build_auth_header("  tok123  ") == {
+            "Authorization": "Bearer tok123"
+        }
 
     def test_trailing_newline_stripped(self):
-        assert _ntfy._build_auth_header("tok123\n") == {"Authorization": "Bearer tok123"}
+        assert _ntfy._build_auth_header("tok123\n") == {
+            "Authorization": "Bearer tok123"
+        }
 
     def test_whitespace_only_returns_empty(self):
         assert _ntfy._build_auth_header("   \n  ") == {}
@@ -941,6 +968,7 @@ class TestTokenHygiene:
         h = _ntfy._build_auth_header("  user:pass  ")
         assert h["Authorization"].startswith("Basic ")
         import base64
+
         assert h["Authorization"] == "Basic " + base64.b64encode(b"user:pass").decode()
 
     def test_adapter_strips_token_via_helper(self):
@@ -980,7 +1008,9 @@ class TestFatalErrorPropagation:
         assert adapter._fatal_error_retryable is False
 
     def test_404_sets_fatal_topic_not_found(self):
-        adapter = NtfyAdapter(PlatformConfig(enabled=True, extra={"topic": "missing-topic"}))
+        adapter = NtfyAdapter(
+            PlatformConfig(enabled=True, extra={"topic": "missing-topic"})
+        )
         adapter._http_client = MagicMock()
 
         mock_response = MagicMock()
@@ -994,7 +1024,11 @@ class TestFatalErrorPropagation:
         fake_httpx.Timeout = MagicMock()
         with patch.object(_ntfy, "httpx", fake_httpx):
             with pytest.raises(_ntfy._FatalStreamError):
-                _run(adapter._consume_stream("https://ntfy.example/missing-topic/json", {}))
+                _run(
+                    adapter._consume_stream(
+                        "https://ntfy.example/missing-topic/json", {}
+                    )
+                )
 
         assert adapter.has_fatal_error is True
         assert adapter._fatal_error_code == "ntfy_topic_not_found"

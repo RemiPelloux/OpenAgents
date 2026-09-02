@@ -16,6 +16,7 @@ def bundles_env(tmp_path, monkeypatch):
     monkeypatch.setenv("HERMES_BUNDLES_DIR", str(bundles_dir))
     # Reset module-level cache between tests.
     import agent.skill_bundles as mod
+
     mod._bundles_cache = {}
     mod._bundles_cache_mtime = None
     return bundles_dir
@@ -29,7 +30,16 @@ def _parse(argv):
 
 class TestBundlesCli:
     def test_create_and_list(self, bundles_env, capsys):
-        args = _parse(["create", "my-bundle", "--skill", "a", "--skill", "b", "-d", "desc"])
+        args = _parse([
+            "create",
+            "my-bundle",
+            "--skill",
+            "a",
+            "--skill",
+            "b",
+            "-d",
+            "desc",
+        ])
         bundles_command(args)
         out = capsys.readouterr().out
         assert "Created bundle" in out
@@ -76,7 +86,9 @@ class TestBundlesCli:
 
     def test_create_requires_skills(self, bundles_env, capsys, monkeypatch):
         # Simulate user pressing Ctrl-D immediately at the interactive prompt.
-        monkeypatch.setattr("builtins.input", lambda *_a, **_kw: (_ for _ in ()).throw(EOFError()))
+        monkeypatch.setattr(
+            "builtins.input", lambda *_a, **_kw: (_ for _ in ()).throw(EOFError())
+        )
         with pytest.raises(SystemExit):
             bundles_command(_parse(["create", "empty"]))
 

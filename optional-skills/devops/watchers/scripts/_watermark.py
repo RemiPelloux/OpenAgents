@@ -99,7 +99,7 @@ class Watermark:
 
         combined = list(existing) + [i for i in batch_ids if i not in existing]
         if len(combined) > self.max_seen:
-            combined = combined[-self.max_seen:]
+            combined = combined[-self.max_seen :]
         self._data["seen_ids"] = combined
         self._data["first_run"] = False
         return new_items

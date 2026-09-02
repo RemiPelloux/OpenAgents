@@ -20,12 +20,20 @@ _LOOP_COUNTER_PREFIX = "__loop_count__"
 def execute_if_else(ctx: NodeContext) -> NodeExecutionResult:
     condition = ctx.data.get("condition") or ""
     try:
-        branch = "true" if evaluate_condition(condition, ctx.execution.variables) else "false"
+        branch = (
+            "true"
+            if evaluate_condition(condition, ctx.execution.variables)
+            else "false"
+        )
     except UnsafeExpressionError as exc:
         return failed(ctx.node.id, f"invalid condition: {exc}", input_value=condition)
     except (TypeError, ValueError, ZeroDivisionError) as exc:
-        return failed(ctx.node.id, f"condition evaluation error: {exc}", input_value=condition)
-    return ok(ctx.node.id, {"branch": branch, "condition": condition}, input_value=condition)
+        return failed(
+            ctx.node.id, f"condition evaluation error: {exc}", input_value=condition
+        )
+    return ok(
+        ctx.node.id, {"branch": branch, "condition": condition}, input_value=condition
+    )
 
 
 def execute_while(ctx: NodeContext) -> NodeExecutionResult:
@@ -36,18 +44,32 @@ def execute_while(ctx: NodeContext) -> NodeExecutionResult:
 
     if count >= max_iterations:
         ctx.execution.variables.pop(counter_key, None)
-        return ok(ctx.node.id, {"branch": "exit", "condition": condition, "iterations": count}, input_value=condition)
+        return ok(
+            ctx.node.id,
+            {"branch": "exit", "condition": condition, "iterations": count},
+            input_value=condition,
+        )
 
     try:
         should_continue = evaluate_condition(condition, ctx.execution.variables)
     except UnsafeExpressionError as exc:
         return failed(ctx.node.id, f"invalid condition: {exc}", input_value=condition)
     except (TypeError, ValueError, ZeroDivisionError) as exc:
-        return failed(ctx.node.id, f"condition evaluation error: {exc}", input_value=condition)
+        return failed(
+            ctx.node.id, f"condition evaluation error: {exc}", input_value=condition
+        )
 
     if not should_continue:
         ctx.execution.variables.pop(counter_key, None)
-        return ok(ctx.node.id, {"branch": "exit", "condition": condition, "iterations": count}, input_value=condition)
+        return ok(
+            ctx.node.id,
+            {"branch": "exit", "condition": condition, "iterations": count},
+            input_value=condition,
+        )
 
     ctx.execution.variables[counter_key] = count + 1
-    return ok(ctx.node.id, {"branch": "loop", "condition": condition, "iterations": count + 1}, input_value=condition)
+    return ok(
+        ctx.node.id,
+        {"branch": "loop", "condition": condition, "iterations": count + 1},
+        input_value=condition,
+    )

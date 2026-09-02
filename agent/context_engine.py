@@ -185,6 +185,7 @@ class ContextEngine(ABC):
           messages: the current in-memory message list (for live ingestion)
         """
         import json
+
         return json.dumps({"error": f"Unknown context engine tool: {name}"})
 
     # -- Optional: status / display ----------------------------------------
@@ -200,7 +201,8 @@ class ContextEngine(ABC):
             "context_length": self.context_length,
             "usage_percent": (
                 min(100, self.last_prompt_tokens / self.context_length * 100)
-                if self.context_length else 0
+                if self.context_length
+                else 0
             ),
             "compression_count": self.compression_count,
         }

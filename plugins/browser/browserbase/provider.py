@@ -95,7 +95,9 @@ class BrowserbaseBrowserProvider(BrowserProvider):
         config = self._get_config()
 
         # Optional env-var knobs
-        enable_proxies = os.environ.get("BROWSERBASE_PROXIES", "true").lower() != "false"
+        enable_proxies = (
+            os.environ.get("BROWSERBASE_PROXIES", "true").lower() != "false"
+        )
         enable_advanced_stealth = (
             os.environ.get("BROWSERBASE_ADVANCED_STEALTH", "false").lower() == "true"
         )
@@ -180,9 +182,7 @@ class BrowserbaseBrowserProvider(BrowserProvider):
                         timeout=30,
                     )
         except requests.RequestException as exc:
-            raise RuntimeError(
-                f"Browserbase API connection failed: {exc}"
-            ) from exc
+            raise RuntimeError(f"Browserbase API connection failed: {exc}") from exc
 
         if not response.ok:
             raise RuntimeError(
@@ -204,7 +204,9 @@ class BrowserbaseBrowserProvider(BrowserProvider):
 
         feature_str = ", ".join(k for k, v in features_enabled.items() if v)
         logger.info(
-            "Created Browserbase session %s with features: %s", session_name, feature_str
+            "Created Browserbase session %s with features: %s",
+            session_name,
+            feature_str,
         )
 
         return {

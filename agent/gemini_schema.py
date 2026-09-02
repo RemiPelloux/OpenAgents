@@ -67,9 +67,7 @@ def sanitize_gemini_schema(schema: Any) -> Dict[str, Any]:
             if not isinstance(value, list):
                 continue
             cleaned[key] = [
-                sanitize_gemini_schema(item)
-                for item in value
-                if isinstance(item, dict)
+                sanitize_gemini_schema(item) for item in value if isinstance(item, dict)
             ]
             continue
         cleaned[key] = value

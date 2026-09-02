@@ -15,6 +15,7 @@ Then paste the printed JSON into the Slack app config (Features → App
 Manifest → Edit) and click Save. Slack diffs the manifest and prompts
 for reinstall when scopes/commands change.
 """
+
 from __future__ import annotations
 
 import json
@@ -94,12 +95,10 @@ def _build_full_manifest(
             "assistant_description": "Chat with OpenAgents in threads and DMs.",
         }
         bot_scopes.append("assistant:write")
-        bot_events.extend(
-            [
-                "assistant_thread_context_changed",
-                "assistant_thread_started",
-            ]
-        )
+        bot_events.extend([
+            "assistant_thread_context_changed",
+            "assistant_thread_started",
+        ])
         bot_scopes.sort()
         bot_events.sort()
 
@@ -157,7 +156,9 @@ def slack_manifest_command(args) -> int:
 
         manifest = slack_app_manifest()["features"]["slash_commands"]
     else:
-        manifest = _build_full_manifest(name, description, include_assistant=include_assistant)
+        manifest = _build_full_manifest(
+            name, description, include_assistant=include_assistant
+        )
 
     payload = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
 
@@ -170,7 +171,13 @@ def slack_manifest_command(args) -> int:
 
                 target = Path(get_openagents_home()) / "slack-manifest.json"
             except Exception:
-                target = Path(os.environ.get("OPENAGENTS_HOME") or str(Path.home() / ".hermes")) / "slack-manifest.json"
+                target = (
+                    Path(
+                        os.environ.get("OPENAGENTS_HOME")
+                        or str(Path.home() / ".hermes")
+                    )
+                    / "slack-manifest.json"
+                )
         else:
             target = Path(write_target).expanduser()
         target.parent.mkdir(parents=True, exist_ok=True)

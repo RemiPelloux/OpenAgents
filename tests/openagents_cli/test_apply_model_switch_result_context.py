@@ -11,6 +11,7 @@ particular, ChatGPT Codex OAuth enforces 272K on the same slug. The sibling
 
 Fix: both display paths now go through ``resolve_display_context_length()``.
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -31,6 +32,7 @@ class _FakeModelInfo:
 
 class _StubCLI:
     """Minimum attrs ``_apply_model_switch_result`` reads on ``self``."""
+
     agent = None
     model = ""
     provider = ""

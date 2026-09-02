@@ -41,7 +41,9 @@ def _dispatch(cli, user_input: str, process_command_side_effect=None):
             continue
     """
     if process_command_side_effect is not None:
-        with patch.object(cli, "process_command", side_effect=process_command_side_effect) as mock_pc:
+        with patch.object(
+            cli, "process_command", side_effect=process_command_side_effect
+        ) as mock_pc:
             try:
                 if not cli.process_command(user_input):
                     cli._should_exit = True
@@ -65,7 +67,9 @@ class TestSlashCommandKeyboardInterrupt:
         def raises_keyboard_interrupt(_cmd):
             raise KeyboardInterrupt("user pressed Ctrl+C during slow command")
 
-        _dispatch(cli, "/skills browse", process_command_side_effect=raises_keyboard_interrupt)
+        _dispatch(
+            cli, "/skills browse", process_command_side_effect=raises_keyboard_interrupt
+        )
 
         assert cli._should_exit is False, (
             "KeyboardInterrupt during slash command must not flag exit"

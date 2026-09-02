@@ -18,7 +18,6 @@ def _make_cli(enabled_toolsets=None):
 
 
 class TestToolsSlashNoSubcommand:
-
     def test_bare_tools_shows_tool_list(self):
         cli_obj = _make_cli()
         with patch.object(cli_obj, "show_tools") as mock_show:
@@ -36,12 +35,15 @@ class TestToolsSlashNoSubcommand:
 
 
 class TestToolsSlashList:
-
     def test_list_calls_backend(self, capsys):
         cli_obj = _make_cli()
-        with patch("openagents_cli.tools_config.load_config",
-                   return_value={"platform_toolsets": {"cli": ["web"]}}), \
-             patch("openagents_cli.tools_config.save_config"):
+        with (
+            patch(
+                "openagents_cli.tools_config.load_config",
+                return_value={"platform_toolsets": {"cli": ["web"]}},
+            ),
+            patch("openagents_cli.tools_config.save_config"),
+        ):
             cli_obj._handle_tools_command("/tools list")
         out = capsys.readouterr().out
         assert "web" in out
@@ -49,8 +51,10 @@ class TestToolsSlashList:
     def test_list_does_not_modify_enabled_toolsets(self):
         """List is read-only — self.enabled_toolsets must not change."""
         cli_obj = _make_cli(["web", "memory"])
-        with patch("openagents_cli.tools_config.load_config",
-                   return_value={"platform_toolsets": {"cli": ["web"]}}):
+        with patch(
+            "openagents_cli.tools_config.load_config",
+            return_value={"platform_toolsets": {"cli": ["web"]}},
+        ):
             cli_obj._handle_tools_command("/tools list")
         assert cli_obj.enabled_toolsets == {"web", "memory"}
 
@@ -59,16 +63,22 @@ class TestToolsSlashList:
 
 
 class TestToolsSlashDisableWithReset:
-
     def test_disable_applies_directly_and_resets_session(self):
         """Disable applies immediately (no confirmation prompt) and resets session."""
         cli_obj = _make_cli(["web", "memory"])
-        with patch("openagents_cli.tools_config.load_config",
-                   return_value={"platform_toolsets": {"cli": ["web", "memory"]}}), \
-             patch("openagents_cli.tools_config.save_config"), \
-             patch("openagents_cli.tools_config._get_platform_tools", return_value={"memory"}), \
-             patch("openagents_cli.config.load_config", return_value={}), \
-             patch.object(cli_obj, "new_session") as mock_reset:
+        with (
+            patch(
+                "openagents_cli.tools_config.load_config",
+                return_value={"platform_toolsets": {"cli": ["web", "memory"]}},
+            ),
+            patch("openagents_cli.tools_config.save_config"),
+            patch(
+                "openagents_cli.tools_config._get_platform_tools",
+                return_value={"memory"},
+            ),
+            patch("openagents_cli.config.load_config", return_value={}),
+            patch.object(cli_obj, "new_session") as mock_reset,
+        ):
             cli_obj._handle_tools_command("/tools disable web")
         mock_reset.assert_called_once()
         assert "web" not in cli_obj.enabled_toolsets
@@ -76,25 +86,39 @@ class TestToolsSlashDisableWithReset:
     def test_disable_does_not_prompt_for_confirmation(self):
         """Disable no longer uses input() — it applies directly."""
         cli_obj = _make_cli(["web", "memory"])
-        with patch("openagents_cli.tools_config.load_config",
-                   return_value={"platform_toolsets": {"cli": ["web", "memory"]}}), \
-             patch("openagents_cli.tools_config.save_config"), \
-             patch("openagents_cli.tools_config._get_platform_tools", return_value={"memory"}), \
-             patch("openagents_cli.config.load_config", return_value={}), \
-             patch.object(cli_obj, "new_session"), \
-             patch("builtins.input") as mock_input:
+        with (
+            patch(
+                "openagents_cli.tools_config.load_config",
+                return_value={"platform_toolsets": {"cli": ["web", "memory"]}},
+            ),
+            patch("openagents_cli.tools_config.save_config"),
+            patch(
+                "openagents_cli.tools_config._get_platform_tools",
+                return_value={"memory"},
+            ),
+            patch("openagents_cli.config.load_config", return_value={}),
+            patch.object(cli_obj, "new_session"),
+            patch("builtins.input") as mock_input,
+        ):
             cli_obj._handle_tools_command("/tools disable web")
         mock_input.assert_not_called()
 
     def test_disable_always_resets_session(self):
         """Even without a confirmation prompt, disable always resets the session."""
         cli_obj = _make_cli(["web", "memory"])
-        with patch("openagents_cli.tools_config.load_config",
-                   return_value={"platform_toolsets": {"cli": ["web", "memory"]}}), \
-             patch("openagents_cli.tools_config.save_config"), \
-             patch("openagents_cli.tools_config._get_platform_tools", return_value={"memory"}), \
-             patch("openagents_cli.config.load_config", return_value={}), \
-             patch.object(cli_obj, "new_session") as mock_reset:
+        with (
+            patch(
+                "openagents_cli.tools_config.load_config",
+                return_value={"platform_toolsets": {"cli": ["web", "memory"]}},
+            ),
+            patch("openagents_cli.tools_config.save_config"),
+            patch(
+                "openagents_cli.tools_config._get_platform_tools",
+                return_value={"memory"},
+            ),
+            patch("openagents_cli.config.load_config", return_value={}),
+            patch.object(cli_obj, "new_session") as mock_reset,
+        ):
             cli_obj._handle_tools_command("/tools disable web")
         mock_reset.assert_called_once()
 
@@ -109,16 +133,22 @@ class TestToolsSlashDisableWithReset:
 
 
 class TestToolsSlashEnableWithReset:
-
     def test_enable_applies_directly_and_resets_session(self):
         """Enable applies immediately (no confirmation prompt) and resets session."""
         cli_obj = _make_cli(["memory"])
-        with patch("openagents_cli.tools_config.load_config",
-                   return_value={"platform_toolsets": {"cli": ["memory"]}}), \
-             patch("openagents_cli.tools_config.save_config"), \
-             patch("openagents_cli.tools_config._get_platform_tools", return_value={"memory", "web"}), \
-             patch("openagents_cli.config.load_config", return_value={}), \
-             patch.object(cli_obj, "new_session") as mock_reset:
+        with (
+            patch(
+                "openagents_cli.tools_config.load_config",
+                return_value={"platform_toolsets": {"cli": ["memory"]}},
+            ),
+            patch("openagents_cli.tools_config.save_config"),
+            patch(
+                "openagents_cli.tools_config._get_platform_tools",
+                return_value={"memory", "web"},
+            ),
+            patch("openagents_cli.config.load_config", return_value={}),
+            patch.object(cli_obj, "new_session") as mock_reset,
+        ):
             cli_obj._handle_tools_command("/tools enable web")
         mock_reset.assert_called_once()
         assert "web" in cli_obj.enabled_toolsets

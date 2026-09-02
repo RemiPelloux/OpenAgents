@@ -9,6 +9,7 @@ from ``openagents_constants`` or other openagents_cli modules — so it can be
 imported safely from middleware code that loads early in the startup
 sequence.
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -26,8 +27,15 @@ _write_lock = threading.Lock()
 # Field names that must never appear in the log raw. Any kwarg matching
 # these is silently dropped.
 _REDACTED_FIELDS: frozenset = frozenset({
-    "access_token", "refresh_token", "code", "code_verifier",
-    "state", "ticket", "cookie", "Authorization", "authorization",
+    "access_token",
+    "refresh_token",
+    "code",
+    "code_verifier",
+    "state",
+    "ticket",
+    "cookie",
+    "Authorization",
+    "authorization",
 })
 
 
@@ -69,10 +77,7 @@ def audit_log(event: AuditEvent, **fields: Any) -> None:
     Write failures are logged at WARNING but never raise — auth must not
     fail because the audit logger broke.
     """
-    safe_fields = {
-        k: v for k, v in fields.items()
-        if k not in _REDACTED_FIELDS
-    }
+    safe_fields = {k: v for k, v in fields.items() if k not in _REDACTED_FIELDS}
     entry = {
         "ts": _dt.datetime.now(_dt.timezone.utc).isoformat(),
         "event": event.value,

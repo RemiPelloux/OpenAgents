@@ -90,7 +90,9 @@ def format_gateway_session_listing(
         source = str(row.get("source") or "")
         source_part = f" `{source}`" if include_source and source else ""
         preview_part = f" — _{preview}_" if preview else ""
-        lines.append(f"{idx}. **{title_text}**{source_part} — `{session_id}`{preview_part}")
+        lines.append(
+            f"{idx}. **{title_text}**{source_part} — `{session_id}`{preview_part}"
+        )
     lines.append("")
     lines.append("Resume: `/resume <session id>` or `/resume <number>` from `/resume`.")
     lines.append("More: `/sessions all`, `/sessions full`, `/sessions all full`.")

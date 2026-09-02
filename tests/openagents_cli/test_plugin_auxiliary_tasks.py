@@ -128,12 +128,8 @@ def test_register_auxiliary_task_rejects_invalid_key_shapes():
 def test_register_auxiliary_task_allows_same_plugin_re_registration():
     """Re-registration by the same plugin updates the entry (idempotent)."""
     ctx, manager = _make_ctx("plug_a")
-    ctx.register_auxiliary_task(
-        key="t1", display_name="First", description="first"
-    )
-    ctx.register_auxiliary_task(
-        key="t1", display_name="Second", description="second"
-    )
+    ctx.register_auxiliary_task(key="t1", display_name="First", description="first")
+    ctx.register_auxiliary_task(key="t1", display_name="Second", description="second")
     assert manager._aux_tasks["t1"]["display_name"] == "Second"
 
 
@@ -147,13 +143,9 @@ def test_register_auxiliary_task_rejects_cross_plugin_collision():
     ctx_a = PluginContext(manifest_a, manager)
     ctx_b = PluginContext(manifest_b, manager)
 
-    ctx_a.register_auxiliary_task(
-        key="shared", display_name="A", description="a"
-    )
+    ctx_a.register_auxiliary_task(key="shared", display_name="A", description="a")
     with pytest.raises(ValueError, match="already registered by plugin 'plug_a'"):
-        ctx_b.register_auxiliary_task(
-            key="shared", display_name="B", description="b"
-        )
+        ctx_b.register_auxiliary_task(key="shared", display_name="B", description="b")
 
 
 # ── PluginManager state lifecycle ────────────────────────────────────────────
@@ -180,15 +172,9 @@ def test_force_rediscovery_clears_aux_tasks():
 def test_get_plugin_auxiliary_tasks_returns_sorted_list(patched_manager):
     manifest = PluginManifest(name="plug")
     ctx = PluginContext(manifest, patched_manager)
-    ctx.register_auxiliary_task(
-        key="zeta_task", display_name="Zeta", description="z"
-    )
-    ctx.register_auxiliary_task(
-        key="alpha_task", display_name="Alpha", description="a"
-    )
-    ctx.register_auxiliary_task(
-        key="mike_task", display_name="Mike", description="m"
-    )
+    ctx.register_auxiliary_task(key="zeta_task", display_name="Zeta", description="z")
+    ctx.register_auxiliary_task(key="alpha_task", display_name="Alpha", description="a")
+    ctx.register_auxiliary_task(key="mike_task", display_name="Mike", description="m")
 
     tasks = get_plugin_auxiliary_tasks()
     assert [t["key"] for t in tasks] == ["alpha_task", "mike_task", "zeta_task"]
@@ -234,9 +220,7 @@ def test_all_aux_tasks_swallows_plugin_discovery_failure(monkeypatch):
     def _broken():
         raise RuntimeError("plugin scan exploded")
 
-    monkeypatch.setattr(
-        "openagents_cli.plugins.get_plugin_auxiliary_tasks", _broken
-    )
+    monkeypatch.setattr("openagents_cli.plugins.get_plugin_auxiliary_tasks", _broken)
 
     merged = main_mod._all_aux_tasks()
     # Built-in tasks still present
@@ -267,7 +251,12 @@ def test_reset_aux_to_auto_resets_plugin_tasks(tmp_path, monkeypatch, patched_ma
     # Manually configure the plugin task to non-auto
     cfg = load_config()
     aux = cfg.setdefault("auxiliary", {})
-    aux["my_aux"] = {"provider": "openrouter", "model": "gpt-4o", "base_url": "", "api_key": ""}
+    aux["my_aux"] = {
+        "provider": "openrouter",
+        "model": "gpt-4o",
+        "base_url": "",
+        "api_key": "",
+    }
     save_config(cfg)
 
     n = _reset_aux_to_auto()

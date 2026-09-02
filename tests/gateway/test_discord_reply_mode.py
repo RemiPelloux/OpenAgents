@@ -7,6 +7,7 @@ Covers the threading behavior control for multi-chunk replies:
 
 Also covers reply_to_text extraction from incoming messages.
 """
+
 import os
 import sys
 from datetime import datetime, timezone
@@ -15,7 +16,13 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 
-from gateway.config import PlatformConfig, GatewayConfig, Platform, _apply_env_overrides, load_gateway_config
+from gateway.config import (
+    PlatformConfig,
+    GatewayConfig,
+    Platform,
+    _apply_env_overrides,
+    load_gateway_config,
+)
 
 
 def _ensure_discord_mock():
@@ -30,9 +37,19 @@ def _ensure_discord_mock():
     discord_mod.DMChannel = type("DMChannel", (), {})
     discord_mod.Thread = type("Thread", (), {})
     discord_mod.ForumChannel = type("ForumChannel", (), {})
-    discord_mod.ui = SimpleNamespace(View=object, button=lambda *a, **k: (lambda fn: fn), Button=object)
-    discord_mod.ButtonStyle = SimpleNamespace(success=1, primary=2, secondary=2, danger=3, green=1, grey=2, blurple=2, red=3)
-    discord_mod.Color = SimpleNamespace(orange=lambda: 1, green=lambda: 2, blue=lambda: 3, red=lambda: 4, purple=lambda: 5)
+    discord_mod.ui = SimpleNamespace(
+        View=object, button=lambda *a, **k: (lambda fn: fn), Button=object
+    )
+    discord_mod.ButtonStyle = SimpleNamespace(
+        success=1, primary=2, secondary=2, danger=3, green=1, grey=2, blurple=2, red=3
+    )
+    discord_mod.Color = SimpleNamespace(
+        orange=lambda: 1,
+        green=lambda: 2,
+        blue=lambda: 3,
+        red=lambda: 4,
+        purple=lambda: 5,
+    )
     discord_mod.Interaction = object
     discord_mod.Embed = MagicMock
     discord_mod.app_commands = SimpleNamespace(
@@ -59,9 +76,13 @@ from plugins.platforms.discord.adapter import DiscordAdapter  # noqa: E402
 @pytest.fixture()
 def adapter_factory():
     """Factory to create DiscordAdapter with custom reply_to_mode."""
+
     def create(reply_to_mode: str = "first"):
-        config = PlatformConfig(enabled=True, token="test-token", reply_to_mode=reply_to_mode)
+        config = PlatformConfig(
+            enabled=True, token="test-token", reply_to_mode=reply_to_mode
+        )
         return DiscordAdapter(config)
+
     return create
 
 
@@ -102,7 +123,9 @@ class TestReplyToModeConfig:
 
 def _make_discord_adapter(reply_to_mode: str = "first"):
     """Create a DiscordAdapter with mocked client and channel for send() tests."""
-    config = PlatformConfig(enabled=True, token="test-token", reply_to_mode=reply_to_mode)
+    config = PlatformConfig(
+        enabled=True, token="test-token", reply_to_mode=reply_to_mode
+    )
     adapter = DiscordAdapter(config)
 
     # Mock the Discord client and channel.
@@ -134,7 +157,11 @@ class TestSendWithReplyToMode:
     @pytest.mark.asyncio
     async def test_off_mode_no_reply_reference(self):
         adapter, channel, ref_msg = _make_discord_adapter("off")
-        adapter.truncate_message = lambda content, max_len, **kw: ["chunk1", "chunk2", "chunk3"]
+        adapter.truncate_message = lambda content, max_len, **kw: [
+            "chunk1",
+            "chunk2",
+            "chunk3",
+        ]
 
         await adapter.send("12345", "test content", reply_to="999")
 
@@ -147,7 +174,11 @@ class TestSendWithReplyToMode:
     @pytest.mark.asyncio
     async def test_first_mode_only_first_chunk_references(self):
         adapter, channel, ref_msg = _make_discord_adapter("first")
-        adapter.truncate_message = lambda content, max_len, **kw: ["chunk1", "chunk2", "chunk3"]
+        adapter.truncate_message = lambda content, max_len, **kw: [
+            "chunk1",
+            "chunk2",
+            "chunk3",
+        ]
 
         await adapter.send("12345", "test content", reply_to="999")
 
@@ -162,7 +193,11 @@ class TestSendWithReplyToMode:
     @pytest.mark.asyncio
     async def test_all_mode_all_chunks_reference(self):
         adapter, channel, ref_msg = _make_discord_adapter("all")
-        adapter.truncate_message = lambda content, max_len, **kw: ["chunk1", "chunk2", "chunk3"]
+        adapter.truncate_message = lambda content, max_len, **kw: [
+            "chunk1",
+            "chunk2",
+            "chunk3",
+        ]
 
         await adapter.send("12345", "test content", reply_to="999")
 
@@ -296,6 +331,7 @@ class TestEnvVarOverride:
 # production code regardless of test ordering or monkeypatch state.
 try:
     import discord as _discord_lib
+
     _DMChannelBase = _discord_lib.DMChannel
 except (ImportError, AttributeError):
     _DMChannelBase = object
@@ -303,6 +339,7 @@ except (ImportError, AttributeError):
 
 class FakeDMChannel(_DMChannelBase):
     """Minimal DM channel stub (skips mention / channel-allow checks)."""
+
     def __init__(self, channel_id: int = 100, name: str = "dm"):
         # Do NOT call super().__init__() — real DMChannel requires State
         self.id = channel_id
@@ -429,7 +466,7 @@ class TestYamlConfigLoading:
     def test_extra_reply_to_mode_off(self, tmp_path, monkeypatch):
         """discord.extra.reply_to_mode is also honoured."""
         hermes_home = self._write_config(
-            tmp_path, "discord:\n  extra:\n    reply_to_mode: \"off\"\n"
+            tmp_path, 'discord:\n  extra:\n    reply_to_mode: "off"\n'
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
         monkeypatch.delenv("DISCORD_REPLY_TO_MODE", raising=False)
@@ -452,7 +489,7 @@ class TestYamlConfigLoading:
         """discord.reply_to_mode wins over discord.extra.reply_to_mode."""
         hermes_home = self._write_config(
             tmp_path,
-            "discord:\n  reply_to_mode: all\n  extra:\n    reply_to_mode: \"off\"\n",
+            'discord:\n  reply_to_mode: all\n  extra:\n    reply_to_mode: "off"\n',
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
         monkeypatch.delenv("DISCORD_REPLY_TO_MODE", raising=False)

@@ -87,7 +87,9 @@ def test_codex_stream_wire_error_event_surfaces_stream_error_event(provider_mess
 
     class _ErrorCreateStream:
         def __iter__(self_inner):
-            yield SimpleNamespace(type="error", message=provider_message, code="forbidden")
+            yield SimpleNamespace(
+                type="error", message=provider_message, code="forbidden"
+            )
 
         def close(self_inner):
             pass
@@ -220,9 +222,7 @@ def test_summarize_api_error_does_not_accuse_subscribers():
     """
     from run_agent import AIAgent
 
-    error = RuntimeError(
-        "HTTP 403: do not have an active Grok subscription"
-    )
+    error = RuntimeError("HTTP 403: do not have an active Grok subscription")
     summary = AIAgent._summarize_api_error(error)
     # MUST NOT contain language that flatly assumes the user is unsubscribed.
     assert "lacks SuperGrok" not in summary
@@ -423,7 +423,8 @@ def test_codex_reasoning_replay_includes_encrypted_content_for_xai():
 
     # And the assistant's visible text must still be present alongside it.
     assistant_items = [
-        it for it in items
+        it
+        for it in items
         if it.get("role") == "assistant" or it.get("type") == "message"
     ]
     assert assistant_items, "assistant message must still be present"
@@ -589,7 +590,7 @@ def test_recover_with_credential_pool_skips_refresh_on_entitlement_403():
     error_context = {
         "reason": "The caller does not have permission to execute the specified operation",
         "message": "You have either run out of available resources or do not have an "
-                   "active Grok subscription. Manage at https://grok.com",
+        "active Grok subscription. Manage at https://grok.com",
     }
 
     recovered, _retried_429 = agent._recover_with_credential_pool(
@@ -600,7 +601,9 @@ def test_recover_with_credential_pool_skips_refresh_on_entitlement_403():
     )
 
     assert recovered is False, "Entitlement 403 must surface, not silently recover"
-    assert refresh_calls["n"] == 0, "try_refresh_current must NOT be called on entitlement 403"
+    assert refresh_calls["n"] == 0, (
+        "try_refresh_current must NOT be called on entitlement 403"
+    )
 
 
 def test_recover_with_credential_pool_skips_refresh_on_bare_403_for_xai_oauth():
@@ -650,7 +653,9 @@ def test_recover_with_credential_pool_skips_refresh_on_bare_403_for_xai_oauth():
     )
 
     assert recovered is False, "Bare 403 on xai-oauth must surface, not refresh-loop"
-    assert refresh_calls["n"] == 0, "try_refresh_current must NOT be called on xai-oauth 403"
+    assert refresh_calls["n"] == 0, (
+        "try_refresh_current must NOT be called on xai-oauth 403"
+    )
 
 
 def test_recover_with_credential_pool_still_refreshes_genuine_auth_failure():
@@ -750,17 +755,20 @@ def test_is_entitlement_failure_false_for_wke_suffix_in_normalized_shape():
     )
 
 
-@pytest.mark.parametrize("wke_variant", [
-    # The headline variant — what xAI returns today.
-    "[WKE=unauthenticated:bad-credentials]",
-    # Forward-compat: xAI documents the WKE prefix as a stable shape,
-    # the suffix after the colon is the "reason code" and could grow
-    # new values.  Anything under ``unauthenticated:`` must route to
-    # the refresh path.
-    "[WKE=unauthenticated:expired-token]",
-    "[WKE=unauthenticated:revoked]",
-    "[WKE=unauthenticated:some-future-reason]",
-])
+@pytest.mark.parametrize(
+    "wke_variant",
+    [
+        # The headline variant — what xAI returns today.
+        "[WKE=unauthenticated:bad-credentials]",
+        # Forward-compat: xAI documents the WKE prefix as a stable shape,
+        # the suffix after the colon is the "reason code" and could grow
+        # new values.  Anything under ``unauthenticated:`` must route to
+        # the refresh path.
+        "[WKE=unauthenticated:expired-token]",
+        "[WKE=unauthenticated:revoked]",
+        "[WKE=unauthenticated:some-future-reason]",
+    ],
+)
 def test_is_entitlement_failure_false_for_any_wke_unauthenticated_variant(wke_variant):
     from run_agent import AIAgent
 
@@ -1014,7 +1022,9 @@ def test_grok_composer_context_length_is_200k():
 # ---------------------------------------------------------------------------
 
 
-def _stamped_assistant_msg(issuer_kind, *, text="hi", encrypted="enc_blob", rs_id="rs_001"):
+def _stamped_assistant_msg(
+    issuer_kind, *, text="hi", encrypted="enc_blob", rs_id="rs_001"
+):
     return {
         "role": "assistant",
         "content": text,
@@ -1045,9 +1055,7 @@ def test_cross_issuer_reasoning_is_dropped_on_replay():
     ]
 
     # Calling against codex_backend — the grok-issued blob must be dropped.
-    items = _chat_messages_to_responses_input(
-        msgs, current_issuer_kind="codex_backend"
-    )
+    items = _chat_messages_to_responses_input(msgs, current_issuer_kind="codex_backend")
     reasoning = [it for it in items if it.get("type") == "reasoning"]
     assert reasoning == [], (
         "Reasoning items stamped with a foreign _issuer_kind must be dropped "
@@ -1067,9 +1075,7 @@ def test_same_issuer_reasoning_is_still_replayed():
         {"role": "user", "content": "next"},
     ]
 
-    items = _chat_messages_to_responses_input(
-        msgs, current_issuer_kind="xai_responses"
-    )
+    items = _chat_messages_to_responses_input(msgs, current_issuer_kind="xai_responses")
     reasoning = [it for it in items if it.get("type") == "reasoning"]
     assert len(reasoning) == 1
     assert reasoning[0]["encrypted_content"] == "grok_blob"
@@ -1100,9 +1106,7 @@ def test_unstamped_reasoning_is_replayed_for_backwards_compat():
         {"role": "user", "content": "next"},
     ]
 
-    items = _chat_messages_to_responses_input(
-        msgs, current_issuer_kind="codex_backend"
-    )
+    items = _chat_messages_to_responses_input(msgs, current_issuer_kind="codex_backend")
     reasoning = [it for it in items if it.get("type") == "reasoning"]
     assert len(reasoning) == 1
     assert reasoning[0]["encrypted_content"] == "legacy_blob"
@@ -1129,7 +1133,9 @@ def test_normalize_codex_response_stamps_issuer_on_reasoning():
         content=[SimpleNamespace(type="output_text", text="ok")],
         id="msg_1",
     )
-    response = SimpleNamespace(output=[reasoning_item, message_item], status="completed")
+    response = SimpleNamespace(
+        output=[reasoning_item, message_item], status="completed"
+    )
 
     msg, _ = _normalize_codex_response(response, issuer_kind="xai_responses")
     assert msg.codex_reasoning_items and len(msg.codex_reasoning_items) == 1

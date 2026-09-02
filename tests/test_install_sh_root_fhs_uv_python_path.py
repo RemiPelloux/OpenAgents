@@ -35,8 +35,14 @@ def _resolve_install_layout_body() -> str:
 def test_root_fhs_layout_exports_world_readable_uv_python_dirs() -> None:
     text = INSTALL_SH.read_text(encoding="utf-8")
 
-    assert 'export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-/usr/local/share/uv/python}"' in text
-    assert 'export UV_PYTHON_BIN_DIR="${UV_PYTHON_BIN_DIR:-/usr/local/share/uv/bin}"' in text
+    assert (
+        'export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-/usr/local/share/uv/python}"'
+        in text
+    )
+    assert (
+        'export UV_PYTHON_BIN_DIR="${UV_PYTHON_BIN_DIR:-/usr/local/share/uv/bin}"'
+        in text
+    )
 
 
 def test_root_fhs_uv_python_export_is_inside_root_branch() -> None:
@@ -47,11 +53,11 @@ def test_root_fhs_uv_python_export_is_inside_root_branch() -> None:
     can't accept an unreachable export."""
     body = _resolve_install_layout_body()
 
-    marker = 'ROOT_FHS_LAYOUT=true'
+    marker = "ROOT_FHS_LAYOUT=true"
     assert marker in body
     after_marker = body.split(marker, 1)[1]
-    return_idx = after_marker.find('return 0')
-    export_idx = after_marker.find('UV_PYTHON_INSTALL_DIR')
+    return_idx = after_marker.find("return 0")
+    export_idx = after_marker.find("UV_PYTHON_INSTALL_DIR")
     assert export_idx != -1, "UV_PYTHON_INSTALL_DIR export missing from root-FHS branch"
     assert return_idx != -1, "root-FHS branch must end with `return 0`"
     assert export_idx < return_idx, (

@@ -30,9 +30,7 @@ def fake_advisory() -> adv.Advisory:
         title="Test advisory",
         summary="Pretend this package has been compromised.",
         url="https://example.com/advisory",
-        compromised=(
-            ("fake-malicious-pkg", frozenset({"6.6.6"})),
-        ),
+        compromised=(("fake-malicious-pkg", frozenset({"6.6.6"})),),
         remediation=(
             "pip uninstall -y fake-malicious-pkg",
             "Rotate any credentials that may have been exposed.",
@@ -86,9 +84,7 @@ class TestDetectCompromised:
         hits = adv.detect_compromised(advisories=[fake_advisory])
         assert hits == []
 
-    def test_empty_compromised_set_matches_any_version(
-        self, patched_version
-    ):
+    def test_empty_compromised_set_matches_any_version(self, patched_version):
         # An advisory with an empty version set is a "any version is suspect"
         # wildcard — used when an entire maintainer namespace is owned.
         wildcard = adv.Advisory(
@@ -128,9 +124,7 @@ class TestAck:
         monkeypatch.setattr(adv, "get_acked_ids", lambda: {fake_advisory.id})
         assert adv.filter_unacked([hit]) == []
 
-    def test_filter_unacked_passes_through_unknown(
-        self, fake_advisory, monkeypatch
-    ):
+    def test_filter_unacked_passes_through_unknown(self, fake_advisory, monkeypatch):
         hit = adv.AdvisoryHit(
             advisory=fake_advisory,
             package="fake-malicious-pkg",
@@ -143,9 +137,7 @@ class TestAck:
         # Stub the config layer end-to-end with a tiny in-memory store so we
         # don't depend on the full openagents_cli.config bootstrap.
         store: dict = {"security": {}}
-        monkeypatch.setattr(
-            "openagents_cli.config.load_config", lambda: store
-        )
+        monkeypatch.setattr("openagents_cli.config.load_config", lambda: store)
         monkeypatch.setattr(
             "openagents_cli.config.save_config",
             lambda cfg: store.update(cfg) or None,
@@ -154,10 +146,7 @@ class TestAck:
         assert "test-advisory-2026-99" in store["security"]["acked_advisories"]
         # Idempotent.
         adv.ack_advisory("test-advisory-2026-99")
-        assert (
-            store["security"]["acked_advisories"].count("test-advisory-2026-99")
-            == 1
-        )
+        assert store["security"]["acked_advisories"].count("test-advisory-2026-99") == 1
 
     def test_ack_advisory_rejects_blank(self, isolated_home):
         assert adv.ack_advisory("") is False
@@ -220,9 +209,7 @@ class TestBannerCache:
         again = adv.hits_due_for_banner([hit])
         assert again == [hit]
 
-    def test_acked_hits_never_banner(
-        self, fake_advisory, isolated_home, monkeypatch
-    ):
+    def test_acked_hits_never_banner(self, fake_advisory, isolated_home, monkeypatch):
         monkeypatch.setattr(adv, "get_acked_ids", lambda: {fake_advisory.id})
         hit = adv.AdvisoryHit(
             advisory=fake_advisory,
@@ -270,9 +257,7 @@ class TestRendering:
         assert has_problems is False
         assert any("No active security advisories" in line for line in lines)
 
-    def test_render_doctor_section_with_unacked_hit(
-        self, fake_advisory, monkeypatch
-    ):
+    def test_render_doctor_section_with_unacked_hit(self, fake_advisory, monkeypatch):
         monkeypatch.setattr(adv, "get_acked_ids", lambda: set())
         hit = adv.AdvisoryHit(
             advisory=fake_advisory,
@@ -320,11 +305,12 @@ class TestRealCatalog:
             assert advisory.title, f"{advisory.id}: empty title"
             assert advisory.summary, f"{advisory.id}: empty summary"
             assert advisory.remediation, f"{advisory.id}: empty remediation"
-            assert advisory.url.startswith("http"), \
+            assert advisory.url.startswith("http"), (
                 f"{advisory.id}: bad url {advisory.url!r}"
-            assert advisory.compromised, \
-                f"{advisory.id}: empty compromised tuple"
+            )
+            assert advisory.compromised, f"{advisory.id}: empty compromised tuple"
             for pkg, versions in advisory.compromised:
                 assert pkg, f"{advisory.id}: empty package name"
-                assert isinstance(versions, frozenset), \
+                assert isinstance(versions, frozenset), (
                     f"{advisory.id}: versions must be frozenset"
+                )

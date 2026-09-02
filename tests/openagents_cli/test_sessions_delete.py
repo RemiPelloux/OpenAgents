@@ -46,7 +46,9 @@ def test_sessions_delete_reports_not_found_when_prefix_is_unknown(monkeypatch, c
             return None
 
         def delete_session(self, session_id, **kwargs):
-            raise AssertionError("delete_session should not be called when resolution fails")
+            raise AssertionError(
+                "delete_session should not be called when resolution fails"
+            )
 
         def close(self):
             pass
@@ -81,10 +83,13 @@ def test_sessions_delete_handles_eoferror_on_confirm(monkeypatch, capsys):
 
     monkeypatch.setattr(openagents_state, "SessionDB", lambda: FakeDB())
     monkeypatch.setattr(
-        sys, "argv",
+        sys,
+        "argv",
         ["openagents", "sessions", "delete", "20260315_092437_c9a6"],
     )
-    monkeypatch.setattr("builtins.input", lambda _prompt="": (_ for _ in ()).throw(EOFError))
+    monkeypatch.setattr(
+        "builtins.input", lambda _prompt="": (_ for _ in ()).throw(EOFError)
+    )
 
     main_mod.main()
 
@@ -106,10 +111,13 @@ def test_sessions_prune_handles_eoferror_on_confirm(monkeypatch, capsys):
 
     monkeypatch.setattr(openagents_state, "SessionDB", lambda: FakeDB())
     monkeypatch.setattr(
-        sys, "argv",
+        sys,
+        "argv",
         ["openagents", "sessions", "prune"],
     )
-    monkeypatch.setattr("builtins.input", lambda _prompt="": (_ for _ in ()).throw(EOFError))
+    monkeypatch.setattr(
+        "builtins.input", lambda _prompt="": (_ for _ in ()).throw(EOFError)
+    )
 
     main_mod.main()
 

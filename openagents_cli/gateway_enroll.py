@@ -67,7 +67,7 @@ def _resolve_connector_url(override: Optional[str]) -> Optional[str]:
         try:
             from gateway.run import _load_gateway_config  # late import to avoid cycle
 
-            cfg = (_load_gateway_config().get("gateway") or {})
+            cfg = _load_gateway_config().get("gateway") or {}
             raw = str(cfg.get("relay_url", "") or "").strip()
         except Exception:
             raw = ""
@@ -76,9 +76,9 @@ def _resolve_connector_url(override: Optional[str]) -> Optional[str]:
     raw = raw.rstrip("/")
     # The relay dial URL is ws(s)://…/relay; enrollment posts to http(s)://…/relay/enroll.
     if raw.startswith("ws://"):
-        raw = "http://" + raw[len("ws://"):]
+        raw = "http://" + raw[len("ws://") :]
     elif raw.startswith("wss://"):
-        raw = "https://" + raw[len("wss://"):]
+        raw = "https://" + raw[len("wss://") :]
     # Strip a trailing /relay path segment if the user pasted the dial URL.
     if raw.endswith("/relay"):
         raw = raw[: -len("/relay")]
@@ -100,7 +100,10 @@ def _post_enroll(
     on success, ``{error}`` at 400/401/403.
     """
     url = f"{connector_base_url.rstrip('/')}/relay/enroll"
-    data = json.dumps({"enrollmentToken": enrollment_token, "gatewayId": gateway_id}).encode("utf-8")
+    data = json.dumps({
+        "enrollmentToken": enrollment_token,
+        "gatewayId": gateway_id,
+    }).encode("utf-8")
     req = urllib.request.Request(
         url,
         data=data,
@@ -159,7 +162,9 @@ def cmd_gateway_enroll(args) -> None:
         )
         sys.exit(1)
 
-    enrollment_token = (getattr(args, "token", None) or os.environ.get("GATEWAY_RELAY_ENROLL_TOKEN", "")).strip()
+    enrollment_token = (
+        getattr(args, "token", None) or os.environ.get("GATEWAY_RELAY_ENROLL_TOKEN", "")
+    ).strip()
     if not enrollment_token:
         print(
             "✗ No enrollment token. Pass --token <token> (or set "
@@ -242,7 +247,10 @@ def cmd_gateway_enroll(args) -> None:
 
     from openagents_cli.config import get_env_path
 
-    print(f'✓ Enrolled gateway "{resolved_gateway_id}"' + (f" for tenant {tenant}" if tenant else ""))
+    print(
+        f'✓ Enrolled gateway "{resolved_gateway_id}"'
+        + (f" for tenant {tenant}" if tenant else "")
+    )
     print()
     print(f"  Wrote to {get_env_path()}:")
     print(f"    GATEWAY_RELAY_ID={resolved_gateway_id}")

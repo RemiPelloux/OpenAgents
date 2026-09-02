@@ -57,10 +57,7 @@ def test_format_secret_source_suffix_generic_label_for_future_sources():
     # Future-proofing: a new secret source (e.g. "vault") should still
     # produce a sensible label without needing to edit every call site.
     env_loader._SECRET_SOURCES["OPENAI_API_KEY"] = "vault"
-    assert (
-        env_loader.format_secret_source_suffix("OPENAI_API_KEY")
-        == " (from vault)"
-    )
+    assert env_loader.format_secret_source_suffix("OPENAI_API_KEY") == " (from vault)"
 
 
 def test_apply_external_secret_sources_records_bitwarden_origin(tmp_path, monkeypatch):
@@ -110,9 +107,7 @@ def test_apply_external_secret_sources_noop_when_disabled(tmp_path, monkeypatch)
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
-        "secrets:\n"
-        "  bitwarden:\n"
-        "    enabled: false\n",
+        "secrets:\n  bitwarden:\n    enabled: false\n",
         encoding="utf-8",
     )
 
@@ -153,6 +148,7 @@ def test_apply_external_secret_sources_dedupes_within_process(tmp_path, monkeypa
         )
 
     import agent.secret_sources.bitwarden as bw_module
+
     monkeypatch.setattr(bw_module, "apply_bitwarden_secrets", _fake_apply)
 
     # Five calls in a row, simulating module-import-time invocations from

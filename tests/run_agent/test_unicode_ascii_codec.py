@@ -51,10 +51,7 @@ class TestSanitizeMessagesNonAscii:
         assert messages[0]["content"] == "hello  world"
 
     def test_sanitizes_content_list(self):
-        messages = [{
-            "role": "user",
-            "content": [{"type": "text", "text": "hello 🤖"}]
-        }]
+        messages = [{"role": "user", "content": [{"type": "text", "text": "hello 🤖"}]}]
         assert _sanitize_messages_non_ascii(messages) is True
         assert messages[0]["content"][0]["text"] == "hello "
 
@@ -64,20 +61,27 @@ class TestSanitizeMessagesNonAscii:
         assert messages[0]["name"] == "tool"
 
     def test_sanitizes_tool_calls(self):
-        messages = [{
-            "role": "assistant",
-            "content": None,
-            "tool_calls": [{
-                "id": "call_1",
-                "type": "function",
-                "function": {
-                    "name": "read_file",
-                    "arguments": '{"path": "⚕test.txt"}'
-                }
-            }]
-        }]
+        messages = [
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "read_file",
+                            "arguments": '{"path": "⚕test.txt"}',
+                        },
+                    }
+                ],
+            }
+        ]
         assert _sanitize_messages_non_ascii(messages) is True
-        assert messages[0]["tool_calls"][0]["function"]["arguments"] == '{"path": "test.txt"}'
+        assert (
+            messages[0]["tool_calls"][0]["function"]["arguments"]
+            == '{"path": "test.txt"}'
+        )
 
     def test_handles_non_dict_messages(self):
         messages = ["not a dict", {"role": "user", "content": "hello"}]
@@ -110,19 +114,23 @@ class TestSurrogateVsAsciiSanitization:
         assert "\ufffd" in messages[0]["content"]
 
     def test_surrogates_in_name_and_tool_calls_are_sanitized(self):
-        messages = [{
-            "role": "assistant",
-            "name": "bad\ud800name",
-            "content": None,
-            "tool_calls": [{
-                "id": "call_\ud800",
-                "type": "function",
-                "function": {
-                    "name": "read\ud800_file",
-                    "arguments": '{"path": "bad\ud800.txt"}'
-                }
-            }],
-        }]
+        messages = [
+            {
+                "role": "assistant",
+                "name": "bad\ud800name",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_\ud800",
+                        "type": "function",
+                        "function": {
+                            "name": "read\ud800_file",
+                            "arguments": '{"path": "bad\ud800.txt"}',
+                        },
+                    }
+                ],
+            }
+        ]
         assert _sanitize_messages_surrogates(messages) is True
         assert "\ud800" not in messages[0]["name"]
         assert "\ud800" not in messages[0]["tool_calls"][0]["id"]
@@ -193,8 +201,14 @@ class TestSanitizeToolsNonAscii:
         ]
 
         assert _sanitize_tools_non_ascii(tools) is True
-        assert tools[0]["function"]["description"] == "Print structured output  with emoji "
-        assert tools[0]["function"]["parameters"]["properties"]["path"]["description"] == "File path  with unicode"
+        assert (
+            tools[0]["function"]["description"]
+            == "Print structured output  with emoji "
+        )
+        assert (
+            tools[0]["function"]["parameters"]["properties"]["path"]["description"]
+            == "File path  with unicode"
+        )
 
     def test_no_change_for_ascii_only_tools(self):
         tools = [
@@ -264,7 +278,9 @@ class TestApiKeyClientSync:
 
         agent.api_key = _clean_key
         agent._client_kwargs["api_key"] = _clean_key
-        if getattr(agent, "client", None) is not None and hasattr(agent.client, "api_key"):
+        if getattr(agent, "client", None) is not None and hasattr(
+            agent.client, "api_key"
+        ):
             agent.client.api_key = _clean_key
 
         # All three locations should now hold the clean key
@@ -289,7 +305,9 @@ class TestApiKeyClientSync:
         _clean_key = _strip_non_ascii(bad_key)
         agent.api_key = _clean_key
         agent._client_kwargs["api_key"] = _clean_key
-        if getattr(agent, "client", None) is not None and hasattr(agent.client, "api_key"):
+        if getattr(agent, "client", None) is not None and hasattr(
+            agent.client, "api_key"
+        ):
             agent.client.api_key = _clean_key
 
         assert agent.api_key == "sk-proj-"

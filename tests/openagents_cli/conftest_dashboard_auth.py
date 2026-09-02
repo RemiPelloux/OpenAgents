@@ -13,6 +13,7 @@ can complete the OAuth round trip in-process without external network.
 Tokens are HMAC-signed JSON blobs (not real JWTs) — just enough structure
 for ``verify_session`` to detect tampering and expiry.
 """
+
 from __future__ import annotations
 
 import base64
@@ -98,12 +99,15 @@ class StubAuthProvider(DashboardAuthProvider):
         )
 
     def complete_login(
-        self, *, code: str, state: str, code_verifier: str, redirect_uri: str,
+        self,
+        *,
+        code: str,
+        state: str,
+        code_verifier: str,
+        redirect_uri: str,
     ) -> Session:
         if code != "stub_code":
-            raise InvalidCodeError(
-                f"stub expects code='stub_code', got {code!r}"
-            )
+            raise InvalidCodeError(f"stub expects code='stub_code', got {code!r}")
         expected_verifier = self._state_to_verifier.get(state)
         if expected_verifier is None or expected_verifier != code_verifier:
             raise InvalidCodeError("stub state/verifier mismatch")

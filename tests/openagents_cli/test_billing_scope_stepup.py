@@ -28,7 +28,9 @@ def test_has_scope_true_when_present(monkeypatch):
 
 def test_has_scope_false_when_absent(monkeypatch):
     monkeypatch.setattr(
-        auth, "get_provider_auth_state", lambda p: {"scope": "inference:invoke tool:invoke"}
+        auth,
+        "get_provider_auth_state",
+        lambda p: {"scope": "inference:invoke tool:invoke"},
     )
     assert nous_token_has_billing_scope() is False
 
@@ -70,7 +72,9 @@ class _NullCtx:
         return False
 
 
-def test_step_up_requests_billing_scope_and_reuses_prior_urls(monkeypatch, _stub_persist):
+def test_step_up_requests_billing_scope_and_reuses_prior_urls(
+    monkeypatch, _stub_persist
+):
     monkeypatch.setattr(
         auth,
         "get_provider_auth_state",
@@ -86,7 +90,10 @@ def test_step_up_requests_billing_scope_and_reuses_prior_urls(monkeypatch, _stub
     def _fake_login(**kw):
         captured.update(kw)
         # Simulate the admin ticking the box → token comes back WITH the scope.
-        return {"scope": "inference:invoke tool:invoke billing:manage", "access_token": "t"}
+        return {
+            "scope": "inference:invoke tool:invoke billing:manage",
+            "access_token": "t",
+        }
 
     monkeypatch.setattr(auth, "_nous_device_code_login", _fake_login)
 
@@ -102,7 +109,9 @@ def test_step_up_requests_billing_scope_and_reuses_prior_urls(monkeypatch, _stub
 
 def test_step_up_returns_false_when_downscoped(monkeypatch, _stub_persist):
     # Non-admin / unticked → the server silently downscopes; token comes back WITHOUT scope.
-    monkeypatch.setattr(auth, "get_provider_auth_state", lambda p: {"scope": "inference:invoke"})
+    monkeypatch.setattr(
+        auth, "get_provider_auth_state", lambda p: {"scope": "inference:invoke"}
+    )
     monkeypatch.setattr(
         auth,
         "_nous_device_code_login",

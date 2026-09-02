@@ -14,6 +14,7 @@ makes the launcher take the prebuilt-bundle fast path (``node --expose-gc
 .../dist/entry.js``) and skip the install check entirely. These tests assert
 that invariant holds in the built image.
 """
+
 from __future__ import annotations
 
 import json
@@ -31,8 +32,17 @@ def _exec_py(image: str, py: str) -> str:
     # Drop to the hermes user (UID 10000) so we exercise the same path the
     # dashboard PTY child runs as — not root.
     cmd = [
-        "docker", "run", "--rm", "--entrypoint", "su", image,
-        "openagents", "-s", "/bin/bash", "-c", inner,
+        "docker",
+        "run",
+        "--rm",
+        "--entrypoint",
+        "su",
+        image,
+        "openagents",
+        "-s",
+        "/bin/bash",
+        "-c",
+        inner,
     ]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, f"in-container python failed:\n{r.stderr[-2000:]}"
@@ -42,9 +52,19 @@ def _exec_py(image: str, py: str) -> str:
 def test_hermes_tui_dir_env_is_set(built_image: str) -> None:
     """HERMES_TUI_DIR must point at the prebuilt bundle dir in the image."""
     r = subprocess.run(
-        ["docker", "run", "--rm", "--entrypoint", "sh", built_image,
-         "-c", 'printf "%s" "$HERMES_TUI_DIR"'],
-        capture_output=True, text=True, timeout=60,
+        [
+            "docker",
+            "run",
+            "--rm",
+            "--entrypoint",
+            "sh",
+            built_image,
+            "-c",
+            'printf "%s" "$HERMES_TUI_DIR"',
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert r.returncode == 0, r.stderr[-2000:]
     assert r.stdout.strip() == "/opt/hermes/ui-tui", (
@@ -73,7 +93,9 @@ def test_prebuilt_bundle_present_and_no_runtime_install(built_image: str) -> Non
     assert out["dist_entry_exists"], "prebuilt ui-tui/dist/entry.js missing from image"
     # With HERMES_TUI_DIR set, _make_tui_argv returns the prebuilt path BEFORE
     # ever reaching the install check — so the resolved argv is what matters.
-    assert out["uses_prebuilt"], f"launcher did not take prebuilt path: argv={out['argv']!r}"
+    assert out["uses_prebuilt"], (
+        f"launcher did not take prebuilt path: argv={out['argv']!r}"
+    )
     assert "npm" not in out["argv"][0].lower(), (
         f"launcher resolved to an npm invocation, not the prebuilt bundle: {out['argv']!r}"
     )

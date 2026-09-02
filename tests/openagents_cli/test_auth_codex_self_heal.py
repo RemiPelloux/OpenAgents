@@ -15,7 +15,11 @@ import json
 import pytest
 
 import openagents_cli.auth as auth
-from openagents_cli.auth import AuthError, _refresh_codex_auth_tokens, resolve_codex_runtime_credentials
+from openagents_cli.auth import (
+    AuthError,
+    _refresh_codex_auth_tokens,
+    resolve_codex_runtime_credentials,
+)
 
 STALE = {"access_token": "stale-access", "refresh_token": "stale-refresh"}
 
@@ -136,7 +140,9 @@ def test_reraises_when_imported_token_lacks_refresh_token(monkeypatch):
         )
 
     monkeypatch.setattr(auth, "refresh_codex_oauth_pure", _rejected)
-    monkeypatch.setattr(auth, "_import_codex_cli_tokens", lambda: {"access_token": "fresh-only"})
+    monkeypatch.setattr(
+        auth, "_import_codex_cli_tokens", lambda: {"access_token": "fresh-only"}
+    )
     monkeypatch.setattr(auth, "_save_codex_tokens", lambda t, *a, **k: saved.update(t))
 
     with pytest.raises(AuthError) as ei:
@@ -146,28 +152,34 @@ def test_reraises_when_imported_token_lacks_refresh_token(monkeypatch):
     assert saved == {}  # nothing was persisted
 
 
-def test_self_heals_missing_singleton_access_token_from_codex_cli(tmp_path, monkeypatch):
+def test_self_heals_missing_singleton_access_token_from_codex_cli(
+    tmp_path, monkeypatch
+):
     """Exact cron failure path: OpenAgents auth has refresh_token but missing access_token."""
     hermes_home = tmp_path / "openagents"
     codex_home = tmp_path / "codex"
     hermes_home.mkdir()
     codex_home.mkdir()
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {
-            "openai-codex": {
-                "tokens": {"refresh_token": "stale-refresh"},
-                "last_refresh": "2026-06-01T00:00:00Z",
-                "auth_mode": "chatgpt",
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {
+                "openai-codex": {
+                    "tokens": {"refresh_token": "stale-refresh"},
+                    "last_refresh": "2026-06-01T00:00:00Z",
+                    "auth_mode": "chatgpt",
+                },
             },
-        },
-    }))
-    (codex_home / "auth.json").write_text(json.dumps({
-        "tokens": {
-            "access_token": "fresh-access",
-            "refresh_token": "fresh-refresh",
-        },
-    }))
+        })
+    )
+    (codex_home / "auth.json").write_text(
+        json.dumps({
+            "tokens": {
+                "access_token": "fresh-access",
+                "refresh_token": "fresh-refresh",
+            },
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
@@ -181,24 +193,30 @@ def test_self_heals_missing_singleton_access_token_from_codex_cli(tmp_path, monk
     assert tokens["refresh_token"] == "fresh-refresh"
 
 
-def test_missing_singleton_access_token_reraises_when_codex_cli_half_token(tmp_path, monkeypatch):
+def test_missing_singleton_access_token_reraises_when_codex_cli_half_token(
+    tmp_path, monkeypatch
+):
     """Missing access_token must not be masked by a malformed Codex CLI import."""
     hermes_home = tmp_path / "openagents"
     codex_home = tmp_path / "codex"
     hermes_home.mkdir()
     codex_home.mkdir()
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {
-            "openai-codex": {
-                "tokens": {"refresh_token": "stale-refresh"},
-                "auth_mode": "chatgpt",
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {
+                "openai-codex": {
+                    "tokens": {"refresh_token": "stale-refresh"},
+                    "auth_mode": "chatgpt",
+                },
             },
-        },
-    }))
-    (codex_home / "auth.json").write_text(json.dumps({
-        "tokens": {"access_token": "fresh-only"},
-    }))
+        })
+    )
+    (codex_home / "auth.json").write_text(
+        json.dumps({
+            "tokens": {"access_token": "fresh-only"},
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 

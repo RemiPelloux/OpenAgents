@@ -27,7 +27,9 @@ class TestHasProvider:
         def _boom():
             raise RuntimeError("no provider")
 
-        monkeypatch.setattr("openagents_cli.runtime_provider.resolve_runtime_provider", _boom)
+        monkeypatch.setattr(
+            "openagents_cli.runtime_provider.resolve_runtime_provider", _boom
+        )
         assert has_provider() is False
 
 
@@ -57,7 +59,9 @@ class TestDetectProvider:
         def _boom():
             raise RuntimeError("broken")
 
-        monkeypatch.setattr("openagents_cli.runtime_provider.resolve_runtime_provider", _boom)
+        monkeypatch.setattr(
+            "openagents_cli.runtime_provider.resolve_runtime_provider", _boom
+        )
         assert detect_provider() is None
 
     def test_detect_provider_strips_and_lowercases_provider(self, monkeypatch):
@@ -69,24 +73,38 @@ class TestDetectProvider:
 
 
 class TestBuildAuthMethods:
-    def test_build_auth_methods_returns_provider_and_terminal_when_configured(self, monkeypatch):
+    def test_build_auth_methods_returns_provider_and_terminal_when_configured(
+        self, monkeypatch
+    ):
         monkeypatch.setattr("acp_adapter.auth.detect_provider", lambda: "openrouter")
 
         methods = build_auth_methods()
-        payloads = [method.model_dump(by_alias=True, exclude_none=True) for method in methods]
+        payloads = [
+            method.model_dump(by_alias=True, exclude_none=True) for method in methods
+        ]
 
         assert payloads[0]["id"] == "openrouter"
         assert payloads[0]["name"] == "openrouter runtime credentials"
-        assert any(payload["id"] == TERMINAL_SETUP_AUTH_METHOD_ID for payload in payloads)
-        terminal = next(payload for payload in payloads if payload["id"] == TERMINAL_SETUP_AUTH_METHOD_ID)
+        assert any(
+            payload["id"] == TERMINAL_SETUP_AUTH_METHOD_ID for payload in payloads
+        )
+        terminal = next(
+            payload
+            for payload in payloads
+            if payload["id"] == TERMINAL_SETUP_AUTH_METHOD_ID
+        )
         assert terminal["type"] == "terminal"
         assert terminal["args"] == ["--setup"]
 
-    def test_build_auth_methods_returns_terminal_setup_when_unconfigured(self, monkeypatch):
+    def test_build_auth_methods_returns_terminal_setup_when_unconfigured(
+        self, monkeypatch
+    ):
         monkeypatch.setattr("acp_adapter.auth.detect_provider", lambda: None)
 
         methods = build_auth_methods()
-        payloads = [method.model_dump(by_alias=True, exclude_none=True) for method in methods]
+        payloads = [
+            method.model_dump(by_alias=True, exclude_none=True) for method in methods
+        ]
 
         assert payloads == [
             {

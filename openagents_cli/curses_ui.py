@@ -4,6 +4,7 @@ Used by `hermes tools` and `hermes skills` for interactive checklists.
 Provides a curses multi-select with keyboard navigation, plus a
 text-based numbered fallback for terminals without curses support.
 """
+
 import sys
 from dataclasses import dataclass
 from typing import Callable, List, Optional, Set
@@ -258,6 +259,7 @@ def flush_stdin() -> None:
         if not sys.stdin.isatty():
             return
         import termios
+
         termios.tcflush(sys.stdin, termios.TCIFLUSH)
     except Exception:
         pass
@@ -405,10 +407,13 @@ def _run_curses_menu(
     if not sys.stdin.isatty():
         return cancel_value
 
-    use_search = searchable and search_labels is not None and len(search_labels) == item_count
+    use_search = (
+        searchable and search_labels is not None and len(search_labels) == item_count
+    )
 
     try:
         import curses
+
         result_holder = [_KEEP]
 
         def _draw(stdscr):
@@ -456,12 +461,16 @@ def _run_curses_menu(
 
                 if use_search and search.query and not filtered:
                     try:
-                        stdscr.addnstr(items_start, 0, "  No matches", max_x - 1, curses.A_DIM)
+                        stdscr.addnstr(
+                            items_start, 0, "  No matches", max_x - 1, curses.A_DIM
+                        )
                     except curses.error:
                         pass
 
                 for draw_i, filtered_pos in enumerate(
-                    range(scroll_offset, min(len(filtered), scroll_offset + visible_rows))
+                    range(
+                        scroll_offset, min(len(filtered), scroll_offset + visible_rows)
+                    )
                 ):
                     i = filtered[filtered_pos]
                     y = draw_i + items_start
@@ -554,15 +563,18 @@ def curses_checklist(
 
     def _draw_header(stdscr, max_y, max_x):
         import curses
+
         try:
             hattr = curses.A_BOLD
             if curses.has_colors():
                 hattr |= curses.color_pair(2)
             stdscr.addnstr(0, 0, title, max_x - 1, hattr)
             stdscr.addnstr(
-                1, 0,
+                1,
+                0,
                 "  ↑↓ navigate  SPACE toggle  ENTER confirm  ESC cancel",
-                max_x - 1, curses.A_DIM,
+                max_x - 1,
+                curses.A_DIM,
             )
         except curses.error:
             pass
@@ -570,6 +582,7 @@ def curses_checklist(
 
     def _draw_row(stdscr, y, i, is_cursor, max_x):
         import curses
+
         check = "✓" if i in chosen else " "
         arrow = "→" if is_cursor else " "
         line = f" {arrow} [{check}] {items[i]}"
@@ -585,6 +598,7 @@ def curses_checklist(
 
     def _draw_footer(stdscr, max_y, max_x):
         import curses
+
         try:
             status_text = status_fn(chosen)
             if status_text:
@@ -614,7 +628,9 @@ def curses_checklist(
         reserve_bottom=(2 if status_fn else 1),
         draw_footer=_draw_footer if status_fn else None,
         extra_color_pairs=bool(status_fn),
-        fallback=lambda: _numbered_fallback(title, items, selected, cancel_returns, status_fn),
+        fallback=lambda: _numbered_fallback(
+            title, items, selected, cancel_returns, status_fn
+        ),
         cancel_value=cancel_returns,
     )
 
@@ -651,6 +667,7 @@ def curses_radiolist(
 
     def _draw_header(stdscr, max_y, max_x, search=None):
         import curses
+
         row = 0
         try:
             hattr = curses.A_BOLD
@@ -669,7 +686,9 @@ def curses_radiolist(
             if searchable and search is not None and search.active:
                 hint = f"  Search: {search.query}\u258e  BACKSPACE edit  Ctrl+U clear  ESC stop"
             elif searchable:
-                hint = "  \u2191\u2193 navigate  ENTER/SPACE select  / search  ESC cancel"
+                hint = (
+                    "  \u2191\u2193 navigate  ENTER/SPACE select  / search  ESC cancel"
+                )
             else:
                 hint = "  \u2191\u2193 navigate  ENTER/SPACE select  ESC cancel"
             stdscr.addnstr(row, 0, hint, max_x - 1, curses.A_DIM)
@@ -681,6 +700,7 @@ def curses_radiolist(
 
     def _draw_row(stdscr, y, i, is_cursor, max_x):
         import curses
+
         radio = "\u25cf" if i == selected else "\u25cb"
         arrow = "\u2192" if is_cursor else " "
         line = f" {arrow} ({radio}) {items[i]}"
@@ -706,7 +726,9 @@ def curses_radiolist(
         draw_row=_draw_row,
         on_action=_on_action,
         reserve_bottom=1,
-        fallback=lambda: _radio_numbered_fallback(title, items, selected, cancel_returns),
+        fallback=lambda: _radio_numbered_fallback(
+            title, items, selected, cancel_returns
+        ),
         cancel_value=cancel_returns,
         searchable=searchable,
         search_labels=list(items) if searchable else None,
@@ -760,6 +782,7 @@ def curses_single_select(
 
     def _draw_header(stdscr, max_y, max_x, search=None):
         import curses
+
         try:
             hattr = curses.A_BOLD
             if curses.has_colors():
@@ -778,6 +801,7 @@ def curses_single_select(
 
     def _draw_row(stdscr, y, i, is_cursor, max_x):
         import curses
+
         arrow = "→" if is_cursor else " "
         line = f" {arrow} {all_items[i]}"
         attr = curses.A_NORMAL

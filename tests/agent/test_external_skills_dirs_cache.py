@@ -33,9 +33,7 @@ def hermes_home_with_config(tmp_path, monkeypatch):
 
     config = home / "config.yaml"
     config.write_text(
-        "skills:\n"
-        f"  external_dirs:\n"
-        f"    - {external}\n",
+        f"skills:\n  external_dirs:\n    - {external}\n",
         encoding="utf-8",
     )
 
@@ -84,9 +82,7 @@ def test_cache_invalidates_on_mtime_change(hermes_home_with_config):
     # coarse mtime granularity still register the change on fast test
     # systems.
     config.write_text(
-        "skills:\n"
-        f"  external_dirs:\n"
-        f"    - {other}\n",
+        f"skills:\n  external_dirs:\n    - {other}\n",
         encoding="utf-8",
     )
     stat = config.stat()

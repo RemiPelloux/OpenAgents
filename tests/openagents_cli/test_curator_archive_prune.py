@@ -15,7 +15,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 
-
 def _ns(**kwargs):
     return SimpleNamespace(**kwargs)
 
@@ -30,7 +29,8 @@ def test_archive_refuses_pinned(monkeypatch, capsys):
     monkeypatch.setattr(skill_usage, "get_record", lambda name: {"pinned": True})
     called = []
     monkeypatch.setattr(
-        skill_usage, "archive_skill",
+        skill_usage,
+        "archive_skill",
         lambda name: called.append(name) or (True, "should not get here"),
     )
 
@@ -48,7 +48,8 @@ def test_archive_calls_archive_skill(monkeypatch, capsys):
 
     monkeypatch.setattr(skill_usage, "get_record", lambda name: {"pinned": False})
     monkeypatch.setattr(
-        skill_usage, "archive_skill",
+        skill_usage,
+        "archive_skill",
         lambda name: (True, f"archived to .archive/{name}"),
     )
     rc = curator_cli._cmd_archive(_ns(skill="my-skill"))
@@ -62,8 +63,12 @@ def test_archive_reports_failure(monkeypatch, capsys):
 
     monkeypatch.setattr(skill_usage, "get_record", lambda name: {"pinned": False})
     monkeypatch.setattr(
-        skill_usage, "archive_skill",
-        lambda name: (False, f"skill '{name}' is bundled or hub-installed; never archive"),
+        skill_usage,
+        "archive_skill",
+        lambda name: (
+            False,
+            f"skill '{name}' is bundled or hub-installed; never archive",
+        ),
     )
     rc = curator_cli._cmd_archive(_ns(skill="hub-slug"))
     assert rc == 1
@@ -73,10 +78,15 @@ def test_archive_reports_failure(monkeypatch, capsys):
 # ─── prune ──────────────────────────────────────────────────────────────────
 
 
-def _mk_record(name, *, idle_days=0, pinned=False, state="active", created_idle_days=None):
+def _mk_record(
+    name, *, idle_days=0, pinned=False, state="active", created_idle_days=None
+):
     import datetime as _dt
+
     now = _dt.datetime.now(_dt.timezone.utc)
-    last_activity = (now - _dt.timedelta(days=idle_days)).isoformat() if idle_days else None
+    last_activity = (
+        (now - _dt.timedelta(days=idle_days)).isoformat() if idle_days else None
+    )
     created_delta = created_idle_days if created_idle_days is not None else idle_days
     created = (now - _dt.timedelta(days=created_delta)).isoformat()
     return {
@@ -91,6 +101,7 @@ def _mk_record(name, *, idle_days=0, pinned=False, state="active", created_idle_
 
 def test_prune_days_validation(monkeypatch, capsys):
     import openagents_cli.curator as curator_cli
+
     rc = curator_cli._cmd_prune(_ns(days=0, yes=True, dry_run=False))
     assert rc == 2
     err = capsys.readouterr().err
@@ -120,7 +131,8 @@ def test_prune_filters_pinned_and_archived(monkeypatch, capsys):
     monkeypatch.setattr(skill_usage, "agent_created_report", lambda: rows)
     archived = []
     monkeypatch.setattr(
-        skill_usage, "archive_skill",
+        skill_usage,
+        "archive_skill",
         lambda name: archived.append(name) or (True, f"archived {name}"),
     )
 
@@ -147,7 +159,8 @@ def test_prune_falls_back_to_created_at_when_never_used(monkeypatch, capsys):
     monkeypatch.setattr(skill_usage, "agent_created_report", lambda: rows)
     archived = []
     monkeypatch.setattr(
-        skill_usage, "archive_skill",
+        skill_usage,
+        "archive_skill",
         lambda name: archived.append(name) or (True, "ok"),
     )
     rc = curator_cli._cmd_prune(_ns(days=90, yes=True, dry_run=False))
@@ -163,7 +176,8 @@ def test_prune_dry_run_makes_no_changes(monkeypatch, capsys):
     monkeypatch.setattr(skill_usage, "agent_created_report", lambda: rows)
     archived = []
     monkeypatch.setattr(
-        skill_usage, "archive_skill",
+        skill_usage,
+        "archive_skill",
         lambda name: archived.append(name) or (True, "ok"),
     )
     rc = curator_cli._cmd_prune(_ns(days=30, yes=True, dry_run=True))
@@ -182,7 +196,8 @@ def test_prune_prompts_without_yes(monkeypatch, capsys):
     monkeypatch.setattr(skill_usage, "agent_created_report", lambda: rows)
     archived = []
     monkeypatch.setattr(
-        skill_usage, "archive_skill",
+        skill_usage,
+        "archive_skill",
         lambda name: archived.append(name) or (True, "ok"),
     )
     monkeypatch.setattr("builtins.input", lambda _prompt: "n")
@@ -200,7 +215,8 @@ def test_prune_confirms_with_y(monkeypatch, capsys):
     monkeypatch.setattr(skill_usage, "agent_created_report", lambda: rows)
     archived = []
     monkeypatch.setattr(
-        skill_usage, "archive_skill",
+        skill_usage,
+        "archive_skill",
         lambda name: archived.append(name) or (True, "ok"),
     )
     monkeypatch.setattr("builtins.input", lambda _prompt: "y")

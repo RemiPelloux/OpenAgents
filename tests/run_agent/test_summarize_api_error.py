@@ -37,7 +37,9 @@ def test_empty_body_falls_back_to_response_json_error_message():
 
 def test_empty_body_falls_back_to_raw_response_text_when_not_json():
     """A non-JSON response body is surfaced verbatim (truncated), not dropped."""
-    err = _make_empty_body_error("upstream connect error or disconnect/reset before headers")
+    err = _make_empty_body_error(
+        "upstream connect error or disconnect/reset before headers"
+    )
     summary = AIAgent._summarize_api_error(err)
     assert "HTTP 400" in summary
     assert "upstream connect error" in summary
@@ -53,4 +55,3 @@ def test_empty_body_fallback_redacts_secrets(monkeypatch):
     )
     summary = AIAgent._summarize_api_error(err)
     assert "sk-proj-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdef" not in summary
-

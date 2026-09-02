@@ -93,9 +93,7 @@ class FirecrawlBrowserProvider(BrowserProvider):
                 timeout=30,
             )
         except requests.RequestException as exc:
-            raise RuntimeError(
-                f"Firecrawl API connection failed: {exc}"
-            ) from exc
+            raise RuntimeError(f"Firecrawl API connection failed: {exc}") from exc
 
         if not response.ok:
             raise RuntimeError(

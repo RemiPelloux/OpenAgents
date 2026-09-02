@@ -36,9 +36,15 @@ class _ManagedModalExecHandle:
 class ManagedModalEnvironment(BaseModalExecutionEnvironment):
     """Gateway-owned Modal sandbox with Hermes-compatible execute/cleanup."""
 
-    _CONNECT_TIMEOUT_SECONDS = _request_timeout_env("TERMINAL_MANAGED_MODAL_CONNECT_TIMEOUT_SECONDS", 1.0)
-    _POLL_READ_TIMEOUT_SECONDS = _request_timeout_env("TERMINAL_MANAGED_MODAL_POLL_READ_TIMEOUT_SECONDS", 5.0)
-    _CANCEL_READ_TIMEOUT_SECONDS = _request_timeout_env("TERMINAL_MANAGED_MODAL_CANCEL_READ_TIMEOUT_SECONDS", 5.0)
+    _CONNECT_TIMEOUT_SECONDS = _request_timeout_env(
+        "TERMINAL_MANAGED_MODAL_CONNECT_TIMEOUT_SECONDS", 1.0
+    )
+    _POLL_READ_TIMEOUT_SECONDS = _request_timeout_env(
+        "TERMINAL_MANAGED_MODAL_POLL_READ_TIMEOUT_SECONDS", 5.0
+    )
+    _CANCEL_READ_TIMEOUT_SECONDS = _request_timeout_env(
+        "TERMINAL_MANAGED_MODAL_CANCEL_READ_TIMEOUT_SECONDS", 5.0
+    )
     _client_timeout_grace_seconds = 10.0
     _interrupt_output = "[Command interrupted - Modal sandbox exec cancelled]"
     _unexpected_error_prefix = "Managed Modal exec failed"
@@ -58,7 +64,9 @@ class ManagedModalEnvironment(BaseModalExecutionEnvironment):
 
         gateway = resolve_managed_tool_gateway("modal")
         if gateway is None:
-            raise ValueError("Managed Modal requires a configured tool gateway and Nous user token")
+            raise ValueError(
+                "Managed Modal requires a configured tool gateway and Nous user token"
+            )
 
         self._gateway_origin = gateway.gateway_origin.rstrip("/")
         self._nous_user_token = gateway.nous_user_token
@@ -123,7 +131,10 @@ class ManagedModalEnvironment(BaseModalExecutionEnvironment):
             status_response = self._request(
                 "GET",
                 f"/v1/sandboxes/{self._sandbox_id}/execs/{handle.exec_id}",
-                timeout=(self._CONNECT_TIMEOUT_SECONDS, self._POLL_READ_TIMEOUT_SECONDS),
+                timeout=(
+                    self._CONNECT_TIMEOUT_SECONDS,
+                    self._POLL_READ_TIMEOUT_SECONDS,
+                ),
             )
         except Exception as exc:
             return self._error_result(f"Managed Modal exec poll failed: {exc}")
@@ -176,7 +187,9 @@ class ManagedModalEnvironment(BaseModalExecutionEnvironment):
             5120,
         )
         disk = self._coerce_number(
-            self._sandbox_kwargs.get("ephemeral_disk", self._sandbox_kwargs.get("diskMiB")),
+            self._sandbox_kwargs.get(
+                "ephemeral_disk", self._sandbox_kwargs.get("diskMiB")
+            ),
             None,
         )
 
@@ -203,7 +216,9 @@ class ManagedModalEnvironment(BaseModalExecutionEnvironment):
             },
         )
         if response.status_code >= 400:
-            raise RuntimeError(self._format_error("Managed Modal create failed", response))
+            raise RuntimeError(
+                self._format_error("Managed Modal create failed", response)
+            )
 
         body = response.json()
         sandbox_id = body.get("id")
@@ -226,10 +241,15 @@ class ManagedModalEnvironment(BaseModalExecutionEnvironment):
                 "credential files inside the sandbox."
             )
 
-    def _request(self, method: str, path: str, *,
-                 json: Dict[str, Any] | None = None,
-                 timeout: int = 30,
-                 extra_headers: Dict[str, str] | None = None) -> requests.Response:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: Dict[str, Any] | None = None,
+        timeout: int = 30,
+        extra_headers: Dict[str, str] | None = None,
+    ) -> requests.Response:
         headers = {
             "Authorization": f"Bearer {self._nous_user_token}",
             "Content-Type": "application/json",
@@ -250,7 +270,10 @@ class ManagedModalEnvironment(BaseModalExecutionEnvironment):
             self._request(
                 "POST",
                 f"/v1/sandboxes/{self._sandbox_id}/execs/{exec_id}/cancel",
-                timeout=(self._CONNECT_TIMEOUT_SECONDS, self._CANCEL_READ_TIMEOUT_SECONDS),
+                timeout=(
+                    self._CONNECT_TIMEOUT_SECONDS,
+                    self._CANCEL_READ_TIMEOUT_SECONDS,
+                ),
             )
         except Exception as exc:
             logger.warning("Managed Modal exec cancel failed: %s", exc)
@@ -269,7 +292,11 @@ class ManagedModalEnvironment(BaseModalExecutionEnvironment):
         try:
             payload = response.json()
             if isinstance(payload, dict):
-                message = payload.get("error") or payload.get("message") or payload.get("code")
+                message = (
+                    payload.get("error")
+                    or payload.get("message")
+                    or payload.get("code")
+                )
                 if isinstance(message, str) and message:
                     return f"{prefix}: {message}"
                 return f"{prefix}: {json.dumps(payload, ensure_ascii=False)}"

@@ -16,6 +16,7 @@ def clean_env(monkeypatch):
 def clear_kittentts_cache():
     """Reset the module-level model cache between tests."""
     from tools import tts_tool as _tt
+
     _tt._kittentts_model_cache.clear()
     yield
     _tt._kittentts_model_cache.clear()
@@ -34,10 +35,13 @@ def mock_kittentts_module():
     # Stub soundfile — the real package isn't installed in CI venv, and
     # _generate_kittentts does `import soundfile as sf` at runtime.
     fake_sf = MagicMock()
+
     def _fake_write(path, audio, samplerate):
         # Emulate writing a real file so downstream path checks succeed.
         import pathlib
+
         pathlib.Path(path).write_bytes(b"RIFF\x00\x00\x00\x00WAVEfmt fake")
+
     fake_sf.write = _fake_write
 
     with patch.dict(
@@ -102,16 +106,20 @@ class TestGenerateKittenTts:
         # Same model name → class instantiated exactly once
         assert fake_cls.call_count == 1
 
-    def test_different_models_are_cached_separately(self, tmp_path, mock_kittentts_module):
+    def test_different_models_are_cached_separately(
+        self, tmp_path, mock_kittentts_module
+    ):
         from tools.tts_tool import _generate_kittentts
 
         _, fake_cls = mock_kittentts_module
         _generate_kittentts(
-            "A", str(tmp_path / "a.wav"),
+            "A",
+            str(tmp_path / "a.wav"),
             {"kittentts": {"model": "KittenML/kitten-tts-nano-0.8-int8"}},
         )
         _generate_kittentts(
-            "B", str(tmp_path / "b.wav"),
+            "B",
+            str(tmp_path / "b.wav"),
             {"kittentts": {"model": "KittenML/kitten-tts-mini-0.8"}},
         )
 
@@ -132,6 +140,7 @@ class TestGenerateKittenTts:
             calls.append(cmd)
             # Emulate ffmpeg writing the output file
             import pathlib
+
             out_path = cmd[-1]
             pathlib.Path(out_path).write_bytes(b"fake-mp3-data")
             return MagicMock(returncode=0)
@@ -149,6 +158,7 @@ class TestGenerateKittenTts:
     def test_missing_kittentts_raises_import_error(self, tmp_path, monkeypatch):
         """When kittentts package is not installed, _import_kittentts raises."""
         import sys
+
         monkeypatch.setitem(sys.modules, "kittentts", None)
         from tools.tts_tool import _generate_kittentts
 
@@ -163,7 +173,8 @@ class TestCheckKittenttsAvailable:
 
         fake_spec = MagicMock()
         monkeypatch.setattr(
-            importlib.util, "find_spec",
+            importlib.util,
+            "find_spec",
             lambda name: fake_spec if name == "kittentts" else None,
         )
         assert _check_kittentts_available() is True
@@ -180,6 +191,7 @@ class TestDispatcherBranch:
     def test_kittentts_not_installed_returns_helpful_error(self, monkeypatch, tmp_path):
         """When provider=kittentts but package missing, return JSON error with setup hint."""
         import sys
+
         monkeypatch.setitem(sys.modules, "kittentts", None)
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
 
@@ -187,6 +199,7 @@ class TestDispatcherBranch:
 
         # Write a config telling it to use kittentts
         import yaml
+
         (tmp_path / "config.yaml").write_text(
             yaml.safe_dump({"tts": {"provider": "kittentts"}})
         )

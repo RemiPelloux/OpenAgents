@@ -188,6 +188,7 @@ class TestModalBulkUpload:
 
         # Manually call the part of __init__ that wires FileSyncManager
         from tools.environments.file_sync import iter_sync_files
+
         env._sync_manager = modal_env.FileSyncManager(
             get_files_fn=lambda: iter_sync_files("/root/.hermes"),
             upload_fn=env._modal_upload,
@@ -275,6 +276,7 @@ class TestModalBulkUpload:
         # Use random bytes so gzip cannot compress them -- ensures the
         # base64 payload exceeds one 1 MB chunk.
         import os as _os
+
         src = tmp_path / "large.bin"
         src.write_bytes(_os.urandom(1024 * 1024 + 512 * 1024))
         files = [(str(src), "/root/.hermes/large.bin")]

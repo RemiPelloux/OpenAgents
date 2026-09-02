@@ -114,7 +114,9 @@ def _build_request(url: str, headers: dict | None = None) -> urllib.request.Requ
     return req
 
 
-def fetch_url(url: str, headers: dict | None = None, retries: int = MAX_RETRIES) -> dict | list | None:
+def fetch_url(
+    url: str, headers: dict | None = None, retries: int = MAX_RETRIES
+) -> dict | list | None:
     """Fetch a URL, parse JSON, retry on transient errors."""
     last_err = None
     for attempt in range(retries):
@@ -127,11 +129,11 @@ def fetch_url(url: str, headers: dict | None = None, retries: int = MAX_RETRIES)
             last_err = e
             if e.code in {404, 400}:
                 break  # no point retrying
-            wait = BACKOFF_BASE ** attempt
+            wait = BACKOFF_BASE**attempt
             time.sleep(wait)
         except urllib.error.URLError as e:
             last_err = e
-            wait = BACKOFF_BASE ** attempt
+            wait = BACKOFF_BASE**attempt
             time.sleep(wait)
         except json.JSONDecodeError as e:
             last_err = e
@@ -336,7 +338,9 @@ def extract_quote_summary_fields(qs_data: dict) -> dict:
     out["pe_ratio"] = fmt_price(pe_raw) if pe_raw else None
     out["52w_high"] = fmt_price(safe_get(sd, "fiftyTwoWeekHigh", "raw"))
     out["52w_low"] = fmt_price(safe_get(sd, "fiftyTwoWeekLow", "raw"))
-    out["volume"] = safe_get(sd, "volume", "raw") or safe_get(sd, "regularMarketVolume", "raw")
+    out["volume"] = safe_get(sd, "volume", "raw") or safe_get(
+        sd, "regularMarketVolume", "raw"
+    )
 
     # defaultKeyStatistics
     ks = r.get("defaultKeyStatistics", {})
@@ -370,7 +374,14 @@ def cmd_quote(symbols: list[str]) -> None:
         if qs_data:
             qs_fields = extract_quote_summary_fields(qs_data)
             # Prefer quoteSummary values if chart didn't have them
-            for field in ("market_cap", "pe_ratio", "52w_high", "52w_low", "volume", "short_name"):
+            for field in (
+                "market_cap",
+                "pe_ratio",
+                "52w_high",
+                "52w_low",
+                "volume",
+                "short_name",
+            ):
                 if entry.get(field) is None and qs_fields.get(field) is not None:
                     entry[field] = qs_fields[field]
                 elif field == "market_cap" and qs_fields.get(field) is not None:
@@ -385,7 +396,9 @@ def cmd_quote(symbols: list[str]) -> None:
                 entry["data_source"] = "Yahoo Finance + Alpha Vantage"
                 if entry.get("pe_ratio") is None:
                     pe = av_data.get("PERatio")
-                    entry["pe_ratio"] = pe if pe and pe != "None" and pe != "-" else None
+                    entry["pe_ratio"] = (
+                        pe if pe and pe != "None" and pe != "-" else None
+                    )
                 if entry.get("market_cap") is None:
                     mc = av_data.get("MarketCapitalization")
                     entry["market_cap"] = fmt_large(mc)
@@ -410,12 +423,20 @@ def cmd_quote(symbols: list[str]) -> None:
 def cmd_search(query: str) -> None:
     data = yf_search(query, count=5)
     if not data:
-        print_json({"error": "Search failed or no results", "query": query, "data_source": "Yahoo Finance"})
+        print_json({
+            "error": "Search failed or no results",
+            "query": query,
+            "data_source": "Yahoo Finance",
+        })
         return
 
     quotes = data.get("quotes") or []
     if not quotes:
-        print_json({"error": "No matches found", "query": query, "data_source": "Yahoo Finance"})
+        print_json({
+            "error": "No matches found",
+            "query": query,
+            "data_source": "Yahoo Finance",
+        })
         return
 
     results = []
@@ -444,14 +465,19 @@ def cmd_search(query: str) -> None:
 def cmd_history(symbol: str, range_: str = "1mo") -> None:
     valid_ranges = ("1mo", "3mo", "6mo", "1y", "5y")
     if range_ not in valid_ranges:
-        print_json({"error": f"Invalid range '{range_}'. Valid: {', '.join(valid_ranges)}"})
+        print_json({
+            "error": f"Invalid range '{range_}'. Valid: {', '.join(valid_ranges)}"
+        })
         return
 
     sym = symbol.upper().strip()
     chart_data = yf_chart(sym, interval="1d", range_=range_)
 
     if not chart_data:
-        print_json({"error": f"Failed to fetch history for {sym}", "data_source": "Yahoo Finance"})
+        print_json({
+            "error": f"Failed to fetch history for {sym}",
+            "data_source": "Yahoo Finance",
+        })
         return
 
     chart = safe_get(chart_data, "chart", "result")
@@ -474,6 +500,7 @@ def cmd_history(symbol: str, range_: str = "1mo") -> None:
 
     history = []
     for i, ts in enumerate(timestamps):
+
         def _v(lst, idx):
             try:
                 val = lst[idx]
@@ -499,7 +526,9 @@ def cmd_history(symbol: str, range_: str = "1mo") -> None:
         stats["max"] = fmt_price(max(valid_closes))
         stats["avg"] = fmt_price(sum(valid_closes) / len(valid_closes))
         if len(valid_closes) >= 2:
-            total_return = ((valid_closes[-1] - valid_closes[0]) / valid_closes[0]) * 100
+            total_return = (
+                (valid_closes[-1] - valid_closes[0]) / valid_closes[0]
+            ) * 100
             stats["total_return_pct"] = fmt_pct(total_return)
         else:
             stats["total_return_pct"] = None
@@ -617,7 +646,9 @@ def cmd_crypto(symbol: str, vs: str = "USD") -> None:
 
     chart = safe_get(chart_data, "chart", "result")
     if not chart or not isinstance(chart, list) or len(chart) == 0:
-        err = safe_get(chart_data, "chart", "error", "description") or "Symbol not found"
+        err = (
+            safe_get(chart_data, "chart", "error", "description") or "Symbol not found"
+        )
         print_json({"error": err, "symbol": ticker, "data_source": "Yahoo Finance"})
         return
 
@@ -691,7 +722,9 @@ Examples:
 
     # quote
     p_quote = sub.add_parser("quote", help="Get current quote for one or more symbols")
-    p_quote.add_argument("symbols", nargs="+", metavar="SYMBOL", help="Stock ticker symbol(s)")
+    p_quote.add_argument(
+        "symbols", nargs="+", metavar="SYMBOL", help="Stock ticker symbol(s)"
+    )
 
     # search
     p_search = sub.add_parser("search", help="Search for stocks by name or symbol")
@@ -710,11 +743,15 @@ Examples:
 
     # compare
     p_compare = sub.add_parser("compare", help="Compare multiple stocks side by side")
-    p_compare.add_argument("symbols", nargs="+", metavar="SYMBOL", help="At least 2 stock symbols")
+    p_compare.add_argument(
+        "symbols", nargs="+", metavar="SYMBOL", help="At least 2 stock symbols"
+    )
 
     # crypto
     p_crypto = sub.add_parser("crypto", help="Crypto price (BTC, ETH, SOL, etc.)")
-    p_crypto.add_argument("symbol", metavar="SYMBOL", help="Crypto symbol (e.g. BTC, ETH, SOL)")
+    p_crypto.add_argument(
+        "symbol", metavar="SYMBOL", help="Crypto symbol (e.g. BTC, ETH, SOL)"
+    )
     p_crypto.add_argument(
         "--vs",
         default="USD",

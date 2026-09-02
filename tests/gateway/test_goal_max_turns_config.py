@@ -23,7 +23,9 @@ class _FakeSessionStore:
 
 
 @pytest.mark.asyncio
-async def test_gateway_goal_uses_goals_max_turns_from_full_config(tmp_path, monkeypatch):
+async def test_gateway_goal_uses_goals_max_turns_from_full_config(
+    tmp_path, monkeypatch
+):
     """Gateway /goal should honor top-level goals.max_turns from config.yaml."""
     home = tmp_path / ".hermes"
     home.mkdir()

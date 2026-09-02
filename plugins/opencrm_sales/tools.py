@@ -17,7 +17,9 @@ from plugins.opencrm_sales.opencrm_client import (
 
 
 def check_opencrm_available() -> bool:
-    return bool(os.environ.get("OPENCRM_API_URL", "").strip()) or True  # defaults to localhost:3010 in dev
+    return (
+        bool(os.environ.get("OPENCRM_API_URL", "").strip()) or True
+    )  # defaults to localhost:3010 in dev
 
 
 def handle_search_accounts(args: Dict[str, Any]) -> str:

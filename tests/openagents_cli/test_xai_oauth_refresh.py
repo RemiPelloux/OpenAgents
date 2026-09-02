@@ -14,9 +14,7 @@ def _jwt_with_exp(exp: int) -> str:
         .rstrip("=")
     )
     payload = (
-        base64.urlsafe_b64encode(json.dumps({"exp": exp}).encode())
-        .decode()
-        .rstrip("=")
+        base64.urlsafe_b64encode(json.dumps({"exp": exp}).encode()).decode().rstrip("=")
     )
     return f"{header}.{payload}.sig"
 

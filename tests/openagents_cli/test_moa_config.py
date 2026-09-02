@@ -21,21 +21,27 @@ def test_normalize_moa_config_uses_default_named_preset():
 
 
 def test_normalize_moa_config_preserves_named_presets():
-    cfg = normalize_moa_config(
-        {
-            "default_preset": "coding",
-            "presets": {
-                "coding": {
-                    "reference_models": [{"provider": "openai-codex", "model": "gpt-5.5"}],
-                    "aggregator": {"provider": "openrouter", "model": "anthropic/claude-opus-4.8"},
-                },
-                "review": {
-                    "reference_models": [{"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"}],
-                    "aggregator": {"provider": "openrouter", "model": "anthropic/claude-opus-4.8"},
+    cfg = normalize_moa_config({
+        "default_preset": "coding",
+        "presets": {
+            "coding": {
+                "reference_models": [{"provider": "openai-codex", "model": "gpt-5.5"}],
+                "aggregator": {
+                    "provider": "openrouter",
+                    "model": "anthropic/claude-opus-4.8",
                 },
             },
-        }
-    )
+            "review": {
+                "reference_models": [
+                    {"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"}
+                ],
+                "aggregator": {
+                    "provider": "openrouter",
+                    "model": "anthropic/claude-opus-4.8",
+                },
+            },
+        },
+    })
 
     assert cfg["default_preset"] == "coding"
     assert set(cfg["presets"]) == {"coding", "review"}
@@ -43,12 +49,10 @@ def test_normalize_moa_config_preserves_named_presets():
 
 
 def test_legacy_flat_config_becomes_default_preset():
-    cfg = normalize_moa_config(
-        {
-            "reference_models": [{"provider": "openai-codex", "model": "gpt-5.5"}],
-            "aggregator": {"provider": "openrouter", "model": "anthropic/claude-opus-4.8"},
-        }
-    )
+    cfg = normalize_moa_config({
+        "reference_models": [{"provider": "openai-codex", "model": "gpt-5.5"}],
+        "aggregator": {"provider": "openrouter", "model": "anthropic/claude-opus-4.8"},
+    })
 
     assert cfg["presets"][DEFAULT_MOA_PRESET_NAME]["reference_models"] == [
         {"provider": "openai-codex", "model": "gpt-5.5"}
@@ -58,17 +62,15 @@ def test_legacy_flat_config_becomes_default_preset():
 def test_normalize_moa_config_tolerates_non_numeric_values():
     """Non-numeric strings in hand-edited config.yaml must degrade to defaults
     instead of crashing normalize_moa_config with ValueError."""
-    cfg = normalize_moa_config(
-        {
-            "presets": {
-                "broken": {
-                    "max_tokens": "notanumber",
-                    "reference_temperature": "hot",
-                    "aggregator_temperature": "",
-                }
+    cfg = normalize_moa_config({
+        "presets": {
+            "broken": {
+                "max_tokens": "notanumber",
+                "reference_temperature": "hot",
+                "aggregator_temperature": "",
             }
         }
-    )
+    })
 
     preset = cfg["presets"]["broken"]
     assert preset["max_tokens"] == 4096
@@ -80,18 +82,20 @@ def test_normalize_moa_config_tolerates_non_list_reference_models():
     """A hand-edited scalar reference_models must degrade to defaults instead of
     crashing normalize_moa_config with TypeError (symmetric with the non-numeric
     scalar-field tolerance)."""
-    cfg = normalize_moa_config(
-        {"presets": {"broken": {"reference_models": 2}}}
-    )
+    cfg = normalize_moa_config({"presets": {"broken": {"reference_models": 2}}})
     assert cfg["presets"]["broken"]["reference_models"] == DEFAULT_MOA_REFERENCE_MODELS
 
 
 def test_normalize_moa_config_wraps_bare_dict_reference_models():
     """A single reference slot written without the list wrapper is rescued."""
-    cfg = normalize_moa_config(
-        {"presets": {"p": {"reference_models": {"provider": "openai", "model": "gpt-4o"}}}}
-    )
-    assert cfg["presets"]["p"]["reference_models"] == [{"provider": "openai", "model": "gpt-4o"}]
+    cfg = normalize_moa_config({
+        "presets": {
+            "p": {"reference_models": {"provider": "openai", "model": "gpt-4o"}}
+        }
+    })
+    assert cfg["presets"]["p"]["reference_models"] == [
+        {"provider": "openai", "model": "gpt-4o"}
+    ]
 
 
 def test_normalize_moa_config_coerces_numeric_strings():
@@ -131,14 +135,18 @@ def test_active_preset_toggle_validation():
 
 
 def test_resolve_moa_preset_returns_requested_model_set():
-    cfg = normalize_moa_config(
-        {
-            "presets": {
-                "coding": {"reference_models": [{"provider": "openai-codex", "model": "gpt-5.5"}]},
-                "review": {"reference_models": [{"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"}]},
-            }
+    cfg = normalize_moa_config({
+        "presets": {
+            "coding": {
+                "reference_models": [{"provider": "openai-codex", "model": "gpt-5.5"}]
+            },
+            "review": {
+                "reference_models": [
+                    {"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"}
+                ]
+            },
         }
-    )
+    })
 
     assert resolve_moa_preset(cfg, "review")["reference_models"] == [
         {"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"}
@@ -157,19 +165,20 @@ def test_build_moa_turn_prompt_encodes_one_shot_default_preset():
 def test_moa_provider_rejected_as_reference_slot():
     """A reference slot pointing at the moa virtual provider is dropped, so a
     preset cannot recursively reference another MoA run."""
-    cfg = normalize_moa_config(
-        {
-            "presets": {
-                "p": {
-                    "reference_models": [
-                        {"provider": "moa", "model": "default"},
-                        {"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"},
-                    ],
-                    "aggregator": {"provider": "openrouter", "model": "anthropic/claude-opus-4.8"},
-                }
+    cfg = normalize_moa_config({
+        "presets": {
+            "p": {
+                "reference_models": [
+                    {"provider": "moa", "model": "default"},
+                    {"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"},
+                ],
+                "aggregator": {
+                    "provider": "openrouter",
+                    "model": "anthropic/claude-opus-4.8",
+                },
             }
         }
-    )
+    })
 
     refs = cfg["presets"]["p"]["reference_models"]
     assert {"provider": "moa", "model": "default"} not in refs
@@ -179,16 +188,16 @@ def test_moa_provider_rejected_as_reference_slot():
 def test_moa_provider_rejected_as_aggregator_slot():
     """An aggregator slot pointing at the moa virtual provider is dropped and
     falls back to the default aggregator, never a recursive MoA aggregator."""
-    cfg = normalize_moa_config(
-        {
-            "presets": {
-                "p": {
-                    "reference_models": [{"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"}],
-                    "aggregator": {"provider": "moa", "model": "default"},
-                }
+    cfg = normalize_moa_config({
+        "presets": {
+            "p": {
+                "reference_models": [
+                    {"provider": "openrouter", "model": "deepseek/deepseek-v4-pro"}
+                ],
+                "aggregator": {"provider": "moa", "model": "default"},
             }
         }
-    )
+    })
 
     agg = cfg["presets"]["p"]["aggregator"]
     assert agg["provider"] != "moa"
@@ -197,9 +206,9 @@ def test_moa_provider_rejected_as_aggregator_slot():
 
 def test_moa_provider_rejected_case_insensitive():
     """Case variants like ``MoA`` are also blocked."""
-    cfg = normalize_moa_config(
-        {"presets": {"p": {"aggregator": {"provider": "MoA", "model": "default"}}}}
-    )
+    cfg = normalize_moa_config({
+        "presets": {"p": {"aggregator": {"provider": "MoA", "model": "default"}}}
+    })
 
     assert cfg["presets"]["p"]["aggregator"]["provider"] != "moa"
     assert cfg["presets"]["p"]["aggregator"] == DEFAULT_MOA_AGGREGATOR

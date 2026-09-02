@@ -98,7 +98,10 @@ class TestPluginSkillRegistry:
             md.parent.mkdir()
             md.write_text(f"---\nname: {name}\n---\n")
             pm._plugin_skills[f"myplugin:{name}"] = {
-                "path": md, "plugin": "myplugin", "bare_name": name, "description": "",
+                "path": md,
+                "plugin": "myplugin",
+                "bare_name": name,
+                "description": "",
             }
 
         assert pm.list_plugin_skills("myplugin") == ["bar", "baz", "foo"]
@@ -107,7 +110,12 @@ class TestPluginSkillRegistry:
     def test_remove_plugin_skill(self, pm, tmp_path):
         md = tmp_path / "SKILL.md"
         md.write_text("---\nname: x\n---\n")
-        pm._plugin_skills["p:x"] = {"path": md, "plugin": "p", "bare_name": "x", "description": ""}
+        pm._plugin_skills["p:x"] = {
+            "path": md,
+            "plugin": "p",
+            "bare_name": "x",
+            "description": "",
+        }
 
         pm.remove_plugin_skill("p:x")
         assert pm.find_plugin_skill("p:x") is None
@@ -175,13 +183,21 @@ class TestSkillViewQualifiedName:
         monkeypatch.setattr("tools.skills_tool.SKILLS_DIR", empty)
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
 
-    def _register_skill(self, tmp_path, plugin="superpowers", name="writing-plans", content=None):
+    def _register_skill(
+        self, tmp_path, plugin="superpowers", name="writing-plans", content=None
+    ):
         skill_dir = tmp_path / "plugins" / plugin / "skills" / name
         skill_dir.mkdir(parents=True, exist_ok=True)
         md = skill_dir / "SKILL.md"
-        md.write_text(content or f"---\nname: {name}\ndescription: {name} desc\n---\n\n{name} body.\n")
+        md.write_text(
+            content
+            or f"---\nname: {name}\ndescription: {name} desc\n---\n\n{name} body.\n"
+        )
         self.pm._plugin_skills[f"{plugin}:{name}"] = {
-            "path": md, "plugin": plugin, "bare_name": name, "description": "",
+            "path": md,
+            "plugin": plugin,
+            "bare_name": name,
+            "description": "",
         }
         return md
 
@@ -214,7 +230,9 @@ class TestSkillViewQualifiedName:
 
         skill_dir = tmp_path / "local-skills" / "my-local"
         skill_dir.mkdir(parents=True)
-        (skill_dir / "SKILL.md").write_text("---\nname: my-local\ndescription: local\n---\nLocal body.\n")
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-local\ndescription: local\n---\nLocal body.\n"
+        )
         monkeypatch.setattr("tools.skills_tool.SKILLS_DIR", tmp_path / "local-skills")
 
         result = json.loads(skill_view("my-local"))
@@ -289,14 +307,19 @@ class TestSkillViewPluginGuards:
         md = d / "SKILL.md"
         md.write_text(content)
         self.pm._plugin_skills[f"{plugin}:{name}"] = {
-            "path": md, "plugin": plugin, "bare_name": name, "description": "",
+            "path": md,
+            "plugin": plugin,
+            "bare_name": name,
+            "description": "",
         }
 
     def test_disabled_plugin(self, tmp_path, monkeypatch):
         from tools.skills_tool import skill_view
 
         self._reg(tmp_path, "---\nname: foo\n---\nBody.\n")
-        monkeypatch.setattr("openagents_cli.plugins._get_disabled_plugins", lambda: {"myplugin"})
+        monkeypatch.setattr(
+            "openagents_cli.plugins._get_disabled_plugins", lambda: {"myplugin"}
+        )
 
         result = json.loads(skill_view("myplugin:foo"))
         assert result["success"] is False
@@ -344,9 +367,14 @@ class TestBundleContextBanner:
             d = tmp_path / "plugins" / "myplugin" / "skills" / name
             d.mkdir(parents=True, exist_ok=True)
             md = d / "SKILL.md"
-            md.write_text(f"---\nname: {name}\ndescription: {name} desc\n---\n\n{name} body.\n")
+            md.write_text(
+                f"---\nname: {name}\ndescription: {name} desc\n---\n\n{name} body.\n"
+            )
             self.pm._plugin_skills[f"myplugin:{name}"] = {
-                "path": md, "plugin": "myplugin", "bare_name": name, "description": "",
+                "path": md,
+                "plugin": "myplugin",
+                "bare_name": name,
+                "description": "",
             }
 
     def test_banner_present(self, tmp_path):

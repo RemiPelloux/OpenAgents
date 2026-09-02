@@ -17,15 +17,13 @@ _POOL_PROVIDER = "xai-oauth"
 # xAI's public API is OpenAI-compatible for the endpoints OpenAgents commonly
 # uses. The Responses endpoint is included because Hermes' native xAI runtime
 # uses codex_responses mode.
-_ALLOWED_PATHS: FrozenSet[str] = frozenset(
-    {
-        "/responses",
-        "/chat/completions",
-        "/completions",
-        "/embeddings",
-        "/models",
-    }
-)
+_ALLOWED_PATHS: FrozenSet[str] = frozenset({
+    "/responses",
+    "/chat/completions",
+    "/completions",
+    "/embeddings",
+    "/models",
+})
 
 
 class XAIGrokAdapter(UpstreamAdapter):

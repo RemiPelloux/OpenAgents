@@ -1,6 +1,7 @@
 """Test that setup.py uses temporary output directories when the source
 tree is read-only (as it is inside the Docker WebUI install surface).
 """
+
 from __future__ import annotations
 
 from pathlib import Path

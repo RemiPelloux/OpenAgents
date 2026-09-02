@@ -28,7 +28,7 @@ def init_tiktok_prospector_profile(home: Path | None = None) -> str:
     config_path = profile_dir / "config.yaml"
     if not config_path.exists():
         config_path.write_text(
-            "description: \"TikTok prospector — OpenTeam harvest to OpenCRM\"\n"
+            'description: "TikTok prospector — OpenTeam harvest to OpenCRM"\n'
             "toolsets:\n"
             "  - openpro_prospection\n"
             "skills:\n"

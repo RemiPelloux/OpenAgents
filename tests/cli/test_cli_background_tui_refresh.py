@@ -49,6 +49,7 @@ class TestBackgroundCommandTuiRefresh:
             if cli_obj._app:
                 cli_obj._app.invalidate()
                 import time
+
                 time.sleep(0.01)  # reduced for test
             print()
 
@@ -72,6 +73,7 @@ class TestBackgroundCommandTuiRefresh:
             if cli_obj._app:
                 cli_obj._app.invalidate()
                 import time
+
                 time.sleep(0.01)
             print()
 

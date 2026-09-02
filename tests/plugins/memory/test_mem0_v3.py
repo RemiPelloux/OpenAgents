@@ -15,18 +15,30 @@ class FakeBackend:
         self.captured = []
 
     def search(self, query, *, filters, top_k=10, rerank=True):
-        self.captured.append(("search", query, {"filters": filters, "top_k": top_k, "rerank": rerank}))
+        self.captured.append((
+            "search",
+            query,
+            {"filters": filters, "top_k": top_k, "rerank": rerank},
+        ))
         return self._search_results
 
     def get_all(self, *, filters, page=1, page_size=100):
-        self.captured.append(("get_all", {"filters": filters, "page": page, "page_size": page_size}))
+        self.captured.append((
+            "get_all",
+            {"filters": filters, "page": page, "page_size": page_size},
+        ))
         return self._all_results
 
     def add(self, messages, *, user_id, agent_id, infer=False, metadata=None):
         self.captured.append((
             "add",
             messages,
-            {"user_id": user_id, "agent_id": agent_id, "infer": infer, "metadata": metadata},
+            {
+                "user_id": user_id,
+                "agent_id": agent_id,
+                "infer": infer,
+                "metadata": metadata,
+            },
         ))
         return {"status": "PENDING", "event_id": "evt-test-123"}
 
@@ -51,13 +63,15 @@ class TestMem0V3Tools:
         return provider
 
     def test_list_returns_paginated_with_ids(self, monkeypatch):
-        backend = FakeBackend(all_results={
-            "count": 2,
-            "results": [
-                {"id": "mem-1", "memory": "alpha"},
-                {"id": "mem-2", "memory": "beta"},
-            ]
-        })
+        backend = FakeBackend(
+            all_results={
+                "count": 2,
+                "results": [
+                    {"id": "mem-1", "memory": "alpha"},
+                    {"id": "mem-2", "memory": "beta"},
+                ],
+            }
+        )
         provider = self._make_provider(monkeypatch, backend)
         result = json.loads(provider.handle_tool_call("mem0_list", {}))
         assert result["count"] == 2
@@ -78,7 +92,9 @@ class TestMem0V3Tools:
         assert result["result"] == "No memories stored yet."
 
     def test_search_returns_ids(self, monkeypatch):
-        backend = FakeBackend(search_results=[{"id": "mem-1", "memory": "foo", "score": 0.9}])
+        backend = FakeBackend(
+            search_results=[{"id": "mem-1", "memory": "foo", "score": 0.9}]
+        )
         provider = self._make_provider(monkeypatch, backend)
         result = json.loads(provider.handle_tool_call("mem0_search", {"query": "test"}))
         assert result["results"][0]["id"] == "mem-1"
@@ -105,7 +121,9 @@ class TestMem0V3Tools:
     def test_add_uses_content_param(self, monkeypatch):
         backend = FakeBackend()
         provider = self._make_provider(monkeypatch, backend)
-        result = json.loads(provider.handle_tool_call("mem0_add", {"content": "user likes dark mode"}))
+        result = json.loads(
+            provider.handle_tool_call("mem0_add", {"content": "user likes dark mode"})
+        )
         assert len(backend.captured) == 1
         call = backend.captured[0]
         assert call[2]["infer"] is False
@@ -135,7 +153,6 @@ class TestMem0V3Tools:
 
 
 class TestMem0UpdateDelete:
-
     def _make_provider(self, monkeypatch, backend):
         provider = Mem0MemoryProvider()
         provider.initialize("test-session")
@@ -147,9 +164,11 @@ class TestMem0UpdateDelete:
     def test_update_calls_sdk(self, monkeypatch):
         backend = FakeBackend()
         provider = self._make_provider(monkeypatch, backend)
-        result = json.loads(provider.handle_tool_call(
-            "mem0_update", {"memory_id": "mem-1", "text": "updated fact"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call(
+                "mem0_update", {"memory_id": "mem-1", "text": "updated fact"}
+            )
+        )
         assert backend.captured[0][1] == "mem-1"
         assert backend.captured[0][2] == "updated fact"
         assert result["result"] == "Memory updated."
@@ -164,15 +183,17 @@ class TestMem0UpdateDelete:
     def test_update_missing_text(self, monkeypatch):
         backend = FakeBackend()
         provider = self._make_provider(monkeypatch, backend)
-        result = json.loads(provider.handle_tool_call("mem0_update", {"memory_id": "mem-1"}))
+        result = json.loads(
+            provider.handle_tool_call("mem0_update", {"memory_id": "mem-1"})
+        )
         assert "error" in result
 
     def test_delete_calls_sdk(self, monkeypatch):
         backend = FakeBackend()
         provider = self._make_provider(monkeypatch, backend)
-        result = json.loads(provider.handle_tool_call(
-            "mem0_delete", {"memory_id": "mem-1"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("mem0_delete", {"memory_id": "mem-1"})
+        )
         assert backend.captured[0][1] == "mem-1"
         assert result["result"] == "Memory deleted."
 
@@ -184,7 +205,6 @@ class TestMem0UpdateDelete:
 
 
 class TestMem0ErrorHandling:
-
     def _make_provider(self, monkeypatch, backend):
         provider = Mem0MemoryProvider()
         provider.initialize("test-session")
@@ -195,11 +215,15 @@ class TestMem0ErrorHandling:
 
     def test_update_404_no_circuit_breaker(self, monkeypatch):
         backend = FakeBackend()
-        backend.update = lambda mid, text: (_ for _ in ()).throw(Exception("404 Not Found"))
+        backend.update = lambda mid, text: (_ for _ in ()).throw(
+            Exception("404 Not Found")
+        )
         provider = self._make_provider(monkeypatch, backend)
-        result = json.loads(provider.handle_tool_call(
-            "mem0_update", {"memory_id": "bad-id", "text": "x"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call(
+                "mem0_update", {"memory_id": "bad-id", "text": "x"}
+            )
+        )
         assert "error" in result
         assert provider._consecutive_failures == 0
 
@@ -207,51 +231,57 @@ class TestMem0ErrorHandling:
         backend = FakeBackend()
         backend.delete = lambda mid: (_ for _ in ()).throw(Exception("404 not found"))
         provider = self._make_provider(monkeypatch, backend)
-        result = json.loads(provider.handle_tool_call(
-            "mem0_delete", {"memory_id": "bad-id"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("mem0_delete", {"memory_id": "bad-id"})
+        )
         assert "error" in result
         assert provider._consecutive_failures == 0
 
     def test_update_validation_error_no_circuit_breaker(self, monkeypatch):
         """ValidationError (bad UUID format) should not trip circuit breaker."""
+
         class ValidationError(Exception):
             pass
+
         backend = FakeBackend()
         backend.update = lambda mid, text: (_ for _ in ()).throw(
             ValidationError('{"error":"memory_id should be a valid UUID"}')
         )
         provider = self._make_provider(monkeypatch, backend)
-        result = json.loads(provider.handle_tool_call(
-            "mem0_update", {"memory_id": "not-a-uuid", "text": "x"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call(
+                "mem0_update", {"memory_id": "not-a-uuid", "text": "x"}
+            )
+        )
         assert "error" in result
         assert provider._consecutive_failures == 0
 
     def test_delete_validation_error_no_circuit_breaker(self, monkeypatch):
         class ValidationError(Exception):
             pass
+
         backend = FakeBackend()
         backend.delete = lambda mid: (_ for _ in ()).throw(
             ValidationError('{"error":"memory_id should be a valid UUID"}')
         )
         provider = self._make_provider(monkeypatch, backend)
-        result = json.loads(provider.handle_tool_call(
-            "mem0_delete", {"memory_id": "not-a-uuid"}
-        ))
+        result = json.loads(
+            provider.handle_tool_call("mem0_delete", {"memory_id": "not-a-uuid"})
+        )
         assert "error" in result
         assert provider._consecutive_failures == 0
 
     def test_update_5xx_trips_circuit_breaker(self, monkeypatch):
         backend = FakeBackend()
-        backend.update = lambda mid, text: (_ for _ in ()).throw(Exception("500 Internal Server Error"))
+        backend.update = lambda mid, text: (_ for _ in ()).throw(
+            Exception("500 Internal Server Error")
+        )
         provider = self._make_provider(monkeypatch, backend)
         provider.handle_tool_call("mem0_update", {"memory_id": "mem-1", "text": "x"})
         assert provider._consecutive_failures == 1
 
 
 class TestMem0V3Internal:
-
     def _make_provider(self, monkeypatch, backend):
         provider = Mem0MemoryProvider()
         provider.initialize("test-session")
@@ -281,12 +311,17 @@ class TestMem0V3Internal:
 
 
 class TestMem0V3Config:
-
     def test_tool_schemas_five_tools(self):
         provider = Mem0MemoryProvider()
         schemas = provider.get_tool_schemas()
         names = [s["name"] for s in schemas]
-        assert names == ["mem0_list", "mem0_search", "mem0_add", "mem0_update", "mem0_delete"]
+        assert names == [
+            "mem0_list",
+            "mem0_search",
+            "mem0_add",
+            "mem0_update",
+            "mem0_delete",
+        ]
 
     def test_system_prompt_new_tool_names(self):
         provider = Mem0MemoryProvider()
@@ -326,7 +361,6 @@ class TestMem0V3Config:
 
 
 class TestMem0ModeSwitch:
-
     def test_default_mode_is_platform(self, monkeypatch, tmp_path):
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         monkeypatch.setenv("MEM0_API_KEY", "test-key")
@@ -354,7 +388,9 @@ class TestMem0ModeSwitch:
     def test_is_available_oss_needs_vector(self, monkeypatch, tmp_path):
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         config_path = tmp_path / "mem0.json"
-        config_path.write_text('{"mode": "oss", "oss": {"vector_store": {"provider": "qdrant"}}}')
+        config_path.write_text(
+            '{"mode": "oss", "oss": {"vector_store": {"provider": "qdrant"}}}'
+        )
         provider = Mem0MemoryProvider()
         assert provider.is_available() is True
 
@@ -369,7 +405,13 @@ class TestMem0ModeSwitch:
         provider = Mem0MemoryProvider()
         schemas = provider.get_tool_schemas()
         names = [s["name"] for s in schemas]
-        assert names == ["mem0_list", "mem0_search", "mem0_add", "mem0_update", "mem0_delete"]
+        assert names == [
+            "mem0_list",
+            "mem0_search",
+            "mem0_add",
+            "mem0_update",
+            "mem0_delete",
+        ]
 
     def test_system_prompt_includes_mode(self):
         provider = Mem0MemoryProvider()
@@ -422,7 +464,9 @@ class TestMem0UserIdResolution:
         provider.initialize("test")
         assert provider._user_id == "hermes-user"
 
-    def test_legacy_placeholder_in_config_does_not_override_kwargs(self, monkeypatch, tmp_path):
+    def test_legacy_placeholder_in_config_does_not_override_kwargs(
+        self, monkeypatch, tmp_path
+    ):
         # Setup wizard historically wrote {"user_id": "hermes-user"} as the
         # suggested default. Treat that placeholder as unset so users on
         # gateways still get gateway-native ids — not silent collisions.

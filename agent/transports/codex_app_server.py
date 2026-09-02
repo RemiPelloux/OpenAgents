@@ -94,21 +94,21 @@ class CodexAppServerClient:
                 else spawn_env.get(
                     "HERMES_KANBAN_ROOT",
                     os.path.join(
-                        spawn_env.get("OPENAGENTS_HOME", os.path.expanduser("~/.openagents")),
+                        spawn_env.get(
+                            "OPENAGENTS_HOME", os.path.expanduser("~/.openagents")
+                        ),
                         "kanban",
                     ),
                 )
             )
-            app_server_args.extend(
-                [
-                    "-c",
-                    'sandbox_mode="workspace-write"',
-                    "-c",
-                    f'sandbox_workspace_write.writable_roots=["{kanban_root}"]',
-                    "-c",
-                    "sandbox_workspace_write.network_access=false",
-                ]
-            )
+            app_server_args.extend([
+                "-c",
+                'sandbox_mode="workspace-write"',
+                "-c",
+                f'sandbox_workspace_write.writable_roots=["{kanban_root}"]',
+                "-c",
+                "sandbox_workspace_write.network_access=false",
+            ])
 
         cmd = [codex_bin, "app-server"] + app_server_args
         # Codex emits tracing to stderr; default WARN keeps it quiet for users.
@@ -345,9 +345,7 @@ class CodexAppServerClient:
                 if not line:
                     break
                 with self._stderr_lock:
-                    self._stderr_lines.append(
-                        line.decode("utf-8", "replace").rstrip()
-                    )
+                    self._stderr_lines.append(line.decode("utf-8", "replace").rstrip())
                     # Bound memory: keep last 500 lines.
                     if len(self._stderr_lines) > 500:
                         self._stderr_lines = self._stderr_lines[-500:]

@@ -42,7 +42,9 @@ def test_billing_state_serializes_decimals_as_strings(monkeypatch):
         max_usd=Decimal("10000"),
         card=CardInfo(brand="visa", last4="4242"),
         monthly_cap=MonthlyCap(
-            limit_usd=Decimal("1000"), spent_this_month_usd=Decimal("180"), is_default_ceiling=True
+            limit_usd=Decimal("1000"),
+            spent_this_month_usd=Decimal("180"),
+            is_default_ceiling=True,
         ),
         portal_url="https://portal/billing?topup=open",
     )
@@ -96,7 +98,9 @@ def test_billing_charge_mints_key_when_absent(monkeypatch):
 
 def test_billing_charge_insufficient_scope_envelope(monkeypatch):
     def _post(**kw):
-        raise nb.BillingScopeRequired("need scope", status=403, error="insufficient_scope")
+        raise nb.BillingScopeRequired(
+            "need scope", status=403, error="insufficient_scope"
+        )
 
     monkeypatch.setattr(nb, "post_charge", _post)
     res = _call("billing.charge", {"amount_usd": "100", "idempotency_key": "k"})
@@ -108,7 +112,9 @@ def test_billing_charge_insufficient_scope_envelope(monkeypatch):
 def test_billing_charge_no_payment_method_envelope(monkeypatch):
     def _post(**kw):
         raise nb.BillingError(
-            "no reusable card", status=403, error="no_payment_method",
+            "no reusable card",
+            status=403,
+            error="no_payment_method",
             portal_url="/billing?topup=open",
         )
 
@@ -121,7 +127,9 @@ def test_billing_charge_no_payment_method_envelope(monkeypatch):
 
 def test_billing_charge_rate_limited_envelope(monkeypatch):
     def _post(**kw):
-        raise nb.BillingRateLimited("slow down", status=429, error="rate_limited", retry_after=60)
+        raise nb.BillingRateLimited(
+            "slow down", status=429, error="rate_limited", retry_after=60
+        )
 
     monkeypatch.setattr(nb, "post_charge", _post)
     res = _call("billing.charge", {"amount_usd": "100", "idempotency_key": "k"})
@@ -139,10 +147,17 @@ def test_billing_charge_rate_limited_envelope(monkeypatch):
     [
         ({"status": "pending"}, {"status": "pending"}),
         (
-            {"status": "settled", "amountUsd": "50", "settledAt": "2026-06-13T00:00:00Z"},
+            {
+                "status": "settled",
+                "amountUsd": "50",
+                "settledAt": "2026-06-13T00:00:00Z",
+            },
             {"status": "settled", "amount_usd": "50"},
         ),
-        ({"status": "failed", "reason": "card_declined"}, {"status": "failed", "reason": "card_declined"}),
+        (
+            {"status": "failed", "reason": "card_declined"},
+            {"status": "failed", "reason": "card_declined"},
+        ),
     ],
 )
 def test_billing_charge_status_maps_fields(monkeypatch, server_resp, expected):
@@ -165,8 +180,12 @@ def test_billing_charge_status_requires_id():
 
 def test_billing_auto_reload_success(monkeypatch):
     seen = {}
-    monkeypatch.setattr(nb, "patch_auto_top_up", lambda **kw: seen.update(kw) or {"ok": True})
-    res = _call("billing.auto_reload", {"enabled": True, "threshold": 20, "top_up_amount": 100})
+    monkeypatch.setattr(
+        nb, "patch_auto_top_up", lambda **kw: seen.update(kw) or {"ok": True}
+    )
+    res = _call(
+        "billing.auto_reload", {"enabled": True, "threshold": 20, "top_up_amount": 100}
+    )
     assert res["ok"] is True
     assert seen == {"enabled": True, "threshold": 20, "top_up_amount": 100}
 
@@ -176,7 +195,9 @@ def test_billing_auto_reload_validation_error_envelope(monkeypatch):
         raise nb.BillingError("bad", status=400, error="validation_failed")
 
     monkeypatch.setattr(nb, "patch_auto_top_up", _patch)
-    res = _call("billing.auto_reload", {"enabled": True, "threshold": 20, "top_up_amount": 100})
+    res = _call(
+        "billing.auto_reload", {"enabled": True, "threshold": 20, "top_up_amount": 100}
+    )
     assert res["ok"] is False and res["error"] == "validation_failed"
 
 

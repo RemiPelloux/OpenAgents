@@ -34,7 +34,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.integration
-@pytest.mark.timeout(300)  # overrides the global --timeout=30; cold-CI wheel build + venv + pip can exceed it
+@pytest.mark.timeout(
+    300
+)  # overrides the global --timeout=30; cold-CI wheel build + venv + pip can exceed it
 def test_installed_wheel_renders_i18n_strings(tmp_path):
     # 1. Build the wheel from the current tree.
     wheel_dir = tmp_path / "wheel"
@@ -56,9 +58,20 @@ def test_installed_wheel_renders_i18n_strings(tmp_path):
     venv_dir = tmp_path / "venv"
     venv.create(venv_dir, with_pip=True)
     vpy = venv_dir / "bin" / "python"
-    subprocess.run([str(vpy), "-m", "pip", "install", "-q", "pyyaml"], check=True, timeout=300)
     subprocess.run(
-        [str(vpy), "-m", "pip", "install", "-q", "--no-deps", "--force-reinstall", wheel],
+        [str(vpy), "-m", "pip", "install", "-q", "pyyaml"], check=True, timeout=300
+    )
+    subprocess.run(
+        [
+            str(vpy),
+            "-m",
+            "pip",
+            "install",
+            "-q",
+            "--no-deps",
+            "--force-reinstall",
+            wheel,
+        ],
         check=True,
         timeout=300,
     )
@@ -74,7 +87,11 @@ def test_installed_wheel_renders_i18n_strings(tmp_path):
         "sys.exit(0 if (r != 'gateway.reset.header_default' "
         "and s != 'gateway.status.header') else 1)"
     )
-    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "HERMES_BUNDLED_LOCALES")}
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("PYTHONPATH", "HERMES_BUNDLED_LOCALES")
+    }
     env["PATH"] = f"{venv_dir / 'bin'}:{env['PATH']}"
     env["VIRTUAL_ENV"] = str(venv_dir)
     run = subprocess.run(
@@ -92,7 +109,9 @@ def test_installed_wheel_renders_i18n_strings(tmp_path):
 
 
 @pytest.mark.integration
-@pytest.mark.timeout(300)  # overrides the global --timeout=30; cold-CI sdist build can exceed it
+@pytest.mark.timeout(
+    300
+)  # overrides the global --timeout=30; cold-CI sdist build can exceed it
 def test_built_sdist_ships_locale_catalogs(tmp_path):
     """The sdist must carry locales/ too.
 
@@ -119,7 +138,9 @@ def test_built_sdist_ships_locale_catalogs(tmp_path):
     with tarfile.open(tarballs[0]) as tf:
         # Members are prefixed with the sdist root dir, e.g.
         # hermes_agent-0.15.1/locales/en.yaml — match on the suffix.
-        catalogs = [m for m in tf.getnames() if "/locales/" in m and m.endswith(".yaml")]
+        catalogs = [
+            m for m in tf.getnames() if "/locales/" in m and m.endswith(".yaml")
+        ]
 
     # Compare against the canonical language list rather than a hardcoded floor
     # so adding/removing a catalog updates the guard automatically and a dropped

@@ -142,7 +142,8 @@ def make_approval_callback(
             options=options,
         )
         future = safe_schedule_threadsafe(
-            coro, loop,
+            coro,
+            loop,
             logger=logger,
             log_message="Permission request: failed to schedule on loop",
         )

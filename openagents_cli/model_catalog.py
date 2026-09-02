@@ -61,9 +61,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_CATALOG_URL = (
-    "https://openagents.nousresearch.com/docs/api/model-catalog.json"
-)
+DEFAULT_CATALOG_URL = "https://openagents.nousresearch.com/docs/api/model-catalog.json"
 # Fallback fetch chain. The Docusaurus site is served through Vercel, which
 # occasionally returns HTTP 403 + x-vercel-mitigated: challenge for non-
 # browser clients (urllib, curl). When that happens the disk cache goes
@@ -95,6 +93,7 @@ def _load_catalog_config() -> dict[str, Any]:
     """Load the ``model_catalog`` config block with defaults filled in."""
     try:
         from openagents_cli.config import load_config
+
         cfg = load_config() or {}
     except Exception:
         cfg = {}
@@ -107,13 +106,16 @@ def _load_catalog_config() -> dict[str, Any]:
         "enabled": bool(raw.get("enabled", True)),
         "url": str(raw.get("url") or DEFAULT_CATALOG_URL),
         "ttl_hours": float(raw.get("ttl_hours") or DEFAULT_TTL_HOURS),
-        "providers": raw.get("providers") if isinstance(raw.get("providers"), dict) else {},
+        "providers": raw.get("providers")
+        if isinstance(raw.get("providers"), dict)
+        else {},
     }
 
 
 def _cache_path() -> Path:
     """Return the disk cache path. Import lazily so tests can monkeypatch home."""
     from openagents_constants import get_openagents_home
+
     return get_openagents_home() / "cache" / "model_catalog.json"
 
 
@@ -380,7 +382,9 @@ def seed_cache_from_checkout(project_root: "Path | str") -> bool:
         logger.debug("model catalog seed from checkout skipped (%s): %s", src, exc)
         return False
     if not _validate_manifest(data):
-        logger.debug("model catalog seed from checkout skipped: invalid manifest at %s", src)
+        logger.debug(
+            "model catalog seed from checkout skipped: invalid manifest at %s", src
+        )
         return False
     _write_disk_cache(data)
     reset_cache()  # drop the in-process copy so the next read picks up the seed

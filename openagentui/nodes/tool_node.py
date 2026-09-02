@@ -31,14 +31,22 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
     raw_params = ctx.data.get("mcpParams") or {}
     if not isinstance(raw_params, dict):
         return failed(ctx.node.id, "mcp node 'mcpParams' must be an object")
-    params = render_dict(raw_params, variables=ctx.execution.variables, node_results=ctx.execution.node_results)
+    params = render_dict(
+        raw_params,
+        variables=ctx.execution.variables,
+        node_results=ctx.execution.node_results,
+    )
 
     ensure_tools_loaded()
 
     from tools.registry import registry
 
     if registry.get_entry(tool_name) is None:
-        return failed(ctx.node.id, f"unknown tool: {tool_name!r} (check the tool catalog)", input_value=params)
+        return failed(
+            ctx.node.id,
+            f"unknown tool: {tool_name!r} (check the tool catalog)",
+            input_value=params,
+        )
 
     try:
         raw_result = registry.dispatch(tool_name, params)

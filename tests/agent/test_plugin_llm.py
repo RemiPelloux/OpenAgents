@@ -38,7 +38,9 @@ from agent.plugin_llm import (
 # ---------------------------------------------------------------------------
 
 
-def _fake_response(text: str, *, prompt: int = 4, completion: int = 6) -> SimpleNamespace:
+def _fake_response(
+    text: str, *, prompt: int = 4, completion: int = 6
+) -> SimpleNamespace:
     """Build an OpenAI-shaped response with the given text + token usage."""
     return SimpleNamespace(
         choices=[
@@ -55,7 +57,9 @@ def _fake_response(text: str, *, prompt: int = 4, completion: int = 6) -> Simple
     )
 
 
-def _trusted_policy(plugin_id: str = "trusted-plugin", **overrides: Any) -> _TrustPolicy:
+def _trusted_policy(
+    plugin_id: str = "trusted-plugin", **overrides: Any
+) -> _TrustPolicy:
     defaults = dict(
         allow_provider_override=True,
         allowed_providers=None,
@@ -111,7 +115,9 @@ class TestTrustGate:
 
     def test_default_policy_blocks_profile_override(self):
         policy = _TrustPolicy(plugin_id="locked")
-        with pytest.raises(PluginLlmTrustError, match="cannot override the auth profile"):
+        with pytest.raises(
+            PluginLlmTrustError, match="cannot override the auth profile"
+        ):
             _check_overrides(
                 policy,
                 requested_provider=None,
@@ -535,8 +541,12 @@ class TestPluginLlmFacade:
 
     def test_complete_structured_returns_parsed_json(self):
         def fake_caller(**_kwargs):
-            return "openai", "gpt-4o", _fake_response(
-                '{"language": "French", "is_question": true, "confidence": 0.99}'
+            return (
+                "openai",
+                "gpt-4o",
+                _fake_response(
+                    '{"language": "French", "is_question": true, "confidence": 0.99}'
+                ),
             )
 
         llm = make_plugin_llm_for_test(
@@ -743,6 +753,7 @@ plugins:
         )
         monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
         from openagents_cli import config as _config_mod
+
         _config_mod._config_cache = None  # type: ignore[attr-defined]
 
         policy = _resolve_trust_policy("my-plugin")
@@ -751,7 +762,8 @@ plugins:
         assert policy.allow_profile_override is False
         assert policy.allowed_providers == frozenset({"openrouter", "anthropic"})
         assert policy.allowed_models == frozenset({
-            "openai/gpt-4o-mini", "anthropic/claude-3-5-haiku",
+            "openai/gpt-4o-mini",
+            "anthropic/claude-3-5-haiku",
         })
 
     def test_missing_plugin_entry_yields_default_deny(self, tmp_path, monkeypatch):
@@ -762,6 +774,7 @@ plugins:
         (hermes_home / "config.yaml").write_text("plugins: {}\n", encoding="utf-8")
         monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
         from openagents_cli import config as _config_mod
+
         _config_mod._config_cache = None  # type: ignore[attr-defined]
 
         policy = _resolve_trust_policy("never-configured")
@@ -847,7 +860,9 @@ class TestAttribution:
         import agent.auxiliary_client as ac
 
         monkeypatch.setattr(ac, "_read_main_provider", lambda: "openrouter")
-        monkeypatch.setattr(ac, "_read_main_model", lambda: "anthropic/claude-3-5-sonnet")
+        monkeypatch.setattr(
+            ac, "_read_main_model", lambda: "anthropic/claude-3-5-sonnet"
+        )
 
         response = SimpleNamespace(choices=[])  # no .model attribute
         provider, model = plugin_llm._resolve_attribution(
@@ -956,8 +971,11 @@ class TestHookMode:
         assert len(captured) == 2  # one llm call + one hook return record
         llm_call = captured[0]
         assert "messages" in llm_call
-        assert any("rewrite" in m.get("content", "").lower()
-                   for m in llm_call["messages"] if isinstance(m, dict))
+        assert any(
+            "rewrite" in m.get("content", "").lower()
+            for m in llm_call["messages"]
+            if isinstance(m, dict)
+        )
         hook_record = captured[1]
         assert hook_record["hook_returned"] == "rewrote it"
 

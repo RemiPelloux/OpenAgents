@@ -23,9 +23,9 @@ class TestPostSetupGate:
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         monkeypatch.setattr(tools_config.shutil, "which", lambda name: None)
 
-        assert tools_config._toolset_needs_configuration_prompt(
-            "computer_use", {}
-        ) is True
+        assert (
+            tools_config._toolset_needs_configuration_prompt("computer_use", {}) is True
+        )
 
     def test_cua_driver_installed_skips_setup(self, monkeypatch, tmp_path):
         """When cua-driver is already on PATH, the gate must return False
@@ -39,9 +39,10 @@ class TestPostSetupGate:
             lambda name: "/usr/local/bin/cua-driver" if name == "cua-driver" else None,
         )
 
-        assert tools_config._toolset_needs_configuration_prompt(
-            "computer_use", {}
-        ) is False
+        assert (
+            tools_config._toolset_needs_configuration_prompt("computer_use", {})
+            is False
+        )
 
     def test_post_setup_predicate_exception_does_not_block(self, monkeypatch):
         """A predicate that raises must be treated as 'satisfied' so a

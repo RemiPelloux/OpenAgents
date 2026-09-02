@@ -172,7 +172,9 @@ def test_file_not_found_is_usage_error(fake_tool, capsys, monkeypatch):
     assert "cannot read" in err.lower()
 
 
-def test_file_decode_error_suggests_media_directive(fake_tool, capsys, monkeypatch, tmp_path):
+def test_file_decode_error_suggests_media_directive(
+    fake_tool, capsys, monkeypatch, tmp_path
+):
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     bad = tmp_path / "bad-bytes.bin"
     bad.write_bytes(b"\xff\xfe\x00")
@@ -212,9 +214,11 @@ def test_skipped_result_is_success(monkeypatch):
     import types as _types
 
     fake_mod = _types.ModuleType("tools.send_message_tool")
-    fake_mod.send_message_tool = lambda args, **_kw: json.dumps(
-        {"success": True, "skipped": True, "reason": "duplicate"}
-    )
+    fake_mod.send_message_tool = lambda args, **_kw: json.dumps({
+        "success": True,
+        "skipped": True,
+        "reason": "duplicate",
+    })
     monkeypatch.setitem(_sys.modules, "tools.send_message_tool", fake_mod)
 
     args = _parse(["--to", "telegram", "dup"])
@@ -233,7 +237,9 @@ def test_list_human_output(monkeypatch, capsys):
     import types as _types
 
     fake_dir = _types.ModuleType("gateway.channel_directory")
-    fake_dir.format_directory_for_display = lambda: "Available messaging targets:\n\nTelegram:\n  telegram:-100123\n"
+    fake_dir.format_directory_for_display = (
+        lambda: "Available messaging targets:\n\nTelegram:\n  telegram:-100123\n"
+    )
     fake_dir.load_directory = lambda: {
         "platforms": {"telegram": [{"id": "-100123", "name": "Test Group"}]}
     }
@@ -272,7 +278,9 @@ def test_list_filter_platform(monkeypatch, capsys):
     import types as _types
 
     fake_dir = _types.ModuleType("gateway.channel_directory")
-    fake_dir.format_directory_for_display = lambda: "(should not be called when filter set)"
+    fake_dir.format_directory_for_display = (
+        lambda: "(should not be called when filter set)"
+    )
     fake_dir.load_directory = lambda: {
         "platforms": {
             "telegram": [{"id": "-100123", "name": "TG Chat"}],
@@ -359,6 +367,7 @@ def test_load_hermes_env_bridges_config_yaml_scalars(tmp_path, monkeypatch):
     from importlib import reload
 
     import openagents_cli.config as _hc_config
+
     reload(_hc_config)
 
     send_cmd._load_hermes_env()
@@ -380,6 +389,7 @@ def test_load_hermes_env_does_not_override_existing(tmp_path, monkeypatch):
 
     from importlib import reload
     import openagents_cli.config as _hc_config
+
     reload(_hc_config)
 
     send_cmd._load_hermes_env()
@@ -395,6 +405,7 @@ def test_load_hermes_env_handles_missing_files(tmp_path, monkeypatch):
 
     from importlib import reload
     import openagents_cli.config as _hc_config
+
     reload(_hc_config)
 
     # Should not raise.

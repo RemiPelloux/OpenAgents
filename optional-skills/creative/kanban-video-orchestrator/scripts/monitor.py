@@ -14,6 +14,7 @@ you're satisfied (or scripted to stop on completion).
 This is best-effort observability. It does not auto-restart tasks; intervention
 decisions should remain human/AI-overseen.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,7 +37,9 @@ def kanban_list(tenant: str) -> list[dict]:
     try:
         out = subprocess.run(
             ["openagents", "kanban", "list", "--tenant", tenant, "--json"],
-            capture_output=True, text=True, check=False,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if out.returncode == 0 and out.stdout.strip().startswith("["):
             return json.loads(out.stdout)
@@ -45,7 +48,9 @@ def kanban_list(tenant: str) -> list[dict]:
     # Fallback: textual parse of `hermes kanban list`
     out = subprocess.run(
         ["openagents", "kanban", "list", "--tenant", tenant],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     rows = []
     for line in out.stdout.splitlines():
@@ -69,7 +74,9 @@ def kanban_list(tenant: str) -> list[dict]:
 def kanban_show(task_id: str) -> dict | None:
     out = subprocess.run(
         ["openagents", "kanban", "show", task_id, "--json"],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if out.returncode != 0:
         return None
@@ -142,17 +149,28 @@ def print_snapshot(tasks: list[dict], issues: list[str]):
     for t in tasks:
         counts[str(t.get("status", "?")).lower()] += 1
 
-    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] "
-          f"Total: {len(tasks)} | "
-          + " | ".join(f"{k}: {v}" for k, v in sorted(counts.items())))
+    print(
+        f"\n[{datetime.now().strftime('%H:%M:%S')}] "
+        f"Total: {len(tasks)} | "
+        + " | ".join(f"{k}: {v}" for k, v in sorted(counts.items()))
+    )
 
     for t in tasks:
-        bar = "✓" if str(t.get("status", "")).lower() == "done" else \
-              "▶" if str(t.get("status", "")).lower() == "running" else \
-              "·" if str(t.get("status", "")).lower() == "ready" else \
-              "✗" if str(t.get("status", "")).lower() == "failed" else "?"
-        print(f"  {bar} {t.get('id', '?'):14} {t.get('assignee', '?'):20}  "
-              f"{t.get('title', '')[:60]}")
+        bar = (
+            "✓"
+            if str(t.get("status", "")).lower() == "done"
+            else "▶"
+            if str(t.get("status", "")).lower() == "running"
+            else "·"
+            if str(t.get("status", "")).lower() == "ready"
+            else "✗"
+            if str(t.get("status", "")).lower() == "failed"
+            else "?"
+        )
+        print(
+            f"  {bar} {t.get('id', '?'):14} {t.get('assignee', '?'):20}  "
+            f"{t.get('title', '')[:60]}"
+        )
 
     if issues:
         print("\n  ⚠  ISSUES:", file=sys.stderr)
@@ -161,14 +179,21 @@ def print_snapshot(tasks: list[dict], issues: list[str]):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--tenant", required=True,
-                    help="Project tenant slug to monitor")
-    ap.add_argument("--interval", type=int, default=30,
-                    help="Poll interval in seconds (default: 30)")
-    ap.add_argument("--once", action="store_true",
-                    help="Print one snapshot and exit (no polling loop)")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument("--tenant", required=True, help="Project tenant slug to monitor")
+    ap.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Poll interval in seconds (default: 30)",
+    )
+    ap.add_argument(
+        "--once",
+        action="store_true",
+        help="Print one snapshot and exit (no polling loop)",
+    )
     args = ap.parse_args()
 
     if not hermes_available():
@@ -180,8 +205,7 @@ def main():
         print_snapshot(tasks, issues)
         sys.exit(0 if not issues else 2)
 
-    print(f"Monitoring tenant '{args.tenant}' every {args.interval}s. "
-          "Ctrl-C to exit.")
+    print(f"Monitoring tenant '{args.tenant}' every {args.interval}s. Ctrl-C to exit.")
     try:
         while True:
             tasks, issues = snapshot(args.tenant)

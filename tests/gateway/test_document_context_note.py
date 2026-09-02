@@ -39,7 +39,9 @@ class TestBinaryDocumentNote:
         ],
     )
     def test_binary_note_guides_extraction(self, mtype):
-        note = _build_document_context_note("contract.pdf", "/cache/doc_contract.pdf", mtype)
+        note = _build_document_context_note(
+            "contract.pdf", "/cache/doc_contract.pdf", mtype
+        )
         # Records the path so the agent can open it.
         assert "/cache/doc_contract.pdf" in note
         # Tells the agent to read it by extracting the text...

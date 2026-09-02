@@ -3,6 +3,7 @@
 
 Refreshes the token if expired, then executes gws with the valid access token.
 """
+
 import json
 import os
 import subprocess
@@ -38,8 +39,14 @@ def refresh_token(token_data: dict) -> dict:
     required_keys = ["client_id", "client_secret", "refresh_token", "token_uri"]
     missing = [k for k in required_keys if k not in token_data]
     if missing:
-        print(f"ERROR: google_token.json is missing required fields: {', '.join(missing)}", file=sys.stderr)
-        print("Please re-authenticate by running the Google Workspace setup script.", file=sys.stderr)
+        print(
+            f"ERROR: google_token.json is missing required fields: {', '.join(missing)}",
+            file=sys.stderr,
+        )
+        print(
+            "Please re-authenticate by running the Google Workspace setup script.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     params = urllib.parse.urlencode({
@@ -78,7 +85,10 @@ def get_valid_token() -> str:
     """Return a valid access token, refreshing if needed."""
     token_path = get_token_path()
     if not token_path.exists():
-        print("ERROR: No Google token found. Run setup.py --auth-url first.", file=sys.stderr)
+        print(
+            "ERROR: No Google token found. Run setup.py --auth-url first.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     token_data = json.loads(token_path.read_text())

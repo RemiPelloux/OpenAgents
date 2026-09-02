@@ -73,7 +73,9 @@ def _make_agent(monkeypatch):
 
     stub = _Stub()
     # Bind the real methods under test
-    stub._execute_tool_calls_concurrent = _ra.AIAgent._execute_tool_calls_concurrent.__get__(stub)
+    stub._execute_tool_calls_concurrent = (
+        _ra.AIAgent._execute_tool_calls_concurrent.__get__(stub)
+    )
     stub.interrupt = _ra.AIAgent.interrupt.__get__(stub)
     stub.clear_interrupt = _ra.AIAgent.clear_interrupt.__get__(stub)
     # /steer injection (added in PR #12116) fires after every concurrent
@@ -96,8 +98,6 @@ class _FakeAssistantMsg:
         self.tool_calls = tool_calls
 
 
-
-
 def test_concurrent_preflight_interrupt_skips_all(monkeypatch):
     """When _interrupt_requested is already set before concurrent execution,
     all tools are skipped with cancellation messages."""
@@ -118,8 +118,6 @@ def test_concurrent_preflight_interrupt_skips_all(monkeypatch):
     agent._invoke_tool.assert_not_called()
 
 
-
-
 def test_clear_interrupt_clears_worker_tids(monkeypatch):
     """After clear_interrupt(), stale worker-tid bits must be cleared so the
     next turn's tools — which may be scheduled onto recycled tids — don't
@@ -130,7 +128,9 @@ def test_clear_interrupt_clears_worker_tids(monkeypatch):
     # Simulate a worker having registered but not yet exited cleanly (e.g. a
     # hypothetical bug in the tear-down).  Put a fake tid in the set and
     # flag it interrupted.
-    fake_tid = threading.current_thread().ident  # use real tid so is_interrupted can see it
+    fake_tid = (
+        threading.current_thread().ident
+    )  # use real tid so is_interrupted can see it
     with agent._tool_worker_threads_lock:
         agent._tool_worker_threads.add(fake_tid)
     set_interrupt(True, fake_tid)
@@ -142,4 +142,3 @@ def test_clear_interrupt_clears_worker_tids(monkeypatch):
         "clear_interrupt() did not clear the interrupt bit for a tracked "
         "worker tid — stale interrupt can leak into the next turn"
     )
-

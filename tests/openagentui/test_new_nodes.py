@@ -9,8 +9,15 @@ from openagentui.schema import Workflow, WorkflowExecution, WorkflowNode
 
 def _ctx(node_type: str, data: dict) -> NodeContext:
     wf = Workflow.from_dict({"id": "wf", "name": "t", "nodes": [], "edges": []})
-    ex = WorkflowExecution(id="exec", workflow_id="wf", status="running", started_at="now")
-    node = WorkflowNode.from_dict({"id": "n1", "type": node_type, "position": {"x": 0, "y": 0}, "data": data})
+    ex = WorkflowExecution(
+        id="exec", workflow_id="wf", status="running", started_at="now"
+    )
+    node = WorkflowNode.from_dict({
+        "id": "n1",
+        "type": node_type,
+        "position": {"x": 0, "y": 0},
+        "data": data,
+    })
     return NodeContext(node=node, execution=ex)
 
 

@@ -76,6 +76,7 @@ def is_ignored(handle: str, email: str = "") -> bool:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def git(*args, cwd=None):
     """Run a git command and return stdout."""
     result = subprocess.run(
@@ -85,7 +86,10 @@ def git(*args, cwd=None):
         cwd=cwd or str(REPO_ROOT),
     )
     if result.returncode != 0:
-        print(f"  [warn] git {' '.join(args)} failed: {result.stderr.strip()}", file=sys.stderr)
+        print(
+            f"  [warn] git {' '.join(args)} failed: {result.stderr.strip()}",
+            file=sys.stderr,
+        )
         return ""
     return result.stdout.strip()
 
@@ -99,28 +103,44 @@ def gh_pr_list():
     try:
         result = subprocess.run(
             [
-                "gh", "pr", "list",
-                "--repo", "NousResearch/openagents",
-                "--state", "merged",
-                "--json", "number,title,body,author,mergedAt",
-                "--limit", "300",
+                "gh",
+                "pr",
+                "list",
+                "--repo",
+                "NousResearch/openagents",
+                "--state",
+                "merged",
+                "--json",
+                "number,title,body,author,mergedAt",
+                "--limit",
+                "300",
             ],
             capture_output=True,
             text=True,
             timeout=60,
         )
         if result.returncode != 0:
-            print(f"  [warn] gh pr list failed: {result.stderr.strip()}", file=sys.stderr)
+            print(
+                f"  [warn] gh pr list failed: {result.stderr.strip()}", file=sys.stderr
+            )
             return []
         return json.loads(result.stdout)
     except FileNotFoundError:
-        print("  [warn] 'gh' CLI not found — skipping salvaged PR scan.", file=sys.stderr)
+        print(
+            "  [warn] 'gh' CLI not found — skipping salvaged PR scan.", file=sys.stderr
+        )
         return []
     except subprocess.TimeoutExpired:
-        print("  [warn] gh pr list timed out — skipping salvaged PR scan.", file=sys.stderr)
+        print(
+            "  [warn] gh pr list timed out — skipping salvaged PR scan.",
+            file=sys.stderr,
+        )
         return []
     except json.JSONDecodeError:
-        print("  [warn] gh pr list returned invalid JSON — skipping salvaged PR scan.", file=sys.stderr)
+        print(
+            "  [warn] gh pr list returned invalid JSON — skipping salvaged PR scan.",
+            file=sys.stderr,
+        )
         return []
 
 
@@ -159,7 +179,8 @@ def collect_commit_authors(since_tag, until="HEAD"):
     """
     range_spec = f"{since_tag}..{until}"
     log = git(
-        "log", range_spec,
+        "log",
+        range_spec,
         "--format=%H|%an|%ae|%s",
         "--no-merges",
     )
@@ -200,7 +221,8 @@ def collect_co_authors(since_tag, until="HEAD"):
     range_spec = f"{since_tag}..{until}"
     # Get full commit messages to scan for trailers
     log = git(
-        "log", range_spec,
+        "log",
+        range_spec,
         "--format=__COMMIT__%H%n%b",
         "--no-merges",
     )
@@ -268,7 +290,9 @@ def collect_salvaged_contributors(since_tag, until="HEAD"):
 
         # Also credit the PR author
         pr_author = pr.get("author", {})
-        pr_author_login = pr_author.get("login", "") if isinstance(pr_author, dict) else ""
+        pr_author_login = (
+            pr_author.get("login", "") if isinstance(pr_author, dict) else ""
+        )
 
         for pattern in SALVAGE_PATTERNS:
             for match in pattern.finditer(body):
@@ -286,6 +310,7 @@ def collect_salvaged_contributors(since_tag, until="HEAD"):
 # ---------------------------------------------------------------------------
 # Release file comparison
 # ---------------------------------------------------------------------------
+
 
 def check_release_file(release_file, all_contributors):
     """Check which contributors are mentioned in the release file.
@@ -317,6 +342,7 @@ def check_release_file(release_file, all_contributors):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -354,17 +380,25 @@ def main():
 
     # ---- 1. Git commit authors ----
     print("[1/3] Scanning git commit authors...")
-    commit_contribs, commit_unknowns = collect_commit_authors(args.since_tag, args.until)
+    commit_contribs, commit_unknowns = collect_commit_authors(
+        args.since_tag, args.until
+    )
     print(f"      Found {len(commit_contribs)} contributor(s) from commits.")
 
     # ---- 2. Co-authored-by trailers ----
     print("[2/3] Scanning Co-authored-by trailers...")
-    coauthor_contribs, coauthor_unknowns = collect_co_authors(args.since_tag, args.until)
-    print(f"      Found {len(coauthor_contribs)} contributor(s) from co-author trailers.")
+    coauthor_contribs, coauthor_unknowns = collect_co_authors(
+        args.since_tag, args.until
+    )
+    print(
+        f"      Found {len(coauthor_contribs)} contributor(s) from co-author trailers."
+    )
 
     # ---- 3. Salvaged PRs ----
     print("[3/3] Scanning salvaged/cherry-picked PR descriptions...")
-    salvage_contribs, salvage_pr_refs = collect_salvaged_contributors(args.since_tag, args.until)
+    salvage_contribs, salvage_pr_refs = collect_salvaged_contributors(
+        args.since_tag, args.until
+    )
     print(f"      Found {len(salvage_contribs)} contributor(s) from salvaged PRs.")
 
     # ---- Merge all contributors ----
@@ -422,10 +456,14 @@ def main():
         if args.diff_base:
             # Only flag emails from commits after diff_base
             new_commits_output = git(
-                "log", f"{args.diff_base}..HEAD",
-                "--format=%ae", "--no-merges",
+                "log",
+                f"{args.diff_base}..HEAD",
+                "--format=%ae",
+                "--no-merges",
             )
-            new_emails = set(new_commits_output.splitlines()) if new_commits_output else set()
+            new_emails = (
+                set(new_commits_output.splitlines()) if new_commits_output else set()
+            )
             for email, name in all_unknowns.items():
                 if email in new_emails:
                     new_unknowns[email] = name
@@ -434,7 +472,9 @@ def main():
 
         if new_unknowns:
             print()
-            print(f"=== STRICT MODE FAILURE: {len(new_unknowns)} new unmapped email(s) ===")
+            print(
+                f"=== STRICT MODE FAILURE: {len(new_unknowns)} new unmapped email(s) ==="
+            )
             print("Add these to AUTHOR_MAP in scripts/release.py before merging:")
             print()
             for email, name in sorted(new_unknowns.items()):
@@ -453,7 +493,9 @@ def main():
         print()
         print(f"=== Release File Check: {args.release_file} ===")
         print()
-        mentioned, missing = check_release_file(args.release_file, all_contributors.keys())
+        mentioned, missing = check_release_file(
+            args.release_file, all_contributors.keys()
+        )
         print(f"  Mentioned in release notes: {len(mentioned)}")
         print(f"  Missing from release notes: {len(missing)}")
         if missing:

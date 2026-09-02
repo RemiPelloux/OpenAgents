@@ -50,7 +50,8 @@ class TestHooksList:
 
     def test_shows_configured_and_consent_status(self, tmp_path):
         script = _hook_script(
-            tmp_path, "#!/usr/bin/env bash\nprintf '{}\\n'\n",
+            tmp_path,
+            "#!/usr/bin/env bash\nprintf '{}\\n'\n",
         )
         cfg = {
             "hooks": {
@@ -93,16 +94,24 @@ class TestHooksTest:
         )
         cfg = {"hooks": {"subagent_stop": [{"command": str(script)}]}}
         with patch("openagents_cli.config.load_config", return_value=cfg):
-            _run(SimpleNamespace(
-                hooks_action="test", event="subagent_stop",
-                for_tool=None, payload_file=None,
-            ))
+            _run(
+                SimpleNamespace(
+                    hooks_action="test",
+                    event="subagent_stop",
+                    for_tool=None,
+                    payload_file=None,
+                )
+            )
 
         seen = json.loads(capture.read_text())
         # Same top-level keys _serialize_payload produces at runtime
         assert set(seen.keys()) == {
-            "hook_event_name", "tool_name", "tool_input",
-            "session_id", "cwd", "extra",
+            "hook_event_name",
+            "tool_name",
+            "tool_input",
+            "session_id",
+            "cwd",
+            "extra",
         }
         # parent_session_id was routed to top-level session_id (matches runtime)
         assert seen["session_id"] == "parent-sess"
@@ -126,10 +135,14 @@ class TestHooksTest:
             },
         }
         with patch("openagents_cli.config.load_config", return_value=cfg):
-            out = _run(SimpleNamespace(
-                hooks_action="test", event="pre_tool_call",
-                for_tool="terminal", payload_file=None,
-            ))
+            out = _run(
+                SimpleNamespace(
+                    hooks_action="test",
+                    event="pre_tool_call",
+                    for_tool="terminal",
+                    payload_file=None,
+                )
+            )
 
         # Parsed block appears in output
         assert '"action": "block"' in out
@@ -145,18 +158,26 @@ class TestHooksTest:
             }
         }
         with patch("openagents_cli.config.load_config", return_value=cfg):
-            out = _run(SimpleNamespace(
-                hooks_action="test", event="pre_tool_call",
-                for_tool="web_search", payload_file=None,
-            ))
+            out = _run(
+                SimpleNamespace(
+                    hooks_action="test",
+                    event="pre_tool_call",
+                    for_tool="web_search",
+                    payload_file=None,
+                )
+            )
         assert "No shell hooks" in out
 
     def test_unknown_event(self):
         with patch("openagents_cli.config.load_config", return_value={}):
-            out = _run(SimpleNamespace(
-                hooks_action="test", event="bogus_event",
-                for_tool=None, payload_file=None,
-            ))
+            out = _run(
+                SimpleNamespace(
+                    hooks_action="test",
+                    event="bogus_event",
+                    for_tool=None,
+                    payload_file=None,
+                )
+            )
         assert "Unknown event" in out
 
 
@@ -170,14 +191,21 @@ class TestHooksRevoke:
 
         out = _run(SimpleNamespace(hooks_action="revoke", command=str(script)))
         assert "Removed 1" in out
-        assert shell_hooks.allowlist_entry_for(
-            "on_session_start", str(script),
-        ) is None
+        assert (
+            shell_hooks.allowlist_entry_for(
+                "on_session_start",
+                str(script),
+            )
+            is None
+        )
 
     def test_revoke_unknown(self, tmp_path):
-        out = _run(SimpleNamespace(
-            hooks_action="revoke", command=str(tmp_path / "never.sh"),
-        ))
+        out = _run(
+            SimpleNamespace(
+                hooks_action="revoke",
+                command=str(tmp_path / "never.sh"),
+            )
+        )
         assert "No allowlist entry" in out
 
 
@@ -218,17 +246,20 @@ class TestHooksDoctor:
 
         # Manually stash an allowlist entry with an old mtime
         from agent.shell_hooks import allowlist_path
+
         allowlist_path().parent.mkdir(parents=True, exist_ok=True)
-        allowlist_path().write_text(json.dumps({
-            "approvals": [
-                {
-                    "event": "on_session_start",
-                    "command": str(script),
-                    "approved_at": "2000-01-01T00:00:00Z",
-                    "script_mtime_at_approval": "2000-01-01T00:00:00Z",
-                }
-            ]
-        }))
+        allowlist_path().write_text(
+            json.dumps({
+                "approvals": [
+                    {
+                        "event": "on_session_start",
+                        "command": str(script),
+                        "approved_at": "2000-01-01T00:00:00Z",
+                        "script_mtime_at_approval": "2000-01-01T00:00:00Z",
+                    }
+                ]
+            })
+        )
 
         cfg = {"hooks": {"on_session_start": [{"command": str(script)}]}}
         with patch("openagents_cli.config.load_config", return_value=cfg):
@@ -260,8 +291,7 @@ class TestHooksDoctor:
             out = _run(SimpleNamespace(hooks_action="doctor"))
 
         assert not sentinel.exists(), (
-            "doctor executed an un-allowlisted script — "
-            "M4 gate regressed"
+            "doctor executed an un-allowlisted script — M4 gate regressed"
         )
         assert "not allowlisted" in out.lower()
         assert "skipped JSON smoke test" in out

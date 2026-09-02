@@ -3,6 +3,7 @@
 Currently exposes only ``hermes migrate xai`` — diagnoses and (with --apply)
 rewrites references to xAI models retired on May 15, 2026.
 """
+
 from __future__ import annotations
 
 import sys
@@ -40,14 +41,19 @@ def cmd_migrate_xai(args: Any) -> int:
     issues = find_retired_xai_refs(config)
 
     print()
-    print(color(
-        f"◆ xAI Model Retirement Migration ({RETIREMENT_DATE})",
-        Colors.CYAN, Colors.BOLD,
-    ))
+    print(
+        color(
+            f"◆ xAI Model Retirement Migration ({RETIREMENT_DATE})",
+            Colors.CYAN,
+            Colors.BOLD,
+        )
+    )
     print()
 
     if not issues:
-        print(f"  {color('✓', Colors.GREEN)} No retired xAI models in config — nothing to migrate.")
+        print(
+            f"  {color('✓', Colors.GREEN)} No retired xAI models in config — nothing to migrate."
+        )
         return 0
 
     print(f"  Found {len(issues)} retired xAI model reference(s):")
@@ -62,11 +68,13 @@ def cmd_migrate_xai(args: Any) -> int:
 
     if not apply:
         print(color("Dry-run mode — no changes written.", Colors.DIM))
-        print(color(
-            "Re-run with `hermes migrate xai --apply` to rewrite "
-            f"{config_path} in-place (backup created automatically).",
-            Colors.DIM,
-        ))
+        print(
+            color(
+                "Re-run with `hermes migrate xai --apply` to rewrite "
+                f"{config_path} in-place (backup created automatically).",
+                Colors.DIM,
+            )
+        )
         return 0
 
     if not config_path or not config_path.exists():
@@ -101,10 +109,12 @@ def cmd_migrate_xai(args: Any) -> int:
         f"slot(s) in {result.file_path}"
     )
     print()
-    print(color(
-        "Run `hermes doctor` to confirm no retired xAI models remain.",
-        Colors.DIM,
-    ))
+    print(
+        color(
+            "Run `hermes doctor` to confirm no retired xAI models remain.",
+            Colors.DIM,
+        )
+    )
     return 0
 
 

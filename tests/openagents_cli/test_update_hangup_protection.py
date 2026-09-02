@@ -85,6 +85,7 @@ class TestUpdateOutputStream:
 
     def test_log_failure_does_not_abort_write(self):
         """Even if the log file write raises, the original write must still happen."""
+
         class _BrokenLog:
             def write(self, data):
                 raise OSError("disk full")
@@ -164,7 +165,9 @@ class TestInstallHangupProtection:
     def test_gateway_mode_is_noop(self):
         """In gateway mode the process is already detached — don't touch stdio or signals."""
         prev_out, prev_err = sys.stdout, sys.stderr
-        prev_sighup = signal.getsignal(signal.SIGHUP) if hasattr(signal, "SIGHUP") else None
+        prev_sighup = (
+            signal.getsignal(signal.SIGHUP) if hasattr(signal, "SIGHUP") else None
+        )
 
         state = _install_hangup_protection(gateway_mode=True)
 
@@ -186,6 +189,7 @@ class TestInstallHangupProtection:
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         # Clear cached get_openagents_home if present
         import openagents_cli.config as _cfg
+
         if hasattr(_cfg, "_OPENAGENTS_HOME_CACHE"):
             _cfg._OPENAGENTS_HOME_CACHE = None  # type: ignore[attr-defined]
 
@@ -203,6 +207,7 @@ class TestInstallHangupProtection:
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         # Nuke any cached home path
         import openagents_cli.config as _cfg
+
         if hasattr(_cfg, "_OPENAGENTS_HOME_CACHE"):
             _cfg._OPENAGENTS_HOME_CACHE = None  # type: ignore[attr-defined]
 
@@ -233,6 +238,7 @@ class TestInstallHangupProtection:
     def test_logs_dir_created_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         import openagents_cli.config as _cfg
+
         if hasattr(_cfg, "_OPENAGENTS_HOME_CACHE"):
             _cfg._OPENAGENTS_HOME_CACHE = None  # type: ignore[attr-defined]
 
@@ -289,6 +295,7 @@ class TestFinalizeUpdateOutput:
     def test_restores_streams_and_closes_log(self, tmp_path, monkeypatch):
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         import openagents_cli.config as _cfg
+
         if hasattr(_cfg, "_OPENAGENTS_HOME_CACHE"):
             _cfg._OPENAGENTS_HOME_CACHE = None  # type: ignore[attr-defined]
 
@@ -366,9 +373,11 @@ class TestRunLoggedSubprocess:
         log = io.StringIO()
         monkeypatch.setattr(sys, "stdout", _UpdateOutputStream(terminal, log))
 
-        result = _run_logged_subprocess(
-            [sys.executable, "-c", "print('LOUD BUILD OUTPUT')"]
-        )
+        result = _run_logged_subprocess([
+            sys.executable,
+            "-c",
+            "print('LOUD BUILD OUTPUT')",
+        ])
 
         assert result.returncode == 0
         assert "LOUD BUILD OUTPUT" in (result.stdout or "")
@@ -380,9 +389,11 @@ class TestRunLoggedSubprocess:
         log = io.StringIO()
         monkeypatch.setattr(sys, "stdout", _UpdateOutputStream(terminal, log))
 
-        result = _run_logged_subprocess(
-            [sys.executable, "-c", "import sys; print('boom'); sys.exit(3)"]
-        )
+        result = _run_logged_subprocess([
+            sys.executable,
+            "-c",
+            "import sys; print('boom'); sys.exit(3)",
+        ])
 
         assert result.returncode == 3
         assert "boom" in (result.stdout or "")

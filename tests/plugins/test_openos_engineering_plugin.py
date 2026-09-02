@@ -50,13 +50,11 @@ def test_apply_task_context_env_sets_ticket_and_criteria(monkeypatch):
 
     monkeypatch.delenv("OPENTICKET_TICKET_ID", raising=False)
     monkeypatch.delenv("OPENTICKET_ACCEPTANCE_CRITERIA", raising=False)
-    apply_task_context_env(
-        {
-            "ticket_id": "t-99",
-            "acceptance_criteria": ["Done"],
-            "correlation_id": "corr-x",
-        }
-    )
+    apply_task_context_env({
+        "ticket_id": "t-99",
+        "acceptance_criteria": ["Done"],
+        "correlation_id": "corr-x",
+    })
     import os
 
     assert os.environ["OPENTICKET_TICKET_ID"] == "t-99"
@@ -122,9 +120,15 @@ def test_invoke_opencode_advances_backlog_through_implementation(monkeypatch):
 
     monkeypatch.setattr(tools, "update_ticket_status", transition)
     monkeypatch.setattr(tools, "build_task_prompt", lambda *_args: "prompt")
-    monkeypatch.setattr(tools, "run_opencode_headless", lambda *_args, **_kwargs: _successful_opencode_result())
+    monkeypatch.setattr(
+        tools,
+        "run_opencode_headless",
+        lambda *_args, **_kwargs: _successful_opencode_result(),
+    )
     monkeypatch.setattr(tools, "emit_rec_event", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(tools, "emit_agent_run_observation", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        tools, "emit_agent_run_observation", lambda *_args, **_kwargs: None
+    )
 
     result = tools.invoke_opencode_once(ticket_id="ticket-1")
 
@@ -154,9 +158,15 @@ def test_invoke_opencode_marks_passing_review_done(monkeypatch):
 
     monkeypatch.setattr(tools, "update_ticket_status", transition)
     monkeypatch.setattr(tools, "build_task_prompt", lambda *_args: "prompt")
-    monkeypatch.setattr(tools, "run_opencode_headless", lambda *_args, **_kwargs: _successful_opencode_result())
+    monkeypatch.setattr(
+        tools,
+        "run_opencode_headless",
+        lambda *_args, **_kwargs: _successful_opencode_result(),
+    )
     monkeypatch.setattr(tools, "emit_rec_event", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(tools, "emit_agent_run_observation", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        tools, "emit_agent_run_observation", lambda *_args, **_kwargs: None
+    )
 
     result = tools.invoke_opencode_once(ticket_id="ticket-1", mode="review")
 
@@ -223,13 +233,16 @@ def test_run_opencode_headless_sets_correlation_env():
     proc.stdout = '{"type":"result","subtype":"success","result":"ok"}\n'
     proc.stderr = ""
 
-    with patch(
-        "plugins.openos_engineering.opencode_runner.resolve_opencode_binary",
-        return_value=["/bin/opencode"],
-    ), patch(
-        "plugins.openos_engineering.opencode_runner.subprocess.run",
-        return_value=proc,
-    ) as run_mock:
+    with (
+        patch(
+            "plugins.openos_engineering.opencode_runner.resolve_opencode_binary",
+            return_value=["/bin/opencode"],
+        ),
+        patch(
+            "plugins.openos_engineering.opencode_runner.subprocess.run",
+            return_value=proc,
+        ) as run_mock,
+    ):
         result = run_opencode_headless(
             "do work",
             ticket_id="t1",
@@ -250,12 +263,10 @@ def test_parse_stream_json_summary():
         parse_stream_json_lines,
     )
 
-    raw = '\n'.join(
-        [
-            '{"type":"assistant","message":{}}',
-            '{"type":"result","subtype":"success","result":"Implemented feature"}',
-        ]
-    )
+    raw = "\n".join([
+        '{"type":"assistant","message":{}}',
+        '{"type":"result","subtype":"success","result":"Implemented feature"}',
+    ])
     events = parse_stream_json_lines(raw)
     assert extract_summary_from_stream(events) == "Implemented feature"
 
@@ -280,22 +291,34 @@ def test_managed_workspace_scopes_prompt_to_isolated_worktree(tmp_path, monkeypa
     source = managed / "hello"
     source.mkdir(parents=True)
     subprocess.run(["git", "init", "-q", str(source)], check=True)
-    subprocess.run(["git", "-C", str(source), "config", "user.email", "test@example.invalid"], check=True)
-    subprocess.run(["git", "-C", str(source), "config", "user.name", "Test"], check=True)
+    subprocess.run(
+        ["git", "-C", str(source), "config", "user.email", "test@example.invalid"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(source), "config", "user.name", "Test"], check=True
+    )
     (source / "README.md").write_text("seed\n")
     subprocess.run(["git", "-C", str(source), "add", "README.md"], check=True)
     subprocess.run(["git", "-C", str(source), "commit", "-qm", "seed"], check=True)
     monkeypatch.setenv("OPENOS_WORKSPACE_ROOT", str(managed))
 
-    proc = MagicMock(returncode=0, stdout='{"type":"result","subtype":"success","result":"ok"}\n', stderr="")
+    proc = MagicMock(
+        returncode=0,
+        stdout='{"type":"result","subtype":"success","result":"ok"}\n',
+        stderr="",
+    )
     real_run = subprocess.run
-    with patch(
-        "plugins.openos_engineering.opencode_runner.resolve_opencode_binary",
-        return_value=["/bin/opencode"],
-    ), patch(
-        "plugins.openos_engineering.opencode_runner.subprocess.run",
-        wraps=subprocess.run,
-    ) as run_mock:
+    with (
+        patch(
+            "plugins.openos_engineering.opencode_runner.resolve_opencode_binary",
+            return_value=["/bin/opencode"],
+        ),
+        patch(
+            "plugins.openos_engineering.opencode_runner.subprocess.run",
+            wraps=subprocess.run,
+        ) as run_mock,
+    ):
         run_mock.side_effect = lambda command, **kwargs: (
             proc if command[0] == "/bin/opencode" else real_run(command, **kwargs)
         )
@@ -306,7 +329,9 @@ def test_managed_workspace_scopes_prompt_to_isolated_worktree(tmp_path, monkeypa
             run_id="run-1",
         )
 
-    agent_call = next(call for call in run_mock.call_args_list if call.args[0][0] == "/bin/opencode")
+    agent_call = next(
+        call for call in run_mock.call_args_list if call.args[0][0] == "/bin/opencode"
+    )
     scoped_prompt = agent_call.args[0][-1]
     assert str(source) not in scoped_prompt
     assert "current working directory" in scoped_prompt
@@ -333,12 +358,10 @@ def test_handle_run_dispatch_developer():
         "plugins.openos_engineering.cli.handle_invoke_opencode",
         return_value="ok",
     ) as invoke:
-        out = _dispatch_run(
-            {
-                "agent_profile": "developer",
-                "task_context": {"ticket_id": "t1", "correlation_id": "c1"},
-            }
-        )
+        out = _dispatch_run({
+            "agent_profile": "developer",
+            "task_context": {"ticket_id": "t1", "correlation_id": "c1"},
+        })
     assert out == "ok"
     invoke.assert_called_once()
     assert invoke.call_args.args[0]["mode"] == "implement"
@@ -365,7 +388,9 @@ def test_init_profiles(tmp_path, monkeypatch):
     assert "openos_engineering" in developer_cfg
     sales_cfg = (tmp_path / "profiles" / "sales" / "config.yaml").read_text()
     assert "opencrm:" in sales_cfg
-    intent_cfg = (tmp_path / "profiles" / "intent_classifier" / "config.yaml").read_text()
+    intent_cfg = (
+        tmp_path / "profiles" / "intent_classifier" / "config.yaml"
+    ).read_text()
     assert "open-orchestrator-intent" in intent_cfg
     assert (tmp_path / "profiles" / "developer" / "SOUL.md").is_file()
 
@@ -384,7 +409,9 @@ def test_ensure_profiles_idempotent(tmp_path, monkeypatch):
 
 
 def test_unwrap_orchestrator_run_envelope(monkeypatch):
-    from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
+    from plugins.openos_engineering.orchestrator_dispatch import (
+        unwrap_orchestrator_run_body,
+    )
 
     monkeypatch.setenv("OPENCONTRACT_REQUIRE_SIGNATURE", "0")
     plain = {"agent_profile": "developer", "input": "hello", "task_context": {}}
@@ -404,11 +431,15 @@ def test_unwrap_orchestrator_run_envelope(monkeypatch):
         "consumer": "OpenAgents",
         "payload": {"agent_profile": "tiktok_prospector", "input": "hello"},
     }
-    assert unwrap_orchestrator_run_body(openteam)["agent_profile"] == "tiktok_prospector"
+    assert (
+        unwrap_orchestrator_run_body(openteam)["agent_profile"] == "tiktok_prospector"
+    )
 
 
 def test_unwrap_orchestrator_requires_envelope_when_strict(monkeypatch):
-    from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
+    from plugins.openos_engineering.orchestrator_dispatch import (
+        unwrap_orchestrator_run_body,
+    )
 
     monkeypatch.setenv("OPENCONTRACT_REQUIRE_SIGNATURE", "1")
     plain = {"agent_profile": "developer", "input": "hello", "task_context": {}}
@@ -452,7 +483,9 @@ def test_unwrap_orchestrator_verifies_unicode_signature(monkeypatch):
 
 
 def test_unwrap_dispatch_rejects_wrong_contract_parties(monkeypatch):
-    from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
+    from plugins.openos_engineering.orchestrator_dispatch import (
+        unwrap_orchestrator_run_body,
+    )
 
     monkeypatch.setenv("OPENCONTRACT_REQUIRE_SIGNATURE", "0")
     envelope = {

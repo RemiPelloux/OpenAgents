@@ -38,28 +38,28 @@ LAMPORTS_PER_SOL = 1_000_000_000
 # Well-known Solana token names — avoids API calls for common tokens.
 # Maps mint address → (symbol, name).
 KNOWN_TOKENS: Dict[str, tuple] = {
-    "So11111111111111111111111111111111111111112":  ("SOL",   "Solana"),
-    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": ("USDC",  "USD Coin"),
-    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB":  ("USDT",  "Tether"),
-    "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": ("BONK",  "Bonk"),
-    "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN":  ("JUP",   "Jupiter"),
-    "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs": ("WETH",  "Wrapped Ether"),
-    "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL":  ("JTO",   "Jito"),
-    "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So":  ("mSOL",  "Marinade Staked SOL"),
+    "So11111111111111111111111111111111111111112": ("SOL", "Solana"),
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": ("USDC", "USD Coin"),
+    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": ("USDT", "Tether"),
+    "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": ("BONK", "Bonk"),
+    "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN": ("JUP", "Jupiter"),
+    "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs": ("WETH", "Wrapped Ether"),
+    "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL": ("JTO", "Jito"),
+    "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": ("mSOL", "Marinade Staked SOL"),
     "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj": ("stSOL", "Lido Staked SOL"),
-    "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3": ("PYTH",  "Pyth Network"),
-    "RLBxxFkseAZ4RgJH3Sqn8jXxhmGoz9jWxDNJMh8pL7a":  ("RLBB",  "Rollbit"),
-    "hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux":  ("HNT",   "Helium"),
-    "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof":  ("RNDR",  "Render"),
-    "WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p91oHQQ":  ("WEN",   "Wen"),
-    "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ": ("W",     "Wormhole"),
-    "TNSRxcUxoT9xBG3de7PiJyTDYu7kskLqcpddxnEJAS6":  ("TNSR",  "Tensor"),
-    "DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7":  ("DRIFT", "Drift"),
-    "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1":  ("bSOL",  "BlazeStake Staked SOL"),
-    "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4": ("JLP",   "Jupiter LP"),
-    "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm": ("WIF",   "dogwifhat"),
-    "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5":  ("MEW",   "cat in a dogs world"),
-    "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82":  ("BOME",  "Book of Meme"),
+    "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3": ("PYTH", "Pyth Network"),
+    "RLBxxFkseAZ4RgJH3Sqn8jXxhmGoz9jWxDNJMh8pL7a": ("RLBB", "Rollbit"),
+    "hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux": ("HNT", "Helium"),
+    "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof": ("RNDR", "Render"),
+    "WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p91oHQQ": ("WEN", "Wen"),
+    "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ": ("W", "Wormhole"),
+    "TNSRxcUxoT9xBG3de7PiJyTDYu7kskLqcpddxnEJAS6": ("TNSR", "Tensor"),
+    "DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7": ("DRIFT", "Drift"),
+    "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1": ("bSOL", "BlazeStake Staked SOL"),
+    "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4": ("JLP", "Jupiter LP"),
+    "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm": ("WIF", "dogwifhat"),
+    "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5": ("MEW", "cat in a dogs world"),
+    "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82": ("BOME", "Book of Meme"),
     "A8C3xuqscfmyLrte3VwJvtPHXvcSN3FjDbUaSMAkQrCS": ("PENGU", "Pudgy Penguins"),
 }
 
@@ -71,11 +71,13 @@ _SYMBOL_TO_MINT = {v[0].upper(): k for k, v in KNOWN_TOKENS.items()}
 # HTTP / RPC helpers
 # ---------------------------------------------------------------------------
 
+
 def _http_get_json(url: str, timeout: int = 10, retries: int = 2) -> Any:
     """GET JSON from a URL with retry on 429 rate-limit. Returns parsed JSON or None."""
     for attempt in range(retries + 1):
         req = urllib.request.Request(
-            url, headers={"Accept": "application/json", "User-Agent": "HermesAgent/1.0"},
+            url,
+            headers={"Accept": "application/json", "User-Agent": "HermesAgent/1.0"},
         )
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -93,14 +95,18 @@ def _http_get_json(url: str, timeout: int = 10, retries: int = 2) -> Any:
 def _rpc_call(method: str, params: list = None, retries: int = 2) -> Any:
     """Send a JSON-RPC request with retry on 429 rate-limit."""
     payload = json.dumps({
-        "jsonrpc": "2.0", "id": 1,
-        "method": method, "params": params or [],
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": method,
+        "params": params or [],
     }).encode()
 
     for attempt in range(retries + 1):
         req = urllib.request.Request(
-            RPC_URL, data=payload,
-            headers={"Content-Type": "application/json"}, method="POST",
+            RPC_URL,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
         try:
             with urllib.request.urlopen(req, timeout=20) as resp:
@@ -131,14 +137,21 @@ rpc = _rpc_call
 def rpc_batch(calls: list) -> list:
     """Send a batch of JSON-RPC requests (with retry on 429)."""
     payload = json.dumps([
-        {"jsonrpc": "2.0", "id": i, "method": c["method"], "params": c.get("params", [])}
+        {
+            "jsonrpc": "2.0",
+            "id": i,
+            "method": c["method"],
+            "params": c.get("params", []),
+        }
         for i, c in enumerate(calls)
     ]).encode()
 
     for attempt in range(3):
         req = urllib.request.Request(
-            RPC_URL, data=payload,
-            headers={"Content-Type": "application/json"}, method="POST",
+            RPC_URL,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
         try:
             with urllib.request.urlopen(req, timeout=20) as resp:
@@ -171,6 +184,7 @@ def _short_mint(mint: str) -> str:
 # ---------------------------------------------------------------------------
 # Price & token name helpers (CoinGecko — free, no API key)
 # ---------------------------------------------------------------------------
+
 
 def fetch_prices(mints: List[str], max_lookups: int = 20) -> Dict[str, float]:
     """Fetch USD prices for mint addresses via CoinGecko (one per request).
@@ -233,6 +247,7 @@ def _token_label(mint: str) -> str:
 # 1. Network Stats
 # ---------------------------------------------------------------------------
 
+
 def cmd_stats(_args):
     """Live Solana network: slot, epoch, TPS, supply, version, SOL price."""
     results = rpc_batch([
@@ -245,30 +260,30 @@ def cmd_stats(_args):
 
     by_id = {r["id"]: r.get("result") for r in results}
 
-    slot         = by_id.get(0)
-    epoch_info   = by_id.get(1)
+    slot = by_id.get(0)
+    epoch_info = by_id.get(1)
     perf_samples = by_id.get(2)
-    supply       = by_id.get(3)
-    version      = by_id.get(4)
+    supply = by_id.get(3)
+    version = by_id.get(4)
 
     tps = None
     if perf_samples:
         s = perf_samples[0]
         tps = round(s["numTransactions"] / s["samplePeriodSecs"], 1)
 
-    total_supply = lamports_to_sol(supply["value"]["total"])      if supply else None
-    circ_supply  = lamports_to_sol(supply["value"]["circulating"]) if supply else None
+    total_supply = lamports_to_sol(supply["value"]["total"]) if supply else None
+    circ_supply = lamports_to_sol(supply["value"]["circulating"]) if supply else None
 
     sol_price = fetch_sol_price()
 
     out = {
-        "slot":                   slot,
-        "epoch":                  epoch_info.get("epoch")     if epoch_info else None,
-        "slot_in_epoch":          epoch_info.get("slotIndex") if epoch_info else None,
-        "tps":                    tps,
-        "total_supply_SOL":       round(total_supply, 2) if total_supply else None,
-        "circulating_supply_SOL": round(circ_supply, 2)  if circ_supply  else None,
-        "validator_version":      version.get("solana-core")  if version   else None,
+        "slot": slot,
+        "epoch": epoch_info.get("epoch") if epoch_info else None,
+        "slot_in_epoch": epoch_info.get("slotIndex") if epoch_info else None,
+        "tps": tps,
+        "total_supply_SOL": round(total_supply, 2) if total_supply else None,
+        "circulating_supply_SOL": round(circ_supply, 2) if circ_supply else None,
+        "validator_version": version.get("solana-core") if version else None,
     }
     if sol_price is not None:
         out["sol_price_usd"] = sol_price
@@ -280,6 +295,7 @@ def cmd_stats(_args):
 # ---------------------------------------------------------------------------
 # 2. Wallet Info (enhanced with prices, sorting, filtering)
 # ---------------------------------------------------------------------------
+
 
 def cmd_wallet(args):
     """SOL balance + SPL token holdings with USD values."""
@@ -293,21 +309,24 @@ def cmd_wallet(args):
     sol_balance = lamports_to_sol(balance_result["value"])
 
     # Fetch all SPL token accounts
-    token_result = rpc("getTokenAccountsByOwner", [
-        address,
-        {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"},
-        {"encoding": "jsonParsed"},
-    ])
+    token_result = rpc(
+        "getTokenAccountsByOwner",
+        [
+            address,
+            {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"},
+            {"encoding": "jsonParsed"},
+        ],
+    )
 
     raw_tokens = []
-    for acct in (token_result.get("value") or []):
+    for acct in token_result.get("value") or []:
         info = acct["account"]["data"]["parsed"]["info"]
         ta = info["tokenAmount"]
         amount = float(ta.get("uiAmountString") or 0)
         if amount > 0:
             raw_tokens.append({
-                "mint":     info["mint"],
-                "amount":   amount,
+                "mint": info["mint"],
+                "amount": amount,
                 "decimals": ta["decimals"],
             })
 
@@ -323,7 +342,9 @@ def cmd_wallet(args):
         # Prioritize known tokens, then a small sample of unknowns.
         # CoinGecko free tier = 1 request per mint, so we cap lookups.
         known_mints = [t["mint"] for t in fungible if t["mint"] in KNOWN_TOKENS]
-        other_mints = [t["mint"] for t in fungible if t["mint"] not in KNOWN_TOKENS][:15]
+        other_mints = [t["mint"] for t in fungible if t["mint"] not in KNOWN_TOKENS][
+            :15
+        ]
         mints_to_price = known_mints + other_mints
         if mints_to_price:
             prices = fetch_prices(mints_to_price, max_lookups=30)
@@ -351,7 +372,10 @@ def cmd_wallet(args):
         enriched.append(entry)
 
     # Sort: tokens with known USD value first (highest→lowest), then unknowns
-    enriched.sort(key=lambda x: (x.get("value_usd") is not None, x.get("value_usd") or 0), reverse=True)
+    enriched.sort(
+        key=lambda x: (x.get("value_usd") is not None, x.get("value_usd") or 0),
+        reverse=True,
+    )
 
     # Apply limit unless --all
     total_tokens = len(enriched)
@@ -366,8 +390,8 @@ def cmd_wallet(args):
     total_usd += dust_value
 
     output = {
-        "address":     address,
-        "sol_balance":  round(sol_balance, 9),
+        "address": address,
+        "sol_balance": round(sol_balance, 9),
     }
     if sol_price:
         output["sol_price_usd"] = sol_price
@@ -377,10 +401,15 @@ def cmd_wallet(args):
         output["tokens_hidden"] = total_tokens - len(enriched)
     output["spl_tokens"] = enriched
     if dust_count > 0:
-        output["dust_filtered"] = {"count": dust_count, "total_value_usd": round(dust_value, 4)}
+        output["dust_filtered"] = {
+            "count": dust_count,
+            "total_value_usd": round(dust_value, 4),
+        }
     output["nft_count"] = len(nfts)
     if nfts:
-        output["nfts"] = [_token_label(n["mint"]) + f" ({_short_mint(n['mint'])})" for n in nfts[:10]]
+        output["nfts"] = [
+            _token_label(n["mint"]) + f" ({_short_mint(n['mint'])})" for n in nfts[:10]
+        ]
         if len(nfts) > 10:
             output["nfts"].append(f"... and {len(nfts) - 10} more")
     if total_usd > 0:
@@ -393,21 +422,25 @@ def cmd_wallet(args):
 # 3. Transaction Details
 # ---------------------------------------------------------------------------
 
+
 def cmd_tx(args):
     """Full transaction details by signature."""
-    result = rpc("getTransaction", [
-        args.signature,
-        {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0},
-    ])
+    result = rpc(
+        "getTransaction",
+        [
+            args.signature,
+            {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0},
+        ],
+    )
 
     if result is None:
         sys.exit("Transaction not found (may be too old for public RPC history).")
 
-    meta         = result.get("meta", {}) or {}
-    msg          = result.get("transaction", {}).get("message", {})
+    meta = result.get("meta", {}) or {}
+    msg = result.get("transaction", {}).get("message", {})
     account_keys = msg.get("accountKeys", [])
 
-    pre  = meta.get("preBalances",  [])
+    pre = meta.get("preBalances", [])
     post = meta.get("postBalances", [])
 
     balance_changes = []
@@ -416,7 +449,10 @@ def cmd_tx(args):
         if i < len(pre) and i < len(post):
             change = lamports_to_sol(post[i] - pre[i])
             if change != 0:
-                balance_changes.append({"account": acct_key, "change_SOL": round(change, 9)})
+                balance_changes.append({
+                    "account": acct_key,
+                    "change_SOL": round(change, 9),
+                })
 
     programs = []
     for ix in msg.get("instructions", []):
@@ -434,12 +470,12 @@ def cmd_tx(args):
             bc["change_USD"] = round(bc["change_SOL"] * sol_price, 2)
 
     print_json({
-        "signature":        args.signature,
-        "slot":             result.get("slot"),
-        "block_time":       result.get("blockTime"),
-        "fee_SOL":          lamports_to_sol(meta.get("fee", 0)),
-        "status":           "success" if meta.get("err") is None else "failed",
-        "balance_changes":  balance_changes,
+        "signature": args.signature,
+        "slot": result.get("slot"),
+        "block_time": result.get("blockTime"),
+        "fee_SOL": lamports_to_sol(meta.get("fee", 0)),
+        "status": "success" if meta.get("err") is None else "failed",
+        "balance_changes": balance_changes,
         "programs_invoked": list(dict.fromkeys(programs)),
     })
 
@@ -447,6 +483,7 @@ def cmd_tx(args):
 # ---------------------------------------------------------------------------
 # 4. Token Info (enhanced with name + price)
 # ---------------------------------------------------------------------------
+
 
 def cmd_token(args):
     """SPL token metadata, supply, decimals, price, top holders."""
@@ -456,10 +493,10 @@ def cmd_token(args):
     if mint_info is None or mint_info.get("value") is None:
         sys.exit("Mint account not found.")
 
-    parsed       = mint_info["value"]["data"]["parsed"]["info"]
-    decimals     = parsed.get("decimals", 0)
-    supply_raw   = int(parsed.get("supply", 0))
-    supply_human = supply_raw / (10 ** decimals) if decimals else supply_raw
+    parsed = mint_info["value"]["data"]["parsed"]["info"]
+    decimals = parsed.get("decimals", 0)
+    supply_raw = int(parsed.get("supply", 0))
+    supply_human = supply_raw / (10**decimals) if decimals else supply_raw
 
     largest = rpc("getTokenLargestAccounts", [mint])
     holders = []
@@ -468,7 +505,7 @@ def cmd_token(args):
         pct = round((amount / supply_human * 100), 4) if supply_human > 0 else 0
         holders.append({
             "account": acct["address"],
-            "amount":  amount,
+            "amount": amount,
             "percent": pct,
         })
 
@@ -496,17 +533,18 @@ def cmd_token(args):
 # 5. Recent Activity
 # ---------------------------------------------------------------------------
 
+
 def cmd_activity(args):
     """Recent transaction signatures for an address."""
-    limit  = min(args.limit, 25)
+    limit = min(args.limit, 25)
     result = rpc("getSignaturesForAddress", [args.address, {"limit": limit}])
 
     txs = [
         {
             "signature": item["signature"],
-            "slot":       item.get("slot"),
+            "slot": item.get("slot"),
             "block_time": item.get("blockTime"),
-            "err":        item.get("err"),
+            "err": item.get("err"),
         }
         for item in (result or [])
     ]
@@ -518,13 +556,17 @@ def cmd_activity(args):
 # 6. NFT Portfolio
 # ---------------------------------------------------------------------------
 
+
 def cmd_nft(args):
     """NFTs owned by a wallet (amount=1 && decimals=0 heuristic)."""
-    result = rpc("getTokenAccountsByOwner", [
-        args.address,
-        {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"},
-        {"encoding": "jsonParsed"},
-    ])
+    result = rpc(
+        "getTokenAccountsByOwner",
+        [
+            args.address,
+            {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"},
+            {"encoding": "jsonParsed"},
+        ],
+    )
 
     nfts = [
         acct["account"]["data"]["parsed"]["info"]["mint"]
@@ -534,10 +576,10 @@ def cmd_nft(args):
     ]
 
     print_json({
-        "address":   args.address,
+        "address": args.address,
         "nft_count": len(nfts),
-        "nfts":      nfts,
-        "note":      "Heuristic only. Compressed NFTs (cNFTs) are not detected.",
+        "nfts": nfts,
+        "note": "Heuristic only. Compressed NFTs (cNFTs) are not detected.",
     })
 
 
@@ -545,20 +587,24 @@ def cmd_nft(args):
 # 7. Whale Detector (enhanced with USD values)
 # ---------------------------------------------------------------------------
 
+
 def cmd_whales(args):
     """Scan the latest block for large SOL transfers."""
     min_lamports = int(args.min_sol * LAMPORTS_PER_SOL)
 
-    slot  = rpc("getSlot")
-    block = rpc("getBlock", [
-        slot,
-        {
-            "encoding": "jsonParsed",
-            "transactionDetails": "full",
-            "maxSupportedTransactionVersion": 0,
-            "rewards": False,
-        },
-    ])
+    slot = rpc("getSlot")
+    block = rpc(
+        "getBlock",
+        [
+            slot,
+            {
+                "encoding": "jsonParsed",
+                "transactionDetails": "full",
+                "maxSupportedTransactionVersion": 0,
+                "rewards": False,
+            },
+        ],
+    )
 
     if block is None:
         sys.exit("Could not retrieve latest block.")
@@ -566,30 +612,30 @@ def cmd_whales(args):
     sol_price = fetch_sol_price()
 
     whales = []
-    for tx in (block.get("transactions") or []):
+    for tx in block.get("transactions") or []:
         meta = tx.get("meta", {}) or {}
         if meta.get("err") is not None:
             continue
 
-        msg          = tx["transaction"].get("message", {})
+        msg = tx["transaction"].get("message", {})
         account_keys = msg.get("accountKeys", [])
-        pre          = meta.get("preBalances",  [])
-        post         = meta.get("postBalances", [])
+        pre = meta.get("preBalances", [])
+        post = meta.get("postBalances", [])
 
         for i in range(len(pre)):
             change = post[i] - pre[i]
             if change >= min_lamports:
-                k        = account_keys[i]
+                k = account_keys[i]
                 receiver = k["pubkey"] if isinstance(k, dict) else k
-                sender   = None
+                sender = None
                 for j in range(len(pre)):
                     if pre[j] - post[j] >= min_lamports:
-                        sk     = account_keys[j]
+                        sk = account_keys[j]
                         sender = sk["pubkey"] if isinstance(sk, dict) else sk
                         break
                 entry = {
-                    "sender":     sender,
-                    "receiver":   receiver,
+                    "sender": sender,
+                    "receiver": receiver,
                     "amount_SOL": round(lamports_to_sol(change), 4),
                 }
                 if sol_price:
@@ -597,10 +643,10 @@ def cmd_whales(args):
                 whales.append(entry)
 
     out = {
-        "slot":              slot,
+        "slot": slot,
         "min_threshold_SOL": args.min_sol,
-        "large_transfers":   whales,
-        "note":              "Scans latest block only — point-in-time snapshot.",
+        "large_transfers": whales,
+        "note": "Scans latest block only — point-in-time snapshot.",
     }
     if sol_price:
         out["sol_price_usd"] = sol_price
@@ -610,6 +656,7 @@ def cmd_whales(args):
 # ---------------------------------------------------------------------------
 # 8. Price Lookup
 # ---------------------------------------------------------------------------
+
 
 def cmd_price(args):
     """Quick price lookup for a token by mint address or known symbol."""
@@ -640,6 +687,7 @@ def cmd_price(args):
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         prog="solana_client.py",
@@ -651,12 +699,15 @@ def main():
 
     p_wallet = sub.add_parser("wallet", help="SOL balance + SPL tokens with USD values")
     p_wallet.add_argument("address")
-    p_wallet.add_argument("--limit", type=int, default=20,
-                          help="Max tokens to display (default: 20)")
-    p_wallet.add_argument("--all", action="store_true",
-                          help="Show all tokens (no limit, no dust filter)")
-    p_wallet.add_argument("--no-prices", action="store_true",
-                          help="Skip price lookups (faster, RPC-only)")
+    p_wallet.add_argument(
+        "--limit", type=int, default=20, help="Max tokens to display (default: 20)"
+    )
+    p_wallet.add_argument(
+        "--all", action="store_true", help="Show all tokens (no limit, no dust filter)"
+    )
+    p_wallet.add_argument(
+        "--no-prices", action="store_true", help="Skip price lookups (faster, RPC-only)"
+    )
 
     p_tx = sub.add_parser("tx", help="Transaction details by signature")
     p_tx.add_argument("signature")
@@ -666,30 +717,40 @@ def main():
 
     p_activity = sub.add_parser("activity", help="Recent transactions for an address")
     p_activity.add_argument("address")
-    p_activity.add_argument("--limit", type=int, default=10,
-                            help="Number of transactions (max 25, default 10)")
+    p_activity.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Number of transactions (max 25, default 10)",
+    )
 
     p_nft = sub.add_parser("nft", help="NFT portfolio for a wallet")
     p_nft.add_argument("address")
 
     p_whales = sub.add_parser("whales", help="Large SOL transfers in the latest block")
-    p_whales.add_argument("--min-sol", type=float, default=1000.0,
-                          help="Minimum SOL transfer size (default: 1000)")
+    p_whales.add_argument(
+        "--min-sol",
+        type=float,
+        default=1000.0,
+        help="Minimum SOL transfer size (default: 1000)",
+    )
 
     p_price = sub.add_parser("price", help="Quick price lookup by mint or symbol")
-    p_price.add_argument("token", help="Mint address or known symbol (SOL, BONK, JUP, ...)")
+    p_price.add_argument(
+        "token", help="Mint address or known symbol (SOL, BONK, JUP, ...)"
+    )
 
     args = parser.parse_args()
 
     dispatch = {
-        "stats":    cmd_stats,
-        "wallet":   cmd_wallet,
-        "tx":       cmd_tx,
-        "token":    cmd_token,
+        "stats": cmd_stats,
+        "wallet": cmd_wallet,
+        "tx": cmd_tx,
+        "token": cmd_token,
         "activity": cmd_activity,
-        "nft":      cmd_nft,
-        "whales":   cmd_whales,
-        "price":    cmd_price,
+        "nft": cmd_nft,
+        "whales": cmd_whales,
+        "price": cmd_price,
     }
     dispatch[args.command](args)
 

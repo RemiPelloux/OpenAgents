@@ -71,7 +71,9 @@ class TestKimiProfile:
         # xor contract (fix ce4e74b3): an explicit recognized effort sends
         # reasoning_effort ONLY — never paired with extra_body.thinking.
         p = get_provider_profile("kimi")
-        eb, tl = p.build_api_kwargs_extras(reasoning_config={"enabled": True, "effort": "high"})
+        eb, tl = p.build_api_kwargs_extras(
+            reasoning_config={"enabled": True, "effort": "high"}
+        )
         assert tl["reasoning_effort"] == "high"
         assert "thinking" not in eb
 
@@ -119,9 +121,7 @@ class TestOpenRouterProfile:
             model="openrouter/pareto-code",
             openrouter_min_coding_score=0.65,
         )
-        assert body["plugins"] == [
-            {"id": "pareto-router", "min_coding_score": 0.65}
-        ]
+        assert body["plugins"] == [{"id": "pareto-router", "min_coding_score": 0.65}]
 
     def test_pareto_score_ignored_for_other_models(self):
         """Score has no effect on any other model — plugins block must not appear."""
@@ -177,8 +177,8 @@ class TestOpenRouterProfile:
         """
         p = get_provider_profile("openrouter")
         for model in (
-            "anthropic/claude-fable-5",          # new named model
-            "anthropic/claude-some-future-7",    # unknown → default mandatory
+            "anthropic/claude-fable-5",  # new named model
+            "anthropic/claude-some-future-7",  # unknown → default mandatory
             "anthropic/claude-opus-4.8",
             "anthropic/claude-opus-4.6",
         ):
@@ -304,6 +304,7 @@ class TestOpenRouterProfile:
     @staticmethod
     def _is_mandatory(model):
         import inspect
+
         p = get_provider_profile("openrouter")
         mod = inspect.getmodule(type(p))
         return mod._anthropic_reasoning_is_mandatory(model)
@@ -410,6 +411,7 @@ class TestOpenRouterProfile:
 class TestNousProfile:
     def test_tags(self):
         from agent.portal_tags import nous_portal_tags
+
         p = get_provider_profile("nous")
         body = p.build_extra_body()
         assert body["tags"] == nous_portal_tags()

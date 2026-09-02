@@ -28,11 +28,11 @@ def _make_enabled_plugin(hermes_home: Path, name: str, register_body: str) -> Pa
     plugin_dir = hermes_home / "plugins" / name
     plugin_dir.mkdir(parents=True)
     (plugin_dir / "plugin.yaml").write_text(
-        yaml.safe_dump({"name": name, "version": "0.1.0"}), encoding="utf-8",
+        yaml.safe_dump({"name": name, "version": "0.1.0"}),
+        encoding="utf-8",
     )
     (plugin_dir / "__init__.py").write_text(
-        "def register(ctx):\n"
-        f"    {register_body}\n",
+        f"def register(ctx):\n    {register_body}\n",
         encoding="utf-8",
     )
     cfg_path = hermes_home / "config.yaml"
@@ -53,11 +53,12 @@ def test_hook_receives_expected_kwargs(tmp_path, monkeypatch):
     hermes_home = tmp_path / "hermes_test"
     hermes_home.mkdir(exist_ok=True)
     _make_enabled_plugin(
-        hermes_home, "capture_hook",
+        hermes_home,
+        "capture_hook",
         register_body=(
             'ctx.register_hook("transform_llm_output", '
-            'lambda **kw: f"{kw[\'response_text\']}|{kw[\'session_id\']}|'
-            '{kw[\'model\']}|{kw[\'platform\']}")'
+            "lambda **kw: f\"{kw['response_text']}|{kw['session_id']}|"
+            "{kw['model']}|{kw['platform']}\")"
         ),
     )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
@@ -114,9 +115,10 @@ def test_hook_exception_does_not_replace_response(tmp_path, monkeypatch):
     hermes_home = tmp_path / "hermes_test"
     hermes_home.mkdir(exist_ok=True)
     _make_enabled_plugin(
-        hermes_home, "raising_hook",
+        hermes_home,
+        "raising_hook",
         register_body=(
-            'def _boom(**kw):\n'
+            "def _boom(**kw):\n"
             '        raise RuntimeError("boom")\n'
             '    ctx.register_hook("transform_llm_output", _boom)'
         ),

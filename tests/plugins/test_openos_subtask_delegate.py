@@ -13,12 +13,16 @@ def test_maybe_spawn_delegate_subtask_creates_ticket(monkeypatch):
     monkeypatch.setenv("OPENTICKET_TICKET_ID", "parent-1")
     monkeypatch.setenv("OPENOS_DELEGATE_SPAWN_SUBTASK", "1")
 
-    parent_payload = json.dumps(
-        {"id": "parent-1", "correlation_id": "corr-1", "ticket_key": "OP-1"}
-    ).encode()
-    subtask_payload = json.dumps(
-        {"id": "child-1", "ticket_key": "OP-2", "correlation_id": "corr-1"}
-    ).encode()
+    parent_payload = json.dumps({
+        "id": "parent-1",
+        "correlation_id": "corr-1",
+        "ticket_key": "OP-1",
+    }).encode()
+    subtask_payload = json.dumps({
+        "id": "child-1",
+        "ticket_key": "OP-2",
+        "correlation_id": "corr-1",
+    }).encode()
 
     responses = [parent_payload, subtask_payload]
     mock_resp = MagicMock()

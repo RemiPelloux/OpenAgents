@@ -37,7 +37,7 @@ from tools.registry import tool_error
 logger = logging.getLogger(__name__)
 
 # Timeouts
-_QUERY_TIMEOUT = 10   # brv query — should be fast
+_QUERY_TIMEOUT = 10  # brv query — should be fast
 _CURATE_TIMEOUT = 120  # brv curate — may involve LLM processing
 
 # Minimum lengths to filter noise
@@ -123,12 +123,14 @@ def _resolve_brv_path() -> Optional[str]:
     return found
 
 
-def _run_brv(args: List[str], timeout: int = _QUERY_TIMEOUT,
-             cwd: str = None) -> dict:
+def _run_brv(args: List[str], timeout: int = _QUERY_TIMEOUT, cwd: str = None) -> dict:
     """Run a brv CLI command. Returns {success, output, error}."""
     brv_path = _resolve_brv_path()
     if not brv_path:
-        return {"success": False, "error": "brv CLI not found. Install: npm install -g byterover-cli"}
+        return {
+            "success": False,
+            "error": "brv CLI not found. Install: npm install -g byterover-cli",
+        }
 
     cmd = [brv_path] + args
     effective_cwd = cwd or str(_get_brv_cwd())
@@ -140,8 +142,12 @@ def _run_brv(args: List[str], timeout: int = _QUERY_TIMEOUT,
 
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True,
-            timeout=timeout, cwd=effective_cwd, env=env,
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=effective_cwd,
+            env=env,
             stdin=subprocess.DEVNULL,
         )
         stdout = result.stdout.strip()
@@ -149,7 +155,10 @@ def _run_brv(args: List[str], timeout: int = _QUERY_TIMEOUT,
 
         if result.returncode == 0:
             return {"success": True, "output": stdout}
-        return {"success": False, "error": stderr or stdout or f"brv exited {result.returncode}"}
+        return {
+            "success": False,
+            "error": stderr or stdout or f"brv exited {result.returncode}",
+        }
 
     except subprocess.TimeoutExpired:
         return {"success": False, "error": f"brv timed out after {timeout}s"}
@@ -165,6 +174,7 @@ def _run_brv(args: List[str], timeout: int = _QUERY_TIMEOUT,
 def _get_brv_cwd() -> Path:
     """Profile-scoped working directory for the brv context tree."""
     from openagents_constants import get_openagents_home
+
     return get_openagents_home() / "byterover"
 
 
@@ -200,7 +210,10 @@ CURATE_SCHEMA = {
     "parameters": {
         "type": "object",
         "properties": {
-            "content": {"type": "string", "description": "The information to remember."},
+            "content": {
+                "type": "string",
+                "description": "The information to remember.",
+            },
         },
         "required": ["content"],
     },
@@ -216,6 +229,7 @@ STATUS_SCHEMA = {
 # ---------------------------------------------------------------------------
 # MemoryProvider implementation
 # ---------------------------------------------------------------------------
+
 
 class ByteRoverMemoryProvider(MemoryProvider):
     """ByteRover persistent memory via the brv CLI."""
@@ -279,7 +293,8 @@ class ByteRoverMemoryProvider(MemoryProvider):
             return ""
         result = _run_brv(
             ["query", "--", query.strip()[:5000]],
-            timeout=_QUERY_TIMEOUT, cwd=self._cwd,
+            timeout=_QUERY_TIMEOUT,
+            cwd=self._cwd,
         )
         if result["success"] and result.get("output"):
             output = result["output"].strip()
@@ -291,7 +306,9 @@ class ByteRoverMemoryProvider(MemoryProvider):
         """No-op: prefetch() now runs synchronously at turn start."""
         pass
 
-    def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "") -> None:
+    def sync_turn(
+        self, user_content: str, assistant_content: str, *, session_id: str = ""
+    ) -> None:
         """Curate the conversation turn in background (non-blocking)."""
         self._turn_count += 1
         if not self._auto_extract:
@@ -307,7 +324,8 @@ class ByteRoverMemoryProvider(MemoryProvider):
                 combined = f"User: {user_content[:2000]}\nAssistant: {assistant_content[:2000]}"
                 _run_brv(
                     ["curate", "--", combined],
-                    timeout=_CURATE_TIMEOUT, cwd=self._cwd,
+                    timeout=_CURATE_TIMEOUT,
+                    cwd=self._cwd,
                 )
             except Exception as e:
                 logger.debug("ByteRover sync failed: %s", e)
@@ -316,9 +334,7 @@ class ByteRoverMemoryProvider(MemoryProvider):
         if self._sync_thread and self._sync_thread.is_alive():
             self._sync_thread.join(timeout=5.0)
 
-        self._sync_thread = threading.Thread(
-            target=_sync, daemon=True, name="brv-sync"
-        )
+        self._sync_thread = threading.Thread(target=_sync, daemon=True, name="brv-sync")
         self._sync_thread.start()
 
     def on_memory_write(self, action: str, target: str, content: str) -> None:
@@ -334,7 +350,8 @@ class ByteRoverMemoryProvider(MemoryProvider):
                 label = "User profile" if target == "user" else "Agent memory"
                 _run_brv(
                     ["curate", "--", f"[{label}] {content}"],
-                    timeout=_CURATE_TIMEOUT, cwd=self._cwd,
+                    timeout=_CURATE_TIMEOUT,
+                    cwd=self._cwd,
                 )
             except Exception as e:
                 logger.debug("ByteRover memory mirror failed: %s", e)
@@ -345,7 +362,9 @@ class ByteRoverMemoryProvider(MemoryProvider):
     def on_pre_compress(self, messages: List[Dict[str, Any]]) -> str:
         """Extract insights before context compression discards turns."""
         if not self._auto_extract:
-            logger.debug("ByteRover pre-compression flush skipped (auto_extract disabled)")
+            logger.debug(
+                "ByteRover pre-compression flush skipped (auto_extract disabled)"
+            )
             return ""
         if not messages:
             return ""
@@ -355,7 +374,11 @@ class ByteRoverMemoryProvider(MemoryProvider):
         for msg in messages[-10:]:  # last 10 messages
             role = msg.get("role", "")
             content = msg.get("content", "")
-            if isinstance(content, str) and content.strip() and role in {"user", "assistant"}:
+            if (
+                isinstance(content, str)
+                and content.strip()
+                and role in {"user", "assistant"}
+            ):
                 parts.append(f"{role}: {content[:500]}")
 
         if not parts:
@@ -367,7 +390,8 @@ class ByteRoverMemoryProvider(MemoryProvider):
             try:
                 _run_brv(
                     ["curate", "--", f"[Pre-compression context]\n{combined}"],
-                    timeout=_CURATE_TIMEOUT, cwd=self._cwd,
+                    timeout=_CURATE_TIMEOUT,
+                    cwd=self._cwd,
                 )
                 logger.info("ByteRover pre-compression flush: %d messages", len(parts))
             except Exception as e:
@@ -402,7 +426,8 @@ class ByteRoverMemoryProvider(MemoryProvider):
 
         result = _run_brv(
             ["query", "--", query.strip()[:5000]],
-            timeout=_QUERY_TIMEOUT, cwd=self._cwd,
+            timeout=_QUERY_TIMEOUT,
+            cwd=self._cwd,
         )
 
         if not result["success"]:
@@ -425,7 +450,8 @@ class ByteRoverMemoryProvider(MemoryProvider):
 
         result = _run_brv(
             ["curate", "--", content],
-            timeout=_CURATE_TIMEOUT, cwd=self._cwd,
+            timeout=_CURATE_TIMEOUT,
+            cwd=self._cwd,
         )
 
         if not result["success"]:
@@ -443,6 +469,7 @@ class ByteRoverMemoryProvider(MemoryProvider):
 # ---------------------------------------------------------------------------
 # Plugin entry point
 # ---------------------------------------------------------------------------
+
 
 def register(ctx) -> None:
     """Register ByteRover as a memory provider plugin."""

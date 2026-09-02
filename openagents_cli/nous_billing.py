@@ -231,9 +231,7 @@ def _retry_after_seconds(headers: Any) -> Optional[int]:
         return None
 
 
-def _raise_for_error(
-    status: int, payload: dict[str, Any], headers: Any = None
-) -> None:
+def _raise_for_error(status: int, payload: dict[str, Any], headers: Any = None) -> None:
     """Map an HTTP error response to the right typed :class:`BillingError`."""
     error = payload.get("error") if isinstance(payload, dict) else None
     message = payload.get("message") if isinstance(payload, dict) else None
@@ -260,7 +258,9 @@ def _raise_for_error(
         raise BillingRateLimited(
             message or "Rate limited — try again shortly.", **common
         )
-    raise BillingError(message or error or f"Billing request failed ({status}).", **common)
+    raise BillingError(
+        message or error or f"Billing request failed ({status}).", **common
+    )
 
 
 def _request(

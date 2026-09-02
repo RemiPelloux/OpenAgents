@@ -18,21 +18,31 @@ def _register_echo_tool():
         registry.register(
             name="openagentui_test_echo",
             toolset="openagentui_test",
-            schema={"name": "openagentui_test_echo", "description": "test", "parameters": {"type": "object"}},
+            schema={
+                "name": "openagentui_test_echo",
+                "description": "test",
+                "parameters": {"type": "object"},
+            },
             handler=handler,
         )
 
 
 def _ctx(data: dict, variables: dict | None = None) -> NodeContext:
     node = WorkflowNode(id="n1", type="mcp", data=data)
-    execution = WorkflowExecution(id="exec1", workflow_id="wf1", variables=dict(variables or {}))
+    execution = WorkflowExecution(
+        id="exec1", workflow_id="wf1", variables=dict(variables or {})
+    )
     return NodeContext(node=node, execution=execution)
 
 
 def test_tool_node_dispatches_registered_tool():
     _register_echo_tool()
     ctx = _ctx(
-        {"mcpTool": "openagentui_test_echo", "mcpParams": {"message": "hi {{ name }}"}, "outputField": "echo_out"},
+        {
+            "mcpTool": "openagentui_test_echo",
+            "mcpParams": {"message": "hi {{ name }}"},
+            "outputField": "echo_out",
+        },
         {"name": "bob"},
     )
     result = execute(ctx)

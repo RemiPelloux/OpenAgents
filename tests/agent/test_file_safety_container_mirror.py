@@ -7,6 +7,7 @@ the bind-mount strips that prefix and the guard sees plain ``/root/.hermes/…``
 The root:root ownership on the divergent SOUL.md in #32049 confirms this
 is the primary failure mode.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -17,7 +18,10 @@ class TestClassifyContainerMirrorTarget:
         """No Docker context — /root/.hermes/… must not be flagged."""
         from agent.file_safety import classify_container_mirror_target
 
-        assert classify_container_mirror_target("/root/.hermes/profiles/group1/SOUL.md") is None
+        assert (
+            classify_container_mirror_target("/root/.hermes/profiles/group1/SOUL.md")
+            is None
+        )
 
     def test_catches_soul_md_with_context(self):
         """Primary failure mode from #32049: agent writes SOUL.md via container path."""
@@ -31,10 +35,13 @@ class TestClassifyContainerMirrorTarget:
         assert result["mirror_root"].replace("\\", "/").endswith("root/.hermes")
         assert result["inner_path"] == "profiles/group1/SOUL.md"
 
-    @pytest.mark.parametrize("inner", [
-        "SOUL.md",
-        "memories/MEMORY.md",
-    ])
+    @pytest.mark.parametrize(
+        "inner",
+        [
+            "SOUL.md",
+            "memories/MEMORY.md",
+        ],
+    )
     def test_catches_authoritative_profile_files(self, inner):
         from agent.file_safety import classify_container_mirror_target
 
@@ -81,7 +88,10 @@ class TestOrthogonality:
         path = "/root/.hermes/profiles/group1/SOUL.md"
 
         assert classify_container_mirror_target(path) is None  # no context
-        assert classify_container_mirror_target(path, mirror_prefix="/root/.hermes") is not None
+        assert (
+            classify_container_mirror_target(path, mirror_prefix="/root/.hermes")
+            is not None
+        )
 
 
 class TestFileToolIntegration:

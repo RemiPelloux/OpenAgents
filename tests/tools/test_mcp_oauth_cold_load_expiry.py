@@ -31,6 +31,7 @@ These tests pin the contract for Fix A:
 Reference: Claude Code solves this via an ``OAuthTokens.expiresAt`` absolute
 timestamp persisted alongside the access_token (``auth.ts:~180``).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -70,9 +71,7 @@ class TestSetTokensAbsoluteExpiry:
         )
         after = time.time()
 
-        on_disk = json.loads(
-            (tmp_path / "mcp-tokens" / "srv.json").read_text()
-        )
+        on_disk = json.loads((tmp_path / "mcp-tokens" / "srv.json").read_text())
         assert "expires_at" in on_disk, (
             "Fix A: set_tokens must record an absolute expires_at wall-clock "
             "timestamp alongside the SDK's serialized token so cold-loads "
@@ -100,16 +99,12 @@ class TestSetTokensAbsoluteExpiry:
             )
         )
 
-        on_disk = json.loads(
-            (tmp_path / "mcp-tokens" / "srv.json").read_text()
-        )
+        on_disk = json.loads((tmp_path / "mcp-tokens" / "srv.json").read_text())
         assert "expires_at" not in on_disk
 
 
 class TestGetTokensReconstructsExpiresIn:
-    def test_get_tokens_uses_expires_at_for_remaining_ttl(
-        self, tmp_path, monkeypatch
-    ):
+    def test_get_tokens_uses_expires_at_for_remaining_ttl(self, tmp_path, monkeypatch):
         """Round-trip: expires_in on read must reflect time remaining."""
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         from mcp.shared.auth import OAuthToken
@@ -137,9 +132,7 @@ class TestGetTokensReconstructsExpiresIn:
         # Should be slightly less than 3600 after the 50ms sleep.
         assert 3500 < reloaded.expires_in <= 3600
 
-    def test_get_tokens_returns_zero_ttl_for_expired_token(
-        self, tmp_path, monkeypatch
-    ):
+    def test_get_tokens_returns_zero_ttl_for_expired_token(self, tmp_path, monkeypatch):
         """An already-expired token reloaded from disk must report expires_in=0."""
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         from tools.mcp_oauth import HermesTokenStorage, _get_token_dir
@@ -148,15 +141,13 @@ class TestGetTokensReconstructsExpiresIn:
         token_dir.mkdir(parents=True, exist_ok=True)
         # Write an already-expired token file directly.
         (token_dir / "srv.json").write_text(
-            json.dumps(
-                {
-                    "access_token": "a",
-                    "token_type": "Bearer",
-                    "expires_in": 3600,
-                    "expires_at": time.time() - 60,  # expired 1 min ago
-                    "refresh_token": "r",
-                }
-            )
+            json.dumps({
+                "access_token": "a",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "expires_at": time.time() - 60,  # expired 1 min ago
+                "refresh_token": "r",
+            })
         )
 
         storage = HermesTokenStorage("srv")
@@ -187,14 +178,12 @@ class TestGetTokensReconstructsExpiresIn:
         # well past its nominal expires_in.
         legacy_path = token_dir / "srv.json"
         legacy_path.write_text(
-            json.dumps(
-                {
-                    "access_token": "a",
-                    "token_type": "Bearer",
-                    "expires_in": 3600,
-                    "refresh_token": "r",
-                }
-            )
+            json.dumps({
+                "access_token": "a",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "refresh_token": "r",
+            })
         )
         stale_time = time.time() - 7200  # 2hr ago, exceeds 3600s TTL
         import os
@@ -304,15 +293,13 @@ async def test_initialize_flags_expired_token_as_invalid(tmp_path, monkeypatch):
     token_dir = _get_token_dir()
     token_dir.mkdir(parents=True, exist_ok=True)
     (token_dir / "srv.json").write_text(
-        json.dumps(
-            {
-                "access_token": "stale",
-                "token_type": "Bearer",
-                "expires_in": 3600,
-                "expires_at": time.time() - 60,
-                "refresh_token": "fresh",
-            }
-        )
+        json.dumps({
+            "access_token": "stale",
+            "token_type": "Bearer",
+            "expires_in": 3600,
+            "expires_at": time.time() - 60,
+            "refresh_token": "fresh",
+        })
     )
 
     storage = HermesTokenStorage("srv")
@@ -366,9 +353,7 @@ async def _noop_callback() -> tuple[str, str | None]:
 
 
 @pytest.mark.asyncio
-async def test_initialize_prefetches_oauth_metadata_when_missing(
-    tmp_path, monkeypatch
-):
+async def test_initialize_prefetches_oauth_metadata_when_missing(tmp_path, monkeypatch):
     """Cold-load must pre-flight PRM + ASM discovery so ``_refresh_token``
     has the correct ``token_endpoint`` before the first refresh attempt.
 

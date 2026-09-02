@@ -24,7 +24,9 @@ def test_dev_phase_complete():
 
 
 def test_opencode_mode_for_developer():
-    assert opencode_mode_for_profile("developer", {"status": "in_progress"}) == "implement"
+    assert (
+        opencode_mode_for_profile("developer", {"status": "in_progress"}) == "implement"
+    )
     assert opencode_mode_for_profile("developer", {"status": "in_review"}) is None
 
 
@@ -46,7 +48,9 @@ def test_run_ticket_dod_loop_stops_at_in_review():
         tickets.append({"id": "t1", "ticket_key": "OP-1", "status": "in_review"})
         return {"ok": True, "summary": "implemented"}
 
-    with patch("plugins.openos_engineering.ticket_dod_loop.get_ticket", side_effect=fake_get):
+    with patch(
+        "plugins.openos_engineering.ticket_dod_loop.get_ticket", side_effect=fake_get
+    ):
         result = run_ticket_dod_loop(
             "t1",
             profile="developer",
@@ -65,11 +69,9 @@ def test_handle_run_dispatch_dod_loop_flag():
         "plugins.openos_engineering.cli.handle_run_ticket_dod_loop",
         return_value="loop ok",
     ) as dod_loop:
-        out = _dispatch_run(
-            {
-                "agent_profile": "developer",
-                "task_context": {"ticket_id": "t1", "loop_until_dod": True},
-            }
-        )
+        out = _dispatch_run({
+            "agent_profile": "developer",
+            "task_context": {"ticket_id": "t1", "loop_until_dod": True},
+        })
     assert out == "loop ok"
     dod_loop.assert_called_once()

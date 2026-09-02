@@ -6,6 +6,7 @@ Build the real image and verify:
      for orchestration templates that still reference /usr/bin/tini)
   2. The actual ENTRYPOINT is /init (s6-overlay), not /usr/bin/tini
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -20,11 +21,19 @@ def test_tini_compat_symlink_exists(built_image: str) -> None:
     PID-1 reaper without behavior change.
     """
     r = subprocess.run(
-        ["docker", "run", "--rm", "--entrypoint", "sh",
-         built_image, "-c",
-         'test -L /usr/bin/tini && '
-         'test "$(readlink -f /usr/bin/tini)" = "/init"'],
-        capture_output=True, text=True, timeout=60,
+        [
+            "docker",
+            "run",
+            "--rm",
+            "--entrypoint",
+            "sh",
+            built_image,
+            "-c",
+            'test -L /usr/bin/tini && test "$(readlink -f /usr/bin/tini)" = "/init"',
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert r.returncode == 0, (
         f"/usr/bin/tini is not a symlink to /init: {r.stderr[-500:]}"
@@ -38,15 +47,14 @@ def test_entrypoint_is_init_not_tini(built_image: str) -> None:
     runtime must continue to use the canonical /init.
     """
     r = subprocess.run(
-        ["docker", "inspect", built_image,
-         "--format", "{{json .Config.Entrypoint}}"],
-        capture_output=True, text=True, timeout=30,
+        ["docker", "inspect", built_image, "--format", "{{json .Config.Entrypoint}}"],
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert r.returncode == 0, f"docker inspect failed: {r.stderr}"
     entrypoint = r.stdout.strip()
-    assert "/init" in entrypoint, (
-        f"ENTRYPOINT is not /init: {entrypoint!r}"
-    )
+    assert "/init" in entrypoint, f"ENTRYPOINT is not /init: {entrypoint!r}"
     # The entrypoint array should be ["/init", "/opt/hermes/docker/main-wrapper.sh"]
     # /usr/bin/tini should NOT be in the entrypoint.
     assert "tini" not in entrypoint.lower(), (

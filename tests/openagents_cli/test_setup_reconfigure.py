@@ -116,6 +116,7 @@ class TestExistingInstallDefault:
                 tools="openagents_cli.setup.setup_tools",
             )
             from openagents_cli.setup import run_setup_wizard
+
             run_setup_wizard(args)
 
         # No menu shown.
@@ -145,6 +146,7 @@ class TestExistingInstallDefault:
                 tools="openagents_cli.setup.setup_tools",
             )
             from openagents_cli.setup import run_setup_wizard
+
             run_setup_wizard(args)
 
         m["prompt_choice"].assert_not_called()
@@ -172,6 +174,7 @@ class TestQuickFlag:
                 tools="openagents_cli.setup.setup_tools",
             )
             from openagents_cli.setup import run_setup_wizard
+
             run_setup_wizard(args)
 
         m["quick"].assert_called_once()
@@ -196,6 +199,7 @@ class TestFreshInstall:
                 first="openagents_cli.setup._run_first_time_quick_setup",
             )
             from openagents_cli.setup import run_setup_wizard
+
             run_setup_wizard(args)
 
         m["prompt"].assert_called_once()  # quick-vs-full prompt
@@ -211,6 +215,7 @@ class TestFreshInstall:
                 first="openagents_cli.setup._run_first_time_quick_setup",
             )
             from openagents_cli.setup import run_setup_wizard
+
             run_setup_wizard(args)
 
         m["prompt"].assert_called_once()
@@ -226,6 +231,7 @@ class TestFreshInstall:
                 first="openagents_cli.setup._run_first_time_quick_setup",
             )
             from openagents_cli.setup import run_setup_wizard
+
             run_setup_wizard(args)
 
         m["prompt"].assert_called_once()

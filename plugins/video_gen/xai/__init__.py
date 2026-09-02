@@ -99,11 +99,11 @@ def _resolve_xai_credentials() -> Tuple[str, str]:
         creds = {}
 
     api_key = str(creds.get("api_key") or os.getenv("XAI_API_KEY", "")).strip()
-    base_url = str(
-        creds.get("base_url")
-        or os.getenv("XAI_BASE_URL")
-        or DEFAULT_XAI_BASE_URL
-    ).strip().rstrip("/")
+    base_url = (
+        str(creds.get("base_url") or os.getenv("XAI_BASE_URL") or DEFAULT_XAI_BASE_URL)
+        .strip()
+        .rstrip("/")
+    )
     return api_key, base_url
 
 
@@ -313,16 +313,18 @@ class XAIVideoGenProvider(VideoGenProvider):
         try:
             loop = asyncio.new_event_loop()
             try:
-                return loop.run_until_complete(self._generate_async(
-                    prompt=prompt,
-                    model=model,
-                    explicit_model=bool(kwargs.get("_model_override_explicit")),
-                    image_url=image_url,
-                    reference_image_urls=reference_image_urls,
-                    duration=duration,
-                    aspect_ratio=aspect_ratio,
-                    resolution=resolution,
-                ))
+                return loop.run_until_complete(
+                    self._generate_async(
+                        prompt=prompt,
+                        model=model,
+                        explicit_model=bool(kwargs.get("_model_override_explicit")),
+                        image_url=image_url,
+                        reference_image_urls=reference_image_urls,
+                        duration=duration,
+                        aspect_ratio=aspect_ratio,
+                        resolution=resolution,
+                    )
+                )
             finally:
                 loop.close()
         except Exception as exc:
@@ -357,7 +359,8 @@ class XAIVideoGenProvider(VideoGenProvider):
                     "https://console.x.ai/."
                 ),
                 error_type="auth_required",
-                provider="xai", prompt=prompt,
+                provider="xai",
+                prompt=prompt,
             )
 
         prompt = (prompt or "").strip()
@@ -378,7 +381,8 @@ class XAIVideoGenProvider(VideoGenProvider):
                     "(text-to-video or image-to-video)"
                 ),
                 error_type="missing_prompt",
-                provider="xai", prompt=prompt,
+                provider="xai",
+                prompt=prompt,
             )
 
         refs = _normalize_reference_images(reference_image_urls)
@@ -386,13 +390,15 @@ class XAIVideoGenProvider(VideoGenProvider):
             return error_response(
                 error=f"reference_image_urls supports at most {MAX_REFERENCE_IMAGES} images on xAI",
                 error_type="too_many_references",
-                provider="xai", prompt=prompt,
+                provider="xai",
+                prompt=prompt,
             )
         if image_url_norm and refs:
             return error_response(
                 error="image_url and reference_image_urls cannot be combined on xAI",
                 error_type="conflicting_inputs",
-                provider="xai", prompt=prompt,
+                provider="xai",
+                prompt=prompt,
             )
 
         clamped_duration = _clamp_duration(duration, has_reference_images=bool(refs))
@@ -434,8 +440,10 @@ class XAIVideoGenProvider(VideoGenProvider):
                 )
 
             poll_result = await _poll(
-                client, request_id,
-                api_key=api_key, base_url=base_url,
+                client,
+                request_id,
+                api_key=api_key,
+                base_url=base_url,
                 timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
                 poll_interval=DEFAULT_POLL_INTERVAL_SECONDS,
             )

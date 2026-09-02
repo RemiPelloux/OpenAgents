@@ -52,6 +52,7 @@ from gateway.config import PlatformConfig
 # Helpers
 # ============================================================
 
+
 def make_config(**kwargs):
     extra = kwargs.pop("extra", {})
     extra.setdefault("app_id", "test_key")
@@ -112,6 +113,7 @@ def make_json_push(
 # ============================================================
 # 1. InboundPipeline Engine Tests
 # ============================================================
+
 
 class TestInboundPipeline:
     """Test the pipeline engine itself."""
@@ -216,6 +218,7 @@ class TestInboundPipeline:
 
     def test_use_before(self):
         """use_before inserts middleware before the target."""
+
         async def noop(ctx, next_fn):
             await next_fn()
 
@@ -225,6 +228,7 @@ class TestInboundPipeline:
 
     def test_use_before_nonexistent_appends(self):
         """use_before with nonexistent target appends to end."""
+
         async def noop(ctx, next_fn):
             await next_fn()
 
@@ -234,6 +238,7 @@ class TestInboundPipeline:
 
     def test_use_after(self):
         """use_after inserts middleware after the target."""
+
         async def noop(ctx, next_fn):
             await next_fn()
 
@@ -243,6 +248,7 @@ class TestInboundPipeline:
 
     def test_use_after_nonexistent_appends(self):
         """use_after with nonexistent target appends to end."""
+
         async def noop(ctx, next_fn):
             await next_fn()
 
@@ -252,6 +258,7 @@ class TestInboundPipeline:
 
     def test_remove(self):
         """remove deletes middleware by name."""
+
         async def noop(ctx, next_fn):
             await next_fn()
 
@@ -261,6 +268,7 @@ class TestInboundPipeline:
 
     def test_remove_nonexistent_is_noop(self):
         """remove with nonexistent name is a no-op."""
+
         async def noop(ctx, next_fn):
             await next_fn()
 
@@ -271,6 +279,7 @@ class TestInboundPipeline:
     @pytest.mark.asyncio
     async def test_error_propagation(self):
         """Errors in middlewares propagate to the caller."""
+
         async def mw_error(ctx, next_fn):
             raise ValueError("test error")
 
@@ -280,6 +289,7 @@ class TestInboundPipeline:
 
     def test_middleware_names_property(self):
         """middleware_names returns ordered list of names."""
+
         async def noop(ctx, next_fn):
             await next_fn()
 
@@ -313,6 +323,7 @@ class TestInboundPipeline:
 # ============================================================
 # 2. Individual Middleware Tests
 # ============================================================
+
 
 class TestDecodeMiddleware:
     @pytest.mark.asyncio
@@ -362,15 +373,19 @@ class TestExtractFieldsMiddleware:
     @pytest.mark.asyncio
     async def test_extracts_fields(self):
         """ExtractFieldsMiddleware populates ctx from push dict."""
-        ctx = make_ctx(push={
-            "from_account": "alice",
-            "group_code": "grp-1",
-            "group_name": "Test Group",
-            "sender_nickname": "Alice",
-            "msg_body": [{"msg_type": "TIMTextElem", "msg_content": {"text": "hi"}}],
-            "msg_id": "msg-001",
-            "cloud_custom_data": '{"key": "val"}',
-        })
+        ctx = make_ctx(
+            push={
+                "from_account": "alice",
+                "group_code": "grp-1",
+                "group_name": "Test Group",
+                "sender_nickname": "Alice",
+                "msg_body": [
+                    {"msg_type": "TIMTextElem", "msg_content": {"text": "hi"}}
+                ],
+                "msg_id": "msg-001",
+                "cloud_custom_data": '{"key": "val"}',
+            }
+        )
         next_fn = AsyncMock()
 
         await ExtractFieldsMiddleware()(ctx, next_fn)
@@ -486,7 +501,9 @@ class TestAccessGuardMiddleware:
     async def test_open_policy_passes(self):
         """AccessGuardMiddleware passes with open policy."""
         adapter = make_adapter()
-        adapter._access_policy = AccessPolicy(dm_policy="open", dm_allow_from=[], group_policy="open", group_allow_from=[])
+        adapter._access_policy = AccessPolicy(
+            dm_policy="open", dm_allow_from=[], group_policy="open", group_allow_from=[]
+        )
         ctx = make_ctx(adapter=adapter, chat_type="dm", from_account="alice")
         next_fn = AsyncMock()
 
@@ -497,7 +514,12 @@ class TestAccessGuardMiddleware:
     async def test_disabled_dm_stops(self):
         """AccessGuardMiddleware stops DM when dm_policy=disabled."""
         adapter = make_adapter()
-        adapter._access_policy = AccessPolicy(dm_policy="disabled", dm_allow_from=[], group_policy="open", group_allow_from=[])
+        adapter._access_policy = AccessPolicy(
+            dm_policy="disabled",
+            dm_allow_from=[],
+            group_policy="open",
+            group_allow_from=[],
+        )
         ctx = make_ctx(adapter=adapter, chat_type="dm", from_account="alice")
         next_fn = AsyncMock()
 
@@ -508,7 +530,12 @@ class TestAccessGuardMiddleware:
     async def test_allowlist_dm_allowed(self):
         """AccessGuardMiddleware passes DM when sender is in allowlist."""
         adapter = make_adapter()
-        adapter._access_policy = AccessPolicy(dm_policy="allowlist", dm_allow_from=["alice"], group_policy="open", group_allow_from=[])
+        adapter._access_policy = AccessPolicy(
+            dm_policy="allowlist",
+            dm_allow_from=["alice"],
+            group_policy="open",
+            group_allow_from=[],
+        )
         ctx = make_ctx(adapter=adapter, chat_type="dm", from_account="alice")
         next_fn = AsyncMock()
 
@@ -519,7 +546,12 @@ class TestAccessGuardMiddleware:
     async def test_allowlist_dm_blocked(self):
         """AccessGuardMiddleware blocks DM when sender is not in allowlist."""
         adapter = make_adapter()
-        adapter._access_policy = AccessPolicy(dm_policy="allowlist", dm_allow_from=["bob"], group_policy="open", group_allow_from=[])
+        adapter._access_policy = AccessPolicy(
+            dm_policy="allowlist",
+            dm_allow_from=["bob"],
+            group_policy="open",
+            group_allow_from=[],
+        )
         ctx = make_ctx(adapter=adapter, chat_type="dm", from_account="alice")
         next_fn = AsyncMock()
 
@@ -530,7 +562,12 @@ class TestAccessGuardMiddleware:
     async def test_disabled_group_stops(self):
         """AccessGuardMiddleware stops group when group_policy=disabled."""
         adapter = make_adapter()
-        adapter._access_policy = AccessPolicy(dm_policy="open", dm_allow_from=[], group_policy="disabled", group_allow_from=[])
+        adapter._access_policy = AccessPolicy(
+            dm_policy="open",
+            dm_allow_from=[],
+            group_policy="disabled",
+            group_allow_from=[],
+        )
         ctx = make_ctx(adapter=adapter, chat_type="group", group_code="grp-1")
         next_fn = AsyncMock()
 
@@ -541,7 +578,12 @@ class TestAccessGuardMiddleware:
     async def test_allowlist_group_allowed(self):
         """AccessGuardMiddleware passes group when group_code is in allowlist."""
         adapter = make_adapter()
-        adapter._access_policy = AccessPolicy(dm_policy="open", dm_allow_from=[], group_policy="allowlist", group_allow_from=["grp-1"])
+        adapter._access_policy = AccessPolicy(
+            dm_policy="open",
+            dm_allow_from=[],
+            group_policy="allowlist",
+            group_allow_from=["grp-1"],
+        )
         ctx = make_ctx(adapter=adapter, chat_type="group", group_code="grp-1")
         next_fn = AsyncMock()
 
@@ -556,9 +598,12 @@ class TestExtractContentMiddleware:
         adapter = make_adapter()
         msg_body = [
             {"msg_type": "TIMTextElem", "msg_content": {"text": "Hello!"}},
-            {"msg_type": "TIMImageElem", "msg_content": {
-                "image_info_array": [{"url": "https://img.example.com/1.jpg"}]
-            }},
+            {
+                "msg_type": "TIMImageElem",
+                "msg_content": {
+                    "image_info_array": [{"url": "https://img.example.com/1.jpg"}]
+                },
+            },
         ]
         ctx = make_ctx(adapter=adapter, msg_body=msg_body)
         next_fn = AsyncMock()
@@ -620,9 +665,16 @@ class TestGroupAtGuardMiddleware:
         adapter = make_adapter()
         adapter._bot_id = "bot_123"
         msg_body = [
-            {"msg_type": "TIMCustomElem", "msg_content": {
-                "data": json.dumps({"elem_type": 1002, "text": "@Bot", "user_id": "bot_123"})
-            }},
+            {
+                "msg_type": "TIMCustomElem",
+                "msg_content": {
+                    "data": json.dumps({
+                        "elem_type": 1002,
+                        "text": "@Bot",
+                        "user_id": "bot_123",
+                    })
+                },
+            },
         ]
         ctx = make_ctx(
             adapter=adapter,
@@ -683,6 +735,7 @@ class TestGroupAtGuardMiddleware:
 # 4. Factory Tests
 # ============================================================
 
+
 class TestCreateInboundPipeline:
     def test_default_pipeline_has_all_middlewares(self):
         """InboundPipelineBuilder.build() creates pipeline with all expected middlewares."""
@@ -716,13 +769,16 @@ class TestCreateInboundPipeline:
 # 5. End-to-End Pipeline Integration Tests
 # ============================================================
 
+
 class TestPipelineIntegration:
     @pytest.mark.asyncio
     async def test_full_dm_message_flow(self):
         """Full pipeline processes a DM message end-to-end."""
         adapter = make_adapter()
         adapter._bot_id = "bot_123"
-        adapter._access_policy = AccessPolicy(dm_policy="open", dm_allow_from=[], group_policy="open", group_allow_from=[])
+        adapter._access_policy = AccessPolicy(
+            dm_policy="open", dm_allow_from=[], group_policy="open", group_allow_from=[]
+        )
         adapter.handle_message = AsyncMock()
         adapter._resolve_inbound_media_urls = AsyncMock(return_value=([], []))
 
@@ -793,7 +849,12 @@ class TestPipelineIntegration:
         """Pipeline stops when DM is blocked by policy."""
         adapter = make_adapter()
         adapter._bot_id = "bot_123"
-        adapter._access_policy = AccessPolicy(dm_policy="disabled", dm_allow_from=[], group_policy="open", group_allow_from=[])
+        adapter._access_policy = AccessPolicy(
+            dm_policy="disabled",
+            dm_allow_from=[],
+            group_policy="open",
+            group_allow_from=[],
+        )
 
         push_data = make_json_push(
             from_account="alice",
@@ -816,7 +877,6 @@ class TestPipelineIntegration:
         assert isinstance(adapter._inbound_pipeline, InboundPipeline)
 
 
-
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
@@ -825,23 +885,29 @@ if __name__ == "__main__":
 # 6. OOP Middleware Tests
 # ============================================================
 
+
 class TestInboundMiddlewareABC:
     """Test the InboundMiddleware OOP protocol (callable + named)."""
 
     def test_subclass_with_handle_works(self):
         """Subclass with handle() can be instantiated."""
+
         class GoodMiddleware(InboundMiddleware):
             name = "good"
+
             async def handle(self, ctx, next_fn):
                 await next_fn()
+
         mw = GoodMiddleware()
         assert mw.name == "good"
 
     @pytest.mark.asyncio
     async def test_callable_protocol(self):
         """Middleware instances are callable via __call__."""
+
         class TestMW(InboundMiddleware):
             name = "test"
+
             async def handle(self, ctx, next_fn):
                 ctx.raw_text = "called"
                 await next_fn()
@@ -890,8 +956,10 @@ class TestPipelineOOPRegistration:
     @pytest.mark.asyncio
     async def test_use_with_middleware_instance(self):
         """pipeline.use(SomeMiddleware()) auto-extracts name."""
+
         class TestMW(InboundMiddleware):
             name = "test-mw"
+
             async def handle(self, ctx, next_fn):
                 ctx.raw_text = "oop-works"
                 await next_fn()
@@ -910,6 +978,7 @@ class TestPipelineOOPRegistration:
 
         class OopMW(InboundMiddleware):
             name = "oop"
+
             async def handle(self, ctx, next_fn):
                 order.append("oop")
                 await next_fn()
@@ -918,11 +987,7 @@ class TestPipelineOOPRegistration:
             order.append("func")
             await next_fn()
 
-        pipeline = (
-            InboundPipeline()
-            .use(OopMW())
-            .use("func", func_mw)
-        )
+        pipeline = InboundPipeline().use(OopMW()).use("func", func_mw)
         assert pipeline.middleware_names == ["oop", "func"]
 
         await pipeline.execute(make_ctx())
@@ -942,6 +1007,7 @@ class TestPipelineOOPRegistration:
 # removed. ``_extract_quote_context()`` is now a pure (quote_id, quote_text)
 # extractor; quote media references are populated separately by
 # ``_extract_media_refs_from_transcript()`` against the transcript store.
+
 
 class TestQuoteContextMiddleware:
     """Tests for QuoteContextMiddleware._extract_quote_context."""
@@ -966,7 +1032,9 @@ class TestQuoteContextMiddleware:
                 "sender_nickname": "Alice",
             }
         })
-        quote_id, quote_text = QuoteContextMiddleware()._extract_quote_context(cloud_data)
+        quote_id, quote_text = QuoteContextMiddleware()._extract_quote_context(
+            cloud_data
+        )
         assert quote_id == "quoted-msg-001"
         assert quote_text == "Alice: Hello world"
 
@@ -979,7 +1047,9 @@ class TestQuoteContextMiddleware:
                 "sender_nickname": "Carol",
             }
         })
-        quote_id, quote_text = QuoteContextMiddleware()._extract_quote_context(cloud_data)
+        quote_id, quote_text = QuoteContextMiddleware()._extract_quote_context(
+            cloud_data
+        )
         assert quote_id == "quoted-msg-003"
         assert quote_text is None
 
@@ -991,7 +1061,9 @@ class TestQuoteContextMiddleware:
                 "desc": "some text",
             }
         })
-        quote_id, _quote_text = QuoteContextMiddleware()._extract_quote_context(cloud_data)
+        quote_id, _quote_text = QuoteContextMiddleware()._extract_quote_context(
+            cloud_data
+        )
         assert quote_id is None
 
     @pytest.mark.asyncio
@@ -1036,6 +1108,7 @@ class TestQuoteContextMiddleware:
 #
 # Direct messages skip the observed backfill entirely.
 
+
 class TestResolveYbresRefs:
     """Direct tests for ``MediaResolveMiddleware._resolve_ybres_refs``.
 
@@ -1054,18 +1127,27 @@ class TestResolveYbresRefs:
             ("rid-2", "file", "doc.pdf"),
         ]
 
-        with patch.object(
-            MediaResolveMiddleware, "_fetch_resource_url",
-            new=AsyncMock(side_effect=["https://fresh/1", "https://fresh/2"]),
-        ) as p_fetch, patch.object(
-            MediaResolveMiddleware, "_download_and_cache",
-            new=AsyncMock(side_effect=[
-                ("/cache/a.jpg", "image/jpeg"),
-                ("/cache/doc.pdf", "application/pdf"),
-            ]),
-        ) as p_cache:
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_fetch_resource_url",
+                new=AsyncMock(side_effect=["https://fresh/1", "https://fresh/2"]),
+            ) as p_fetch,
+            patch.object(
+                MediaResolveMiddleware,
+                "_download_and_cache",
+                new=AsyncMock(
+                    side_effect=[
+                        ("/cache/a.jpg", "image/jpeg"),
+                        ("/cache/doc.pdf", "application/pdf"),
+                    ]
+                ),
+            ) as p_cache,
+        ):
             paths, mimes = await MediaResolveMiddleware._resolve_ybres_refs(
-                adapter, refs, log_prefix="test",
+                adapter,
+                refs,
+                log_prefix="test",
             )
 
         assert paths == ["/cache/a.jpg", "/cache/doc.pdf"]
@@ -1083,20 +1165,27 @@ class TestResolveYbresRefs:
         """Refs whose kind is outside ``_RESOLVABLE_MEDIA_KINDS`` are dropped silently."""
         adapter = make_adapter()
         refs = [
-            ("rid-a", "voice", ""),        # not resolvable
+            ("rid-a", "voice", ""),  # not resolvable
             ("rid-i", "image", "ok.jpg"),  # resolvable
-            ("rid-?", "unknown", ""),      # not resolvable
+            ("rid-?", "unknown", ""),  # not resolvable
         ]
 
-        with patch.object(
-            MediaResolveMiddleware, "_fetch_resource_url",
-            new=AsyncMock(return_value="https://fresh/i"),
-        ) as p_fetch, patch.object(
-            MediaResolveMiddleware, "_download_and_cache",
-            new=AsyncMock(return_value=("/cache/ok.jpg", "image/jpeg")),
-        ) as p_cache:
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_fetch_resource_url",
+                new=AsyncMock(return_value="https://fresh/i"),
+            ) as p_fetch,
+            patch.object(
+                MediaResolveMiddleware,
+                "_download_and_cache",
+                new=AsyncMock(return_value=("/cache/ok.jpg", "image/jpeg")),
+            ) as p_cache,
+        ):
             paths, mimes = await MediaResolveMiddleware._resolve_ybres_refs(
-                adapter, refs, log_prefix="test",
+                adapter,
+                refs,
+                log_prefix="test",
             )
 
         assert paths == ["/cache/ok.jpg"]
@@ -1114,15 +1203,22 @@ class TestResolveYbresRefs:
             ("rid-ok", "image", ""),
         ]
 
-        with patch.object(
-            MediaResolveMiddleware, "_fetch_resource_url",
-            new=AsyncMock(side_effect=[RuntimeError("boom"), "https://fresh/ok"]),
-        ), patch.object(
-            MediaResolveMiddleware, "_download_and_cache",
-            new=AsyncMock(return_value=("/cache/ok.jpg", "image/jpeg")),
-        ) as p_cache:
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_fetch_resource_url",
+                new=AsyncMock(side_effect=[RuntimeError("boom"), "https://fresh/ok"]),
+            ),
+            patch.object(
+                MediaResolveMiddleware,
+                "_download_and_cache",
+                new=AsyncMock(return_value=("/cache/ok.jpg", "image/jpeg")),
+            ) as p_cache,
+        ):
             paths, mimes = await MediaResolveMiddleware._resolve_ybres_refs(
-                adapter, refs, log_prefix="test",
+                adapter,
+                refs,
+                log_prefix="test",
             )
 
         # bad ref dropped; good ref preserved
@@ -1137,15 +1233,22 @@ class TestResolveYbresRefs:
         adapter = make_adapter()
         refs = [("rid-1", "image", "")]
 
-        with patch.object(
-            MediaResolveMiddleware, "_fetch_resource_url",
-            new=AsyncMock(return_value="https://fresh/1"),
-        ), patch.object(
-            MediaResolveMiddleware, "_download_and_cache",
-            new=AsyncMock(return_value=None),
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_fetch_resource_url",
+                new=AsyncMock(return_value="https://fresh/1"),
+            ),
+            patch.object(
+                MediaResolveMiddleware,
+                "_download_and_cache",
+                new=AsyncMock(return_value=None),
+            ),
         ):
             paths, mimes = await MediaResolveMiddleware._resolve_ybres_refs(
-                adapter, refs, log_prefix="test",
+                adapter,
+                refs,
+                log_prefix="test",
             )
 
         assert paths == []
@@ -1155,8 +1258,14 @@ class TestResolveYbresRefs:
 class TestMediaResolveMiddlewareRouting:
     """Branch-routing tests for MediaResolveMiddleware.handle()."""
 
-    def _make_resolved_ctx(self, *, chat_type: str, reply_to: str = None,
-                            quote_media_refs=None, raw_text: str = "hello"):
+    def _make_resolved_ctx(
+        self,
+        *,
+        chat_type: str,
+        reply_to: str = None,
+        quote_media_refs=None,
+        raw_text: str = "hello",
+    ):
         adapter = make_adapter()
         ctx = make_ctx(
             adapter=adapter,
@@ -1173,16 +1282,23 @@ class TestMediaResolveMiddlewareRouting:
         """In dm chats, observed-media backfill is never invoked."""
         _adapter, ctx = self._make_resolved_ctx(chat_type="dm")
 
-        with patch.object(
-            MediaResolveMiddleware, "_resolve_media_urls",
-            new=AsyncMock(return_value=([], [])),
-        ) as p_own, patch.object(
-            MediaResolveMiddleware, "_resolve_quote_media",
-            new=AsyncMock(return_value=([], [])),
-        ) as p_quote, patch.object(
-            MediaResolveMiddleware, "_collect_observed_media",
-            new=AsyncMock(return_value=([], [])),
-        ) as p_observed:
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_media_urls",
+                new=AsyncMock(return_value=([], [])),
+            ) as p_own,
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_quote_media",
+                new=AsyncMock(return_value=([], [])),
+            ) as p_quote,
+            patch.object(
+                MediaResolveMiddleware,
+                "_collect_observed_media",
+                new=AsyncMock(return_value=([], [])),
+            ) as p_observed,
+        ):
             next_fn = AsyncMock()
             await MediaResolveMiddleware()(ctx, next_fn)
 
@@ -1200,16 +1316,23 @@ class TestMediaResolveMiddlewareRouting:
             quote_media_refs=[("rid-q1", "image", "")],
         )
 
-        with patch.object(
-            MediaResolveMiddleware, "_resolve_media_urls",
-            new=AsyncMock(return_value=([], [])),
-        ) as p_own, patch.object(
-            MediaResolveMiddleware, "_resolve_quote_media",
-            new=AsyncMock(return_value=(["/cache/q1.jpg"], ["image/jpeg"])),
-        ) as p_quote, patch.object(
-            MediaResolveMiddleware, "_collect_observed_media",
-            new=AsyncMock(return_value=([], [])),
-        ) as p_observed:
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_media_urls",
+                new=AsyncMock(return_value=([], [])),
+            ) as p_own,
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_quote_media",
+                new=AsyncMock(return_value=(["/cache/q1.jpg"], ["image/jpeg"])),
+            ) as p_quote,
+            patch.object(
+                MediaResolveMiddleware,
+                "_collect_observed_media",
+                new=AsyncMock(return_value=([], [])),
+            ) as p_observed,
+        ):
             next_fn = AsyncMock()
             await MediaResolveMiddleware()(ctx, next_fn)
 
@@ -1224,16 +1347,23 @@ class TestMediaResolveMiddlewareRouting:
         """In group chats without quote, observed-media backfill is invoked."""
         _adapter, ctx = self._make_resolved_ctx(chat_type="group")
 
-        with patch.object(
-            MediaResolveMiddleware, "_resolve_media_urls",
-            new=AsyncMock(return_value=([], [])),
-        ), patch.object(
-            MediaResolveMiddleware, "_resolve_quote_media",
-            new=AsyncMock(return_value=([], [])),
-        ) as p_quote, patch.object(
-            MediaResolveMiddleware, "_collect_observed_media",
-            new=AsyncMock(return_value=(["/cache/o1.jpg"], ["image/jpeg"])),
-        ) as p_observed:
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_media_urls",
+                new=AsyncMock(return_value=([], [])),
+            ),
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_quote_media",
+                new=AsyncMock(return_value=([], [])),
+            ) as p_quote,
+            patch.object(
+                MediaResolveMiddleware,
+                "_collect_observed_media",
+                new=AsyncMock(return_value=(["/cache/o1.jpg"], ["image/jpeg"])),
+            ) as p_observed,
+        ):
             next_fn = AsyncMock()
             await MediaResolveMiddleware()(ctx, next_fn)
 
@@ -1250,16 +1380,23 @@ class TestMediaResolveMiddlewareRouting:
             quote_media_refs=[("rid-q2", "image", "")],
         )
 
-        with patch.object(
-            MediaResolveMiddleware, "_resolve_media_urls",
-            new=AsyncMock(return_value=([], [])),
-        ), patch.object(
-            MediaResolveMiddleware, "_resolve_quote_media",
-            new=AsyncMock(return_value=(["/cache/q2.jpg"], ["image/jpeg"])),
-        ) as p_quote, patch.object(
-            MediaResolveMiddleware, "_collect_observed_media",
-            new=AsyncMock(return_value=(["/cache/o2.jpg"], ["image/jpeg"])),
-        ) as p_observed:
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_media_urls",
+                new=AsyncMock(return_value=([], [])),
+            ),
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_quote_media",
+                new=AsyncMock(return_value=(["/cache/q2.jpg"], ["image/jpeg"])),
+            ) as p_quote,
+            patch.object(
+                MediaResolveMiddleware,
+                "_collect_observed_media",
+                new=AsyncMock(return_value=(["/cache/o2.jpg"], ["image/jpeg"])),
+            ) as p_observed,
+        ):
             next_fn = AsyncMock()
             await MediaResolveMiddleware()(ctx, next_fn)
 
@@ -1276,14 +1413,23 @@ class TestMediaResolveMiddlewareRouting:
             quote_media_refs=[("rid", "image", "")],
         )
 
-        with patch.object(
-            MediaResolveMiddleware, "_resolve_media_urls",
-            new=AsyncMock(return_value=(["/cache/a.jpg"], ["image/jpeg"])),
-        ), patch.object(
-            MediaResolveMiddleware, "_resolve_quote_media",
-            # Same path as own → must be deduped.
-            new=AsyncMock(return_value=(["/cache/a.jpg", "/cache/b.jpg"],
-                                          ["image/jpeg", "image/png"])),
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_media_urls",
+                new=AsyncMock(return_value=(["/cache/a.jpg"], ["image/jpeg"])),
+            ),
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_quote_media",
+                # Same path as own → must be deduped.
+                new=AsyncMock(
+                    return_value=(
+                        ["/cache/a.jpg", "/cache/b.jpg"],
+                        ["image/jpeg", "image/png"],
+                    )
+                ),
+            ),
         ):
             next_fn = AsyncMock()
             await MediaResolveMiddleware()(ctx, next_fn)
@@ -1306,16 +1452,23 @@ class TestMediaResolveMiddlewareRouting:
             raw_text="[image]",
         )
 
-        with patch.object(
-            MediaResolveMiddleware, "_resolve_media_urls",
-            new=AsyncMock(return_value=([], [])),  # no own media
-        ), patch.object(
-            MediaResolveMiddleware, "_resolve_quote_media",
-            new=AsyncMock(return_value=(["/cache/q.jpg"], ["image/jpeg"])),
-        ), patch.object(
-            PlaceholderFilterMiddleware, "is_skippable_placeholder",
-            return_value=True,
-        ) as p_check:
+        with (
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_media_urls",
+                new=AsyncMock(return_value=([], [])),  # no own media
+            ),
+            patch.object(
+                MediaResolveMiddleware,
+                "_resolve_quote_media",
+                new=AsyncMock(return_value=(["/cache/q.jpg"], ["image/jpeg"])),
+            ),
+            patch.object(
+                PlaceholderFilterMiddleware,
+                "is_skippable_placeholder",
+                return_value=True,
+            ) as p_check,
+        ):
             next_fn = AsyncMock()
             await MediaResolveMiddleware()(ctx, next_fn)
 
@@ -1331,6 +1484,7 @@ class TestMediaResolveMiddlewareRouting:
 # PatchAnchorsMiddleware Tests
 # ============================================================
 
+
 class TestPatchAnchorsMiddleware:
     """Tests for PatchAnchorsMiddleware._patch()."""
 
@@ -1341,14 +1495,18 @@ class TestPatchAnchorsMiddleware:
     def test_replaces_image_anchor_with_local_path(self):
         text = "look [image|ybres:abc] please"
         out = PatchAnchorsMiddleware._patch(
-            text, ["/cache/x.jpg"], ["image/jpeg"],
+            text,
+            ["/cache/x.jpg"],
+            ["image/jpeg"],
         )
         assert out == "look [image: /cache/x.jpg] please"
 
     def test_replaces_file_anchor_with_filename_label(self):
         text = "see [file:doc.pdf|ybres:rid-1]"
         out = PatchAnchorsMiddleware._patch(
-            text, ["/cache/doc.pdf"], ["application/pdf"],
+            text,
+            ["/cache/doc.pdf"],
+            ["application/pdf"],
         )
         assert "[file: doc.pdf → /cache/doc.pdf]" in out
 
@@ -1356,7 +1514,9 @@ class TestPatchAnchorsMiddleware:
         """URLs not starting with '/' are left untouched."""
         text = "[image|ybres:abc]"
         out = PatchAnchorsMiddleware._patch(
-            text, ["https://example.com/x.jpg"], ["image/jpeg"],
+            text,
+            ["https://example.com/x.jpg"],
+            ["image/jpeg"],
         )
         # Anchor preserved verbatim because the resolved url is remote.
         assert out == text
@@ -1365,7 +1525,9 @@ class TestPatchAnchorsMiddleware:
         """An [image|...] anchor with a non-image mime is left alone."""
         text = "[image|ybres:rid]"
         out = PatchAnchorsMiddleware._patch(
-            text, ["/cache/odd.bin"], ["application/octet-stream"],
+            text,
+            ["/cache/odd.bin"],
+            ["application/octet-stream"],
         )
         assert out == text
 

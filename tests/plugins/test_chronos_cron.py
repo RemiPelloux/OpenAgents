@@ -31,8 +31,10 @@ def chronos(monkeypatch):
 
         def provision(self, *, job_id, fire_at, agent_callback_url, dedup_key):
             self.provisions.append({
-                "job_id": job_id, "fire_at": fire_at,
-                "agent_callback_url": agent_callback_url, "dedup_key": dedup_key,
+                "job_id": job_id,
+                "fire_at": fire_at,
+                "agent_callback_url": agent_callback_url,
+                "dedup_key": dedup_key,
             })
             return {"schedule_id": f"sched-{job_id}"}
 
@@ -47,17 +49,24 @@ def chronos(monkeypatch):
     fake = FakeClient()
     prov._client = fake
     # callback_url is read via _cfg; patch the module helper to avoid config.
-    monkeypatch.setattr("plugins.cron_providers.chronos._cfg",
-                        lambda *k, default="": "https://agent.example/" if k[-1] == "callback_url" else "https://portal.test")
+    monkeypatch.setattr(
+        "plugins.cron_providers.chronos._cfg",
+        lambda *k, default="": "https://agent.example/"
+        if k[-1] == "callback_url"
+        else "https://portal.test",
+    )
     return prov, fake
 
 
 # -- is_available -------------------------------------------------------------
 
+
 def test_is_available_false_without_config(temp_home, monkeypatch):
     from plugins.cron_providers.chronos import ChronosCronScheduler
 
-    monkeypatch.setattr("plugins.cron_providers.chronos._cfg", lambda *k, default="": "")
+    monkeypatch.setattr(
+        "plugins.cron_providers.chronos._cfg", lambda *k, default="": ""
+    )
     assert ChronosCronScheduler().is_available() is False
 
 
@@ -65,9 +74,11 @@ def test_is_available_true_with_config_and_token(temp_home, monkeypatch):
     import plugins.cron_providers.chronos as mod
     from plugins.cron_providers.chronos import ChronosCronScheduler
 
-    monkeypatch.setattr(mod, "_cfg", lambda *k, default="": "https://x" )
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state",
-                        lambda pid: {"access_token": "tok"})
+    monkeypatch.setattr(mod, "_cfg", lambda *k, default="": "https://x")
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state",
+        lambda pid: {"access_token": "tok"},
+    )
     assert ChronosCronScheduler().is_available() is True
 
 
@@ -77,8 +88,10 @@ def test_is_available_makes_no_network(temp_home, monkeypatch):
     from plugins.cron_providers.chronos import ChronosCronScheduler
 
     monkeypatch.setattr(mod, "_cfg", lambda *k, default="": "https://x")
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state",
-                        lambda pid: {"access_token": "tok"})
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state",
+        lambda pid: {"access_token": "tok"},
+    )
     p = ChronosCronScheduler()
 
     def explode():
@@ -89,6 +102,7 @@ def test_is_available_makes_no_network(temp_home, monkeypatch):
 
 
 # -- arming -------------------------------------------------------------------
+
 
 def test_arm_one_shot_sends_provision(chronos):
     prov, fake = chronos
@@ -118,14 +132,27 @@ def test_arm_one_shot_noop_without_next_run(chronos):
 
 # -- reconcile ----------------------------------------------------------------
 
+
 def test_reconcile_arms_all_enabled(temp_home, chronos, monkeypatch):
     prov, fake = chronos
     jobs = [
-        {"id": "a", "enabled": True, "next_run_at": "2026-06-18T12:00:00+00:00", "state": "scheduled"},
-        {"id": "b", "enabled": True, "next_run_at": "2026-06-18T12:05:00+00:00", "state": "scheduled"},
+        {
+            "id": "a",
+            "enabled": True,
+            "next_run_at": "2026-06-18T12:00:00+00:00",
+            "state": "scheduled",
+        },
+        {
+            "id": "b",
+            "enabled": True,
+            "next_run_at": "2026-06-18T12:05:00+00:00",
+            "state": "scheduled",
+        },
     ]
     monkeypatch.setattr("cron.jobs.load_jobs", lambda: jobs)
-    monkeypatch.setattr("cron.jobs.get_job", lambda jid: next(j for j in jobs if j["id"] == jid))
+    monkeypatch.setattr(
+        "cron.jobs.get_job", lambda jid: next(j for j in jobs if j["id"] == jid)
+    )
 
     prov.reconcile()
     assert {p["job_id"] for p in fake.provisions} == {"a", "b"}
@@ -136,9 +163,18 @@ def test_reconcile_cancels_orphan_arms_desired(temp_home, chronos, monkeypatch):
     prov, fake = chronos
     # NAS already has a stale arm for deleted job "gone".
     prov._armed = {"gone": "2026-06-18T11:00:00+00:00"}
-    jobs = [{"id": "a", "enabled": True, "next_run_at": "2026-06-18T12:00:00+00:00", "state": "scheduled"}]
+    jobs = [
+        {
+            "id": "a",
+            "enabled": True,
+            "next_run_at": "2026-06-18T12:00:00+00:00",
+            "state": "scheduled",
+        }
+    ]
     monkeypatch.setattr("cron.jobs.load_jobs", lambda: jobs)
-    monkeypatch.setattr("cron.jobs.get_job", lambda jid: next((j for j in jobs if j["id"] == jid), None))
+    monkeypatch.setattr(
+        "cron.jobs.get_job", lambda jid: next((j for j in jobs if j["id"] == jid), None)
+    )
 
     prov.reconcile()
     assert [p["job_id"] for p in fake.provisions] == ["a"]
@@ -147,9 +183,18 @@ def test_reconcile_cancels_orphan_arms_desired(temp_home, chronos, monkeypatch):
 
 def test_reconcile_skips_paused(temp_home, chronos, monkeypatch):
     prov, fake = chronos
-    jobs = [{"id": "p", "enabled": True, "next_run_at": "2026-06-18T12:00:00+00:00", "state": "paused"}]
+    jobs = [
+        {
+            "id": "p",
+            "enabled": True,
+            "next_run_at": "2026-06-18T12:00:00+00:00",
+            "state": "paused",
+        }
+    ]
     monkeypatch.setattr("cron.jobs.load_jobs", lambda: jobs)
-    monkeypatch.setattr("cron.jobs.get_job", lambda jid: next((j for j in jobs if j["id"] == jid), None))
+    monkeypatch.setattr(
+        "cron.jobs.get_job", lambda jid: next((j for j in jobs if j["id"] == jid), None)
+    )
 
     prov.reconcile()
     assert fake.provisions == []
@@ -158,7 +203,14 @@ def test_reconcile_skips_paused(temp_home, chronos, monkeypatch):
 def test_reconcile_skips_already_armed_same_time(temp_home, chronos, monkeypatch):
     prov, fake = chronos
     prov._armed = {"a": "2026-06-18T12:00:00+00:00"}
-    jobs = [{"id": "a", "enabled": True, "next_run_at": "2026-06-18T12:00:00+00:00", "state": "scheduled"}]
+    jobs = [
+        {
+            "id": "a",
+            "enabled": True,
+            "next_run_at": "2026-06-18T12:00:00+00:00",
+            "state": "scheduled",
+        }
+    ]
     monkeypatch.setattr("cron.jobs.load_jobs", lambda: jobs)
     monkeypatch.setattr("cron.jobs.get_job", lambda jid: jobs[0])
 
@@ -168,13 +220,21 @@ def test_reconcile_skips_already_armed_same_time(temp_home, chronos, monkeypatch
 
 # -- fire_due re-arm ----------------------------------------------------------
 
+
 def test_fire_due_rearms_next_oneshot(chronos, monkeypatch):
     prov, fake = chronos
     # super().fire_due runs the job; stub the ABC default to "ran".
-    monkeypatch.setattr("cron.scheduler_provider.CronScheduler.fire_due",
-                        lambda self, jid, **kw: True)
-    monkeypatch.setattr("cron.jobs.get_job",
-                        lambda jid: {"id": jid, "enabled": True, "next_run_at": "2026-06-18T12:05:00+00:00"})
+    monkeypatch.setattr(
+        "cron.scheduler_provider.CronScheduler.fire_due", lambda self, jid, **kw: True
+    )
+    monkeypatch.setattr(
+        "cron.jobs.get_job",
+        lambda jid: {
+            "id": jid,
+            "enabled": True,
+            "next_run_at": "2026-06-18T12:05:00+00:00",
+        },
+    )
 
     assert prov.fire_due("j1") is True
     assert [p["job_id"] for p in fake.provisions] == ["j1"]
@@ -185,8 +245,9 @@ def test_fire_due_no_rearm_when_job_gone(chronos, monkeypatch):
     """repeat-N exhausted / one-shot completed → mark_job_run deleted the job →
     get_job None → no re-arm (the schedule stops cleanly)."""
     prov, fake = chronos
-    monkeypatch.setattr("cron.scheduler_provider.CronScheduler.fire_due",
-                        lambda self, jid, **kw: True)
+    monkeypatch.setattr(
+        "cron.scheduler_provider.CronScheduler.fire_due", lambda self, jid, **kw: True
+    )
     monkeypatch.setattr("cron.jobs.get_job", lambda jid: None)
 
     assert prov.fire_due("j1") is True
@@ -196,8 +257,9 @@ def test_fire_due_no_rearm_when_job_gone(chronos, monkeypatch):
 def test_fire_due_no_rearm_when_claim_lost(chronos, monkeypatch):
     """If the run didn't happen (claim lost), don't re-arm."""
     prov, fake = chronos
-    monkeypatch.setattr("cron.scheduler_provider.CronScheduler.fire_due",
-                        lambda self, jid, **kw: False)
+    monkeypatch.setattr(
+        "cron.scheduler_provider.CronScheduler.fire_due", lambda self, jid, **kw: False
+    )
 
     assert prov.fire_due("j1") is False
     assert fake.provisions == []

@@ -3,6 +3,7 @@
 Phase 0 — establish a baseline pin on the current (pre-OAuth) behavior so
 later phases can prove they didn't break loopback mode.
 """
+
 import pytest
 
 # Phase 5 / Phase 6: these tests mutate ``web_server.app.state.auth_required``
@@ -54,9 +55,7 @@ def test_loopback_protected_route_accepts_session_token(client_loopback):
     )
     # 200 or 404 (no sessions yet) both prove the auth layer let it through.
     # 500 is also acceptable if there's a downstream issue unrelated to auth.
-    assert r.status_code != 401, (
-        f"Expected auth to succeed but got 401; body: {r.text}"
-    )
+    assert r.status_code != 401, f"Expected auth to succeed but got 401; body: {r.text}"
 
 
 def test_loopback_index_injects_session_token(client_loopback):
@@ -82,22 +81,26 @@ def test_loopback_host_header_validation_still_enforced(client_loopback):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("host,allow_public,expected", [
-    ("127.0.0.1", False, False),
-    ("127.0.0.1", True,  False),
-    ("localhost", False, False),
-    ("::1",       False, False),
-    # --insecure (allow_public=True) NO LONGER bypasses the gate on a public
-    # bind (June 2026 hermes-0day hardening). Non-loopback always requires auth.
-    ("0.0.0.0",   True,  True),
-    ("0.0.0.0",   False, True),
-    ("192.168.1.5", False, True),
-    ("10.0.0.1",  True,  True),     # allow_public ignored — LAN IP is public
-    ("100.64.0.1", False, True),    # Tailscale CGNAT — treated as public
-    ("openagents-prod-abc.fly.dev", False, True),
-])
+@pytest.mark.parametrize(
+    "host,allow_public,expected",
+    [
+        ("127.0.0.1", False, False),
+        ("127.0.0.1", True, False),
+        ("localhost", False, False),
+        ("::1", False, False),
+        # --insecure (allow_public=True) NO LONGER bypasses the gate on a public
+        # bind (June 2026 hermes-0day hardening). Non-loopback always requires auth.
+        ("0.0.0.0", True, True),
+        ("0.0.0.0", False, True),
+        ("192.168.1.5", False, True),
+        ("10.0.0.1", True, True),  # allow_public ignored — LAN IP is public
+        ("100.64.0.1", False, True),  # Tailscale CGNAT — treated as public
+        ("openagents-prod-abc.fly.dev", False, True),
+    ],
+)
 def test_should_require_auth_truth_table(host, allow_public, expected):
     from openagents_cli.web_server import should_require_auth
+
     assert should_require_auth(host, allow_public) is expected
 
 
@@ -114,6 +117,7 @@ def _stub_uvicorn_run(monkeypatch):
     import asyncio
     import contextlib
     import uvicorn
+
     captured: dict = {"kwargs": {}}
 
     class _FakeConfig:
@@ -170,8 +174,10 @@ def test_start_server_loopback_sets_auth_required_false(monkeypatch):
     # Force a fresh state to detect that start_server actually set it.
     web_server.app.state.auth_required = None
     web_server.start_server(
-        host="127.0.0.1", port=9119,
-        open_browser=False, allow_public=False,
+        host="127.0.0.1",
+        port=9119,
+        open_browser=False,
+        allow_public=False,
     )
     assert web_server.app.state.auth_required is False
 
@@ -183,13 +189,16 @@ def test_start_server_insecure_public_no_longer_bypasses_gate(monkeypatch):
     registered, the bind fails closed (SystemExit) and auth_required is True.
     """
     from openagents_cli.dashboard_auth import clear_providers
+
     clear_providers()
     _stub_uvicorn_run(monkeypatch)
     web_server.app.state.auth_required = None
     with pytest.raises(SystemExit):
         web_server.start_server(
-            host="0.0.0.0", port=9119,
-            open_browser=False, allow_public=True,
+            host="0.0.0.0",
+            port=9119,
+            open_browser=False,
+            allow_public=True,
         )
     assert web_server.app.state.auth_required is True
 
@@ -202,13 +211,16 @@ def test_start_server_public_without_insecure_records_auth_required(monkeypatch)
     branch on it. (See task 3.5 tests below for the with-provider path.)
     """
     from openagents_cli.dashboard_auth import clear_providers
+
     clear_providers()
     _stub_uvicorn_run(monkeypatch)
     web_server.app.state.auth_required = None
     with pytest.raises(SystemExit):
         web_server.start_server(
-            host="0.0.0.0", port=9119,
-            open_browser=False, allow_public=False,
+            host="0.0.0.0",
+            port=9119,
+            open_browser=False,
+            allow_public=False,
         )
     assert web_server.app.state.auth_required is True
 
@@ -235,8 +247,10 @@ def test_start_server_gate_with_provider_proceeds_and_sets_proxy_headers(monkeyp
     try:
         web_server.app.state.auth_required = None
         web_server.start_server(
-            host="0.0.0.0", port=9119,
-            open_browser=False, allow_public=False,
+            host="0.0.0.0",
+            port=9119,
+            open_browser=False,
+            allow_public=False,
         )
         assert web_server.app.state.auth_required is True
         assert captured["kwargs"].get("host") == "0.0.0.0"
@@ -254,8 +268,10 @@ def test_start_server_gate_without_provider_fails_closed(monkeypatch):
     web_server.app.state.auth_required = None
     with pytest.raises(SystemExit, match=r"no auth providers"):
         web_server.start_server(
-            host="0.0.0.0", port=9119,
-            open_browser=False, allow_public=False,
+            host="0.0.0.0",
+            port=9119,
+            open_browser=False,
+            allow_public=False,
         )
 
 
@@ -273,14 +289,17 @@ def test_start_server_surfaces_nous_skip_reason_when_unconfigured(monkeypatch):
     monkeypatch.delenv("HERMES_DASHBOARD_OAUTH_CLIENT_ID", raising=False)
     monkeypatch.delenv("HERMES_DASHBOARD_PORTAL_URL", raising=False)
     from unittest.mock import MagicMock
+
     nous_plugin.register(MagicMock())  # populates LAST_SKIP_REASON
     assert "HERMES_DASHBOARD_OAUTH_CLIENT_ID" in nous_plugin.LAST_SKIP_REASON
 
     web_server.app.state.auth_required = None
     with pytest.raises(SystemExit) as exc_info:
         web_server.start_server(
-            host="0.0.0.0", port=9119,
-            open_browser=False, allow_public=False,
+            host="0.0.0.0",
+            port=9119,
+            open_browser=False,
+            allow_public=False,
         )
     # The error message embeds the plugin's specific skip reason rather
     # than the generic "Install the default Nous provider" boilerplate.
@@ -293,8 +312,10 @@ def test_start_server_loopback_keeps_proxy_headers_off(monkeypatch):
     """Loopback bind: proxy_headers stays False (no TLS terminator in front)."""
     captured = _stub_uvicorn_run(monkeypatch)
     web_server.start_server(
-        host="127.0.0.1", port=9119,
-        open_browser=False, allow_public=False,
+        host="127.0.0.1",
+        port=9119,
+        open_browser=False,
+        allow_public=False,
     )
     assert captured["kwargs"].get("proxy_headers") is False
 
@@ -313,7 +334,9 @@ def test_start_server_insecure_public_engages_gate_and_fails_closed(monkeypatch)
     web_server.app.state.auth_required = None
     with pytest.raises(SystemExit):
         web_server.start_server(
-            host="0.0.0.0", port=9119,
-            open_browser=False, allow_public=True,
+            host="0.0.0.0",
+            port=9119,
+            open_browser=False,
+            allow_public=True,
         )
     assert web_server.app.state.auth_required is True

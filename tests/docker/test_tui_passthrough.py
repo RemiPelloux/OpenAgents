@@ -9,6 +9,7 @@ nothing when it is not.
 These tests MUST pass on the current tini-based image AND continue to
 pass after the Phase 2 s6 migration. Any drift is a regression.
 """
+
 from __future__ import annotations
 
 import re
@@ -35,16 +36,13 @@ def test_tty_passthrough_to_container(built_image: str) -> None:
     # boot output shifts (e.g. a new bundled dep changes the skills-sync
     # counts). Parse only the value tagged with our marker.
     marker = "HERMES_TTY_COLS"
-    probe = (
-        f'if [ -t 1 ]; then echo "{marker}=$(tput cols)"; else echo "{marker}=NO_TTY"; fi'
-    )
-    cmd = (
-        f"docker run --rm -t -e COLUMNS=123 {built_image} "
-        f"sh -c {shlex.quote(probe)}"
-    )
+    probe = f'if [ -t 1 ]; then echo "{marker}=$(tput cols)"; else echo "{marker}=NO_TTY"; fi'
+    cmd = f"docker run --rm -t -e COLUMNS=123 {built_image} sh -c {shlex.quote(probe)}"
     r = subprocess.run(
         ["script", "-qc", cmd, "/dev/null"],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     output = r.stdout
     matches = re.findall(rf"{marker}=(\S+)", output)
@@ -60,6 +58,8 @@ def test_tui_flag_recognized(built_image: str) -> None:
     cmd = f"docker run --rm -t {built_image} --help"
     r = subprocess.run(
         ["script", "-qc", cmd, "/dev/null"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert r.returncode == 0

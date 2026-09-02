@@ -54,7 +54,11 @@ SCOPES = [
     "https://www.googleapis.com/auth/documents",
 ]
 
-REQUIRED_PACKAGES = ["google-api-python-client", "google-auth-oauthlib", "google-auth-httplib2"]
+REQUIRED_PACKAGES = [
+    "google-api-python-client",
+    "google-auth-oauthlib",
+    "google-auth-httplib2",
+]
 
 # OAuth redirect for "out of band" manual code copy flow.
 # Google deprecated OOB, so we use a localhost redirect and tell the user to
@@ -80,7 +84,9 @@ def _missing_scopes_from_payload(payload: dict) -> list[str]:
     raw = payload.get("scopes") or payload.get("scope")
     if not raw:
         return []
-    granted = {s.strip() for s in (raw.split() if isinstance(raw, str) else raw) if s.strip()}
+    granted = {
+        s.strip() for s in (raw.split() if isinstance(raw, str) else raw) if s.strip()
+    }
     return sorted(scope for scope in SCOPES if scope not in granted)
 
 
@@ -98,6 +104,7 @@ def install_deps():
     try:
         import googleapiclient  # noqa: F401
         import google_auth_oauthlib  # noqa: F401
+
         print("Dependencies already installed.")
         return True
     except ImportError:
@@ -133,7 +140,9 @@ def install_deps():
             return True
         except subprocess.CalledProcessError as e:
             print(f"ERROR: Failed to install dependencies via uv: {e}")
-            print(f"Manually: {uv} pip install --python {sys.executable} {' '.join(REQUIRED_PACKAGES)}")
+            print(
+                f"Manually: {uv} pip install --python {sys.executable} {' '.join(REQUIRED_PACKAGES)}"
+            )
             return False
 
     print(f"ERROR: Failed to install dependencies: {pip_error}")
@@ -165,6 +174,7 @@ def check_auth_live():
     try:
         from googleapiclient.discovery import build
         from google.oauth2.credentials import Credentials
+
         creds = Credentials.from_authorized_user_file(str(TOKEN_PATH))
         service = build("calendar", "v3", credentials=creds)
         service.calendarList().list(maxResults=1).execute()
@@ -206,7 +216,9 @@ def check_auth(quiet: bool = False):
     if creds.valid:
         missing_scopes = _missing_scopes_from_payload(payload)
         if missing_scopes:
-            print(f"AUTHENTICATED (partial): Token valid but missing {len(missing_scopes)} scopes:")
+            print(
+                f"AUTHENTICATED (partial): Token valid but missing {len(missing_scopes)} scopes:"
+            )
             for s in missing_scopes:
                 print(f"  - {s}")
         if not quiet:
@@ -222,9 +234,13 @@ def check_auth(quiet: bool = False):
                     indent=2,
                 )
             )
-            missing_scopes = _missing_scopes_from_payload(_load_token_payload(TOKEN_PATH))
+            missing_scopes = _missing_scopes_from_payload(
+                _load_token_payload(TOKEN_PATH)
+            )
             if missing_scopes:
-                print(f"AUTHENTICATED (partial): Token refreshed but missing {len(missing_scopes)} scopes:")
+                print(
+                    f"AUTHENTICATED (partial): Token refreshed but missing {len(missing_scopes)} scopes:"
+                )
                 for s in missing_scopes:
                     print(f"  - {s}")
             if not quiet:
@@ -236,11 +252,21 @@ def check_auth(quiet: bool = False):
                 print(f"OAUTH_CLIENT_DISABLED: {e}")
                 print("  The OAuth client or Google account has been disabled.")
                 print("  Steps to resolve:")
-                print("    1. Check your Google Cloud Console — verify the OAuth client is not disabled")
-                print("    2. Check if your Google account itself has been disabled at myaccount.google.com")
-                print("    3. If the account is disabled, you can appeal at accounts.google.com/signin/recovery")
-                print("    4. Do NOT retry API calls with a disabled account — this may worsen the situation")
-                print("    5. If the OAuth client is disabled, create a new one in Google Cloud Console")
+                print(
+                    "    1. Check your Google Cloud Console — verify the OAuth client is not disabled"
+                )
+                print(
+                    "    2. Check if your Google account itself has been disabled at myaccount.google.com"
+                )
+                print(
+                    "    3. If the account is disabled, you can appeal at accounts.google.com/signin/recovery"
+                )
+                print(
+                    "    4. Do NOT retry API calls with a disabled account — this may worsen the situation"
+                )
+                print(
+                    "    5. If the OAuth client is disabled, create a new one in Google Cloud Console"
+                )
             elif "token_revoked" in err_str or "invalid_grant" in err_str:
                 print(f"TOKEN_REVOKED: {e}")
                 print("  Re-run setup to re-authenticate.")
@@ -267,7 +293,9 @@ def store_client_secret(path: str):
 
     if "installed" not in data and "web" not in data:
         print("ERROR: Not a Google OAuth client secret file (missing 'installed' key).")
-        print("Download the correct file from: https://console.cloud.google.com/apis/credentials")
+        print(
+            "Download the correct file from: https://console.cloud.google.com/apis/credentials"
+        )
         sys.exit(1)
 
     CLIENT_SECRET_PATH.write_text(json.dumps(data, indent=2))
@@ -360,7 +388,9 @@ def exchange_auth_code(code: str):
     raw_callback = code
     code, returned_state = _extract_code_and_state(code)
     if returned_state and returned_state != pending_auth["state"]:
-        print("ERROR: OAuth state mismatch. Run --auth-url again to start a fresh session.")
+        print(
+            "ERROR: OAuth state mismatch. Run --auth-url again to start a fresh session."
+        )
         sys.exit(1)
 
     _ensure_deps()
@@ -398,7 +428,11 @@ def exchange_auth_code(code: str):
     # Store only the scopes actually granted by the user, not what was requested.
     # creds.to_json() writes the requested scopes, which causes refresh to fail
     # with invalid_scope if the user only authorized a subset.
-    actually_granted = list(creds.granted_scopes or []) if hasattr(creds, "granted_scopes") and creds.granted_scopes else []
+    actually_granted = (
+        list(creds.granted_scopes or [])
+        if hasattr(creds, "granted_scopes") and creds.granted_scopes
+        else []
+    )
     if actually_granted:
         token_payload["scopes"] = actually_granted
     elif granted_scopes != SCOPES:
@@ -407,13 +441,17 @@ def exchange_auth_code(code: str):
 
     missing_scopes = _missing_scopes_from_payload(token_payload)
     if missing_scopes:
-        print(f"WARNING: Token missing some Google Workspace scopes: {', '.join(missing_scopes)}")
+        print(
+            f"WARNING: Token missing some Google Workspace scopes: {', '.join(missing_scopes)}"
+        )
         print("Some services may not be available.")
 
     TOKEN_PATH.write_text(json.dumps(token_payload, indent=2))
     PENDING_AUTH_PATH.unlink(missing_ok=True)
     print(f"OK: Authenticated. Token saved to {TOKEN_PATH}")
-    print(f"Profile-scoped token location: {display_openagents_home()}/google_token.json")
+    print(
+        f"Profile-scoped token location: {display_openagents_home()}/google_token.json"
+    )
 
 
 def revoke():
@@ -432,6 +470,7 @@ def revoke():
             creds.refresh(Request())
 
         import urllib.request
+
         urllib.request.urlopen(
             urllib.request.Request(
                 f"https://oauth2.googleapis.com/revoke?token={creds.token}",
@@ -450,15 +489,33 @@ def revoke():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Google Workspace OAuth setup for Hermes")
+    parser = argparse.ArgumentParser(
+        description="Google Workspace OAuth setup for Hermes"
+    )
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--check", action="store_true", help="Check if auth is valid (exit 0=yes, 1=no)")
-    group.add_argument("--check-live", action="store_true", help="Check auth with a real API call (detects disabled_client)")
-    group.add_argument("--client-secret", metavar="PATH", help="Store OAuth client_secret.json")
-    group.add_argument("--auth-url", action="store_true", help="Print OAuth URL for user to visit")
-    group.add_argument("--auth-code", metavar="CODE", help="Exchange auth code for token")
-    group.add_argument("--revoke", action="store_true", help="Revoke and delete stored token")
-    group.add_argument("--install-deps", action="store_true", help="Install Python dependencies")
+    group.add_argument(
+        "--check", action="store_true", help="Check if auth is valid (exit 0=yes, 1=no)"
+    )
+    group.add_argument(
+        "--check-live",
+        action="store_true",
+        help="Check auth with a real API call (detects disabled_client)",
+    )
+    group.add_argument(
+        "--client-secret", metavar="PATH", help="Store OAuth client_secret.json"
+    )
+    group.add_argument(
+        "--auth-url", action="store_true", help="Print OAuth URL for user to visit"
+    )
+    group.add_argument(
+        "--auth-code", metavar="CODE", help="Exchange auth code for token"
+    )
+    group.add_argument(
+        "--revoke", action="store_true", help="Revoke and delete stored token"
+    )
+    group.add_argument(
+        "--install-deps", action="store_true", help="Install Python dependencies"
+    )
     args = parser.parse_args()
 
     if args.check:

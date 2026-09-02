@@ -36,7 +36,7 @@ def _render_mcp_servers(names: List[str]) -> str:
 def _render_profile_config(name: str, spec: Dict[str, Any]) -> str:
     return (
         f"# OpenOS profile: {name}\n"
-        f"description: \"{spec['description']}\"\n"
+        f'description: "{spec["description"]}"\n'
         f"toolsets:\n"
         + "".join(f"  - {t}\n" for t in spec["toolsets"])
         + "skills:\n"
@@ -69,7 +69,9 @@ def ensure_profile(profile_id: str, home: Path | None = None) -> bool:
     config_path = profile_dir / "config.yaml"
     desired_config = _render_profile_config(profile_id, spec)
     created = not config_path.exists()
-    current_config = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+    current_config = (
+        config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+    )
     managed = current_config.startswith("# OpenOS")
     if created or (managed and current_config != desired_config):
         config_path.write_text(desired_config, encoding="utf-8")

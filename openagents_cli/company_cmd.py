@@ -231,7 +231,7 @@ TEMPLATES: Dict[str, tuple[RoleTemplate, ...]] = {
 def _slugify(name: str) -> str:
     s = str(name or "").strip().lower()
     s = re.sub(r"[^a-z0-9]+", "-", s).strip("-_")
-    return (s[:64].strip("-_") or "company")
+    return s[:64].strip("-_") or "company"
 
 
 def _normalize_slug(slug: str) -> str:
@@ -261,12 +261,17 @@ def load_manifest(root: Path) -> Dict[str, Any]:
     return data
 
 
-def _role_from_manifest(manifest: Dict[str, Any], role_id: str) -> Optional[Dict[str, Any]]:
+def _role_from_manifest(
+    manifest: Dict[str, Any], role_id: str
+) -> Optional[Dict[str, Any]]:
     roles = manifest.get("roles") or []
     if not isinstance(roles, list):
         return None
     for entry in roles:
-        if isinstance(entry, dict) and str(entry.get("id", "")).lower() == role_id.lower():
+        if (
+            isinstance(entry, dict)
+            and str(entry.get("id", "")).lower() == role_id.lower()
+        ):
             return entry
     return None
 
@@ -309,9 +314,7 @@ def _agent_yaml(role: RoleTemplate) -> Dict[str, Any]:
 
 
 def _company_playbook(name: str, mission: str, roles: tuple[RoleTemplate, ...]) -> str:
-    role_lines = "\n".join(
-        f"- **{r.role_id}** — {r.title}: {r.focus}" for r in roles
-    )
+    role_lines = "\n".join(f"- **{r.role_id}** — {r.title}: {r.focus}" for r in roles)
     return textwrap.dedent(
         f"""\
         # {name}
@@ -448,8 +451,13 @@ def apply_company_init(
     }
 
     root.mkdir(parents=True, exist_ok=True)
-    _write_text(root / MANIFEST_NAME, yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True))
-    _write_text(root / COMPANY_PLAYBOOK, _company_playbook(name, manifest["mission"], roles))
+    _write_text(
+        root / MANIFEST_NAME,
+        yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True),
+    )
+    _write_text(
+        root / COMPANY_PLAYBOOK, _company_playbook(name, manifest["mission"], roles)
+    )
     _write_text(root / AGENTS_GUIDE, _agents_guide(manifest["name"]))
 
     for role in roles:
@@ -536,7 +544,7 @@ def _format_help() -> str:
         "Examples:",
         "  /company init                   I'll ask about name, mission, roles, path",
         "  /company init OpenPro           Guided setup with name pre-filled",
-        "  /company init Acme mission=\"Build SaaS\" template=startup path=./acme",
+        '  /company init Acme mission="Build SaaS" template=startup path=./acme',
     ]
     root = find_company_root()
     if root:
@@ -647,7 +655,9 @@ def _build_init_seed(
         prefill.append(f"- Roles subset (already given): {known_roles}")
     prefill_block = "\n".join(prefill) if prefill else "- (nothing pre-filled yet)"
 
-    default_path = known_path or (f"./{_slugify(known_name)}" if known_name else "./<slug>")
+    default_path = known_path or (
+        f"./{_slugify(known_name)}" if known_name else "./<slug>"
+    )
 
     return (
         "The user wants to create an OpenAgents **company workspace** — a folder with "
@@ -671,10 +681,10 @@ def _build_init_seed(
         "(use the terminal tool). Quote paths/mission for the shell:\n"
         "```\n"
         "openagents company apply "
-        "--name \"<Company Name>\" "
-        "--path \"<folder>\" "
+        '--name "<Company Name>" '
+        '--path "<folder>" '
         "--template startup "
-        "--mission \"<mission>\" "
+        '--mission "<mission>" '
         "[--roles ceo,engineer,researcher] "
         "[--no-project]\n"
         "```\n\n"
@@ -772,11 +782,17 @@ def handle_company_command(args: str) -> CompanyCommandResult:
     if verb == "init":
         kv, leftovers = _parse_kv(rest)
         name = leftovers[0] if leftovers else kv.get("name", "").strip() or None
-        path_arg = leftovers[1] if len(leftovers) > 1 else kv.get("path", "").strip() or None
+        path_arg = (
+            leftovers[1] if len(leftovers) > 1 else kv.get("path", "").strip() or None
+        )
         template = kv.get("template", "").strip() or None
         mission = kv.get("mission", "").strip()
         roles_raw = kv.get("roles", "").strip()
-        register = kv.get("register_project", "true").lower() not in {"0", "false", "no"}
+        register = kv.get("register_project", "true").lower() not in {
+            "0",
+            "false",
+            "no",
+        }
 
         if not _init_has_direct_params(kv):
             return CompanyCommandResult(
@@ -794,7 +810,7 @@ def handle_company_command(args: str) -> CompanyCommandResult:
         if not name:
             return CompanyCommandResult(
                 text="Company name required for direct init. "
-                "Use `/company init <name> mission=\"…\"` or bare `/company init` for guided setup."
+                'Use `/company init <name> mission="…"` or bare `/company init` for guided setup.'
             )
 
         path_final = path_arg or f"./{_slugify(name)}"
@@ -831,13 +847,17 @@ def handle_company_command(args: str) -> CompanyCommandResult:
     if verb in {"status", "show"}:
         root = find_company_root()
         if root is None:
-            return CompanyCommandResult(text="No company.yaml found in cwd or parent directories.")
+            return CompanyCommandResult(
+                text="No company.yaml found in cwd or parent directories."
+            )
         return CompanyCommandResult(text=_format_status(root))
 
     if verb == "roles":
         root = find_company_root()
         if root is None:
-            return CompanyCommandResult(text="No company.yaml found. Run `/company init <name>` first.")
+            return CompanyCommandResult(
+                text="No company.yaml found. Run `/company init <name>` first."
+            )
         manifest = load_manifest(root)
         role_id = rest[0] if rest else None
         return CompanyCommandResult(text=_format_roles(manifest, role_id))
@@ -865,9 +885,13 @@ def handle_company_command(args: str) -> CompanyCommandResult:
             agent_seed=seed,
         )
 
-    close = difflib.get_close_matches(verb, ["init", "status", "roles", "delegate", "spawn"], n=1)
+    close = difflib.get_close_matches(
+        verb, ["init", "status", "roles", "delegate", "spawn"], n=1
+    )
     hint = f" Did you mean `{close[0]}`?" if close else ""
-    return CompanyCommandResult(text=f"Unknown subcommand `{verb}`.{hint}\n\n" + _format_help())
+    return CompanyCommandResult(
+        text=f"Unknown subcommand `{verb}`.{hint}\n\n" + _format_help()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -896,7 +920,9 @@ def build_parser(parent_subparsers) -> Any:
     )
     apply_p.add_argument("--name", required=True, help="Company display name")
     apply_p.add_argument(
-        "--path", required=True, help="Empty folder to create (relative or absolute)",
+        "--path",
+        required=True,
+        help="Empty folder to create (relative or absolute)",
     )
     apply_p.add_argument(
         "--template",
@@ -956,4 +982,3 @@ def company_command(args) -> int:
     print(f"Created company {manifest.get('name')} at {root}")
     print(f"Roles: {', '.join(roles)}")
     return 0
-

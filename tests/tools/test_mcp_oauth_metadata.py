@@ -30,15 +30,15 @@ from tools.mcp_oauth import HermesTokenStorage
 from tools.mcp_oauth_manager import _HERMES_PROVIDER_CLS
 
 
-def _make_metadata(token_endpoint: str = "https://auth.example.com/oauth/token") -> OAuthMetadata:
-    return OAuthMetadata.model_validate(
-        {
-            "issuer": "https://auth.example.com",
-            "authorization_endpoint": "https://auth.example.com/oauth/authorize",
-            "token_endpoint": token_endpoint,
-            "response_types_supported": ["code"],
-        }
-    )
+def _make_metadata(
+    token_endpoint: str = "https://auth.example.com/oauth/token",
+) -> OAuthMetadata:
+    return OAuthMetadata.model_validate({
+        "issuer": "https://auth.example.com",
+        "authorization_endpoint": "https://auth.example.com/oauth/authorize",
+        "token_endpoint": token_endpoint,
+        "response_types_supported": ["code"],
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -128,10 +128,14 @@ class TestManagerOAuthProviderMetadata:
             asyncio.run(provider._initialize())
 
         assert provider.context.oauth_metadata is not None
-        assert str(provider.context.oauth_metadata.token_endpoint) == \
-            "https://mgr.example.com/token"
+        assert (
+            str(provider.context.oauth_metadata.token_endpoint)
+            == "https://mgr.example.com/token"
+        )
 
-    def test_initialize_skips_restore_when_in_memory_present(self, tmp_path, monkeypatch):
+    def test_initialize_skips_restore_when_in_memory_present(
+        self, tmp_path, monkeypatch
+    ):
         """If SDK already has metadata in memory, don't overwrite from disk."""
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         storage = HermesTokenStorage("mgr-srv2")
@@ -145,10 +149,14 @@ class TestManagerOAuthProviderMetadata:
         ):
             asyncio.run(provider._initialize())
 
-        assert str(provider.context.oauth_metadata.token_endpoint) == \
-            "https://memory.example.com/token"
+        assert (
+            str(provider.context.oauth_metadata.token_endpoint)
+            == "https://memory.example.com/token"
+        )
 
-    def test_persist_metadata_if_changed_writes_on_first_discover(self, tmp_path, monkeypatch):
+    def test_persist_metadata_if_changed_writes_on_first_discover(
+        self, tmp_path, monkeypatch
+    ):
         """When nothing on disk yet, persist what the SDK discovered in-memory."""
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         storage = HermesTokenStorage("persist-srv")
@@ -172,9 +180,7 @@ class TestManagerOAuthProviderMetadata:
 
         provider = _manager_provider_with_context(storage, oauth_metadata=meta)
 
-        with patch.object(
-            HermesTokenStorage, "save_oauth_metadata"
-        ) as save_spy:
+        with patch.object(HermesTokenStorage, "save_oauth_metadata") as save_spy:
             provider._persist_oauth_metadata_if_changed()
             save_spy.assert_not_called()
 
@@ -196,11 +202,15 @@ class TestManagerOAuthProviderMetadata:
         manager = MagicMock()
         manager.invalidate_if_disk_changed = AsyncMock(return_value=False)
 
-        with patch.object(
-            _HERMES_PROVIDER_CLS.__bases__[0],
-            "async_auth_flow",
-            new=fake_parent_flow,
-        ), patch("tools.mcp_oauth_manager.get_manager", return_value=manager):
+        with (
+            patch.object(
+                _HERMES_PROVIDER_CLS.__bases__[0],
+                "async_auth_flow",
+                new=fake_parent_flow,
+            ),
+            patch("tools.mcp_oauth_manager.get_manager", return_value=manager),
+        ):
+
             async def drive():
                 gen = provider.async_auth_flow(MagicMock())
                 async for _ in gen:

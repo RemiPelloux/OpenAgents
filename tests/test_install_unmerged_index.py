@@ -166,7 +166,7 @@ def test_install_ps1_stops_venv_resident_processes_before_removing_venv() -> Non
     text = INSTALL_PS1.read_text()
 
     # The hermes.exe tree-kill is preserved (kills spawned child processes too).
-    assert 'taskkill /F /T /IM hermes.exe' in text
+    assert "taskkill /F /T /IM hermes.exe" in text
 
     # The venv path-prefix sweep exists. It must match by case-insensitive
     # StartsWith, NOT PowerShell -like: a venv path containing wildcard
@@ -174,7 +174,10 @@ def test_install_ps1_stops_venv_resident_processes_before_removing_venv() -> Non
     # to match under -like, reintroducing the exact miss this fix closes.
     idx_recreate = text.index("Virtual environment already exists, recreating")
     idx_sweep = text.index("StartsWith($venvPrefix", idx_recreate)
-    assert "[System.StringComparison]::OrdinalIgnoreCase" in text[idx_sweep:idx_sweep + 200]
+    assert (
+        "[System.StringComparison]::OrdinalIgnoreCase"
+        in text[idx_sweep : idx_sweep + 200]
+    )
     assert 'ExecutablePath -like "$venvRoot' not in text, (
         "the -like wildcard match must not be used for venv path scoping"
     )

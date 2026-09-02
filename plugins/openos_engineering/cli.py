@@ -7,9 +7,16 @@ import json
 import sys
 from typing import Any, Dict
 
-from plugins.openos_engineering.profiles import ensure_profiles, init_profiles, list_profile_ids
+from plugins.openos_engineering.profiles import (
+    ensure_profiles,
+    init_profiles,
+    list_profile_ids,
+)
 from plugins.openos_engineering.ticket_client import apply_task_context_env
-from plugins.openos_engineering.tools import handle_invoke_opencode, handle_run_ticket_dod_loop
+from plugins.openos_engineering.tools import (
+    handle_invoke_opencode,
+    handle_run_ticket_dod_loop,
+)
 
 
 def register_cli(subparser: argparse.ArgumentParser) -> None:
@@ -75,14 +82,12 @@ def _dispatch_run(payload: Dict[str, Any]) -> str:
 
     loop_until_dod = _truthy(ctx.get("loop_until_dod"))
     if loop_until_dod and profile in {"developer", "qa"}:
-        return handle_run_ticket_dod_loop(
-            {
-                "ticket_id": ticket_id,
-                "agent_profile": profile,
-                "cwd": ctx.get("repo_path") or ctx.get("cwd"),
-                "max_iterations": ctx.get("dod_max_iterations"),
-            }
-        )
+        return handle_run_ticket_dod_loop({
+            "ticket_id": ticket_id,
+            "agent_profile": profile,
+            "cwd": ctx.get("repo_path") or ctx.get("cwd"),
+            "max_iterations": ctx.get("dod_max_iterations"),
+        })
 
     if profile == "developer":
         mode = "implement"
@@ -122,7 +127,9 @@ def openos_command(args: argparse.Namespace) -> int:
             print(f"handle-run failed: {exc}", file=sys.stderr)
             return 1
 
-    print("Usage: openagents openos {init-profiles|ensure-profiles|list-profiles|handle-run}")
+    print(
+        "Usage: openagents openos {init-profiles|ensure-profiles|list-profiles|handle-run}"
+    )
     return 2
 
 

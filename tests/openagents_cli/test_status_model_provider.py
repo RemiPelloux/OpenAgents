@@ -9,8 +9,12 @@ from openagents_cli.nous_subscription import NousFeatureState, NousSubscriptionF
 def _patch_common_status_deps(monkeypatch, status_mod, tmp_path, *, openai_base_url=""):
     import openagents_cli.auth as auth_mod
 
-    monkeypatch.setattr(status_mod, "get_env_path", lambda: tmp_path / ".env", raising=False)
-    monkeypatch.setattr(status_mod, "get_openagents_home", lambda: tmp_path, raising=False)
+    monkeypatch.setattr(
+        status_mod, "get_env_path", lambda: tmp_path / ".env", raising=False
+    )
+    monkeypatch.setattr(
+        status_mod, "get_openagents_home", lambda: tmp_path, raising=False
+    )
 
     def _get_env_value(name: str):
         if name == "OPENAI_BASE_URL":
@@ -27,19 +31,35 @@ def _patch_common_status_deps(monkeypatch, status_mod, tmp_path, *, openai_base_
     )
 
 
-def test_show_status_displays_configured_dict_model_and_provider_label(monkeypatch, capsys, tmp_path):
+def test_show_status_displays_configured_dict_model_and_provider_label(
+    monkeypatch, capsys, tmp_path
+):
     from openagents_cli import status as status_mod
 
     _patch_common_status_deps(monkeypatch, status_mod, tmp_path)
     monkeypatch.setattr(
         status_mod,
         "load_config",
-        lambda: {"model": {"default": "anthropic/claude-sonnet-4", "provider": "anthropic"}},
+        lambda: {
+            "model": {"default": "anthropic/claude-sonnet-4", "provider": "anthropic"}
+        },
         raising=False,
     )
-    monkeypatch.setattr(status_mod, "resolve_requested_provider", lambda requested=None: "anthropic", raising=False)
-    monkeypatch.setattr(status_mod, "resolve_provider", lambda requested=None, **kwargs: "anthropic", raising=False)
-    monkeypatch.setattr(status_mod, "provider_label", lambda provider: "Anthropic", raising=False)
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_requested_provider",
+        lambda requested=None: "anthropic",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_provider",
+        lambda requested=None, **kwargs: "anthropic",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod, "provider_label", lambda provider: "Anthropic", raising=False
+    )
 
     status_mod.show_status(SimpleNamespace(all=False, deep=False))
 
@@ -48,14 +68,35 @@ def test_show_status_displays_configured_dict_model_and_provider_label(monkeypat
     assert "Provider:     Anthropic" in out
 
 
-def test_show_status_displays_legacy_string_model_and_custom_endpoint(monkeypatch, capsys, tmp_path):
+def test_show_status_displays_legacy_string_model_and_custom_endpoint(
+    monkeypatch, capsys, tmp_path
+):
     from openagents_cli import status as status_mod
 
-    _patch_common_status_deps(monkeypatch, status_mod, tmp_path, openai_base_url="http://localhost:8080/v1")
-    monkeypatch.setattr(status_mod, "load_config", lambda: {"model": "qwen3:latest"}, raising=False)
-    monkeypatch.setattr(status_mod, "resolve_requested_provider", lambda requested=None: "auto", raising=False)
-    monkeypatch.setattr(status_mod, "resolve_provider", lambda requested=None, **kwargs: "openrouter", raising=False)
-    monkeypatch.setattr(status_mod, "provider_label", lambda provider: "Custom endpoint" if provider == "custom" else provider, raising=False)
+    _patch_common_status_deps(
+        monkeypatch, status_mod, tmp_path, openai_base_url="http://localhost:8080/v1"
+    )
+    monkeypatch.setattr(
+        status_mod, "load_config", lambda: {"model": "qwen3:latest"}, raising=False
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_requested_provider",
+        lambda requested=None: "auto",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_provider",
+        lambda requested=None, **kwargs: "openrouter",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "provider_label",
+        lambda provider: "Custom endpoint" if provider == "custom" else provider,
+        raising=False,
+    )
 
     status_mod.show_status(SimpleNamespace(all=False, deep=False))
 
@@ -65,7 +106,9 @@ def test_show_status_displays_legacy_string_model_and_custom_endpoint(monkeypatc
 
 
 def test_show_status_reports_managed_nous_features(monkeypatch, capsys, tmp_path):
-    monkeypatch.setattr("openagents_cli.status.managed_nous_tools_enabled", lambda: True)
+    monkeypatch.setattr(
+        "openagents_cli.status.managed_nous_tools_enabled", lambda: True
+    )
     from openagents_cli import status as status_mod
 
     _patch_common_status_deps(monkeypatch, status_mod, tmp_path)
@@ -75,9 +118,21 @@ def test_show_status_reports_managed_nous_features(monkeypatch, capsys, tmp_path
         lambda: {"model": {"default": "claude-opus-4-6", "provider": "nous"}},
         raising=False,
     )
-    monkeypatch.setattr(status_mod, "resolve_requested_provider", lambda requested=None: "nous", raising=False)
-    monkeypatch.setattr(status_mod, "resolve_provider", lambda requested=None, **kwargs: "nous", raising=False)
-    monkeypatch.setattr(status_mod, "provider_label", lambda provider: "Nous Portal", raising=False)
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_requested_provider",
+        lambda requested=None: "nous",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_provider",
+        lambda requested=None, **kwargs: "nous",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod, "provider_label", lambda provider: "Nous Portal", raising=False
+    )
     monkeypatch.setattr(
         status_mod,
         "get_nous_subscription_features",
@@ -86,13 +141,75 @@ def test_show_status_reports_managed_nous_features(monkeypatch, capsys, tmp_path
             nous_auth_present=True,
             provider_is_nous=True,
             features={
-                "web": NousFeatureState("web", "Web tools", True, True, True, True, False, True, "firecrawl"),
-                "image_gen": NousFeatureState("image_gen", "Image generation", True, True, True, True, False, True, "Nous Subscription"),
-                "video_gen": NousFeatureState("video_gen", "Video generation", False, False, False, False, False, False, ""),
-                "tts": NousFeatureState("tts", "OpenAI TTS", True, True, True, True, False, True, "OpenAI TTS"),
-                "stt": NousFeatureState("stt", "Speech-to-text", True, True, True, True, False, True, "OpenAI Whisper"),
-                "browser": NousFeatureState("browser", "Browser automation", True, True, True, True, False, True, "Browser Use"),
-                "modal": NousFeatureState("modal", "Modal execution", False, True, False, False, False, True, "local"),
+                "web": NousFeatureState(
+                    "web", "Web tools", True, True, True, True, False, True, "firecrawl"
+                ),
+                "image_gen": NousFeatureState(
+                    "image_gen",
+                    "Image generation",
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    True,
+                    "Nous Subscription",
+                ),
+                "video_gen": NousFeatureState(
+                    "video_gen",
+                    "Video generation",
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    "",
+                ),
+                "tts": NousFeatureState(
+                    "tts",
+                    "OpenAI TTS",
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    True,
+                    "OpenAI TTS",
+                ),
+                "stt": NousFeatureState(
+                    "stt",
+                    "Speech-to-text",
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    True,
+                    "OpenAI Whisper",
+                ),
+                "browser": NousFeatureState(
+                    "browser",
+                    "Browser automation",
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    True,
+                    "Browser Use",
+                ),
+                "modal": NousFeatureState(
+                    "modal",
+                    "Modal execution",
+                    False,
+                    True,
+                    False,
+                    False,
+                    False,
+                    True,
+                    "local",
+                ),
             },
         ),
         raising=False,
@@ -106,8 +223,12 @@ def test_show_status_reports_managed_nous_features(monkeypatch, capsys, tmp_path
     assert "active via Nous subscription" in out
 
 
-def test_show_status_hides_nous_subscription_section_when_feature_flag_is_off(monkeypatch, capsys, tmp_path):
-    monkeypatch.setattr("openagents_cli.status.managed_nous_tools_enabled", lambda: False)
+def test_show_status_hides_nous_subscription_section_when_feature_flag_is_off(
+    monkeypatch, capsys, tmp_path
+):
+    monkeypatch.setattr(
+        "openagents_cli.status.managed_nous_tools_enabled", lambda: False
+    )
     from openagents_cli import status as status_mod
 
     _patch_common_status_deps(monkeypatch, status_mod, tmp_path)
@@ -117,9 +238,21 @@ def test_show_status_hides_nous_subscription_section_when_feature_flag_is_off(mo
         lambda: {"model": {"default": "claude-opus-4-6", "provider": "nous"}},
         raising=False,
     )
-    monkeypatch.setattr(status_mod, "resolve_requested_provider", lambda requested=None: "nous", raising=False)
-    monkeypatch.setattr(status_mod, "resolve_provider", lambda requested=None, **kwargs: "nous", raising=False)
-    monkeypatch.setattr(status_mod, "provider_label", lambda provider: "Nous Portal", raising=False)
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_requested_provider",
+        lambda requested=None: "nous",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_provider",
+        lambda requested=None, **kwargs: "nous",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod, "provider_label", lambda provider: "Nous Portal", raising=False
+    )
 
     status_mod.show_status(SimpleNamespace(all=False, deep=False))
 
@@ -128,7 +261,9 @@ def test_show_status_hides_nous_subscription_section_when_feature_flag_is_off(mo
 
 
 def test_show_status_reports_exhausted_nous_credits(monkeypatch, capsys, tmp_path):
-    monkeypatch.setattr("openagents_cli.status.managed_nous_tools_enabled", lambda: False)
+    monkeypatch.setattr(
+        "openagents_cli.status.managed_nous_tools_enabled", lambda: False
+    )
     from openagents_cli import status as status_mod
     import openagents_cli.auth as auth_mod
 
@@ -166,10 +301,27 @@ def test_show_status_reports_exhausted_nous_credits(monkeypatch, capsys, tmp_pat
         ),
         raising=False,
     )
-    monkeypatch.setattr(status_mod, "load_config", lambda: {"model": {"provider": "nous"}}, raising=False)
-    monkeypatch.setattr(status_mod, "resolve_requested_provider", lambda requested=None: "nous", raising=False)
-    monkeypatch.setattr(status_mod, "resolve_provider", lambda requested=None, **kwargs: "nous", raising=False)
-    monkeypatch.setattr(status_mod, "provider_label", lambda provider: "Nous Portal", raising=False)
+    monkeypatch.setattr(
+        status_mod,
+        "load_config",
+        lambda: {"model": {"provider": "nous"}},
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_requested_provider",
+        lambda requested=None: "nous",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_provider",
+        lambda requested=None, **kwargs: "nous",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod, "provider_label", lambda provider: "Nous Portal", raising=False
+    )
 
     status_mod.show_status(SimpleNamespace(all=False, deep=False))
 
@@ -180,7 +332,9 @@ def test_show_status_reports_exhausted_nous_credits(monkeypatch, capsys, tmp_pat
     assert "free-tier Nous account" not in out
 
 
-def test_show_status_reports_empty_lmstudio_listing_as_reachable(monkeypatch, capsys, tmp_path):
+def test_show_status_reports_empty_lmstudio_listing_as_reachable(
+    monkeypatch, capsys, tmp_path
+):
     from openagents_cli import status as status_mod
 
     _patch_common_status_deps(monkeypatch, status_mod, tmp_path)
@@ -196,9 +350,21 @@ def test_show_status_reports_empty_lmstudio_listing_as_reachable(monkeypatch, ca
         },
         raising=False,
     )
-    monkeypatch.setattr(status_mod, "resolve_requested_provider", lambda requested=None: "lmstudio", raising=False)
-    monkeypatch.setattr(status_mod, "resolve_provider", lambda requested=None, **kwargs: "lmstudio", raising=False)
-    monkeypatch.setattr(status_mod, "provider_label", lambda provider: "LM Studio", raising=False)
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_requested_provider",
+        lambda requested=None: "lmstudio",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod,
+        "resolve_provider",
+        lambda requested=None, **kwargs: "lmstudio",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        status_mod, "provider_label", lambda provider: "LM Studio", raising=False
+    )
     monkeypatch.setattr(
         "openagents_cli.models.probe_lmstudio_models",
         lambda api_key=None, base_url=None, timeout=5.0: [],

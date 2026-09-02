@@ -51,7 +51,11 @@ def chrome_cdp(request):
     # xdist worker_id is "master" in single-process mode or "gw0".."gwN" otherwise.
     # Under subprocess-per-file isolation there's no xdist, so we fall back
     # to "master" via the session-scoped fixture below.
-    worker_id = request.getfixturevalue("worker_id") if "worker_id" in request.fixturenames else "master"
+    worker_id = (
+        request.getfixturevalue("worker_id")
+        if "worker_id" in request.fixturenames
+        else "master"
+    )
     if worker_id == "master":
         port_offset = 0
     else:
@@ -78,6 +82,7 @@ def chrome_cdp(request):
     while time.monotonic() < deadline:
         try:
             import urllib.request
+
             with urllib.request.urlopen(
                 f"http://127.0.0.1:{port}/json/version", timeout=1
             ) as r:
@@ -311,7 +316,9 @@ def test_registry_idempotent_get_or_start(chrome_cdp, supervisor_registry):
 def test_registry_stop(chrome_cdp, supervisor_registry):
     """stop() tears down the supervisor and snapshot reports inactive."""
     cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-stop", cdp_url=cdp_url)
+    supervisor = supervisor_registry.get_or_start(
+        task_id="pytest-stop", cdp_url=cdp_url
+    )
     assert supervisor.snapshot().active is True
     supervisor_registry.stop("pytest-stop")
     # Post-stop snapshot reports inactive; supervisor obj may still exist
@@ -373,7 +380,9 @@ def test_browser_dialog_tool_end_to_end(chrome_cdp, supervisor_registry):
     from tools.browser_dialog_tool import browser_dialog
 
     cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-tool", cdp_url=cdp_url)
+    supervisor = supervisor_registry.get_or_start(
+        task_id="pytest-tool", cdp_url=cdp_url
+    )
 
     _fire_on_page(cdp_url, "setTimeout(() => alert('PYTEST-TOOL-END2END'), 50)")
     assert _wait_for_dialog(supervisor), "no dialog detected via wait_for_dialog"
@@ -384,7 +393,9 @@ def test_browser_dialog_tool_end_to_end(chrome_cdp, supervisor_registry):
     assert "PYTEST-TOOL-END2END" in r["dialog"]["message"]
 
 
-def test_browser_cdp_frame_id_routes_via_supervisor(chrome_cdp, supervisor_registry, monkeypatch):
+def test_browser_cdp_frame_id_routes_via_supervisor(
+    chrome_cdp, supervisor_registry, monkeypatch
+):
     """browser_cdp(frame_id=...) routes Runtime.evaluate through supervisor.
 
     Mocks the supervisor with a known frame and verifies browser_cdp sends
@@ -400,6 +411,7 @@ def test_browser_cdp_frame_id_routes_via_supervisor(chrome_cdp, supervisor_regis
     # so we can verify routing. We fake is_oopif=True so the code path
     # treats it as an OOPIF child.
     import tools.browser_supervisor as _bs
+
     with sv._state_lock:
         fake_frame_id = "FAKE-FRAME-001"
         sv._frames[fake_frame_id] = _bs.FrameInfo(
@@ -414,6 +426,7 @@ def test_browser_cdp_frame_id_routes_via_supervisor(chrome_cdp, supervisor_regis
     # Route the tool through the supervisor. Should succeed and return
     # something that clearly came from CDP.
     from tools.browser_cdp_tool import browser_cdp
+
     result = browser_cdp(
         method="Runtime.evaluate",
         params={"expression": "1 + 1", "returnByValue": True},
@@ -462,6 +475,7 @@ def test_browser_cdp_frame_id_real_oopif_smoke_documented():
 def test_browser_cdp_frame_id_missing_supervisor():
     """browser_cdp(frame_id=...) errors cleanly when no supervisor is attached."""
     from tools.browser_cdp_tool import browser_cdp
+
     result = browser_cdp(
         method="Runtime.evaluate",
         params={"expression": "1"},
@@ -480,6 +494,7 @@ def test_browser_cdp_frame_id_not_in_frame_tree(chrome_cdp, supervisor_registry)
     assert sv.snapshot().active
 
     from tools.browser_cdp_tool import browser_cdp
+
     result = browser_cdp(
         method="Runtime.evaluate",
         params={"expression": "1"},
@@ -501,7 +516,9 @@ def test_bridge_captures_prompt_and_returns_reply_text(chrome_cdp, supervisor_re
     import base64 as _b64
 
     cdp_url, _port = chrome_cdp
-    sv = supervisor_registry.get_or_start(task_id="pytest-bridge-prompt", cdp_url=cdp_url)
+    sv = supervisor_registry.get_or_start(
+        task_id="pytest-bridge-prompt", cdp_url=cdp_url
+    )
 
     # Page fires prompt and stashes the return value on window.
     html = """<!doctype html><html><body><script>
@@ -532,10 +549,13 @@ def test_bridge_captures_prompt_and_returns_reply_text(chrome_cdp, supervisor_re
             rd = _asyncio.create_task(reader_fn())
 
             async def call(method, params=None, sid=None):
-                c = nid[0]; nid[0] += 1
+                c = nid[0]
+                nid[0] += 1
                 p = {"id": c, "method": method}
-                if params: p["params"] = params
-                if sid: p["sessionId"] = sid
+                if params:
+                    p["params"] = params
+                if sid:
+                    p["sessionId"] = sid
                 fut = _asyncio.get_event_loop().create_future()
                 pending[c] = fut
                 await ws.send(json.dumps(p))
@@ -544,14 +564,25 @@ def test_bridge_captures_prompt_and_returns_reply_text(chrome_cdp, supervisor_re
             try:
                 t = (await call("Target.getTargets"))["result"]["targetInfos"]
                 pg = next(x for x in t if x.get("type") == "page")
-                a = await call("Target.attachToTarget", {"targetId": pg["targetId"], "flatten": True})
+                a = await call(
+                    "Target.attachToTarget",
+                    {"targetId": pg["targetId"], "flatten": True},
+                )
                 sid = a["result"]["sessionId"]
 
                 # Fire navigate but don't await — prompt() blocks the page
-                nav_id = nid[0]; nid[0] += 1
+                nav_id = nid[0]
+                nid[0] += 1
                 nav_fut = _asyncio.get_event_loop().create_future()
                 pending[nav_id] = nav_fut
-                await ws.send(json.dumps({"id": nav_id, "method": "Page.navigate", "params": {"url": url}, "sessionId": sid}))
+                await ws.send(
+                    json.dumps({
+                        "id": nav_id,
+                        "method": "Page.navigate",
+                        "params": {"url": url},
+                        "sessionId": sid,
+                    })
+                )
 
                 # Wait for supervisor to see the prompt
                 deadline = time.monotonic() + 10
@@ -567,7 +598,9 @@ def test_bridge_captures_prompt_and_returns_reply_text(chrome_cdp, supervisor_re
                 assert dialog.type == "prompt"
 
                 # Agent responds
-                resp = sv.respond_to_dialog("accept", prompt_text="AGENT-SUPPLIED-REPLY")
+                resp = sv.respond_to_dialog(
+                    "accept", prompt_text="AGENT-SUPPLIED-REPLY"
+                )
                 assert resp["ok"] is True
 
                 # Wait for nav to complete + read back
@@ -584,17 +617,23 @@ def test_bridge_captures_prompt_and_returns_reply_text(chrome_cdp, supervisor_re
                 return r.get("result", {}).get("result", {}).get("value")
             finally:
                 rd.cancel()
-                try: await rd
-                except BaseException: pass
+                try:
+                    await rd
+                except BaseException:
+                    pass
 
     value = asyncio.run(nav_and_read())
-    assert value == "AGENT-SUPPLIED-REPLY", f"expected AGENT-SUPPLIED-REPLY, got {value!r}"
+    assert value == "AGENT-SUPPLIED-REPLY", (
+        f"expected AGENT-SUPPLIED-REPLY, got {value!r}"
+    )
 
 
 def test_evaluate_runtime_primitive(chrome_cdp, supervisor_registry):
     """evaluate_runtime returns primitive values via the supervisor's live WS."""
     cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-1", cdp_url=cdp_url)
+    supervisor = supervisor_registry.get_or_start(
+        task_id="pytest-eval-1", cdp_url=cdp_url
+    )
 
     # Need a page to evaluate against.
     _fire_on_page(cdp_url, "void 0")
@@ -609,7 +648,9 @@ def test_evaluate_runtime_primitive(chrome_cdp, supervisor_registry):
 def test_evaluate_runtime_object(chrome_cdp, supervisor_registry):
     """Plain objects come back JSON-serialized via returnByValue=True."""
     cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-2", cdp_url=cdp_url)
+    supervisor = supervisor_registry.get_or_start(
+        task_id="pytest-eval-2", cdp_url=cdp_url
+    )
 
     _fire_on_page(cdp_url, "void 0")
     time.sleep(0.5)
@@ -623,7 +664,9 @@ def test_evaluate_runtime_object(chrome_cdp, supervisor_registry):
 def test_evaluate_runtime_js_exception(chrome_cdp, supervisor_registry):
     """JS exceptions surface as ok=False with the exception message."""
     cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-3", cdp_url=cdp_url)
+    supervisor = supervisor_registry.get_or_start(
+        task_id="pytest-eval-3", cdp_url=cdp_url
+    )
 
     _fire_on_page(cdp_url, "void 0")
     time.sleep(0.5)
@@ -633,7 +676,9 @@ def test_evaluate_runtime_js_exception(chrome_cdp, supervisor_registry):
     assert "ReferenceError" in out["error"] or "not defined" in out["error"]
 
 
-def test_evaluate_runtime_dom_node_returns_empty_object(chrome_cdp, supervisor_registry):
+def test_evaluate_runtime_dom_node_returns_empty_object(
+    chrome_cdp, supervisor_registry
+):
     """DOM nodes with returnByValue=true serialize to ``{}`` (Chrome quirk).
 
     This is honest — DOM nodes can't be deeply JSON-serialized — and matches
@@ -643,7 +688,9 @@ def test_evaluate_runtime_dom_node_returns_empty_object(chrome_cdp, supervisor_r
     the current shape.
     """
     cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-4", cdp_url=cdp_url)
+    supervisor = supervisor_registry.get_or_start(
+        task_id="pytest-eval-4", cdp_url=cdp_url
+    )
 
     _fire_on_page(cdp_url, "void 0")
     time.sleep(0.5)
@@ -658,7 +705,9 @@ def test_evaluate_runtime_dom_node_returns_empty_object(chrome_cdp, supervisor_r
 def test_evaluate_runtime_unserializable_value(chrome_cdp, supervisor_registry):
     """``Infinity``/``NaN``/``BigInt`` come back via ``unserializableValue``."""
     cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-5", cdp_url=cdp_url)
+    supervisor = supervisor_registry.get_or_start(
+        task_id="pytest-eval-5", cdp_url=cdp_url
+    )
 
     _fire_on_page(cdp_url, "void 0")
     time.sleep(0.5)

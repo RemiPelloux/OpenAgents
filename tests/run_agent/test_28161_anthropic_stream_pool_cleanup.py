@@ -12,6 +12,7 @@ Tests cover:
 
 Fixes #28161
 """
+
 import threading
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -62,9 +63,7 @@ def _good_stream_cm():
 def _failing_stream_cm():
     """Context manager whose __enter__ raises ConnectError immediately."""
     cm = MagicMock()
-    cm.__enter__ = MagicMock(
-        side_effect=httpx.ConnectError("connection reset by peer")
-    )
+    cm.__enter__ = MagicMock(side_effect=httpx.ConnectError("connection reset by peer"))
     return cm
 
 
@@ -76,9 +75,7 @@ def _failing_stream_cm():
 class TestAnthropicStreamPoolCleanup:
     """_replace_primary_openai_client must not be called for api_mode=anthropic_messages."""
 
-    @pytest.mark.filterwarnings(
-        "ignore::pytest.PytestUnhandledThreadExceptionWarning"
-    )
+    @pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
     def test_stream_retry_calls_anthropic_rebuild_not_openai(self):
         """Connection error during stream retry → close+rebuild Anthropic client, not OpenAI."""
         agent = _make_anthropic_agent()
@@ -94,18 +91,14 @@ class TestAnthropicStreamPoolCleanup:
         agent._anthropic_client.messages.stream.side_effect = _stream_side_effect
 
         with patch.object(agent, "_rebuild_anthropic_client") as mock_rebuild:
-            with patch.object(
-                agent, "_replace_primary_openai_client"
-            ) as mock_replace:
+            with patch.object(agent, "_replace_primary_openai_client") as mock_replace:
                 agent._interruptible_streaming_api_call({})
 
         mock_replace.assert_not_called()
         mock_rebuild.assert_called_once()
         agent._anthropic_client.close.assert_called_once()
 
-    @pytest.mark.filterwarnings(
-        "ignore::pytest.PytestUnhandledThreadExceptionWarning"
-    )
+    @pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
     def test_stale_stream_calls_anthropic_rebuild_not_openai(self, monkeypatch):
         """Stale-stream outer-poll detector → close+rebuild Anthropic client, not OpenAI."""
         monkeypatch.setenv("HERMES_STREAM_STALE_TIMEOUT", "0.1")
@@ -139,9 +132,7 @@ class TestAnthropicStreamPoolCleanup:
         agent._anthropic_client.close.side_effect = unblock.set
 
         with patch.object(agent, "_rebuild_anthropic_client") as mock_rebuild:
-            with patch.object(
-                agent, "_replace_primary_openai_client"
-            ) as mock_replace:
+            with patch.object(agent, "_replace_primary_openai_client") as mock_replace:
                 agent._interruptible_streaming_api_call({})
 
         mock_replace.assert_not_called()

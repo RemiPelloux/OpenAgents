@@ -31,6 +31,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def _reset_credential_cache():
     from agent.azure_identity_adapter import reset_credential_cache
+
     reset_credential_cache()
     yield
     reset_credential_cache()
@@ -50,12 +51,16 @@ def fake_azure_identity(monkeypatch):
     fake_module = SimpleNamespace(
         DefaultAzureCredential=lambda **kw: SimpleNamespace(
             kwargs=kw,
-            get_token=lambda scope: SimpleNamespace(token="fake", expires_on=9999999999),
+            get_token=lambda scope: SimpleNamespace(
+                token="fake", expires_on=9999999999
+            ),
         ),
         get_bearer_token_provider=lambda credential, scope: (
             last.__setitem__("scope", scope),
             last.__setitem__("kwargs", credential.kwargs),
-            last.__setitem__("credential_count", cast(int, last["credential_count"]) + 1),
+            last.__setitem__(
+                "credential_count", cast(int, last["credential_count"]) + 1
+            ),
             _provider(scope),
         )[-1],
     )
@@ -72,6 +77,7 @@ def fake_azure_identity(monkeypatch):
 class TestResolveAzureFoundryRuntimeEntra:
     def test_returns_callable_api_key_for_entra(self, fake_azure_identity):
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         runtime = _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
             model_cfg={
@@ -94,6 +100,7 @@ class TestResolveAzureFoundryRuntimeEntra:
         the same behaviour as the static-key path (see
         ``openagents_cli/models.py::azure_foundry_model_api_mode``)."""
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         runtime = _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
             model_cfg={
@@ -117,6 +124,7 @@ class TestResolveAzureFoundryRuntimeEntra:
         Legacy ``model.entra.client_id`` / ``tenant_id`` / ``authority``
         keys in config.yaml are silently ignored."""
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
             model_cfg={
@@ -151,6 +159,7 @@ class TestResolveAzureFoundryRuntimeEntra:
         audience and is rejected for inference by newer resources."""
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
         from agent.azure_identity_adapter import SCOPE_AI_AZURE_DEFAULT
+
         _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
             model_cfg={
@@ -166,6 +175,7 @@ class TestResolveAzureFoundryRuntimeEntra:
         """Users on sovereign clouds / unusual tenants can set
         ``model.entra.scope`` to override the default."""
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
             model_cfg={
@@ -192,6 +202,7 @@ class TestResolveAzureFoundryRuntimeEntra:
         fresh bearer JWT per request (the Anthropic SDK does not
         accept callable auth_token natively)."""
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         runtime = _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
             model_cfg={
@@ -210,11 +221,14 @@ class TestResolveAzureFoundryRuntimeEntra:
         assert callable(runtime["api_key"])
         assert not isinstance(runtime["api_key"], str)
 
-    def test_entra_with_explicit_api_key_uses_string_escape_hatch(self, fake_azure_identity):
+    def test_entra_with_explicit_api_key_uses_string_escape_hatch(
+        self, fake_azure_identity
+    ):
         """Passing --api-key on the CLI overrides the entra path so a
         user can debug a single request with a static key without
         editing config.yaml."""
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         runtime = _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
             model_cfg={
@@ -231,6 +245,7 @@ class TestResolveAzureFoundryRuntimeEntra:
 
     def test_entra_runtime_dict_keeps_only_scope_override(self, fake_azure_identity):
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         runtime = _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
             model_cfg={
@@ -255,6 +270,7 @@ class TestResolveAzureFoundryRuntimeEntra:
 class TestResolveAzureFoundryRuntimeApiKey:
     def test_default_auth_mode_uses_static_key(self, monkeypatch):
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         monkeypatch.setenv("AZURE_FOUNDRY_API_KEY", "sk-azure-static-key")
         runtime = _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
@@ -270,6 +286,7 @@ class TestResolveAzureFoundryRuntimeApiKey:
 
     def test_explicit_auth_mode_api_key(self, monkeypatch):
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         monkeypatch.setenv("AZURE_FOUNDRY_API_KEY", "sk-static")
         runtime = _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
@@ -285,6 +302,7 @@ class TestResolveAzureFoundryRuntimeApiKey:
 
     def test_anthropic_messages_strips_v1_suffix(self, monkeypatch):
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         monkeypatch.setenv("AZURE_FOUNDRY_API_KEY", "k")
         runtime = _resolve_azure_foundry_runtime(
             requested_provider="azure-foundry",
@@ -299,6 +317,7 @@ class TestResolveAzureFoundryRuntimeApiKey:
     def test_missing_api_key_raises_with_entra_hint(self, monkeypatch):
         from openagents_cli.auth import AuthError
         from openagents_cli.runtime_provider import _resolve_azure_foundry_runtime
+
         monkeypatch.delenv("AZURE_FOUNDRY_API_KEY", raising=False)
         with pytest.raises(AuthError) as exc_info:
             _resolve_azure_foundry_runtime(
@@ -325,6 +344,7 @@ class TestAzureFoundryAuthStatus:
         """Structural check — must return logged_in=True based on
         importable + config, never call get_bearer_token_provider."""
         from openagents_cli import auth as _auth
+
         # Force load_config to return our entra config.
         monkeypatch.setattr(
             "openagents_cli.config.load_config",
@@ -351,6 +371,7 @@ class TestAzureFoundryAuthStatus:
 
     def test_entra_status_reports_missing_package(self, monkeypatch):
         from openagents_cli import auth as _auth
+
         monkeypatch.setattr(
             "openagents_cli.config.load_config",
             lambda: {
@@ -372,6 +393,7 @@ class TestAzureFoundryAuthStatus:
 
     def test_api_key_status_uses_env_var(self, monkeypatch):
         from openagents_cli import auth as _auth
+
         monkeypatch.setattr(
             "openagents_cli.config.load_config",
             lambda: {
@@ -389,6 +411,7 @@ class TestAzureFoundryAuthStatus:
 
     def test_api_key_status_false_when_missing(self, monkeypatch):
         from openagents_cli import auth as _auth
+
         monkeypatch.setattr(
             "openagents_cli.config.load_config",
             lambda: {

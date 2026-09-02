@@ -29,12 +29,14 @@ from openagents_cli.providers import HERMES_OVERLAYS
 
 # --- Bug 2: overlay no longer lists OPENAI_API_KEY --------------------------
 
+
 def test_openrouter_overlay_does_not_list_openai_api_key():
     overlay = HERMES_OVERLAYS["openrouter"]
     assert "OPENAI_API_KEY" not in overlay.extra_env_vars
 
 
 # --- Bug 1: default OpenAI endpoint filters to curated agentic models -------
+
 
 def test_default_openai_endpoint_filters_to_curated(monkeypatch):
     """The 126-model /v1/models dump is intersected with the curated list."""
@@ -44,8 +46,13 @@ def test_default_openai_endpoint_filters_to_curated(monkeypatch):
     curated = M._PROVIDER_MODELS["openai-api"]
     # Live catalog: every curated model PLUS a pile of non-agentic junk.
     live = list(curated) + [
-        "text-embedding-3-large", "whisper-1", "tts-1", "dall-e-3",
-        "gpt-3.5-turbo", "davinci-002", "omni-moderation-latest",
+        "text-embedding-3-large",
+        "whisper-1",
+        "tts-1",
+        "dall-e-3",
+        "gpt-3.5-turbo",
+        "davinci-002",
+        "omni-moderation-latest",
     ]
     with patch.object(M, "fetch_api_models", return_value=live):
         result = M.provider_model_ids("openai-api", force_refresh=True)

@@ -76,7 +76,10 @@ class TestUsageCachedAgent:
         runner = _make_runner(SK, cached_agent=agent)
         event = MagicMock()
 
-        with patch("agent.rate_limit_tracker.format_rate_limit_compact", return_value="RPM: 50/60"):
+        with patch(
+            "agent.rate_limit_tracker.format_rate_limit_compact",
+            return_value="RPM: 50/60",
+        ):
             result = await runner._handle_usage_command(event)
 
         assert "claude-sonnet-4.6" in result
@@ -99,12 +102,17 @@ class TestUsageCachedAgent:
         runner = _make_runner(SK, agent=running, cached_agent=cached)
         event = MagicMock()
 
-        with patch("agent.rate_limit_tracker.format_rate_limit_compact", return_value="RPM: 50/60"), \
-             patch("agent.usage_pricing.estimate_usage_cost") as mock_cost:
+        with (
+            patch(
+                "agent.rate_limit_tracker.format_rate_limit_compact",
+                return_value="RPM: 50/60",
+            ),
+            patch("agent.usage_pricing.estimate_usage_cost") as mock_cost,
+        ):
             mock_cost.return_value = MagicMock(amount_usd=None, status="unknown")
             result = await runner._handle_usage_command(event)
 
-        assert "80,000" in result   # running agent's total
+        assert "80,000" in result  # running agent's total
         assert "API calls: 10" in result
 
     @pytest.mark.asyncio
@@ -117,8 +125,13 @@ class TestUsageCachedAgent:
         runner._running_agents[SK] = _AGENT_PENDING_SENTINEL
         event = MagicMock()
 
-        with patch("agent.rate_limit_tracker.format_rate_limit_compact", return_value="RPM: 50/60"), \
-             patch("agent.usage_pricing.estimate_usage_cost") as mock_cost:
+        with (
+            patch(
+                "agent.rate_limit_tracker.format_rate_limit_compact",
+                return_value="RPM: 50/60",
+            ),
+            patch("agent.usage_pricing.estimate_usage_cost") as mock_cost,
+        ):
             mock_cost.return_value = MagicMock(amount_usd=None, status="unknown")
             result = await runner._handle_usage_command(event)
 
@@ -139,7 +152,9 @@ class TestUsageCachedAgent:
             {"role": "assistant", "content": "hi there"},
         ]
 
-        with patch("agent.model_metadata.estimate_messages_tokens_rough", return_value=500):
+        with patch(
+            "agent.model_metadata.estimate_messages_tokens_rough", return_value=500
+        ):
             result = await runner._handle_usage_command(event)
 
         assert "Session Info" in result
@@ -149,12 +164,19 @@ class TestUsageCachedAgent:
     @pytest.mark.asyncio
     async def test_cache_read_write_hidden_when_zero(self):
         """Cache token lines should be omitted when zero."""
-        agent = _make_mock_agent(session_cache_read_tokens=0, session_cache_write_tokens=0)
+        agent = _make_mock_agent(
+            session_cache_read_tokens=0, session_cache_write_tokens=0
+        )
         runner = _make_runner(SK, cached_agent=agent)
         event = MagicMock()
 
-        with patch("agent.rate_limit_tracker.format_rate_limit_compact", return_value="RPM: 50/60"), \
-             patch("agent.usage_pricing.estimate_usage_cost") as mock_cost:
+        with (
+            patch(
+                "agent.rate_limit_tracker.format_rate_limit_compact",
+                return_value="RPM: 50/60",
+            ),
+            patch("agent.usage_pricing.estimate_usage_cost") as mock_cost,
+        ):
             mock_cost.return_value = MagicMock(amount_usd=None, status="unknown")
             result = await runner._handle_usage_command(event)
 
@@ -185,8 +207,13 @@ class TestUsageAccountSection:
                 "Session: 85% remaining (15% used)",
             ],
         )
-        with patch("agent.rate_limit_tracker.format_rate_limit_compact", return_value="RPM: 50/60"), \
-             patch("agent.usage_pricing.estimate_usage_cost") as mock_cost:
+        with (
+            patch(
+                "agent.rate_limit_tracker.format_rate_limit_compact",
+                return_value="RPM: 50/60",
+            ),
+            patch("agent.usage_pricing.estimate_usage_cost") as mock_cost,
+        ):
             mock_cost.return_value = MagicMock(amount_usd=None, status="included")
             result = await runner._handle_usage_command(event)
 
@@ -195,7 +222,9 @@ class TestUsageAccountSection:
         assert "Provider: openai-codex (Pro)" in result
 
     @pytest.mark.asyncio
-    async def test_usage_command_uses_persisted_provider_when_agent_not_running(self, monkeypatch):
+    async def test_usage_command_uses_persisted_provider_when_agent_not_running(
+        self, monkeypatch
+    ):
         runner = _make_runner(SK)
         runner._session_db = MagicMock()
         runner._session_db.get_session.return_value = {
@@ -233,12 +262,17 @@ class TestUsageAccountSection:
         )
         # The credits block routes through the shared nous_credits_lines() helper;
         # stub it so this account-section test stays hermetic (no portal/auth lookup).
-        monkeypatch.setattr("agent.account_usage.nous_credits_lines", lambda markdown=False: [])
+        monkeypatch.setattr(
+            "agent.account_usage.nous_credits_lines", lambda markdown=False: []
+        )
 
         event = MagicMock()
         result = await runner._handle_usage_command(event)
 
         account_call = next(c for c in calls if c["args"] == ("openai-codex",))
-        assert account_call["kwargs"]["base_url"] == "https://chatgpt.com/backend-api/codex"
+        assert (
+            account_call["kwargs"]["base_url"]
+            == "https://chatgpt.com/backend-api/codex"
+        )
         assert "📊 **Session Info**" in result
         assert "📈 **Account limits**" in result

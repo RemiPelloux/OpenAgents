@@ -53,10 +53,12 @@ async def test_telegram_video_size_gate_rejects_oversized_media_before_download(
     adapter = object.__new__(TelegramAdapter)
     adapter._max_doc_bytes = 1024
     adapter._should_process_message = lambda _message: True
-    adapter._build_message_event = lambda _message, _type, update_id=None: SimpleNamespace(
-        text="caption",
-        media_urls=[],
-        media_types=[],
+    adapter._build_message_event = (
+        lambda _message, _type, update_id=None: SimpleNamespace(
+            text="caption",
+            media_urls=[],
+            media_types=[],
+        )
     )
     adapter._apply_telegram_group_observe_attribution = lambda event: event
 

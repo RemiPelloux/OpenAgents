@@ -127,7 +127,9 @@ class NousPortalAccountInfo:
         return bool(ta and ta.enabled and ta.coverage.get(category) is True)
 
 
-def nous_portal_billing_url(account_info: Optional[NousPortalAccountInfo] = None) -> str:
+def nous_portal_billing_url(
+    account_info: Optional[NousPortalAccountInfo] = None,
+) -> str:
     """Return the billing URL for a normalized Nous account snapshot."""
     try:
         from openagents_cli.auth import DEFAULT_NOUS_PORTAL_URL
@@ -247,7 +249,9 @@ def format_nous_portal_entitlement_message(
     if reason == "no_usable_credits" or account_info.paid_service_access is False:
         message = _no_paid_access_message(account_info, capability, billing_url)
         if include_refresh_hint and not account_info.fresh:
-            message += " If you recently bought credits, run `hermes model` to refresh Hermes."
+            message += (
+                " If you recently bought credits, run `hermes model` to refresh Hermes."
+            )
         return message
 
     return (
@@ -269,7 +273,9 @@ def _no_paid_access_message(
     purchased_credits = access.purchased_credits_remaining if access else None
 
     if has_active_subscription and active_subscription_is_paid:
-        credit_detail = _credit_detail(total_usable, subscription_credits, purchased_credits)
+        credit_detail = _credit_detail(
+            total_usable, subscription_credits, purchased_credits
+        )
         return (
             f"Your Nous Portal credits are exhausted{credit_detail}, so {capability} "
             f"is unavailable. Top up or renew credits at {billing_url}."
@@ -282,14 +288,18 @@ def _no_paid_access_message(
         )
 
     if has_active_subscription is False:
-        credit_detail = _credit_detail(total_usable, subscription_credits, purchased_credits)
+        credit_detail = _credit_detail(
+            total_usable, subscription_credits, purchased_credits
+        )
         return (
             f"Your Nous Portal account has no active subscription or usable credits"
             f"{credit_detail}, so {capability} is unavailable. Subscribe or add credits "
             f"at {billing_url}."
         )
 
-    credit_detail = _credit_detail(total_usable, subscription_credits, purchased_credits)
+    credit_detail = _credit_detail(
+        total_usable, subscription_credits, purchased_credits
+    )
     return (
         f"Your Nous Portal account has no usable paid credits{credit_detail}, so "
         f"{capability} is unavailable. Add credits or update billing at {billing_url}."
@@ -384,7 +394,10 @@ def _fresh_account_info(
     global _account_info_cache
 
     try:
-        from openagents_cli.auth import get_provider_auth_state, resolve_nous_access_token
+        from openagents_cli.auth import (
+            get_provider_auth_state,
+            resolve_nous_access_token,
+        )
 
         access_token = resolve_nous_access_token()
         refreshed_state = get_provider_auth_state("nous") or state
@@ -394,7 +407,10 @@ def _fresh_account_info(
         with _ACCOUNT_INFO_CACHE_LOCK:
             if not force_fresh and _account_info_cache is not None:
                 cached_key, cached_at, cached_info = _account_info_cache
-                if cached_key == cache_key and (time.monotonic() - cached_at) < _ACCOUNT_INFO_CACHE_TTL:
+                if (
+                    cached_key == cache_key
+                    and (time.monotonic() - cached_at) < _ACCOUNT_INFO_CACHE_TTL
+                ):
                     return cached_info
 
         payload = _fetch_nous_account_info(access_token, portal_base_url)
@@ -436,7 +452,9 @@ def _info_from_inference_key_pool(
         entry = _select_nous_pool_entry()
         if entry is None:
             return None
-        runtime_key = getattr(entry, "runtime_api_key", None) or getattr(entry, "access_token", "")
+        runtime_key = getattr(entry, "runtime_api_key", None) or getattr(
+            entry, "access_token", ""
+        )
         if not isinstance(runtime_key, str) or not runtime_key.strip():
             return None
 
@@ -445,8 +463,7 @@ def _info_from_inference_key_pool(
             source="inference_key",
             fresh=False,
             portal_base_url=(
-                getattr(entry, "portal_base_url", None)
-                or portal_base_url
+                getattr(entry, "portal_base_url", None) or portal_base_url
             ),
             inference_base_url=(
                 getattr(entry, "inference_base_url", None)
@@ -478,10 +495,7 @@ def _info_from_oauth_pool(
     if not isinstance(access_token, str) or not access_token.strip():
         return None
 
-    entry_portal_url = (
-        getattr(entry, "portal_base_url", None)
-        or portal_base_url
-    )
+    entry_portal_url = getattr(entry, "portal_base_url", None) or portal_base_url
     state = {
         "access_token": access_token,
         "client_id": getattr(entry, "client_id", None),
@@ -543,7 +557,9 @@ def _select_nous_pool_entry() -> Optional[Any]:
         return None
 
     def _entry_sort_key(entry: Any) -> tuple[float, float, int]:
-        agent_exp = _parse_iso_timestamp(getattr(entry, "agent_key_expires_at", None)) or 0.0
+        agent_exp = (
+            _parse_iso_timestamp(getattr(entry, "agent_key_expires_at", None)) or 0.0
+        )
         access_exp = _parse_iso_timestamp(getattr(entry, "expires_at", None)) or 0.0
         priority = int(getattr(entry, "priority", 0) or 0)
         return (agent_exp, access_exp, -priority)
@@ -646,13 +662,16 @@ def _info_from_account_payload(
         logged_in=True,
         source="account_api",
         fresh=True,
-        org_id=_coerce_str(organisation.get("id")) or (access.organisation_id if access else None),
+        org_id=_coerce_str(organisation.get("id"))
+        or (access.organisation_id if access else None),
         org_slug=_coerce_str(organisation.get("slug")),
         org_name=_coerce_str(organisation.get("name")),
         client_id=_coerce_str(state.get("client_id")),
         portal_base_url=portal_base_url,
         inference_base_url=_coerce_str(state.get("inference_base_url")),
-        inference_credential_present=bool(state.get("access_token") or state.get("agent_key")),
+        inference_credential_present=bool(
+            state.get("access_token") or state.get("agent_key")
+        ),
         credential_source=_coerce_str(state.get("credential_source")) or "auth_store",
         email=_coerce_str(user.get("email")),
         privy_did=_coerce_str(user.get("privy_did")),
@@ -695,7 +714,9 @@ def _subscription_from_payload(value: Any) -> Optional[NousPortalSubscriptionInf
     )
 
 
-def _paid_service_access_from_payload(value: Any) -> Optional[NousPaidServiceAccessInfo]:
+def _paid_service_access_from_payload(
+    value: Any,
+) -> Optional[NousPaidServiceAccessInfo]:
     if not isinstance(value, dict):
         return None
     allowed = _coerce_bool(value.get("allowed"))
@@ -707,11 +728,19 @@ def _paid_service_access_from_payload(value: Any) -> Optional[NousPaidServiceAcc
         organisation_id=_coerce_str(value.get("organisation_id")),
         effective_at_ms=_coerce_int(value.get("effective_at_ms")),
         has_active_subscription=_coerce_bool(value.get("has_active_subscription")),
-        active_subscription_is_paid=_coerce_bool(value.get("active_subscription_is_paid")),
+        active_subscription_is_paid=_coerce_bool(
+            value.get("active_subscription_is_paid")
+        ),
         subscription_tier=_coerce_int(value.get("subscription_tier")),
-        subscription_monthly_charge=_coerce_float(value.get("subscription_monthly_charge")),
-        subscription_credits_remaining=_coerce_float(value.get("subscription_credits_remaining")),
-        purchased_credits_remaining=_coerce_float(value.get("purchased_credits_remaining")),
+        subscription_monthly_charge=_coerce_float(
+            value.get("subscription_monthly_charge")
+        ),
+        subscription_credits_remaining=_coerce_float(
+            value.get("subscription_credits_remaining")
+        ),
+        purchased_credits_remaining=_coerce_float(
+            value.get("purchased_credits_remaining")
+        ),
         total_usable_credits=_coerce_float(value.get("total_usable_credits")),
     )
 

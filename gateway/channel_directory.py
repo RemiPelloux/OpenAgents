@@ -95,7 +95,9 @@ def _session_entry_id(origin: Dict[str, Any]) -> Optional[str]:
 
 
 def _session_entry_name(origin: Dict[str, Any]) -> str:
-    base_name = origin.get("chat_name") or origin.get("user_name") or str(origin.get("chat_id"))
+    base_name = (
+        origin.get("chat_name") or origin.get("user_name") or str(origin.get("chat_id"))
+    )
     thread_id = origin.get("thread_id")
     if not thread_id:
         return base_name
@@ -107,6 +109,7 @@ def _session_entry_name(origin: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Build / refresh
 # ---------------------------------------------------------------------------
+
 
 async def build_channel_directory(adapters: Dict[Any, Any]) -> Dict[str, Any]:
     """
@@ -125,7 +128,9 @@ async def build_channel_directory(adapters: Dict[Any, Any]) -> Dict[str, Any]:
             elif platform == Platform.SLACK:
                 platforms["slack"] = await _build_slack(adapter)
         except Exception as e:
-            logger.warning("Channel directory: failed to build %s: %s", platform.value, e)
+            logger.warning(
+                "Channel directory: failed to build %s: %s", platform.value, e
+            )
 
     # Platforms that don't support direct channel enumeration get session-based
     # discovery automatically.  Skip infrastructure entries that aren't messaging
@@ -141,8 +146,12 @@ async def build_channel_directory(adapters: Dict[Any, Any]) -> Dict[str, Any]:
     # Platform.__members__, so the loop above misses them).
     try:
         from gateway.platform_registry import platform_registry
+
         for entry in platform_registry.plugin_entries():
-            if entry.name not in _SKIP_SESSION_DISCOVERY and entry.name not in platforms:
+            if (
+                entry.name not in _SKIP_SESSION_DISCOVERY
+                and entry.name not in platforms
+            ):
                 platforms[entry.name] = _build_from_sessions(entry.name)
     except Exception:
         pass
@@ -249,7 +258,8 @@ async def _build_slack(adapter) -> List[Dict[str, Any]]:
         except Exception as e:
             logger.warning(
                 "Channel directory: failed to list Slack channels for team %s: %s",
-                team_id, e,
+                team_id,
+                e,
             )
             continue
 
@@ -293,7 +303,9 @@ def _build_from_sessions(platform_name: str) -> List[Dict[str, str]]:
                 "thread_id": origin.get("thread_id"),
             })
     except Exception as e:
-        logger.debug("Channel directory: failed to read sessions for %s: %s", platform_name, e)
+        logger.debug(
+            "Channel directory: failed to read sessions for %s: %s", platform_name, e
+        )
 
     return entries
 
@@ -301,6 +313,7 @@ def _build_from_sessions(platform_name: str) -> List[Dict[str, str]]:
 # ---------------------------------------------------------------------------
 # Read / resolve
 # ---------------------------------------------------------------------------
+
 
 def load_directory() -> Dict[str, Any]:
     """Load the cached channel directory from disk."""
@@ -370,7 +383,9 @@ def resolve_channel_name(platform_name: str, name: str) -> Optional[str]:
                 return ch["id"]
 
     # 3. Partial prefix match (only if unambiguous)
-    matches = [ch for ch in channels if _normalize_channel_query(ch["name"]).startswith(query)]
+    matches = [
+        ch for ch in channels if _normalize_channel_query(ch["name"]).startswith(query)
+    ]
     if len(matches) == 1:
         return matches[0]["id"]
 

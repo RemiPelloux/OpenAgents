@@ -11,6 +11,7 @@ The fix is a ``_chown_to_hermes_uid`` helper that reads the env vars and
 applies chown after ``mkdir``, invoked from ``_secure_dir`` (which already
 runs after every directory creation in the home-init path).
 """
+
 from __future__ import annotations
 
 import os
@@ -31,6 +32,7 @@ class TestResolveHermesUidGid:
         monkeypatch.setenv("HERMES_UID", "1000")
         monkeypatch.setenv("HERMES_GID", "911")
         from openagents_cli.config import _resolve_hermes_uid_gid
+
         uid, gid = _resolve_hermes_uid_gid()
         assert uid == 1000
         assert gid == 911
@@ -39,6 +41,7 @@ class TestResolveHermesUidGid:
         monkeypatch.delenv("HERMES_UID", raising=False)
         monkeypatch.delenv("HERMES_GID", raising=False)
         from openagents_cli.config import _resolve_hermes_uid_gid
+
         uid, gid = _resolve_hermes_uid_gid()
         assert uid is None
         assert gid is None
@@ -47,6 +50,7 @@ class TestResolveHermesUidGid:
         monkeypatch.setenv("HERMES_UID", "1000")
         monkeypatch.delenv("HERMES_GID", raising=False)
         from openagents_cli.config import _resolve_hermes_uid_gid
+
         uid, gid = _resolve_hermes_uid_gid()
         assert uid == 1000
         assert gid is None
@@ -55,6 +59,7 @@ class TestResolveHermesUidGid:
         monkeypatch.setenv("HERMES_UID", "not-a-number")
         monkeypatch.setenv("HERMES_GID", "911")
         from openagents_cli.config import _resolve_hermes_uid_gid
+
         uid, gid = _resolve_hermes_uid_gid()
         assert uid is None
         assert gid == 911
@@ -63,6 +68,7 @@ class TestResolveHermesUidGid:
         monkeypatch.setenv("HERMES_UID", "")
         monkeypatch.setenv("HERMES_GID", "")
         from openagents_cli.config import _resolve_hermes_uid_gid
+
         uid, gid = _resolve_hermes_uid_gid()
         assert uid is None
         assert gid is None
@@ -71,6 +77,7 @@ class TestResolveHermesUidGid:
         monkeypatch.setenv("HERMES_UID", " 1000 ")
         monkeypatch.setenv("HERMES_GID", "  911")
         from openagents_cli.config import _resolve_hermes_uid_gid
+
         uid, gid = _resolve_hermes_uid_gid()
         assert uid == 1000
         assert gid == 911
@@ -80,6 +87,7 @@ class TestResolveHermesUidGid:
         monkeypatch.setenv("HERMES_UID", "1000")
         monkeypatch.setenv("HERMES_GID", "911")
         from openagents_cli.config import _resolve_hermes_uid_gid
+
         uid, gid = _resolve_hermes_uid_gid()
         assert uid is None
         assert gid is None
@@ -158,7 +166,9 @@ class TestChownToHermesUid:
         d = tmp_path / "subdir"
         d.mkdir()
 
-        with patch.object(cfg.os, "chown", side_effect=AttributeError("no chown on this platform")):
+        with patch.object(
+            cfg.os, "chown", side_effect=AttributeError("no chown on this platform")
+        ):
             cfg._chown_to_hermes_uid(d)  # must not raise
 
 

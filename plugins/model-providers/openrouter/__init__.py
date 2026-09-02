@@ -19,13 +19,21 @@ _CACHE: list[str] | None = None
 # and keep only this explicit legacy allowlist of models that can. Mirrors the
 # default-to-newest philosophy in agent/anthropic_adapter._get_anthropic_max_output.
 _ANTHROPIC_REASONING_OPTIONAL_SUBSTRINGS = (
-    "claude-3",          # 3, 3.5, 3.7
-    "claude-opus-4-0", "claude-opus-4.0", "claude-opus-4-1", "claude-opus-4.1",
-    "claude-sonnet-4-0", "claude-sonnet-4.0",
-    "claude-opus-4-2025", "claude-sonnet-4-2025",  # date-stamped 4.0 IDs
-    "claude-opus-4-5", "claude-opus-4.5",
-    "claude-sonnet-4-5", "claude-sonnet-4.5",
-    "claude-haiku-4-5", "claude-haiku-4.5",
+    "claude-3",  # 3, 3.5, 3.7
+    "claude-opus-4-0",
+    "claude-opus-4.0",
+    "claude-opus-4-1",
+    "claude-opus-4.1",
+    "claude-sonnet-4-0",
+    "claude-sonnet-4.0",
+    "claude-opus-4-2025",
+    "claude-sonnet-4-2025",  # date-stamped 4.0 IDs
+    "claude-opus-4-5",
+    "claude-opus-4.5",
+    "claude-sonnet-4-5",
+    "claude-sonnet-4.5",
+    "claude-haiku-4-5",
+    "claude-haiku-4.5",
 )
 
 
@@ -65,7 +73,9 @@ class OpenRouterProfile(ProviderProfile):
         if _CACHE is not None:
             return _CACHE
         try:
-            result = super().fetch_models(api_key=None, base_url=base_url, timeout=timeout)
+            result = super().fetch_models(
+                api_key=None, base_url=base_url, timeout=timeout
+            )
             if result is not None:
                 _CACHE = result
             return result
@@ -87,7 +97,7 @@ class OpenRouterProfile(ProviderProfile):
         # meaningful for openrouter/pareto-code; sending it on any other
         # model has no documented effect and would be confusing in logs.
         # See: https://openrouter.ai/docs/guides/routing/routers/pareto-router
-        model = (context.get("model") or "")
+        model = context.get("model") or ""
         if model == "openrouter/pareto-code":
             score = context.get("openrouter_min_coding_score")
             if score is not None and score != "":
@@ -152,7 +162,11 @@ class OpenRouterProfile(ProviderProfile):
                 # Only emit when effort is actually requested and reasoning
                 # isn't explicitly disabled. Otherwise omit ``verbosity`` so the
                 # model keeps its own adaptive default (``high``).
-                if cfg.get("enabled", True) is not False and effort and effort != "none":
+                if (
+                    cfg.get("enabled", True) is not False
+                    and effort
+                    and effort != "none"
+                ):
                     top_level["verbosity"] = effort
             elif reasoning_config is not None:
                 extra_body["reasoning"] = dict(reasoning_config)

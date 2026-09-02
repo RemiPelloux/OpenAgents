@@ -31,12 +31,14 @@ class TestHandoffStateDB:
 
     def _make_session(self, db, session_id, source="cli", title=None):
         """Insert a session row directly for testing."""
+
         def _do(conn):
             conn.execute(
                 "INSERT OR IGNORE INTO sessions (id, source, title, started_at) "
                 "VALUES (?, ?, ?, ?)",
                 (session_id, source, title, time.time()),
             )
+
         db._execute_write(_do)
 
     def test_columns_exist(self, db):
@@ -188,6 +190,7 @@ class TestHandoffCommandRegistration:
 
     def test_command_registered(self):
         from openagents_cli.commands import resolve_command
+
         cmd = resolve_command("handoff")
         assert cmd is not None
         assert cmd.name == "handoff"
@@ -196,6 +199,7 @@ class TestHandoffCommandRegistration:
     def test_command_is_cli_only(self):
         """`/handoff` is initiated from the CLI; gateway shouldn't expose it."""
         from openagents_cli.commands import resolve_command, GATEWAY_KNOWN_COMMANDS
+
         cmd = resolve_command("handoff")
         assert cmd is not None
         assert cmd.cli_only is True

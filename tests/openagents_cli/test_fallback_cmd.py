@@ -1,4 +1,5 @@
 """Tests for `hermes fallback` — chain reading, add/remove/clear, legacy migration."""
+
 from __future__ import annotations
 
 import types
@@ -12,6 +13,7 @@ import yaml
 # ---------------------------------------------------------------------------
 # Shared fixture — isolate OPENAGENTS_HOME so save_config writes to tmp_path
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def isolated_home(tmp_path, monkeypatch):
@@ -36,13 +38,16 @@ def _read_config(home: Path) -> dict:
 # _read_chain / _write_chain
 # ---------------------------------------------------------------------------
 
+
 class TestReadChain:
     def test_returns_empty_list_when_unset(self):
         from openagents_cli.fallback_cmd import _read_chain
+
         assert _read_chain({}) == []
 
     def test_reads_new_list_format(self):
         from openagents_cli.fallback_cmd import _read_chain
+
         cfg = {
             "fallback_providers": [
                 {"provider": "openrouter", "model": "anthropic/claude-sonnet-4.6"},
@@ -56,6 +61,7 @@ class TestReadChain:
 
     def test_merges_new_and_legacy_formats(self):
         from openagents_cli.fallback_cmd import _read_chain
+
         cfg = {
             "fallback_providers": [
                 {"provider": "openrouter", "model": "anthropic/claude-sonnet-4.6"},
@@ -69,11 +75,15 @@ class TestReadChain:
 
     def test_legacy_duplicate_is_deduplicated_after_merge(self):
         from openagents_cli.fallback_cmd import _read_chain
+
         cfg = {
             "fallback_providers": [
                 {"provider": "openrouter", "model": "anthropic/claude-sonnet-4.6"},
             ],
-            "fallback_model": {"provider": "OpenRouter", "model": "anthropic/claude-sonnet-4.6"},
+            "fallback_model": {
+                "provider": "OpenRouter",
+                "model": "anthropic/claude-sonnet-4.6",
+            },
         }
         assert _read_chain(cfg) == [
             {"provider": "openrouter", "model": "anthropic/claude-sonnet-4.6"},
@@ -81,23 +91,26 @@ class TestReadChain:
 
     def test_migrates_legacy_single_dict(self):
         from openagents_cli.fallback_cmd import _read_chain
+
         cfg = {"fallback_model": {"provider": "openrouter", "model": "gpt-5.4"}}
         assert _read_chain(cfg) == [{"provider": "openrouter", "model": "gpt-5.4"}]
 
     def test_skips_incomplete_entries(self):
         from openagents_cli.fallback_cmd import _read_chain
+
         cfg = {
             "fallback_providers": [
-                {"provider": "openrouter"},            # missing model
-                {"model": "gpt-5.4"},                  # missing provider
+                {"provider": "openrouter"},  # missing model
+                {"model": "gpt-5.4"},  # missing provider
                 {"provider": "nous", "model": "foo"},  # valid
-                "not-a-dict",                          # noise
+                "not-a-dict",  # noise
             ]
         }
         assert _read_chain(cfg) == [{"provider": "nous", "model": "foo"}]
 
     def test_returns_copies_not_aliases(self):
         from openagents_cli.fallback_cmd import _read_chain
+
         cfg = {"fallback_providers": [{"provider": "nous", "model": "foo"}]}
         result = _read_chain(cfg)
         result[0]["provider"] = "mutated"
@@ -108,9 +121,11 @@ class TestReadChain:
 # _extract_fallback_from_model_cfg
 # ---------------------------------------------------------------------------
 
+
 class TestExtractFallback:
     def test_extracts_from_default_field(self):
         from openagents_cli.fallback_cmd import _extract_fallback_from_model_cfg
+
         model_cfg = {"provider": "openrouter", "default": "anthropic/claude-sonnet-4.6"}
         assert _extract_fallback_from_model_cfg(model_cfg) == {
             "provider": "openrouter",
@@ -119,6 +134,7 @@ class TestExtractFallback:
 
     def test_extracts_optional_base_url_and_api_mode(self):
         from openagents_cli.fallback_cmd import _extract_fallback_from_model_cfg
+
         model_cfg = {
             "provider": "custom",
             "default": "local-model",
@@ -134,14 +150,17 @@ class TestExtractFallback:
 
     def test_returns_none_without_provider(self):
         from openagents_cli.fallback_cmd import _extract_fallback_from_model_cfg
+
         assert _extract_fallback_from_model_cfg({"default": "foo"}) is None
 
     def test_returns_none_without_model(self):
         from openagents_cli.fallback_cmd import _extract_fallback_from_model_cfg
+
         assert _extract_fallback_from_model_cfg({"provider": "openrouter"}) is None
 
     def test_returns_none_for_non_dict(self):
         from openagents_cli.fallback_cmd import _extract_fallback_from_model_cfg
+
         assert _extract_fallback_from_model_cfg("plain-string") is None
         assert _extract_fallback_from_model_cfg(None) is None
 
@@ -150,24 +169,30 @@ class TestExtractFallback:
 # cmd_fallback_list
 # ---------------------------------------------------------------------------
 
+
 class TestListCommand:
     def test_list_empty(self, isolated_home, capsys):
         _write_config(isolated_home, {})
         from openagents_cli.fallback_cmd import cmd_fallback_list
+
         cmd_fallback_list(types.SimpleNamespace())
         out = capsys.readouterr().out
         assert "No fallback providers configured" in out
         assert "hermes fallback add" in out
 
     def test_list_with_entries(self, isolated_home, capsys):
-        _write_config(isolated_home, {
-            "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
-            "fallback_providers": [
-                {"provider": "openrouter", "model": "anthropic/claude-sonnet-4.6"},
-                {"provider": "nous", "model": "Hermes-4"},
-            ],
-        })
+        _write_config(
+            isolated_home,
+            {
+                "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
+                "fallback_providers": [
+                    {"provider": "openrouter", "model": "anthropic/claude-sonnet-4.6"},
+                    {"provider": "nous", "model": "Hermes-4"},
+                ],
+            },
+        )
         from openagents_cli.fallback_cmd import cmd_fallback_list
+
         cmd_fallback_list(types.SimpleNamespace())
         out = capsys.readouterr().out
         assert "Fallback chain (2 entries)" in out
@@ -177,10 +202,14 @@ class TestListCommand:
         assert "claude-sonnet-4-6" in out
 
     def test_list_migrates_legacy_for_display(self, isolated_home, capsys):
-        _write_config(isolated_home, {
-            "fallback_model": {"provider": "openrouter", "model": "gpt-5.4"},
-        })
+        _write_config(
+            isolated_home,
+            {
+                "fallback_model": {"provider": "openrouter", "model": "gpt-5.4"},
+            },
+        )
         from openagents_cli.fallback_cmd import cmd_fallback_list
+
         cmd_fallback_list(types.SimpleNamespace())
         out = capsys.readouterr().out
         assert "1 entry" in out
@@ -191,15 +220,20 @@ class TestListCommand:
 # cmd_fallback_add — mock select_provider_and_model
 # ---------------------------------------------------------------------------
 
+
 class TestAddCommand:
     def test_add_appends_new_entry(self, isolated_home, capsys):
-        _write_config(isolated_home, {
-            "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
-        })
+        _write_config(
+            isolated_home,
+            {
+                "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
+            },
+        )
 
         def fake_picker(args=None):
             # Simulate what the real picker does: writes the selection to config["model"]
             from openagents_cli.config import load_config, save_config
+
             cfg = load_config()
             cfg["model"] = {
                 "provider": "openrouter",
@@ -209,9 +243,14 @@ class TestAddCommand:
             }
             save_config(cfg)
 
-        with patch("openagents_cli.main.select_provider_and_model", side_effect=fake_picker), \
-                patch("openagents_cli.main._require_tty"):
+        with (
+            patch(
+                "openagents_cli.main.select_provider_and_model", side_effect=fake_picker
+            ),
+            patch("openagents_cli.main._require_tty"),
+        ):
             from openagents_cli.fallback_cmd import cmd_fallback_add
+
             cmd_fallback_add(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -231,22 +270,31 @@ class TestAddCommand:
         assert "Added fallback" in out
 
     def test_add_rejects_duplicate(self, isolated_home, capsys):
-        _write_config(isolated_home, {
-            "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
-            "fallback_providers": [
-                {"provider": "openrouter", "model": "gpt-5.4"},
-            ],
-        })
+        _write_config(
+            isolated_home,
+            {
+                "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
+                "fallback_providers": [
+                    {"provider": "openrouter", "model": "gpt-5.4"},
+                ],
+            },
+        )
 
         def fake_picker(args=None):
             from openagents_cli.config import load_config, save_config
+
             cfg = load_config()
             cfg["model"] = {"provider": "openrouter", "default": "gpt-5.4"}
             save_config(cfg)
 
-        with patch("openagents_cli.main.select_provider_and_model", side_effect=fake_picker), \
-                patch("openagents_cli.main._require_tty"):
+        with (
+            patch(
+                "openagents_cli.main.select_provider_and_model", side_effect=fake_picker
+            ),
+            patch("openagents_cli.main._require_tty"),
+        ):
             from openagents_cli.fallback_cmd import cmd_fallback_add
+
             cmd_fallback_add(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -256,20 +304,29 @@ class TestAddCommand:
         assert "already in the fallback chain" in out
 
     def test_add_rejects_same_as_primary(self, isolated_home, capsys):
-        _write_config(isolated_home, {
-            "model": {"provider": "openrouter", "default": "gpt-5.4"},
-        })
+        _write_config(
+            isolated_home,
+            {
+                "model": {"provider": "openrouter", "default": "gpt-5.4"},
+            },
+        )
 
         def fake_picker(args=None):
             # User picks the same thing that's already the primary
             from openagents_cli.config import load_config, save_config
+
             cfg = load_config()
             cfg["model"] = {"provider": "openrouter", "default": "gpt-5.4"}
             save_config(cfg)
 
-        with patch("openagents_cli.main.select_provider_and_model", side_effect=fake_picker), \
-                patch("openagents_cli.main._require_tty"):
+        with (
+            patch(
+                "openagents_cli.main.select_provider_and_model", side_effect=fake_picker
+            ),
+            patch("openagents_cli.main._require_tty"),
+        ):
             from openagents_cli.fallback_cmd import cmd_fallback_add
+
             cmd_fallback_add(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -279,17 +336,21 @@ class TestAddCommand:
 
     def test_add_preserves_primary_when_picker_changes_it(self, isolated_home):
         """The picker mutates config["model"]; fallback_add must restore the primary."""
-        _write_config(isolated_home, {
-            "model": {
-                "provider": "anthropic",
-                "default": "claude-sonnet-4-6",
-                "base_url": "https://api.anthropic.com",
-                "api_mode": "anthropic_messages",
+        _write_config(
+            isolated_home,
+            {
+                "model": {
+                    "provider": "anthropic",
+                    "default": "claude-sonnet-4-6",
+                    "base_url": "https://api.anthropic.com",
+                    "api_mode": "anthropic_messages",
+                },
             },
-        })
+        )
 
         def fake_picker(args=None):
             from openagents_cli.config import load_config, save_config
+
             cfg = load_config()
             cfg["model"] = {
                 "provider": "openrouter",
@@ -299,9 +360,14 @@ class TestAddCommand:
             }
             save_config(cfg)
 
-        with patch("openagents_cli.main.select_provider_and_model", side_effect=fake_picker), \
-                patch("openagents_cli.main._require_tty"):
+        with (
+            patch(
+                "openagents_cli.main.select_provider_and_model", side_effect=fake_picker
+            ),
+            patch("openagents_cli.main._require_tty"),
+        ):
             from openagents_cli.fallback_cmd import cmd_fallback_add
+
             cmd_fallback_add(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -315,17 +381,25 @@ class TestAddCommand:
         assert cfg["fallback_providers"][0]["provider"] == "openrouter"
 
     def test_add_noop_when_picker_cancelled(self, isolated_home, capsys):
-        _write_config(isolated_home, {
-            "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
-        })
+        _write_config(
+            isolated_home,
+            {
+                "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
+            },
+        )
 
         def fake_picker(args=None):
             # User cancelled — no change to config
             pass
 
-        with patch("openagents_cli.main.select_provider_and_model", side_effect=fake_picker), \
-                patch("openagents_cli.main._require_tty"):
+        with (
+            patch(
+                "openagents_cli.main.select_provider_and_model", side_effect=fake_picker
+            ),
+            patch("openagents_cli.main._require_tty"),
+        ):
             from openagents_cli.fallback_cmd import cmd_fallback_add
+
             cmd_fallback_add(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -337,19 +411,28 @@ class TestAddCommand:
 
     def test_add_noop_when_picker_clears_model(self, isolated_home, capsys):
         """Simulate picker explicitly clearing model.default (unusual but possible)."""
-        _write_config(isolated_home, {
-            "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
-        })
+        _write_config(
+            isolated_home,
+            {
+                "model": {"provider": "anthropic", "default": "claude-sonnet-4-6"},
+            },
+        )
 
         def fake_picker(args=None):
             from openagents_cli.config import load_config, save_config
+
             cfg = load_config()
             cfg["model"] = {"provider": "", "default": ""}
             save_config(cfg)
 
-        with patch("openagents_cli.main.select_provider_and_model", side_effect=fake_picker), \
-                patch("openagents_cli.main._require_tty"):
+        with (
+            patch(
+                "openagents_cli.main.select_provider_and_model", side_effect=fake_picker
+            ),
+            patch("openagents_cli.main._require_tty"),
+        ):
             from openagents_cli.fallback_cmd import cmd_fallback_add
+
             cmd_fallback_add(types.SimpleNamespace())
 
         out = capsys.readouterr().out
@@ -360,26 +443,32 @@ class TestAddCommand:
 # cmd_fallback_remove
 # ---------------------------------------------------------------------------
 
+
 class TestRemoveCommand:
     def test_remove_empty_chain(self, isolated_home, capsys):
         _write_config(isolated_home, {})
         from openagents_cli.fallback_cmd import cmd_fallback_remove
+
         cmd_fallback_remove(types.SimpleNamespace())
         out = capsys.readouterr().out
         assert "nothing to remove" in out
 
     def test_remove_selected_entry(self, isolated_home, capsys):
-        _write_config(isolated_home, {
-            "fallback_providers": [
-                {"provider": "openrouter", "model": "gpt-5.4"},
-                {"provider": "nous", "model": "Hermes-4"},
-                {"provider": "anthropic", "model": "claude-sonnet-4-6"},
-            ],
-        })
+        _write_config(
+            isolated_home,
+            {
+                "fallback_providers": [
+                    {"provider": "openrouter", "model": "gpt-5.4"},
+                    {"provider": "nous", "model": "Hermes-4"},
+                    {"provider": "anthropic", "model": "claude-sonnet-4-6"},
+                ],
+            },
+        )
 
         # Picker returns index 1 (the middle entry, "nous / Hermes-4")
         with patch("openagents_cli.setup._curses_prompt_choice", return_value=1):
             from openagents_cli.fallback_cmd import cmd_fallback_remove
+
             cmd_fallback_remove(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -392,15 +481,19 @@ class TestRemoveCommand:
         assert "Hermes-4" in out
 
     def test_remove_cancel_keeps_chain(self, isolated_home):
-        _write_config(isolated_home, {
-            "fallback_providers": [
-                {"provider": "openrouter", "model": "gpt-5.4"},
-            ],
-        })
+        _write_config(
+            isolated_home,
+            {
+                "fallback_providers": [
+                    {"provider": "openrouter", "model": "gpt-5.4"},
+                ],
+            },
+        )
 
         # Cancel = last item (index == len(chain) == 1 in our menu)
         with patch("openagents_cli.setup._curses_prompt_choice", return_value=1):
             from openagents_cli.fallback_cmd import cmd_fallback_remove
+
             cmd_fallback_remove(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -411,23 +504,29 @@ class TestRemoveCommand:
 # cmd_fallback_clear
 # ---------------------------------------------------------------------------
 
+
 class TestClearCommand:
     def test_clear_empty_chain(self, isolated_home, capsys):
         _write_config(isolated_home, {})
         from openagents_cli.fallback_cmd import cmd_fallback_clear
+
         cmd_fallback_clear(types.SimpleNamespace())
         out = capsys.readouterr().out
         assert "nothing to clear" in out
 
     def test_clear_with_confirmation(self, isolated_home, capsys, monkeypatch):
-        _write_config(isolated_home, {
-            "fallback_providers": [
-                {"provider": "openrouter", "model": "gpt-5.4"},
-                {"provider": "nous", "model": "Hermes-4"},
-            ],
-        })
+        _write_config(
+            isolated_home,
+            {
+                "fallback_providers": [
+                    {"provider": "openrouter", "model": "gpt-5.4"},
+                    {"provider": "nous", "model": "Hermes-4"},
+                ],
+            },
+        )
         monkeypatch.setattr("builtins.input", lambda *a, **kw: "y")
         from openagents_cli.fallback_cmd import cmd_fallback_clear
+
         cmd_fallback_clear(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -436,11 +535,15 @@ class TestClearCommand:
         assert "Fallback chain cleared" in out
 
     def test_clear_cancelled(self, isolated_home, monkeypatch):
-        _write_config(isolated_home, {
-            "fallback_providers": [{"provider": "openrouter", "model": "gpt-5.4"}],
-        })
+        _write_config(
+            isolated_home,
+            {
+                "fallback_providers": [{"provider": "openrouter", "model": "gpt-5.4"}],
+            },
+        )
         monkeypatch.setattr("builtins.input", lambda *a, **kw: "n")
         from openagents_cli.fallback_cmd import cmd_fallback_clear
+
         cmd_fallback_clear(types.SimpleNamespace())
 
         cfg = _read_config(isolated_home)
@@ -451,10 +554,12 @@ class TestClearCommand:
 # cmd_fallback dispatcher
 # ---------------------------------------------------------------------------
 
+
 class TestDispatcher:
     def test_no_subcommand_lists(self, isolated_home, capsys):
         _write_config(isolated_home, {})
         from openagents_cli.fallback_cmd import cmd_fallback
+
         cmd_fallback(types.SimpleNamespace(fallback_command=None))
         out = capsys.readouterr().out
         assert "No fallback providers configured" in out
@@ -462,6 +567,7 @@ class TestDispatcher:
     def test_list_alias(self, isolated_home, capsys):
         _write_config(isolated_home, {})
         from openagents_cli.fallback_cmd import cmd_fallback
+
         cmd_fallback(types.SimpleNamespace(fallback_command="ls"))
         out = capsys.readouterr().out
         assert "No fallback providers configured" in out
@@ -469,6 +575,7 @@ class TestDispatcher:
     def test_remove_alias(self, isolated_home, capsys):
         _write_config(isolated_home, {})
         from openagents_cli.fallback_cmd import cmd_fallback
+
         cmd_fallback(types.SimpleNamespace(fallback_command="rm"))
         out = capsys.readouterr().out
         assert "nothing to remove" in out
@@ -476,6 +583,7 @@ class TestDispatcher:
     def test_unknown_subcommand_exits(self, isolated_home):
         _write_config(isolated_home, {})
         from openagents_cli.fallback_cmd import cmd_fallback
+
         with pytest.raises(SystemExit):
             cmd_fallback(types.SimpleNamespace(fallback_command="nope"))
 
@@ -483,6 +591,7 @@ class TestDispatcher:
 # ---------------------------------------------------------------------------
 # argparse wiring — verify the subparser is registered
 # ---------------------------------------------------------------------------
+
 
 class TestArgparseWiring:
     """Verify `hermes fallback` is wired into main.py's argparse tree.
@@ -494,6 +603,7 @@ class TestArgparseWiring:
     def test_fallback_help_lists_subcommands(self):
         import subprocess
         import sys
+
         result = subprocess.run(
             [sys.executable, "-m", "openagents_cli.main", "fallback", "--help"],
             capture_output=True,

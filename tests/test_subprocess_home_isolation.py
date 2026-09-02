@@ -17,10 +17,10 @@ from pathlib import Path
 import openagents_constants
 
 
-
 # ---------------------------------------------------------------------------
 # get_subprocess_home()
 # ---------------------------------------------------------------------------
+
 
 class TestGetSubprocessHome:
     """Unit tests for openagents_constants.get_subprocess_home()."""
@@ -38,6 +38,7 @@ class TestGetSubprocessHome:
     def test_returns_none_when_hermes_home_unset(self, monkeypatch):
         monkeypatch.delenv("OPENAGENTS_HOME", raising=False)
         from openagents_constants import get_subprocess_home
+
         assert get_subprocess_home() is None
 
     def test_returns_none_when_home_dir_missing(self, tmp_path, monkeypatch):
@@ -46,9 +47,12 @@ class TestGetSubprocessHome:
         monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
         # No home/ subdirectory created
         from openagents_constants import get_subprocess_home
+
         assert get_subprocess_home() is None
 
-    def test_host_auto_keeps_real_home_when_profile_home_exists(self, tmp_path, monkeypatch):
+    def test_host_auto_keeps_real_home_when_profile_home_exists(
+        self, tmp_path, monkeypatch
+    ):
         """Host installs should not hide real ~/.ssh, ~/.gitconfig, ~/.azure, etc."""
         self._host_mode(monkeypatch)
         real_home = tmp_path / "real-home"
@@ -58,15 +62,19 @@ class TestGetSubprocessHome:
         monkeypatch.setenv("HOME", str(real_home))
         monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
         from openagents_constants import get_subprocess_home
+
         assert get_subprocess_home() is None
 
-    def test_container_auto_uses_profile_home_when_home_dir_exists(self, tmp_path, monkeypatch):
+    def test_container_auto_uses_profile_home_when_home_dir_exists(
+        self, tmp_path, monkeypatch
+    ):
         self._container_mode(monkeypatch)
         hermes_home = tmp_path / ".hermes"
         profile_home = hermes_home / "home"
         profile_home.mkdir(parents=True)
         monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
         from openagents_constants import get_subprocess_home
+
         assert get_subprocess_home() == str(profile_home)
 
     def test_returns_profile_specific_path(self, tmp_path, monkeypatch):
@@ -79,9 +87,12 @@ class TestGetSubprocessHome:
         monkeypatch.setenv("TERMINAL_HOME_MODE", "profile")
         monkeypatch.setenv("OPENAGENTS_HOME", str(profile_dir))
         from openagents_constants import get_subprocess_home
+
         assert get_subprocess_home() == str(profile_home)
 
-    def test_real_mode_repairs_parent_home_already_pointing_at_profile(self, tmp_path, monkeypatch):
+    def test_real_mode_repairs_parent_home_already_pointing_at_profile(
+        self, tmp_path, monkeypatch
+    ):
         self._host_mode(monkeypatch)
         profile_dir = tmp_path / ".hermes" / "profiles" / "coder"
         profile_home = profile_dir / "home"
@@ -98,7 +109,9 @@ class TestGetSubprocessHome:
         assert get_real_home() == str(real_home)
         assert get_subprocess_home() == str(real_home)
 
-    def test_real_home_falls_back_to_os_account_when_home_is_profile(self, tmp_path, monkeypatch):
+    def test_real_home_falls_back_to_os_account_when_home_is_profile(
+        self, tmp_path, monkeypatch
+    ):
         self._host_mode(monkeypatch)
         profile_dir = tmp_path / ".hermes" / "profiles" / "coder"
         profile_home = profile_dir / "home"
@@ -175,10 +188,13 @@ class TestGetSubprocessHome:
 # _make_run_env() injection
 # ---------------------------------------------------------------------------
 
+
 class TestMakeRunEnvHomeInjection:
     """Verify _make_run_env() applies the subprocess HOME policy."""
 
-    def test_host_auto_preserves_real_home_when_profile_home_exists(self, tmp_path, monkeypatch):
+    def test_host_auto_preserves_real_home_when_profile_home_exists(
+        self, tmp_path, monkeypatch
+    ):
         hermes_home = tmp_path / "openagents"
         hermes_home.mkdir()
         (hermes_home / "home").mkdir()
@@ -190,12 +206,15 @@ class TestMakeRunEnvHomeInjection:
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
         from tools.environments.local import _make_run_env
+
         result = _make_run_env({})
 
         assert result["HOME"] == str(real_home)
         assert result["HERMES_REAL_HOME"] == str(real_home)
 
-    def test_profile_mode_injects_profile_home_when_profile_home_exists(self, tmp_path, monkeypatch):
+    def test_profile_mode_injects_profile_home_when_profile_home_exists(
+        self, tmp_path, monkeypatch
+    ):
         hermes_home = tmp_path / "openagents"
         hermes_home.mkdir()
         (hermes_home / "home").mkdir()
@@ -208,6 +227,7 @@ class TestMakeRunEnvHomeInjection:
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
         from tools.environments.local import _make_run_env
+
         result = _make_run_env({})
 
         assert result["HOME"] == str(hermes_home / "home")
@@ -222,6 +242,7 @@ class TestMakeRunEnvHomeInjection:
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
         from tools.environments.local import _make_run_env
+
         result = _make_run_env({})
 
         assert result["HOME"] == "/root"
@@ -232,6 +253,7 @@ class TestMakeRunEnvHomeInjection:
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
         from tools.environments.local import _make_run_env
+
         result = _make_run_env({})
 
         assert result["HOME"] == "/home/user"
@@ -247,7 +269,10 @@ class TestMakeRunEnvHomeInjection:
         monkeypatch.setenv("HOME", "/root")
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
-        from openagents_constants import reset_openagents_home_override, set_openagents_home_override
+        from openagents_constants import (
+            reset_openagents_home_override,
+            set_openagents_home_override,
+        )
         from tools.environments.local import _make_run_env
 
         token = set_openagents_home_override(profile)
@@ -264,10 +289,13 @@ class TestMakeRunEnvHomeInjection:
 # _sanitize_subprocess_env() injection
 # ---------------------------------------------------------------------------
 
+
 class TestSanitizeSubprocessEnvHomeInjection:
     """Verify _sanitize_subprocess_env() applies the subprocess HOME policy."""
 
-    def test_host_auto_preserves_real_home_when_profile_home_exists(self, tmp_path, monkeypatch):
+    def test_host_auto_preserves_real_home_when_profile_home_exists(
+        self, tmp_path, monkeypatch
+    ):
         hermes_home = tmp_path / "openagents"
         hermes_home.mkdir()
         (hermes_home / "home").mkdir()
@@ -278,12 +306,15 @@ class TestSanitizeSubprocessEnvHomeInjection:
 
         base_env = {"HOME": str(real_home), "PATH": "/usr/bin", "USER": "root"}
         from tools.environments.local import _sanitize_subprocess_env
+
         result = _sanitize_subprocess_env(base_env)
 
         assert result["HOME"] == str(real_home)
         assert result["HERMES_REAL_HOME"] == str(real_home)
 
-    def test_profile_mode_injects_profile_home_when_profile_home_exists(self, tmp_path, monkeypatch):
+    def test_profile_mode_injects_profile_home_when_profile_home_exists(
+        self, tmp_path, monkeypatch
+    ):
         hermes_home = tmp_path / "openagents"
         hermes_home.mkdir()
         (hermes_home / "home").mkdir()
@@ -295,6 +326,7 @@ class TestSanitizeSubprocessEnvHomeInjection:
 
         base_env = {"HOME": str(real_home), "PATH": "/usr/bin", "USER": "root"}
         from tools.environments.local import _sanitize_subprocess_env
+
         result = _sanitize_subprocess_env(base_env)
 
         assert result["HOME"] == str(hermes_home / "home")
@@ -307,6 +339,7 @@ class TestSanitizeSubprocessEnvHomeInjection:
 
         base_env = {"HOME": "/root", "PATH": "/usr/bin"}
         from tools.environments.local import _sanitize_subprocess_env
+
         result = _sanitize_subprocess_env(base_env)
 
         assert result["HOME"] == "/root"
@@ -321,7 +354,10 @@ class TestSanitizeSubprocessEnvHomeInjection:
         monkeypatch.setenv("OPENAGENTS_HOME", str(root))
 
         base_env = {"HOME": "/root", "PATH": "/usr/bin"}
-        from openagents_constants import reset_openagents_home_override, set_openagents_home_override
+        from openagents_constants import (
+            reset_openagents_home_override,
+            set_openagents_home_override,
+        )
         from tools.environments.local import _sanitize_subprocess_env
 
         token = set_openagents_home_override(profile)
@@ -338,11 +374,13 @@ class TestSanitizeSubprocessEnvHomeInjection:
 # Profile bootstrap
 # ---------------------------------------------------------------------------
 
+
 class TestProfileBootstrap:
     """Verify new profiles get a home/ subdirectory."""
 
     def test_profile_dirs_includes_home(self):
         from openagents_cli.profiles import _PROFILE_DIRS
+
         assert "home" in _PROFILE_DIRS
 
     def test_create_profile_bootstraps_home_dir(self, tmp_path, monkeypatch):
@@ -353,6 +391,7 @@ class TestProfileBootstrap:
         monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
         from openagents_cli.profiles import create_profile
+
         profile_dir = create_profile("testbot", no_alias=True)
         assert (profile_dir / "home").is_dir()
 
@@ -360,6 +399,7 @@ class TestProfileBootstrap:
 # ---------------------------------------------------------------------------
 # Python process HOME unchanged
 # ---------------------------------------------------------------------------
+
 
 class TestPythonProcessUnchanged:
     """Confirm the Python process's own HOME is never modified."""
@@ -376,6 +416,7 @@ class TestPythonProcessUnchanged:
         original_path_home = str(Path.home())
 
         from openagents_constants import get_subprocess_home
+
         sub_home = get_subprocess_home()
 
         # Resolving subprocess HOME must not mutate the Python process env.

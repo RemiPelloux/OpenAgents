@@ -42,7 +42,9 @@ def test_start_fails_without_npm(monkeypatch, tmp_path):
 
 
 def test_start_fails_without_node_modules(monkeypatch, tmp_path):
-    monkeypatch.setattr(cmd, "_app_dir", lambda: _make_app_dir(tmp_path, with_node_modules=False))
+    monkeypatch.setattr(
+        cmd, "_app_dir", lambda: _make_app_dir(tmp_path, with_node_modules=False)
+    )
     monkeypatch.setattr(cmd, "_npm_command", lambda: "/usr/bin/npm")
     result = cmd.start_openagentui(open_browser=False)
     assert "npm install" in result.text
@@ -64,7 +66,9 @@ def test_start_launches_subprocess_and_records_state(monkeypatch, tmp_path):
         return fake_proc
 
     monkeypatch.setattr(cmd.subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(cmd.webbrowser, "open", lambda url: captured.setdefault("opened_url", url))
+    monkeypatch.setattr(
+        cmd.webbrowser, "open", lambda url: captured.setdefault("opened_url", url)
+    )
 
     result = cmd.start_openagentui(port=5555, open_browser=True)
 
@@ -86,7 +90,9 @@ def test_start_does_not_open_browser_by_default(monkeypatch, tmp_path):
     monkeypatch.setattr(cmd.time, "sleep", lambda *_a: None)
     monkeypatch.setattr(cmd.subprocess, "Popen", lambda *a, **k: _FakeProc(pid=1234))
     opened = {}
-    monkeypatch.setattr(cmd.webbrowser, "open", lambda url: opened.setdefault("url", url))
+    monkeypatch.setattr(
+        cmd.webbrowser, "open", lambda url: opened.setdefault("url", url)
+    )
 
     cmd.handle_openagentui_command("true")
     assert "url" not in opened
@@ -100,7 +106,9 @@ def test_start_open_flag_opens_browser(monkeypatch, tmp_path):
     monkeypatch.setattr(cmd.time, "sleep", lambda *_a: None)
     monkeypatch.setattr(cmd.subprocess, "Popen", lambda *a, **k: _FakeProc(pid=1234))
     opened = {}
-    monkeypatch.setattr(cmd.webbrowser, "open", lambda url: opened.setdefault("url", url))
+    monkeypatch.setattr(
+        cmd.webbrowser, "open", lambda url: opened.setdefault("url", url)
+    )
 
     cmd.handle_openagentui_command("true open")
     assert opened["url"] == "http://127.0.0.1:4173"
@@ -113,7 +121,9 @@ def test_start_reports_already_running(monkeypatch, tmp_path):
     monkeypatch.setattr(cmd, "_read_state", lambda: {"pid": 999, "port": 4173})
     monkeypatch.setattr(cmd, "_ensure_dashboard_online", lambda: "")
     opened = {}
-    monkeypatch.setattr(cmd.webbrowser, "open", lambda url: opened.setdefault("url", url))
+    monkeypatch.setattr(
+        cmd.webbrowser, "open", lambda url: opened.setdefault("url", url)
+    )
 
     result = cmd.start_openagentui()
     assert "already running" in result.text
@@ -125,7 +135,9 @@ def test_start_reports_immediate_exit(monkeypatch, tmp_path):
     monkeypatch.setattr(cmd, "_app_dir", lambda: app_dir)
     monkeypatch.setattr(cmd, "_npm_command", lambda: "/usr/bin/npm")
     monkeypatch.setattr(cmd.time, "sleep", lambda *_a: None)
-    monkeypatch.setattr(cmd.subprocess, "Popen", lambda *a, **k: _FakeProc(pid=1, exit_code=1))
+    monkeypatch.setattr(
+        cmd.subprocess, "Popen", lambda *a, **k: _FakeProc(pid=1, exit_code=1)
+    )
 
     result = cmd.start_openagentui(open_browser=False)
     assert "exited immediately" in result.text
@@ -172,10 +184,19 @@ def test_handle_command_dispatches_verbs(monkeypatch):
     monkeypatch.setattr(
         cmd,
         "start_openagentui",
-        lambda **kwargs: calls.append(("start", kwargs)) or cmd.OpenAgentUiCommandResult("started"),
+        lambda **kwargs: calls.append(("start", kwargs))
+        or cmd.OpenAgentUiCommandResult("started"),
     )
-    monkeypatch.setattr(cmd, "stop_openagentui", lambda: calls.append("stop") or cmd.OpenAgentUiCommandResult("stopped"))
-    monkeypatch.setattr(cmd, "status_openagentui", lambda: calls.append("status") or cmd.OpenAgentUiCommandResult("status"))
+    monkeypatch.setattr(
+        cmd,
+        "stop_openagentui",
+        lambda: calls.append("stop") or cmd.OpenAgentUiCommandResult("stopped"),
+    )
+    monkeypatch.setattr(
+        cmd,
+        "status_openagentui",
+        lambda: calls.append("status") or cmd.OpenAgentUiCommandResult("status"),
+    )
 
     assert cmd.handle_openagentui_command("true").text == "started"
     assert cmd.handle_openagentui_command("true open").text == "started"

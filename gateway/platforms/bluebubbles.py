@@ -55,12 +55,20 @@ DEFAULT_MENTION_PATTERNS = [
 
 # Tapback reaction codes (BlueBubbles associatedMessageType values)
 _TAPBACK_ADDED = {
-    2000: "love", 2001: "like", 2002: "dislike",
-    2003: "laugh", 2004: "emphasize", 2005: "question",
+    2000: "love",
+    2001: "like",
+    2002: "dislike",
+    2003: "laugh",
+    2004: "emphasize",
+    2005: "question",
 }
 _TAPBACK_REMOVED = {
-    3000: "love", 3001: "like", 3002: "dislike",
-    3003: "laugh", 3004: "emphasize", 3005: "question",
+    3000: "love",
+    3001: "like",
+    3002: "dislike",
+    3003: "laugh",
+    3004: "emphasize",
+    3005: "question",
 }
 
 # Webhook event types that carry user messages
@@ -84,6 +92,7 @@ def _redact(text: str) -> str:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def check_bluebubbles_requirements() -> bool:
     try:
         import aiohttp  # noqa: F401
@@ -102,18 +111,18 @@ def _normalize_server_url(raw: str) -> str:
     return value.rstrip("/")
 
 
-
-
-
 # ---------------------------------------------------------------------------
 # Adapter
 # ---------------------------------------------------------------------------
+
 
 class BlueBubblesAdapter(BasePlatformAdapter):
     platform = Platform.BLUEBUBBLES
     SUPPORTS_MESSAGE_EDITING = False
     MAX_MESSAGE_LENGTH = MAX_TEXT_LENGTH
-    splits_long_messages = True  # send() chunks via truncate_message(MAX_MESSAGE_LENGTH)
+    splits_long_messages = (
+        True  # send() chunks via truncate_message(MAX_MESSAGE_LENGTH)
+    )
 
     def __init__(self, config: PlatformConfig):
         super().__init__(config, Platform.BLUEBUBBLES)
@@ -122,17 +131,15 @@ class BlueBubblesAdapter(BasePlatformAdapter):
             extra.get("server_url") or os.getenv("BLUEBUBBLES_SERVER_URL", "")
         )
         self.password = extra.get("password") or os.getenv("BLUEBUBBLES_PASSWORD", "")
-        self.webhook_host = (
-            extra.get("webhook_host")
-            or os.getenv("BLUEBUBBLES_WEBHOOK_HOST", DEFAULT_WEBHOOK_HOST)
+        self.webhook_host = extra.get("webhook_host") or os.getenv(
+            "BLUEBUBBLES_WEBHOOK_HOST", DEFAULT_WEBHOOK_HOST
         )
         self.webhook_port = int(
             extra.get("webhook_port")
             or os.getenv("BLUEBUBBLES_WEBHOOK_PORT", str(DEFAULT_WEBHOOK_PORT))
         )
-        self.webhook_path = (
-            extra.get("webhook_path")
-            or os.getenv("BLUEBUBBLES_WEBHOOK_PATH", DEFAULT_WEBHOOK_PATH)
+        self.webhook_path = extra.get("webhook_path") or os.getenv(
+            "BLUEBUBBLES_WEBHOOK_PATH", DEFAULT_WEBHOOK_PATH
         )
         if not str(self.webhook_path).startswith("/"):
             self.webhook_path = f"/{self.webhook_path}"
@@ -140,7 +147,12 @@ class BlueBubblesAdapter(BasePlatformAdapter):
         _require_mention = extra.get("require_mention")
         if _require_mention is None:
             _require_mention = os.getenv("BLUEBUBBLES_REQUIRE_MENTION")
-        self.require_mention = str(_require_mention).strip().lower() in {"true", "1", "yes", "on"}
+        self.require_mention = str(_require_mention).strip().lower() in {
+            "true",
+            "1",
+            "yes",
+            "on",
+        }
         self._mention_patterns = self._compile_mention_patterns(
             extra["mention_patterns"]
             if "mention_patterns" in extra
@@ -175,11 +187,15 @@ class BlueBubblesAdapter(BasePlatformAdapter):
                 loaded = json.loads(text) if text else []
             except Exception:
                 loaded = None
-            patterns = loaded if isinstance(loaded, list) else [
-                part.strip()
-                for line in text.splitlines()
-                for part in line.split(",")
-            ]
+            patterns = (
+                loaded
+                if isinstance(loaded, list)
+                else [
+                    part.strip()
+                    for line in text.splitlines()
+                    for part in line.split(",")
+                ]
+            )
         elif isinstance(raw, list):
             patterns = raw
         else:
@@ -193,7 +209,9 @@ class BlueBubblesAdapter(BasePlatformAdapter):
             try:
                 compiled.append(re.compile(text, re.IGNORECASE))
             except re.error as exc:
-                logger.warning("[bluebubbles] Invalid mention pattern %r: %s", text, exc)
+                logger.warning(
+                    "[bluebubbles] Invalid mention pattern %r: %s", text, exc
+                )
         return compiled
 
     def _message_matches_mention_patterns(self, text: str) -> bool:
@@ -212,7 +230,7 @@ class BlueBubblesAdapter(BasePlatformAdapter):
         for pattern in self._mention_patterns:
             match = pattern.match(text.lstrip())
             if match:
-                cleaned = text.lstrip()[match.end():].lstrip(" ,:-")
+                cleaned = text.lstrip()[match.end() :].lstrip(" ,:-")
                 return cleaned or text
         return text
 
@@ -242,6 +260,7 @@ class BlueBubblesAdapter(BasePlatformAdapter):
 
         # Tighter keepalive so idle CLOSE_WAIT drains promptly (#18451).
         from gateway.platforms._http_client_limits import platform_httpx_limits
+
         self.client = httpx.AsyncClient(timeout=30.0, limits=platform_httpx_limits())
         try:
             await self._api_get("/api/v1/ping")
@@ -469,9 +488,7 @@ class BlueBubblesAdapter(BasePlatformAdapter):
             pass
         return None
 
-    async def _create_chat_for_handle(
-        self, address: str, message: str
-    ) -> SendResult:
+    async def _create_chat_for_handle(self, address: str, message: str) -> SendResult:
         """Create a new chat by sending the first message to *address*."""
         payload = {
             "addresses": [address],
@@ -510,13 +527,15 @@ class BlueBubblesAdapter(BasePlatformAdapter):
         # Split on paragraph breaks first (double newlines) so each thought
         # becomes its own iMessage bubble, then truncate any that are still
         # too long.
-        paragraphs = [p.strip() for p in re.split(r'\n\s*\n', text) if p.strip()]
+        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
         chunks: List[str] = []
-        for para in (paragraphs or [text]):
+        for para in paragraphs or [text]:
             if len(para) <= self.MAX_MESSAGE_LENGTH:
                 chunks.append(para)
             else:
-                chunks.extend(self.truncate_message(para, max_length=self.MAX_MESSAGE_LENGTH))
+                chunks.extend(
+                    self.truncate_message(para, max_length=self.MAX_MESSAGE_LENGTH)
+                )
         last = SendResult(success=True)
         for chunk in chunks:
             guid = await self._resolve_chat_guid(chat_id)
@@ -598,9 +617,7 @@ class BlueBubblesAdapter(BasePlatformAdapter):
             if result.get("status") == 200:
                 rdata = result.get("data") or {}
                 msg_id = rdata.get("guid") if isinstance(rdata, dict) else None
-                return SendResult(
-                    success=True, message_id=msg_id, raw_response=result
-                )
+                return SendResult(success=True, message_id=msg_id, raw_response=result)
             return SendResult(
                 success=False,
                 error=result.get("message", "Attachment upload failed"),
@@ -686,7 +703,11 @@ class BlueBubblesAdapter(BasePlatformAdapter):
     # ------------------------------------------------------------------
 
     async def send_typing(self, chat_id: str, metadata=None) -> None:
-        if not self._private_api_enabled or not self._helper_connected or not self.client:
+        if (
+            not self._private_api_enabled
+            or not self._helper_connected
+            or not self.client
+        ):
             return
         try:
             guid = await self._resolve_chat_guid(chat_id)
@@ -699,7 +720,11 @@ class BlueBubblesAdapter(BasePlatformAdapter):
             pass
 
     async def stop_typing(self, chat_id: str) -> None:
-        if not self._private_api_enabled or not self._helper_connected or not self.client:
+        if (
+            not self._private_api_enabled
+            or not self._helper_connected
+            or not self.client
+        ):
             return
         try:
             guid = await self._resolve_chat_guid(chat_id)
@@ -716,7 +741,11 @@ class BlueBubblesAdapter(BasePlatformAdapter):
     # ------------------------------------------------------------------
 
     async def mark_read(self, chat_id: str) -> bool:
-        if not self._private_api_enabled or not self._helper_connected or not self.client:
+        if (
+            not self._private_api_enabled
+            or not self._helper_connected
+            or not self.client
+        ):
             return False
         try:
             guid = await self._resolve_chat_guid(chat_id)
@@ -748,14 +777,10 @@ class BlueBubblesAdapter(BasePlatformAdapter):
             guid = await self._resolve_chat_guid(chat_id)
             if guid:
                 encoded = quote(guid, safe="")
-                res = await self._api_get(
-                    f"/api/v1/chat/{encoded}?with=participants"
-                )
+                res = await self._api_get(f"/api/v1/chat/{encoded}?with=participants")
                 data = (res or {}).get("data", {})
                 display_name = (
-                    data.get("displayName")
-                    or data.get("chatIdentifier")
-                    or chat_id
+                    data.get("displayName") or data.get("chatIdentifier") or chat_id
                 )
                 participants = []
                 for p in data.get("participants", []) or []:
@@ -900,9 +925,7 @@ class BlueBubblesAdapter(BasePlatformAdapter):
 
         record = self._extract_payload_record(payload) or {}
         is_from_me = bool(
-            record.get("isFromMe")
-            or record.get("fromMe")
-            or record.get("is_from_me")
+            record.get("isFromMe") or record.get("fromMe") or record.get("is_from_me")
         )
         if is_from_me:
             return web.Response(text="ok")
@@ -916,9 +939,7 @@ class BlueBubblesAdapter(BasePlatformAdapter):
             return web.Response(text="ok")
 
         text = (
-            self._value(
-                record.get("text"), record.get("message"), record.get("body")
-            )
+            self._value(record.get("text"), record.get("message"), record.get("body"))
             or ""
         )
 

@@ -137,7 +137,11 @@ def test_list_templates_includes_flagship_scenario():
     resp = client.get("/api/openagentui/templates")
     assert resp.status_code == 200
     templates = resp.json()["templates"]
-    assert any("tiktok" in (t.get("id") or "").lower() or "prospection" in (t.get("name") or "").lower() for t in templates)
+    assert any(
+        "tiktok" in (t.get("id") or "").lower()
+        or "prospection" in (t.get("name") or "").lower()
+        for t in templates
+    )
 
 
 def test_install_template_creates_new_workflow():
@@ -183,7 +187,9 @@ def test_run_workflow_route_unknown_workflow_404():
 
 def test_list_executions_route():
     client = _client()
-    client.post("/api/openagentui/workflows", json=_linear_workflow_body("wf_exec_list"))
+    client.post(
+        "/api/openagentui/workflows", json=_linear_workflow_body("wf_exec_list")
+    )
     client.post("/api/openagentui/workflows/wf_exec_list/run", json={})
     resp = client.get("/api/openagentui/workflows/wf_exec_list/executions")
     assert resp.status_code == 200
@@ -213,7 +219,12 @@ def _approval_workflow_body(id_="wf_api_approval"):
         "name": "API Approval Flow",
         "nodes": [
             {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
-            {"id": "gate", "type": "user-approval", "position": {"x": 0, "y": 0}, "data": {}},
+            {
+                "id": "gate",
+                "type": "user-approval",
+                "position": {"x": 0, "y": 0},
+                "data": {},
+            },
             {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
         ],
         "edges": [
@@ -237,7 +248,9 @@ def test_approve_execution_route_resumes_workflow():
 
 def test_reject_execution_route_fails_workflow():
     client = _client()
-    client.post("/api/openagentui/workflows", json=_approval_workflow_body("wf_api_approval2"))
+    client.post(
+        "/api/openagentui/workflows", json=_approval_workflow_body("wf_api_approval2")
+    )
     run_resp = client.post("/api/openagentui/workflows/wf_api_approval2/run", json={})
     execution_id = run_resp.json()["id"]
 
@@ -255,7 +268,9 @@ def test_approve_unknown_execution_400():
 def test_execute_stream_route_emits_node_and_done_events():
     client = _client()
     client.post("/api/openagentui/workflows", json=_linear_workflow_body("wf_stream"))
-    with client.stream("POST", "/api/openagentui/workflows/wf_stream/execute-stream", json={}) as resp:
+    with client.stream(
+        "POST", "/api/openagentui/workflows/wf_stream/execute-stream", json={}
+    ) as resp:
         assert resp.status_code == 200
         body = "".join(resp.iter_text())
     assert "event: node" in body

@@ -73,14 +73,12 @@ def test_handle_enrich_contact_calls_opencrm():
         "plugins.opencrm_sales.tools.enrich_contact",
         return_value={"id": "c1", "linkedin_url": "https://linkedin.com/in/jane"},
     ) as mock:
-        out = handle_enrich_contact(
-            {
-                "contact_id": "c1",
-                "linkedin_url": "https://linkedin.com/in/jane",
-                "is_decision_maker": True,
-                "mark_complete": True,
-            }
-        )
+        out = handle_enrich_contact({
+            "contact_id": "c1",
+            "linkedin_url": "https://linkedin.com/in/jane",
+            "is_decision_maker": True,
+            "mark_complete": True,
+        })
         mock.assert_called_once()
         assert json.loads(out)["id"] == "c1"
 
@@ -98,14 +96,12 @@ def test_handle_propose_crm_update_calls_opencrm():
         "plugins.opencrm_sales.tools.propose_crm_update",
         return_value={"status": "success", "payload": {"staged_update_id": "s1"}},
     ) as mock:
-        out = handle_propose_crm_update(
-            {
-                "org_id": "org-1",
-                "entity_type": "opportunity",
-                "entity_id": "opp-1",
-                "payload": {"next_step": "send follow-up email"},
-            }
-        )
+        out = handle_propose_crm_update({
+            "org_id": "org-1",
+            "entity_type": "opportunity",
+            "entity_id": "opp-1",
+            "payload": {"next_step": "send follow-up email"},
+        })
         mock.assert_called_once()
         assert json.loads(out)["payload"]["staged_update_id"] == "s1"
 

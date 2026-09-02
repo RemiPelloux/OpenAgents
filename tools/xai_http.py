@@ -120,7 +120,9 @@ def resolve_xai_http_credentials(*, force_refresh: bool = False) -> Dict[str, st
         pass
 
     api_key = str(get_env_value("XAI_API_KEY") or "").strip()
-    base_url = str(get_env_value("XAI_BASE_URL") or "https://api.x.ai/v1").strip().rstrip("/")
+    base_url = (
+        str(get_env_value("XAI_BASE_URL") or "https://api.x.ai/v1").strip().rstrip("/")
+    )
     return {
         "provider": "xai",
         "api_key": api_key,

@@ -64,6 +64,7 @@ def has_azure_identity_installed() -> bool:
     """
     try:
         import azure.identity  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -77,6 +78,7 @@ def _require_azure_identity():
     """
     try:
         import azure.identity as _ai
+
         return _ai
     except ImportError:
         try:
@@ -98,6 +100,7 @@ def _require_azure_identity():
 
         # Retry import after lazy install.
         import azure.identity as _ai  # noqa: WPS440
+
         return _ai
 
 
@@ -160,10 +163,15 @@ class EntraIdentityConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: Optional[Dict[str, Any]],
-                  *, default_scope: Optional[str] = None) -> "EntraIdentityConfig":
+    def from_dict(
+        cls, data: Optional[Dict[str, Any]], *, default_scope: Optional[str] = None
+    ) -> "EntraIdentityConfig":
         data = data or {}
-        scope = str(data.get("scope") or "").strip() or default_scope or SCOPE_AI_AZURE_DEFAULT
+        scope = (
+            str(data.get("scope") or "").strip()
+            or default_scope
+            or SCOPE_AI_AZURE_DEFAULT
+        )
         exclude_browser = bool(data.get("exclude_interactive_browser", True))
         return cls(
             scope=scope,
@@ -212,12 +220,13 @@ def build_credential(config: EntraIdentityConfig) -> Any:
     return _build_default_credential(config)
 
 
-def build_token_provider(scope: Optional[str] = None,
-                         *,
-                         config: Optional[EntraIdentityConfig] = None,
-                         base_url: Optional[str] = None,
-                         exclude_interactive_browser: bool = True,
-                         ) -> Callable[[], str]:
+def build_token_provider(
+    scope: Optional[str] = None,
+    *,
+    config: Optional[EntraIdentityConfig] = None,
+    base_url: Optional[str] = None,
+    exclude_interactive_browser: bool = True,
+) -> Callable[[], str]:
     """Return a zero-arg callable that mints a fresh Entra bearer JWT.
 
     The returned callable is exactly what Microsoft's documented Foundry
@@ -258,12 +267,14 @@ def build_token_provider(scope: Optional[str] = None,
 # ---------------------------------------------------------------------------
 
 
-def has_azure_identity_credentials(scope: Optional[str] = None,
-                                   *,
-                                   config: Optional[EntraIdentityConfig] = None,
-                                   timeout_seconds: float = 10.0,
-                                   allow_install: bool = True,
-                                   **overrides: Any) -> bool:
+def has_azure_identity_credentials(
+    scope: Optional[str] = None,
+    *,
+    config: Optional[EntraIdentityConfig] = None,
+    timeout_seconds: float = 10.0,
+    allow_install: bool = True,
+    **overrides: Any,
+) -> bool:
     """Best-effort probe: can `DefaultAzureCredential` mint a token now?
 
     Runs ``credential.get_token(scope)`` under a thread-based timeout so
@@ -312,12 +323,14 @@ def has_azure_identity_credentials(scope: Optional[str] = None,
     return bool(result.get("ok"))
 
 
-def describe_active_credential(config: Optional[EntraIdentityConfig] = None,
-                               *,
-                               scope: Optional[str] = None,
-                               timeout_seconds: float = 10.0,
-                               allow_install: bool = True,
-                               **overrides: Any) -> Dict[str, Any]:
+def describe_active_credential(
+    config: Optional[EntraIdentityConfig] = None,
+    *,
+    scope: Optional[str] = None,
+    timeout_seconds: float = 10.0,
+    allow_install: bool = True,
+    **overrides: Any,
+) -> Dict[str, Any]:
     """Return diagnostic info about the active credential chain.
 
     Best-effort: runs ``get_token()`` and inspects what came back.
@@ -341,8 +354,7 @@ def describe_active_credential(config: Optional[EntraIdentityConfig] = None,
         if not allow_install:
             info["error"] = "azure-identity not installed"
             info["hint"] = (
-                "pip install azure-identity (or rely on lazy install at "
-                "first use)"
+                "pip install azure-identity (or rely on lazy install at first use)"
             )
             return info
         try:
@@ -370,11 +382,16 @@ def describe_active_credential(config: Optional[EntraIdentityConfig] = None,
     env_sources = []
     if os.environ.get("AZURE_FEDERATED_TOKEN_FILE", "").strip():
         env_sources.append("WorkloadIdentityCredential (AZURE_FEDERATED_TOKEN_FILE)")
-    if (os.environ.get("AZURE_CLIENT_ID", "").strip()
-            and os.environ.get("AZURE_CLIENT_SECRET", "").strip()
-            and os.environ.get("AZURE_TENANT_ID", "").strip()):
+    if (
+        os.environ.get("AZURE_CLIENT_ID", "").strip()
+        and os.environ.get("AZURE_CLIENT_SECRET", "").strip()
+        and os.environ.get("AZURE_TENANT_ID", "").strip()
+    ):
         env_sources.append("EnvironmentCredential (client secret)")
-    if os.environ.get("IDENTITY_ENDPOINT", "").strip() or os.environ.get("MSI_ENDPOINT", "").strip():
+    if (
+        os.environ.get("IDENTITY_ENDPOINT", "").strip()
+        or os.environ.get("MSI_ENDPOINT", "").strip()
+    ):
         env_sources.append("ManagedIdentityCredential (IDENTITY_ENDPOINT)")
     info["env_sources"] = env_sources
 
@@ -459,7 +476,9 @@ def materialize_bearer_for_http(value: Any) -> str:
     raise ValueError("no usable api_key / token provider")
 
 
-def build_bearer_http_client(token_provider: Callable[[], str], **httpx_kwargs: Any) -> Any:
+def build_bearer_http_client(
+    token_provider: Callable[[], str], **httpx_kwargs: Any
+) -> Any:
     """Return an ``httpx.Client`` that mints a fresh Entra bearer JWT
     per outbound request.
 
@@ -491,8 +510,7 @@ def build_bearer_http_client(token_provider: Callable[[], str], **httpx_kwargs: 
     """
     if not is_token_provider(token_provider):
         raise ValueError(
-            "build_bearer_http_client requires a zero-arg callable "
-            "token provider"
+            "build_bearer_http_client requires a zero-arg callable token provider"
         )
 
     try:
@@ -527,10 +545,24 @@ def build_bearer_http_client(token_provider: Callable[[], str], **httpx_kwargs: 
                 "Run `hermes doctor` or `az login` to recover.",
                 exc,
             )
-            for header_name in ("Authorization", "authorization", "Api-Key", "api-key", "X-Api-Key", "x-api-key"):
+            for header_name in (
+                "Authorization",
+                "authorization",
+                "Api-Key",
+                "api-key",
+                "X-Api-Key",
+                "x-api-key",
+            ):
                 request.headers.pop(header_name, None)
             return
-        for header_name in ("Authorization", "authorization", "Api-Key", "api-key", "X-Api-Key", "x-api-key"):
+        for header_name in (
+            "Authorization",
+            "authorization",
+            "Api-Key",
+            "api-key",
+            "X-Api-Key",
+            "x-api-key",
+        ):
             request.headers.pop(header_name, None)
         request.headers["Authorization"] = f"Bearer {token}"
 

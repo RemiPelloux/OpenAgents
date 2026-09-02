@@ -52,13 +52,15 @@ def list_toolsets() -> List[Dict[str, Any]]:
 
     out = []
     for name, definition in sorted(get_all_toolsets().items()):
-        out.append(
-            {
-                "id": name,
-                "label": definition.get("name", name) if isinstance(definition, dict) else name,
-                "description": definition.get("description", "") if isinstance(definition, dict) else "",
-            }
-        )
+        out.append({
+            "id": name,
+            "label": definition.get("name", name)
+            if isinstance(definition, dict)
+            else name,
+            "description": definition.get("description", "")
+            if isinstance(definition, dict)
+            else "",
+        })
     return out
 
 
@@ -69,13 +71,11 @@ def list_tools() -> List[Dict[str, Any]]:
 
     out = []
     for name in registry.get_all_tool_names():
-        out.append(
-            {
-                "id": name,
-                "toolset": registry.get_toolset_for_tool(name),
-                "emoji": registry.get_emoji(name),
-            }
-        )
+        out.append({
+            "id": name,
+            "toolset": registry.get_toolset_for_tool(name),
+            "emoji": registry.get_emoji(name),
+        })
     return out
 
 
@@ -97,7 +97,11 @@ def catalog_snapshot(*, force: bool = False) -> Dict[str, Any]:
     """Everything the frontend's node pickers need in one call (cached 5 min)."""
     global _catalog_cache, _catalog_cached_at
     now = time.time()
-    if not force and _catalog_cache is not None and (now - _catalog_cached_at) < _CATALOG_TTL_SECONDS:
+    if (
+        not force
+        and _catalog_cache is not None
+        and (now - _catalog_cached_at) < _CATALOG_TTL_SECONDS
+    ):
         return _catalog_cache
     snapshot = {
         "toolsets": list_toolsets(),

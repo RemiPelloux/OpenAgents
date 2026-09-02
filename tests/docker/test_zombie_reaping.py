@@ -10,15 +10,22 @@ Every ``docker exec`` here runs as the unprivileged ``hermes`` user
 (via :func:`docker_exec_sh` in conftest); see the conftest module
 docstring.
 """
+
 from __future__ import annotations
 
 import time
 
-from tests.docker.conftest import docker_exec, docker_exec_sh, start_container, start_container
+from tests.docker.conftest import (
+    docker_exec,
+    docker_exec_sh,
+    start_container,
+    start_container,
+)
 
 
 def test_orphan_zombies_reaped(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """Spawn an orphan child that exits immediately. PID 1 must reap it."""
     start_container(built_image, container_name, cmd="sleep 60")
@@ -27,13 +34,12 @@ def test_orphan_zombies_reaped(
     # the original docker exec session — it becomes an orphan reparented
     # to PID 1 in the container. When it exits, PID 1 must reap it.
     docker_exec_sh(
-        container_name, "( ( sleep 0.1 & ) & ); sleep 1", timeout=10,
+        container_name,
+        "( ( sleep 0.1 & ) & ); sleep 1",
+        timeout=10,
     )
     time.sleep(1)
 
     r = docker_exec(container_name, "ps", "axo", "stat,pid,comm")
-    zombies = [
-        line for line in r.stdout.split("\n")
-        if line.strip().startswith("Z")
-    ]
+    zombies = [line for line in r.stdout.split("\n") if line.strip().startswith("Z")]
     assert not zombies, f"Zombies not reaped by PID 1: {zombies}"

@@ -229,17 +229,15 @@ def test_event_from_wire_sets_relay_delivery_marker():
     """
     from gateway.relay.ws_transport import _event_from_wire
 
-    event = _event_from_wire(
-        {
-            "text": "hello!",
-            "source": {
-                "platform": "discord",
-                "chat_id": "123",
-                "chat_type": "dm",
-                "user_id": "267171776755269633",
-                "user_name": "rewbs",
-            },
-        }
-    )
+    event = _event_from_wire({
+        "text": "hello!",
+        "source": {
+            "platform": "discord",
+            "chat_id": "123",
+            "chat_type": "dm",
+            "user_id": "267171776755269633",
+            "user_name": "rewbs",
+        },
+    })
     assert event.source.platform is Platform.DISCORD
     assert event.source.delivered_via_upstream_relay is True

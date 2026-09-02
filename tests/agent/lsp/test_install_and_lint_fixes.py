@@ -12,6 +12,7 @@ Covers:
    LSP semantic tier on TypeScript files when the user doesn't also
    have a project-level ``tsc``.
 """
+
 from __future__ import annotations
 
 import io
@@ -53,10 +54,15 @@ def test_install_npm_passes_extras_to_npm_command(tmp_path, monkeypatch):
     from agent.lsp import install as install_mod
 
     monkeypatch.setattr(install_mod.subprocess, "run", fake_run)
-    monkeypatch.setattr(install_mod.shutil, "which", lambda c: "/usr/bin/npm" if c == "npm" else None)
+    monkeypatch.setattr(
+        install_mod.shutil, "which", lambda c: "/usr/bin/npm" if c == "npm" else None
+    )
 
-    install_mod._install_npm("typescript-language-server", "typescript-language-server",
-                             extra_pkgs=["typescript"])
+    install_mod._install_npm(
+        "typescript-language-server",
+        "typescript-language-server",
+        extra_pkgs=["typescript"],
+    )
 
     cmd = captured["cmd"]
     assert "typescript-language-server" in cmd
@@ -80,17 +86,27 @@ def test_install_npm_works_without_extras(tmp_path, monkeypatch):
     from agent.lsp import install as install_mod
 
     monkeypatch.setattr(install_mod.subprocess, "run", fake_run)
-    monkeypatch.setattr(install_mod.shutil, "which", lambda c: "/usr/bin/npm" if c == "npm" else None)
+    monkeypatch.setattr(
+        install_mod.shutil, "which", lambda c: "/usr/bin/npm" if c == "npm" else None
+    )
 
     install_mod._install_npm("pyright", "pyright-langserver")
 
     cmd = captured["cmd"]
     assert "pyright" in cmd
     # Should not blow up when extra_pkgs is omitted/None
-    install_targets = [c for c in cmd if not c.startswith("-") and c not in {
-        "install", "--prefix", str(install_mod.hermes_lsp_bin_dir().parent),
-        "/usr/bin/npm",
-    }]
+    install_targets = [
+        c
+        for c in cmd
+        if not c.startswith("-")
+        and c
+        not in {
+            "install",
+            "--prefix",
+            str(install_mod.hermes_lsp_bin_dir().parent),
+            "/usr/bin/npm",
+        }
+    ]
     assert install_targets == ["pyright"]
 
 
@@ -118,7 +134,9 @@ def test_install_pip_finds_windows_scripts_launcher(tmp_path, monkeypatch):
     from agent.lsp import install as install_mod
 
     def fake_run(cmd, **kwargs):
-        scripts_dir = install_mod.hermes_lsp_bin_dir().parent / "python-packages" / "Scripts"
+        scripts_dir = (
+            install_mod.hermes_lsp_bin_dir().parent / "python-packages" / "Scripts"
+        )
         scripts_dir.mkdir(parents=True, exist_ok=True)
         launcher = scripts_dir / "fake-language-server.exe"
         launcher.write_text("launcher\n")
@@ -150,7 +168,9 @@ def test_backend_warnings_quiet_when_bash_not_installed(tmp_path, monkeypatch):
     assert notes == []
 
 
-def test_backend_warnings_quiet_when_bash_and_shellcheck_both_present(tmp_path, monkeypatch):
+def test_backend_warnings_quiet_when_bash_and_shellcheck_both_present(
+    tmp_path, monkeypatch
+):
     """Both installed → no warning."""
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
     from agent.lsp import cli as lsp_cli
@@ -163,7 +183,9 @@ def test_backend_warnings_quiet_when_bash_and_shellcheck_both_present(tmp_path, 
     assert notes == []
 
 
-def test_backend_warnings_fires_when_bash_installed_but_shellcheck_missing(tmp_path, monkeypatch):
+def test_backend_warnings_fires_when_bash_installed_but_shellcheck_missing(
+    tmp_path, monkeypatch
+):
     """The exact scenario from the bug report."""
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
     from agent.lsp import cli as lsp_cli
@@ -272,8 +294,10 @@ def test_check_lint_returns_skipped_when_npx_tsc_unusable(tmp_path):
         result.stdout = npx_banner
         return result
 
-    with patch.object(fops, "_exec", side_effect=fake_exec), \
-         patch.object(fops, "_has_command", return_value=True):
+    with (
+        patch.object(fops, "_exec", side_effect=fake_exec),
+        patch.object(fops, "_has_command", return_value=True),
+    ):
         lint = fops._check_lint(str(ts_file))
 
     assert lint.skipped is True, (
@@ -307,8 +331,10 @@ def test_check_lint_returns_error_for_real_ts_type_errors(tmp_path):
         result.stdout = real_tsc_error
         return result
 
-    with patch.object(fops, "_exec", side_effect=fake_exec), \
-         patch.object(fops, "_has_command", return_value=True):
+    with (
+        patch.object(fops, "_exec", side_effect=fake_exec),
+        patch.object(fops, "_has_command", return_value=True),
+    ):
         lint = fops._check_lint(str(ts_file))
 
     assert lint.skipped is False

@@ -7,6 +7,7 @@ Covers the changes in the "claw migrate hardening" PR:
   - --json output mode on the migration script
   - enum-like constants and ItemResult.sensitive field
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -27,7 +28,9 @@ SCRIPT_PATH = (
 
 
 def _load():
-    spec = importlib.util.spec_from_file_location("openclaw_to_hermes_hard", SCRIPT_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "openclaw_to_hermes_hard", SCRIPT_PATH
+    )
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     sys.modules[spec.name] = module
@@ -47,7 +50,9 @@ def test_redact_replaces_secret_by_key_name():
 def test_redact_replaces_secret_by_value_pattern():
     mod = _load()
     # Even under a non-secret-looking key, the sk-... pattern should be replaced inline.
-    out = mod.redact_migration_value({"note": "use sk-or-v1-9Xs7fF2JkLmNpQrT to authenticate"})
+    out = mod.redact_migration_value({
+        "note": "use sk-or-v1-9Xs7fF2JkLmNpQrT to authenticate"
+    })
     assert "sk-or-" not in out["note"]
     assert mod.REDACTED_MIGRATION_VALUE in out["note"]
 
@@ -74,7 +79,9 @@ def test_redact_handles_google_api_key_pattern():
 
 def test_redact_handles_bearer_header():
     mod = _load()
-    out = mod.redact_migration_value({"hint": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.abc"})
+    out = mod.redact_migration_value({
+        "hint": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.abc"
+    })
     # Key "hint" is not a secret marker — only the Bearer <token> substring
     # gets scrubbed inline by the value pattern.
     assert "Bearer eyJ" not in out["hint"]
@@ -129,7 +136,13 @@ def test_write_report_redacts_api_keys_on_disk(tmp_path):
         "mode": "execute",
         "source_root": "/src",
         "target_root": "/tgt",
-        "summary": {"migrated": 1, "conflict": 0, "error": 0, "skipped": 0, "archived": 0},
+        "summary": {
+            "migrated": 1,
+            "conflict": 0,
+            "error": 0,
+            "skipped": 0,
+            "archived": 0,
+        },
         "items": [
             {
                 "kind": "provider-keys",
@@ -145,7 +158,10 @@ def test_write_report_redacts_api_keys_on_disk(tmp_path):
     persisted = json.loads((tmp_path / "report.json").read_text())
     # The raw secret must not appear anywhere in the persisted JSON.
     assert "sk-or-v1-1234567890abcdef" not in (tmp_path / "report.json").read_text()
-    assert persisted["items"][0]["details"]["OPENROUTER_API_KEY"] == mod.REDACTED_MIGRATION_VALUE
+    assert (
+        persisted["items"][0]["details"]["OPENROUTER_API_KEY"]
+        == mod.REDACTED_MIGRATION_VALUE
+    )
 
 
 # ───────────────────────────────────────────────────────────────────────
@@ -207,7 +223,9 @@ def test_error_produces_inspect_warning(tmp_path):
 
 def test_provider_keys_skipped_warning_when_secrets_disabled(tmp_path):
     mod = _load()
-    migrator = _make_minimal_migrator(mod, tmp_path, execute=True, migrate_secrets=False)
+    migrator = _make_minimal_migrator(
+        mod, tmp_path, execute=True, migrate_secrets=False
+    )
     migrator.record(
         "provider-keys",
         source=None,
@@ -308,7 +326,9 @@ def test_json_mode_emits_structured_report(tmp_path):
     source = tmp_path / "openclaw"
     source.mkdir()
     (source / "openclaw.json").write_text(
-        json.dumps({"agents": {"defaults": {"model": "openrouter/anthropic/claude-sonnet-4"}}}),
+        json.dumps({
+            "agents": {"defaults": {"model": "openrouter/anthropic/claude-sonnet-4"}}
+        }),
         encoding="utf-8",
     )
     target = tmp_path / "openagents"
@@ -318,8 +338,10 @@ def test_json_mode_emits_structured_report(tmp_path):
         [
             sys.executable,
             str(SCRIPT_PATH),
-            "--source", str(source),
-            "--target", str(target),
+            "--source",
+            str(source),
+            "--target",
+            str(target),
             "--json",
         ],
         capture_output=True,
@@ -351,8 +373,10 @@ def test_json_mode_redacts_secrets_in_output(tmp_path):
         [
             sys.executable,
             str(SCRIPT_PATH),
-            "--source", str(source),
-            "--target", str(target),
+            "--source",
+            str(source),
+            "--target",
+            str(target),
             "--migrate-secrets",  # so provider-keys surface in the plan
             "--json",
         ],

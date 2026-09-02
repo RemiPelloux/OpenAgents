@@ -35,7 +35,9 @@ def execute_end(ctx: NodeContext) -> NodeExecutionResult:
     output_mapping = ctx.data.get("outputMapping")
     if isinstance(output_mapping, dict) and output_mapping:
         output = render_dict(
-            output_mapping, variables=ctx.execution.variables, node_results=ctx.execution.node_results,
+            output_mapping,
+            variables=ctx.execution.variables,
+            node_results=ctx.execution.node_results,
         )
     else:
         output = dict(ctx.execution.variables)
@@ -50,7 +52,11 @@ def execute_note(ctx: NodeContext) -> NodeExecutionResult:
 def execute_set_state(ctx: NodeContext) -> NodeExecutionResult:
     key = ctx.data.get("stateKey")
     if not key:
-        return NodeExecutionResult(node_id=ctx.node.id, status="failed", error="set-state node missing stateKey")
+        return NodeExecutionResult(
+            node_id=ctx.node.id,
+            status="failed",
+            error="set-state node missing stateKey",
+        )
     value = ctx.rendered("stateValue")
     ctx.set_variable(key, value)
     return ok(ctx.node.id, {key: value})

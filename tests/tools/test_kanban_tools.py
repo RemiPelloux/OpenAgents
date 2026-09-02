@@ -6,6 +6,7 @@ Verifies:
   - Each handler's happy path.
   - Error paths (missing required args, bad metadata type, etc).
 """
+
 from __future__ import annotations
 
 import json
@@ -17,6 +18,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Gating
 # ---------------------------------------------------------------------------
+
 
 def test_kanban_tools_hidden_without_env_var(monkeypatch, tmp_path):
     """Normal `hermes chat` sessions (no HERMES_KANBAN_TASK) must have
@@ -34,9 +36,7 @@ def test_kanban_tools_hidden_without_env_var(monkeypatch, tmp_path):
     schema = registry.get_definitions(set(resolve_toolset("hermes-cli")), quiet=True)
     names = {s["function"].get("name") for s in schema if "function" in s}
     kanban = {n for n in names if n and n.startswith("kanban_")}
-    assert kanban == set(), (
-        f"kanban tools leaked into normal chat schema: {kanban}"
-    )
+    assert kanban == set(), f"kanban tools leaked into normal chat schema: {kanban}"
 
 
 def test_kanban_tools_visible_with_env_var(monkeypatch, tmp_path):
@@ -55,8 +55,13 @@ def test_kanban_tools_visible_with_env_var(monkeypatch, tmp_path):
     names = {s["function"].get("name") for s in schema if "function" in s}
     kanban = {n for n in names if n and n.startswith("kanban_")}
     expected = {
-        "kanban_show", "kanban_complete", "kanban_block", "kanban_heartbeat",
-        "kanban_comment", "kanban_create", "kanban_link",
+        "kanban_show",
+        "kanban_complete",
+        "kanban_block",
+        "kanban_heartbeat",
+        "kanban_comment",
+        "kanban_create",
+        "kanban_link",
     }
     assert kanban == expected, f"expected {expected}, got {kanban}"
 
@@ -135,8 +140,13 @@ def test_kanban_tools_visible_with_toolset_config(monkeypatch, tmp_path):
     kanban = {n for n in names if n and n.startswith("kanban_")}
     expected = {
         "kanban_list",
-        "kanban_show", "kanban_complete", "kanban_block", "kanban_heartbeat",
-        "kanban_comment", "kanban_create", "kanban_link",
+        "kanban_show",
+        "kanban_complete",
+        "kanban_block",
+        "kanban_heartbeat",
+        "kanban_comment",
+        "kanban_create",
+        "kanban_link",
         "kanban_unblock",
     }
     assert kanban == expected, f"expected {expected}, got {kanban}"
@@ -145,6 +155,7 @@ def test_kanban_tools_visible_with_toolset_config(monkeypatch, tmp_path):
 # ---------------------------------------------------------------------------
 # Handler happy paths
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def worker_env(monkeypatch, tmp_path):
@@ -156,9 +167,11 @@ def worker_env(monkeypatch, tmp_path):
     monkeypatch.setenv("HERMES_PROFILE", "test-worker")
     monkeypatch.delenv("HERMES_SESSION_ID", raising=False)
     from pathlib import Path as _Path
+
     monkeypatch.setattr(_Path, "home", lambda: tmp_path)
 
     from openagents_cli import kanban_db as kb
+
     kb._INITIALIZED_PATHS.clear()
     kb.init_db()
     conn = kb.connect()
@@ -173,6 +186,7 @@ def worker_env(monkeypatch, tmp_path):
 
 def test_show_defaults_to_env_task_id(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_show({})
     d = json.loads(out)
     assert "task" in d
@@ -185,12 +199,14 @@ def test_show_defaults_to_env_task_id(worker_env):
 def test_show_explicit_task_id(worker_env):
     """Peek at a different task than the one in env."""
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         other = kb.create_task(conn, title="other task", assignee="peer")
     finally:
         conn.close()
     from tools import kanban_tools as kt
+
     out = kt._handle_show({"task_id": other})
     d = json.loads(out)
     assert d["task"]["id"] == other
@@ -200,6 +216,7 @@ def test_list_filters_tasks(monkeypatch, worker_env):
     """kanban_list gives orchestrators filtered board discovery."""
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         a = kb.create_task(conn, title="alpha", assignee="factory", priority=5)
@@ -209,6 +226,7 @@ def test_list_filters_tasks(monkeypatch, worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_list({"assignee": "factory", "status": "ready", "limit": 10})
     d = json.loads(out)
     ids = [t["id"] for t in d["tasks"]]
@@ -230,6 +248,7 @@ def test_list_filters_tasks(monkeypatch, worker_env):
 def test_list_rejects_invalid_status(monkeypatch, worker_env):
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     from tools import kanban_tools as kt
+
     out = kt._handle_list({"status": "not-a-state"})
     assert "status must be one of" in json.loads(out).get("error", "")
 
@@ -237,6 +256,7 @@ def test_list_rejects_invalid_status(monkeypatch, worker_env):
 def test_list_rejects_bad_limit(monkeypatch, worker_env):
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     from tools import kanban_tools as kt
+
     assert json.loads(kt._handle_list({"limit": "nope"})).get("error")
     assert json.loads(kt._handle_list({"limit": 0})).get("error")
 
@@ -244,6 +264,7 @@ def test_list_rejects_bad_limit(monkeypatch, worker_env):
 def test_list_parses_include_archived_string_false(monkeypatch, worker_env):
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         live = kb.create_task(conn, title="live task", assignee="factory")
@@ -253,6 +274,7 @@ def test_list_parses_include_archived_string_false(monkeypatch, worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_list({
         "assignee": "factory",
         "include_archived": "false",
@@ -265,6 +287,7 @@ def test_list_parses_include_archived_string_false(monkeypatch, worker_env):
 def test_list_parses_include_archived_string_true(monkeypatch, worker_env):
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         live = kb.create_task(conn, title="live task", assignee="factory")
@@ -274,6 +297,7 @@ def test_list_parses_include_archived_string_true(monkeypatch, worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_list({
         "assignee": "factory",
         "include_archived": "true",
@@ -286,12 +310,14 @@ def test_list_parses_include_archived_string_true(monkeypatch, worker_env):
 def test_list_rejects_bad_include_archived(monkeypatch, worker_env):
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     from tools import kanban_tools as kt
+
     out = kt._handle_list({"include_archived": "sometimes"})
     assert "include_archived must be" in json.loads(out).get("error", "")
 
 
 def test_complete_happy_path(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_complete({
         "summary": "got the thing done",
         "metadata": {"files": 2},
@@ -301,6 +327,7 @@ def test_complete_happy_path(worker_env):
     assert d["task_id"] == worker_env
     # Verify via kernel
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         run = kb.latest_run(conn, worker_env)
@@ -351,6 +378,7 @@ def test_complete_stamps_worker_session_id_from_env(monkeypatch, worker_env):
     assert metadata["worker_session_id"] == "user-spoof"
 
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         run = kb.latest_run(conn, worker_env)
@@ -378,6 +406,7 @@ def test_complete_does_not_stamp_worker_session_id_without_scoped_task(
     assert json.loads(out)["ok"] is True
 
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         run = kb.latest_run(conn, worker_env)
@@ -392,6 +421,7 @@ def test_complete_does_not_stamp_worker_session_id_without_scoped_task(
 def test_complete_with_result_only(worker_env):
     """`result` alone (without summary) is accepted for legacy compat."""
     from tools import kanban_tools as kt
+
     out = kt._handle_complete({"result": "legacy result"})
     d = json.loads(out)
     assert d["ok"] is True
@@ -476,6 +506,7 @@ def test_complete_artifacts_merges_with_explicit_metadata_field(worker_env):
 def test_complete_rejects_non_list_artifacts(worker_env):
     """Non-list, non-string artifacts should be rejected with a clear error."""
     from tools import kanban_tools as kt
+
     out = kt._handle_complete({
         "summary": "bad shape",
         "artifacts": {"not": "a list"},
@@ -486,12 +517,14 @@ def test_complete_rejects_non_list_artifacts(worker_env):
 
 def test_complete_rejects_no_handoff(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_complete({})
     assert json.loads(out).get("error"), "should have errored"
 
 
 def test_complete_rejects_non_dict_metadata(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_complete({"summary": "x", "metadata": [1, 2, 3]})
     assert json.loads(out).get("error")
 
@@ -539,17 +572,21 @@ def test_complete_retry_with_empty_created_cards_succeeds(worker_env):
     from tools import kanban_tools as kt
 
     # Hit the gate first.
-    rejected = json.loads(kt._handle_complete({
-        "summary": "oops",
-        "created_cards": ["t_phantomdeadbeef"],
-    }))
+    rejected = json.loads(
+        kt._handle_complete({
+            "summary": "oops",
+            "created_cards": ["t_phantomdeadbeef"],
+        })
+    )
     assert rejected.get("error")
 
     # Retry with the escape hatch.
-    ok = json.loads(kt._handle_complete({
-        "summary": "retry without claims",
-        "created_cards": [],
-    }))
+    ok = json.loads(
+        kt._handle_complete({
+            "summary": "retry without claims",
+            "created_cards": [],
+        })
+    )
     assert ok.get("ok") is True
 
     conn = kb.connect()
@@ -568,25 +605,32 @@ def test_complete_retry_with_corrected_created_cards_succeeds(worker_env):
 
     # Create a real child via the tool so it gets the worker-profile
     # attribution the gate trusts.
-    child = json.loads(kt._handle_create({
-        "title": "real child", "assignee": "peer",
-    }))
+    child = json.loads(
+        kt._handle_create({
+            "title": "real child",
+            "assignee": "peer",
+        })
+    )
     assert child["ok"]
     real_id = child["task_id"]
 
     # First attempt mixes real + phantom — gate rejects.
-    rejected = json.loads(kt._handle_complete({
-        "summary": "oops",
-        "created_cards": [real_id, "t_phantomdeadbeef"],
-    }))
+    rejected = json.loads(
+        kt._handle_complete({
+            "summary": "oops",
+            "created_cards": [real_id, "t_phantomdeadbeef"],
+        })
+    )
     assert rejected.get("error")
     assert "t_phantomdeadbeef" in rejected["error"]
 
     # Retry with corrected list.
-    ok = json.loads(kt._handle_complete({
-        "summary": "retry with corrected list",
-        "created_cards": [real_id],
-    }))
+    ok = json.loads(
+        kt._handle_complete({
+            "summary": "retry with corrected list",
+            "created_cards": [real_id],
+        })
+    )
     assert ok.get("ok") is True
 
     conn = kb.connect()
@@ -598,10 +642,12 @@ def test_complete_retry_with_corrected_created_cards_succeeds(worker_env):
 
 def test_block_happy_path(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_block({"reason": "need clarification"})
     d = json.loads(out)
     assert d["ok"] is True
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         assert kb.get_task(conn, worker_env).status == "blocked"
@@ -611,6 +657,7 @@ def test_block_happy_path(worker_env):
 
 def test_block_rejects_empty_reason(worker_env):
     from tools import kanban_tools as kt
+
     for bad in ["", "   ", None]:
         out = kt._handle_block({"reason": bad})
         assert json.loads(out).get("error")
@@ -618,6 +665,7 @@ def test_block_rejects_empty_reason(worker_env):
 
 def test_heartbeat_happy_path(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_heartbeat({"note": "progress"})
     d = json.loads(out)
     assert d["ok"] is True
@@ -626,6 +674,7 @@ def test_heartbeat_happy_path(worker_env):
 def test_heartbeat_without_note(worker_env):
     """note is optional."""
     from tools import kanban_tools as kt
+
     out = kt._handle_heartbeat({})
     d = json.loads(out)
     assert d["ok"] is True
@@ -688,6 +737,7 @@ def test_heartbeat_extends_claim_expires(worker_env):
 
 def test_comment_happy_path(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_comment({
         "task_id": worker_env,
         "body": "hello thread",
@@ -696,6 +746,7 @@ def test_comment_happy_path(worker_env):
     assert d["ok"] is True
     assert d["comment_id"]
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         comments = kb.list_comments(conn, worker_env)
@@ -709,6 +760,7 @@ def test_comment_happy_path(worker_env):
 
 def test_comment_rejects_empty_body(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_comment({"task_id": worker_env, "body": "   "})
     assert json.loads(out).get("error")
 
@@ -722,11 +774,15 @@ def test_comment_ignores_caller_supplied_author(worker_env):
     is removed.
     """
     from tools import kanban_tools as kt
+
     out = kt._handle_comment({
-        "task_id": worker_env, "body": "hi", "author": "hermes-system",
+        "task_id": worker_env,
+        "body": "hi",
+        "author": "hermes-system",
     })
     assert json.loads(out)["ok"]
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         comments = kb.list_comments(conn, worker_env)
@@ -743,12 +799,14 @@ def test_comment_schema_omits_author_override():
     handler is hardened against.
     """
     from tools.kanban_tools import KANBAN_COMMENT_SCHEMA
+
     props = KANBAN_COMMENT_SCHEMA["parameters"]["properties"]
     assert "author" not in props
 
 
 def test_create_happy_path(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_create({
         "title": "child task",
         "assignee": "peer",
@@ -759,6 +817,7 @@ def test_create_happy_path(worker_env):
     assert d["task_id"]
     assert d["status"] == "todo"  # parent isn't done yet
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         child = kb.get_task(conn, d["task_id"])
@@ -779,8 +838,11 @@ def test_create_inherits_worker_dir_workspace(monkeypatch, worker_env):
     conn = kb.connect()
     try:
         self_tid = kb.create_task(
-            conn, title="dir worker", assignee="test-worker",
-            workspace_kind="dir", workspace_path=proj,
+            conn,
+            title="dir worker",
+            assignee="test-worker",
+            workspace_kind="dir",
+            workspace_path=proj,
         )
         kb.claim_task(conn, self_tid)
     finally:
@@ -806,18 +868,24 @@ def test_create_explicit_workspace_beats_inheritance(monkeypatch, worker_env):
     conn = kb.connect()
     try:
         self_tid = kb.create_task(
-            conn, title="dir worker", assignee="test-worker",
-            workspace_kind="dir", workspace_path="/home/teknium/proj",
+            conn,
+            title="dir worker",
+            assignee="test-worker",
+            workspace_kind="dir",
+            workspace_path="/home/teknium/proj",
         )
         kb.claim_task(conn, self_tid)
     finally:
         conn.close()
     monkeypatch.setenv("HERMES_KANBAN_TASK", self_tid)
 
-    d = json.loads(kt._handle_create({
-        "title": "scratch child", "assignee": "peer",
-        "workspace_kind": "scratch",
-    }))
+    d = json.loads(
+        kt._handle_create({
+            "title": "scratch child",
+            "assignee": "peer",
+            "workspace_kind": "scratch",
+        })
+    )
     assert d["ok"] is True
     conn = kb.connect()
     try:
@@ -853,6 +921,7 @@ def test_create_stamps_session_id_from_env(monkeypatch, worker_env):
     monkeypatch.setenv("HERMES_SESSION_ID", "acp-sess-abc")
     from tools import kanban_tools as kt
     from openagents_cli import kanban_db as kb
+
     out = kt._handle_create({
         "title": "from chat",
         "assignee": "peer",
@@ -876,6 +945,7 @@ def test_create_session_id_arg_overrides_env(monkeypatch, worker_env):
     monkeypatch.setenv("HERMES_SESSION_ID", "from-env")
     from tools import kanban_tools as kt
     from openagents_cli import kanban_db as kb
+
     out = kt._handle_create({
         "title": "explicit override",
         "assignee": "peer",
@@ -899,6 +969,7 @@ def test_create_session_id_absent_when_env_unset(monkeypatch, worker_env):
     monkeypatch.delenv("HERMES_SESSION_ID", raising=False)
     from tools import kanban_tools as kt
     from openagents_cli import kanban_db as kb
+
     out = kt._handle_create({
         "title": "no session",
         "assignee": "peer",
@@ -916,17 +987,20 @@ def test_create_session_id_absent_when_env_unset(monkeypatch, worker_env):
 
 def test_create_rejects_no_title(worker_env):
     from tools import kanban_tools as kt
+
     assert json.loads(kt._handle_create({"assignee": "x"})).get("error")
     assert json.loads(kt._handle_create({"title": "   ", "assignee": "x"})).get("error")
 
 
 def test_create_rejects_no_assignee(worker_env):
     from tools import kanban_tools as kt
+
     assert json.loads(kt._handle_create({"title": "t"})).get("error")
 
 
 def test_create_rejects_non_list_parents(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_create({"title": "t", "assignee": "a", "parents": 42})
     assert json.loads(out).get("error")
 
@@ -934,6 +1008,7 @@ def test_create_rejects_non_list_parents(worker_env):
 def test_create_parses_triage_string_false(worker_env):
     from tools import kanban_tools as kt
     from openagents_cli import kanban_db as kb
+
     out = kt._handle_create({
         "title": "not triage",
         "assignee": "peer",
@@ -952,6 +1027,7 @@ def test_create_parses_triage_string_false(worker_env):
 def test_create_parses_triage_string_true(worker_env):
     from tools import kanban_tools as kt
     from openagents_cli import kanban_db as kb
+
     out = kt._handle_create({
         "title": "needs triage",
         "assignee": "peer",
@@ -969,6 +1045,7 @@ def test_create_parses_triage_string_true(worker_env):
 
 def test_create_rejects_bad_triage(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_create({
         "title": "bad triage",
         "assignee": "peer",
@@ -980,8 +1057,11 @@ def test_create_rejects_bad_triage(worker_env):
 def test_create_accepts_string_parent(worker_env):
     """Convenience: a single parent id as string is coerced to [id]."""
     from tools import kanban_tools as kt
+
     out = kt._handle_create({
-        "title": "t", "assignee": "a", "parents": worker_env,
+        "title": "t",
+        "assignee": "a",
+        "parents": worker_env,
     })
     assert json.loads(out)["ok"]
 
@@ -990,6 +1070,7 @@ def test_create_accepts_skills_list(worker_env):
     """Tool writes the per-task skills through to the kernel."""
     from tools import kanban_tools as kt
     from openagents_cli import kanban_db as kb
+
     out = kt._handle_create({
         "title": "skilled",
         "assignee": "linguist",
@@ -1006,6 +1087,7 @@ def test_create_accepts_skills_string(worker_env):
     """Convenience: a single skill name as string is coerced to [name]."""
     from tools import kanban_tools as kt
     from openagents_cli import kanban_db as kb
+
     out = kt._handle_create({
         "title": "one-skill",
         "assignee": "a",
@@ -1021,14 +1103,18 @@ def test_create_accepts_skills_string(worker_env):
 def test_create_rejects_non_list_skills(worker_env):
     """skills: 42 must be rejected, not silently dropped."""
     from tools import kanban_tools as kt
+
     out = kt._handle_create({
-        "title": "t", "assignee": "a", "skills": 42,
+        "title": "t",
+        "assignee": "a",
+        "skills": 42,
     })
     assert json.loads(out).get("error")
 
 
 def test_link_happy_path(worker_env):
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         a = kb.create_task(conn, title="A", assignee="x")
@@ -1036,6 +1122,7 @@ def test_link_happy_path(worker_env):
     finally:
         conn.close()
     from tools import kanban_tools as kt
+
     out = kt._handle_link({"parent_id": a, "child_id": b})
     d = json.loads(out)
     assert d["ok"] is True
@@ -1043,12 +1130,14 @@ def test_link_happy_path(worker_env):
 
 def test_link_rejects_self_reference(worker_env):
     from tools import kanban_tools as kt
+
     out = kt._handle_link({"parent_id": worker_env, "child_id": worker_env})
     assert json.loads(out).get("error")
 
 
 def test_link_rejects_missing_args(worker_env):
     from tools import kanban_tools as kt
+
     assert json.loads(kt._handle_link({"parent_id": "x"})).get("error")
     assert json.loads(kt._handle_link({"child_id": "y"})).get("error")
 
@@ -1056,6 +1145,7 @@ def test_link_rejects_missing_args(worker_env):
 def test_link_rejects_cycle(worker_env):
     """A → B, then try to link B → A."""
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         a = kb.create_task(conn, title="A", assignee="x")
@@ -1063,6 +1153,7 @@ def test_link_rejects_cycle(worker_env):
     finally:
         conn.close()
     from tools import kanban_tools as kt
+
     out = kt._handle_link({"parent_id": b, "child_id": a})
     assert json.loads(out).get("error")
 
@@ -1070,6 +1161,7 @@ def test_link_rejects_cycle(worker_env):
 def test_unblock_happy_path(monkeypatch, worker_env):
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         tid = kb.create_task(conn, title="blocked", assignee="worker")
@@ -1078,6 +1170,7 @@ def test_unblock_happy_path(monkeypatch, worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_unblock({"task_id": tid})
     d = json.loads(out)
     assert d["ok"] is True
@@ -1093,6 +1186,7 @@ def test_unblock_happy_path(monkeypatch, worker_env):
 def test_unblock_rejects_non_blocked_task(monkeypatch, worker_env):
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     from tools import kanban_tools as kt
+
     out = kt._handle_unblock({"task_id": worker_env})
     assert json.loads(out).get("error")
 
@@ -1111,28 +1205,35 @@ def test_worker_lifecycle_through_tools(worker_env):
     assert json.loads(kt._handle_heartbeat({"note": "warming up"}))["ok"]
 
     # 3. comment for a future peer
-    assert json.loads(kt._handle_comment({
-        "task_id": worker_env,
-        "body": "note: using stdlib sqlite3 bindings",
-    }))["ok"]
+    assert json.loads(
+        kt._handle_comment({
+            "task_id": worker_env,
+            "body": "note: using stdlib sqlite3 bindings",
+        })
+    )["ok"]
 
     # 4. spawn a child task for follow-up
-    child_out = json.loads(kt._handle_create({
-        "title": "write integration test",
-        "assignee": "qa",
-        "parents": [worker_env],
-    }))
+    child_out = json.loads(
+        kt._handle_create({
+            "title": "write integration test",
+            "assignee": "qa",
+            "parents": [worker_env],
+        })
+    )
     assert child_out["ok"]
 
     # 5. complete with structured handoff
-    comp = json.loads(kt._handle_complete({
-        "summary": "implemented + spawned QA follow-up",
-        "metadata": {"child_task": child_out["task_id"]},
-    }))
+    comp = json.loads(
+        kt._handle_complete({
+            "summary": "implemented + spawned QA follow-up",
+            "metadata": {"child_task": child_out["task_id"]},
+        })
+    )
     assert comp["ok"]
 
     # Verify final state
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         parent = kb.get_task(conn, worker_env)
@@ -1160,6 +1261,7 @@ def test_worker_lifecycle_through_tools(worker_env):
 # System-prompt guidance injection
 # ---------------------------------------------------------------------------
 
+
 def test_kanban_guidance_not_in_normal_prompt(monkeypatch, tmp_path):
     """A normal chat session (no HERMES_KANBAN_TASK) must NOT have
     KANBAN_GUIDANCE in its system prompt."""
@@ -1168,14 +1270,17 @@ def test_kanban_guidance_not_in_normal_prompt(monkeypatch, tmp_path):
     home.mkdir()
     monkeypatch.setenv("OPENAGENTS_HOME", str(home))
     from pathlib import Path as _P
+
     monkeypatch.setattr(_P, "home", lambda: tmp_path)
 
     from tools.registry import invalidate_check_fn_cache
     from model_tools import _clear_tool_defs_cache
+
     invalidate_check_fn_cache()
     _clear_tool_defs_cache()
 
     from run_agent import AIAgent
+
     a = AIAgent(
         api_key="test",
         base_url="https://openrouter.ai/api/v1",
@@ -1196,14 +1301,17 @@ def test_kanban_guidance_in_worker_prompt(monkeypatch, tmp_path):
     home.mkdir()
     monkeypatch.setenv("OPENAGENTS_HOME", str(home))
     from pathlib import Path as _P
+
     monkeypatch.setattr(_P, "home", lambda: tmp_path)
 
     from tools.registry import invalidate_check_fn_cache
     from model_tools import _clear_tool_defs_cache
+
     invalidate_check_fn_cache()
     _clear_tool_defs_cache()
 
     from run_agent import AIAgent
+
     a = AIAgent(
         api_key="test",
         base_url="https://openrouter.ai/api/v1",
@@ -1239,9 +1347,11 @@ def test_kanban_guidance_prompt_size_bounded(monkeypatch, tmp_path):
     home.mkdir()
     monkeypatch.setenv("OPENAGENTS_HOME", str(home))
     from pathlib import Path as _P
+
     monkeypatch.setattr(_P, "home", lambda: tmp_path)
 
     from agent.prompt_builder import KANBAN_GUIDANCE
+
     assert 1_500 < len(KANBAN_GUIDANCE) < 5_500, (
         f"KANBAN_GUIDANCE is {len(KANBAN_GUIDANCE)} chars — too short (missing?) or too long"
     )
@@ -1267,6 +1377,7 @@ def test_kanban_guidance_prompt_size_bounded(monkeypatch, tmp_path):
 def test_worker_complete_rejects_foreign_task_id(worker_env):
     """A worker cannot complete a task that isn't its own (#19534)."""
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         other = kb.create_task(conn, title="sibling")
@@ -1276,6 +1387,7 @@ def test_worker_complete_rejects_foreign_task_id(worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_complete({"task_id": other, "summary": "HIJACK"})
     d = json.loads(out)
     assert d.get("ok") is not True
@@ -1292,6 +1404,7 @@ def test_worker_complete_rejects_foreign_task_id(worker_env):
 def test_worker_block_rejects_foreign_task_id(worker_env):
     """A worker cannot block a task that isn't its own (#19534)."""
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         other = kb.create_task(conn, title="sibling")
@@ -1301,6 +1414,7 @@ def test_worker_block_rejects_foreign_task_id(worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_block({"task_id": other, "reason": "evil"})
     d = json.loads(out)
     assert "refusing to mutate" in d.get("error", "")
@@ -1315,6 +1429,7 @@ def test_worker_block_rejects_foreign_task_id(worker_env):
 def test_worker_heartbeat_rejects_foreign_task_id(worker_env):
     """A worker cannot heartbeat a task that isn't its own (#19534)."""
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         other = kb.create_task(conn, title="sibling")
@@ -1325,6 +1440,7 @@ def test_worker_heartbeat_rejects_foreign_task_id(worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_heartbeat({"task_id": other})
     d = json.loads(out)
     assert "refusing to mutate" in d.get("error", "")
@@ -1340,6 +1456,7 @@ def test_worker_can_comment_on_foreign_task(worker_env):
     to ``_handle_comment`` would fail CI immediately.
     """
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         other = kb.create_task(conn, title="sibling")
@@ -1347,6 +1464,7 @@ def test_worker_can_comment_on_foreign_task(worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_comment({
         "task_id": other,
         "body": "handoff: see prior findings before starting",
@@ -1375,6 +1493,7 @@ def test_worker_unblock_rejects_foreign_task_id(worker_env):
     pinning is "worker cannot mutate foreign task via kanban_unblock".
     """
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         other = kb.create_task(conn, title="blocked sibling", assignee="peer")
@@ -1383,6 +1502,7 @@ def test_worker_unblock_rejects_foreign_task_id(worker_env):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_unblock({"task_id": other})
     d = json.loads(out)
     err = d.get("error", "")
@@ -1400,6 +1520,7 @@ def test_worker_unblock_rejects_foreign_task_id(worker_env):
 def test_worker_complete_own_task_still_works(worker_env):
     """The ownership check doesn't break the normal own-task happy path."""
     from tools import kanban_tools as kt
+
     # Both implicit (no task_id arg) and explicit (matching env) must work.
     out = kt._handle_complete({"task_id": worker_env, "summary": "explicit own"})
     d = json.loads(out)
@@ -1434,6 +1555,7 @@ def test_worker_complete_rejects_stale_run_id(worker_env, monkeypatch):
         conn.close()
 
     from tools import kanban_tools as kt
+
     monkeypatch.setenv("HERMES_KANBAN_RUN_ID", str(run1.id))
     out = kt._handle_complete({"summary": "late stale completion"})
     d = json.loads(out)
@@ -1461,9 +1583,11 @@ def test_orchestrator_complete_any_task_allowed(monkeypatch, tmp_path):
     home.mkdir()
     monkeypatch.setenv("OPENAGENTS_HOME", str(home))
     from pathlib import Path as _P
+
     monkeypatch.setattr(_P, "home", lambda: tmp_path)
 
     from openagents_cli import kanban_db as kb
+
     kb._INITIALIZED_PATHS.clear()
     kb.init_db()
     conn = kb.connect()
@@ -1475,6 +1599,7 @@ def test_orchestrator_complete_any_task_allowed(monkeypatch, tmp_path):
         conn.close()
 
     from tools import kanban_tools as kt
+
     out = kt._handle_complete({"task_id": tid, "summary": "orchestrator close"})
     d = json.loads(out)
     assert d.get("ok") is True and d.get("task_id") == tid
@@ -1511,24 +1636,22 @@ def multi_board_env(monkeypatch, tmp_path):
     monkeypatch.delenv("HERMES_KANBAN_TASK", raising=False)
     monkeypatch.setenv("HERMES_PROFILE", "test-orchestrator")
     from pathlib import Path as _Path
+
     monkeypatch.setattr(_Path, "home", lambda: tmp_path)
 
     from openagents_cli import kanban_db as kb
+
     kb._INITIALIZED_PATHS.clear()
     # Default board — implicit
     conn = kb.connect()
     try:
-        seed_default = kb.create_task(
-            conn, title="seed-default", assignee="worker-d"
-        )
+        seed_default = kb.create_task(conn, title="seed-default", assignee="worker-d")
     finally:
         conn.close()
     # Alt board — explicit slug routes the connection to a separate DB
     conn = kb.connect(board="alt")
     try:
-        seed_alt = kb.create_task(
-            conn, title="seed-alt", assignee="worker-a"
-        )
+        seed_alt = kb.create_task(conn, title="seed-alt", assignee="worker-a")
     finally:
         conn.close()
     return {
@@ -1720,9 +1843,11 @@ def test_board_param_routes_heartbeat_to_alt_board(monkeypatch, tmp_path):
     monkeypatch.delenv("HERMES_KANBAN_DB", raising=False)
     monkeypatch.delenv("HERMES_KANBAN_BOARD", raising=False)
     from pathlib import Path as _Path
+
     monkeypatch.setattr(_Path, "home", lambda: tmp_path)
 
     from openagents_cli import kanban_db as kb
+
     kb._INITIALIZED_PATHS.clear()
     # Seed the alt board with a claimed task.
     with kb.connect(board="alt") as conn:
@@ -1731,6 +1856,7 @@ def test_board_param_routes_heartbeat_to_alt_board(monkeypatch, tmp_path):
     monkeypatch.setenv("HERMES_KANBAN_TASK", tid)
 
     from tools import kanban_tools as kt
+
     out = kt._handle_heartbeat({"note": "alive on alt", "board": "alt"})
     d = json.loads(out)
     assert d["ok"] is True
@@ -1812,9 +1938,7 @@ def test_board_param_in_all_schemas():
     ]
     for schema in schemas:
         props = schema["parameters"]["properties"]
-        assert "board" in props, (
-            f"{schema['name']} is missing the 'board' property"
-        )
+        assert "board" in props, f"{schema['name']} is missing the 'board' property"
         assert props["board"]["type"] == "string"
         # board is optional everywhere — never in required.
         assert "board" not in schema["parameters"].get("required", []), (
@@ -1836,8 +1960,10 @@ def test_board_param_in_all_schemas():
 #   even when the session has a delivery channel.
 # ---------------------------------------------------------------------------
 
+
 def _list_subs_for_task(task_id):
     from openagents_cli import kanban_db as kb
+
     conn = kb.connect()
     try:
         return list(kb.list_notify_subs(conn, task_id))
@@ -1868,6 +1994,7 @@ def test_create_subscribes_gateway_session(monkeypatch, worker_env):
     to its own kanban_create result, and the response surfaces the
     ``subscribed`` flag so the orchestrator can react."""
     from tools import kanban_tools as kt
+
     monkeypatch.setenv("HERMES_SESSION_PLATFORM", "telegram")
     monkeypatch.setenv("HERMES_SESSION_CHAT_ID", "chat-42")
     monkeypatch.setenv("HERMES_SESSION_THREAD_ID", "thread-7")
@@ -1897,6 +2024,7 @@ def test_create_subscribes_tui_session_via_session_key(monkeypatch, worker_env):
     We should still auto-subscribe, with platform='tui' and
     chat_id=<key>."""
     from tools import kanban_tools as kt
+
     monkeypatch.delenv("HERMES_SESSION_PLATFORM", raising=False)
     monkeypatch.delenv("HERMES_SESSION_CHAT_ID", raising=False)
     monkeypatch.delenv("HERMES_SESSION_THREAD_ID", raising=False)
@@ -1923,6 +2051,7 @@ def test_create_does_not_subscribe_in_cli_session(monkeypatch, worker_env):
     """CLI / cron / test sessions have no persistent delivery channel.
     _maybe_auto_subscribe returns False and no row is written."""
     from tools import kanban_tools as kt
+
     monkeypatch.delenv("HERMES_SESSION_PLATFORM", raising=False)
     monkeypatch.delenv("HERMES_SESSION_CHAT_ID", raising=False)
     monkeypatch.delenv("HERMES_SESSION_KEY", raising=False)
@@ -1939,7 +2068,9 @@ def test_create_does_not_subscribe_in_cli_session(monkeypatch, worker_env):
     assert _list_subs_for_task(d["task_id"]) == []
 
 
-def test_create_respects_auto_subscribe_on_create_false(monkeypatch, worker_env, tmp_path):
+def test_create_respects_auto_subscribe_on_create_false(
+    monkeypatch, worker_env, tmp_path
+):
     """The config gate kanban.auto_subscribe_on_create=false must
     suppress auto-subscription even when the session has a delivery
     channel. This is the knob that addresses the upstream design
@@ -1949,14 +2080,13 @@ def test_create_respects_auto_subscribe_on_create_false(monkeypatch, worker_env,
     # home to avoid mkdir() colliding with the worker's directory.
     home = tmp_path / "gate-home" / ".hermes"
     home.mkdir(parents=True)
-    (home / "config.yaml").write_text(
-        "kanban:\n  auto_subscribe_on_create: false\n"
-    )
+    (home / "config.yaml").write_text("kanban:\n  auto_subscribe_on_create: false\n")
     monkeypatch.setenv("OPENAGENTS_HOME", str(home))
     monkeypatch.setenv("HERMES_SESSION_PLATFORM", "discord")
     monkeypatch.setenv("HERMES_SESSION_CHAT_ID", "channel-1")
 
     from tools import kanban_tools as kt
+
     out = kt._handle_create({
         "title": "no sub gated",
         "assignee": "peer",
@@ -1973,6 +2103,7 @@ def test_create_partial_session_context_no_subscribe(monkeypatch, worker_env):
     Either both are set (gateway) or neither (TUI / CLI); partial is
     ambiguous and the safe default is to skip."""
     from tools import kanban_tools as kt
+
     monkeypatch.setenv("HERMES_SESSION_PLATFORM", "slack")
     monkeypatch.delenv("HERMES_SESSION_CHAT_ID", raising=False)
     monkeypatch.delenv("HERMES_SESSION_KEY", raising=False)
@@ -1993,6 +2124,7 @@ def test_maybe_auto_subscribe_swallows_add_notify_sub_failure(monkeypatch, worke
     kanban_create. The function returns False and the parent create
     still succeeds with subscribed=False."""
     from tools import kanban_tools as kt
+
     monkeypatch.setenv("HERMES_SESSION_PLATFORM", "telegram")
     monkeypatch.setenv("HERMES_SESSION_CHAT_ID", "chat-42")
 

@@ -1,4 +1,5 @@
 """Tests for /personality none — clearing personality overlay."""
+
 import pytest
 from unittest.mock import MagicMock, patch
 import yaml
@@ -6,10 +7,11 @@ import yaml
 
 # ── CLI tests ──────────────────────────────────────────────────────────────
 
-class TestCLIPersonalityNone:
 
+class TestCLIPersonalityNone:
     def _make_cli(self, personalities=None):
         from cli import HermesCLI
+
         cli = HermesCLI.__new__(HermesCLI)
         cli.personalities = personalities or {
             "helpful": "You are helpful.",
@@ -72,8 +74,8 @@ class TestCLIPersonalityNone:
 
 # ── Gateway tests ──────────────────────────────────────────────────────────
 
-class TestGatewayPersonalityNone:
 
+class TestGatewayPersonalityNone:
     def _make_event(self, args=""):
         event = MagicMock()
         event.get_command.return_value = "personality"
@@ -82,19 +84,23 @@ class TestGatewayPersonalityNone:
 
     def _make_runner(self, personalities=None):
         from gateway.run import GatewayRunner
+
         runner = GatewayRunner.__new__(GatewayRunner)
         runner._ephemeral_system_prompt = "You are kawaii~"
         runner.config = {
-            "agent": {
-                "personalities": personalities or {"helpful": "You are helpful."}
-            }
+            "agent": {"personalities": personalities or {"helpful": "You are helpful."}}
         }
         return runner
 
     @pytest.mark.asyncio
     async def test_none_clears_ephemeral_prompt(self, tmp_path):
         runner = self._make_runner()
-        config_data = {"agent": {"personalities": {"helpful": "You are helpful."}, "system_prompt": "kawaii"}}
+        config_data = {
+            "agent": {
+                "personalities": {"helpful": "You are helpful."},
+                "system_prompt": "kawaii",
+            }
+        }
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data))
 
@@ -147,14 +153,24 @@ class TestGatewayPersonalityNone:
     @pytest.mark.asyncio
     async def test_empty_personality_list_uses_profile_display_path(self, tmp_path):
         runner = self._make_runner(personalities={})
-        (tmp_path / "config.yaml").write_text(yaml.dump({"agent": {"personalities": {}}}))
+        (tmp_path / "config.yaml").write_text(
+            yaml.dump({"agent": {"personalities": {}}})
+        )
 
-        with patch("gateway.run._hermes_home", tmp_path), \
-             patch("openagents_constants.display_openagents_home", return_value="~/.openagents/profiles/coder"):
+        with (
+            patch("gateway.run._hermes_home", tmp_path),
+            patch(
+                "openagents_constants.display_openagents_home",
+                return_value="~/.openagents/profiles/coder",
+            ),
+        ):
             event = self._make_event("")
             result = await runner._handle_personality_command(event)
 
-        assert result == "No personalities configured in `~/.openagents/profiles/coder/config.yaml`"
+        assert (
+            result
+            == "No personalities configured in `~/.openagents/profiles/coder/config.yaml`"
+        )
 
 
 class TestPersonalityDictFormat:
@@ -162,6 +178,7 @@ class TestPersonalityDictFormat:
 
     def _make_cli(self, personalities):
         from cli import HermesCLI
+
         cli = HermesCLI.__new__(HermesCLI)
         cli.personalities = personalities
         cli.system_prompt = ""
@@ -212,6 +229,7 @@ class TestPersonalityDictFormat:
 
     def test_resolve_prompt_dict_no_tone_no_style(self):
         from cli import HermesCLI
+
         result = HermesCLI._resolve_personality_prompt({
             "description": "A helper",
             "system_prompt": "You are helpful.",
@@ -220,5 +238,6 @@ class TestPersonalityDictFormat:
 
     def test_resolve_prompt_string(self):
         from cli import HermesCLI
+
         result = HermesCLI._resolve_personality_prompt("You are helpful.")
         assert result == "You are helpful."

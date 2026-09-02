@@ -46,9 +46,7 @@ def _dig(obj, path: str):
 
 def _parse_header(s: str):
     if ":" not in s:
-        raise argparse.ArgumentTypeError(
-            f"--header expects 'KEY: VALUE' (got {s!r})"
-        )
+        raise argparse.ArgumentTypeError(f"--header expects 'KEY: VALUE' (got {s!r})")
     k, v = s.split(":", 1)
     return (k.strip(), v.strip())
 
@@ -57,23 +55,49 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Poll a JSON endpoint.")
     p.add_argument("--name", required=True, help="Watcher name (used for state file)")
     p.add_argument("--url", required=True, help="JSON endpoint URL")
-    p.add_argument("--id-field", default="id",
-                   help="Field used to dedup items (default: 'id')")
-    p.add_argument("--items-path", default="",
-                   help="Dotted path to the list inside the JSON response (e.g. 'data.events')")
-    p.add_argument("--title-field", default="title",
-                   help="Field used as the item title in the rendered output (default: 'title')")
-    p.add_argument("--url-field", default="url",
-                   help="Field used as the item URL in the rendered output (default: 'url')")
-    p.add_argument("--body-field", default="",
-                   help="Optional body field to include as a snippet under each item")
-    p.add_argument("--max", type=int, default=20,
-                   help="Max new items to emit per tick (default: 20)")
-    p.add_argument("--header", action="append", type=_parse_header, default=[],
-                   metavar="KEY: VALUE",
-                   help="HTTP header (repeatable)")
-    p.add_argument("--timeout", type=float, default=20.0,
-                   help="HTTP timeout in seconds (default: 20)")
+    p.add_argument(
+        "--id-field", default="id", help="Field used to dedup items (default: 'id')"
+    )
+    p.add_argument(
+        "--items-path",
+        default="",
+        help="Dotted path to the list inside the JSON response (e.g. 'data.events')",
+    )
+    p.add_argument(
+        "--title-field",
+        default="title",
+        help="Field used as the item title in the rendered output (default: 'title')",
+    )
+    p.add_argument(
+        "--url-field",
+        default="url",
+        help="Field used as the item URL in the rendered output (default: 'url')",
+    )
+    p.add_argument(
+        "--body-field",
+        default="",
+        help="Optional body field to include as a snippet under each item",
+    )
+    p.add_argument(
+        "--max",
+        type=int,
+        default=20,
+        help="Max new items to emit per tick (default: 20)",
+    )
+    p.add_argument(
+        "--header",
+        action="append",
+        type=_parse_header,
+        default=[],
+        metavar="KEY: VALUE",
+        help="HTTP header (repeatable)",
+    )
+    p.add_argument(
+        "--timeout",
+        type=float,
+        default=20.0,
+        help="HTTP timeout in seconds (default: 20)",
+    )
     args = p.parse_args()
 
     req = urllib.request.Request(args.url, headers={"User-Agent": "Hermes-Watcher/1.0"})

@@ -3,14 +3,24 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from openagents_cli.auth import PROVIDER_REGISTRY, resolve_provider, resolve_api_key_provider_credentials
-from openagents_cli.models import _PROVIDER_MODELS, _PROVIDER_LABELS, _PROVIDER_ALIASES, normalize_provider
+from openagents_cli.auth import (
+    PROVIDER_REGISTRY,
+    resolve_provider,
+    resolve_api_key_provider_credentials,
+)
+from openagents_cli.models import (
+    _PROVIDER_MODELS,
+    _PROVIDER_LABELS,
+    _PROVIDER_ALIASES,
+    normalize_provider,
+)
 from openagents_cli.model_normalize import normalize_model_for_provider
 from agent.model_metadata import _URL_TO_PROVIDER, _PROVIDER_PREFIXES
 from agent.models_dev import PROVIDER_TO_MODELS_DEV, list_agentic_models
 
 
 # ── Provider Registry ──
+
 
 class TestOllamaCloudProviderRegistry:
     def test_ollama_cloud_in_registry(self):
@@ -35,11 +45,19 @@ class TestOllamaCloudProviderRegistry:
 # ── Provider Aliases ──
 
 PROVIDER_ENV_VARS = (
-    "OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
-    "GOOGLE_API_KEY", "GEMINI_API_KEY", "OLLAMA_API_KEY",
-    "GLM_API_KEY", "ZAI_API_KEY", "KIMI_API_KEY",
-    "MINIMAX_API_KEY", "DEEPSEEK_API_KEY",
+    "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GOOGLE_API_KEY",
+    "GEMINI_API_KEY",
+    "OLLAMA_API_KEY",
+    "GLM_API_KEY",
+    "ZAI_API_KEY",
+    "KIMI_API_KEY",
+    "MINIMAX_API_KEY",
+    "DEEPSEEK_API_KEY",
 )
+
 
 @pytest.fixture(autouse=True)
 def _clean_provider_env(monkeypatch):
@@ -70,6 +88,7 @@ class TestOllamaCloudAliases:
 
 # ── Auto-detection ──
 
+
 class TestOllamaCloudAutoDetection:
     def test_auto_detects_ollama_api_key(self, monkeypatch):
         monkeypatch.setenv("OLLAMA_API_KEY", "test-ollama-key")
@@ -77,6 +96,7 @@ class TestOllamaCloudAutoDetection:
 
 
 # ── Credential Resolution ──
+
 
 class TestOllamaCloudCredentials:
     def test_resolve_with_ollama_api_key(self, monkeypatch):
@@ -95,6 +115,7 @@ class TestOllamaCloudCredentials:
     def test_runtime_ollama_cloud(self, monkeypatch):
         monkeypatch.setenv("OLLAMA_API_KEY", "ollama-key")
         from openagents_cli.runtime_provider import resolve_runtime_provider
+
         result = resolve_runtime_provider(requested="ollama-cloud")
         assert result["provider"] == "ollama-cloud"
         assert result["api_mode"] == "chat_completions"
@@ -103,6 +124,7 @@ class TestOllamaCloudCredentials:
 
 
 # ── Model Catalog (dynamic — no static list) ──
+
 
 class TestOllamaCloudModelCatalog:
     def test_no_static_model_list(self):
@@ -128,8 +150,12 @@ class TestOllamaCloudModelCatalog:
                 }
             }
         }
-        with patch("openagents_cli.models.fetch_api_models", return_value=["qwen3.5:397b"]), \
-             patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models", return_value=["qwen3.5:397b"]
+            ),
+            patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev),
+        ):
             result = provider_model_ids("ollama-cloud", force_refresh=True)
 
         assert len(result) > 0
@@ -137,6 +163,7 @@ class TestOllamaCloudModelCatalog:
 
 
 # ── Model Picker (list_authenticated_providers) ──
+
 
 class TestOllamaCloudModelPicker:
     def test_ollama_cloud_shows_model_count(self, tmp_path, monkeypatch):
@@ -154,13 +181,21 @@ class TestOllamaCloudModelPicker:
                 }
             }
         }
-        with patch("openagents_cli.models.fetch_api_models", return_value=["qwen3.5:397b"]), \
-             patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models", return_value=["qwen3.5:397b"]
+            ),
+            patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev),
+        ):
             providers = list_authenticated_providers(current_provider="ollama-cloud")
 
         ollama = next((p for p in providers if p["slug"] == "ollama-cloud"), None)
-        assert ollama is not None, "ollama-cloud should appear when OLLAMA_API_KEY is set"
-        assert ollama["total_models"] > 0, "ollama-cloud should show non-zero model count"
+        assert ollama is not None, (
+            "ollama-cloud should appear when OLLAMA_API_KEY is set"
+        )
+        assert ollama["total_models"] > 0, (
+            "ollama-cloud should show non-zero model count"
+        )
 
     def test_ollama_cloud_not_shown_without_creds(self, monkeypatch):
         """Ollama Cloud should not appear without credentials."""
@@ -174,6 +209,7 @@ class TestOllamaCloudModelPicker:
 
 
 # ── Merged Model Discovery ──
+
 
 class TestOllamaCloudMergedDiscovery:
     def test_merges_live_and_models_dev(self, tmp_path, monkeypatch):
@@ -192,16 +228,21 @@ class TestOllamaCloudMergedDiscovery:
                 }
             }
         }
-        with patch("openagents_cli.models.fetch_api_models", return_value=["qwen3.5:397b", "glm-5"]), \
-             patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["qwen3.5:397b", "glm-5"],
+            ),
+            patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev),
+        ):
             result = fetch_ollama_cloud_models(force_refresh=True)
 
         # Live models first, then models.dev additions (deduped)
         assert result[0] == "qwen3.5:397b"  # from live API
-        assert result[1] == "glm-5"          # from live API (also in models.dev)
-        assert "kimi-k2.5" in result         # from models.dev only
+        assert result[1] == "glm-5"  # from live API (also in models.dev)
+        assert "kimi-k2.5" in result  # from models.dev only
         assert "nemotron-3-super" in result  # from models.dev only
-        assert result.count("glm-5") == 1    # no duplicates
+        assert result.count("glm-5") == 1  # no duplicates
 
     def test_falls_back_to_models_dev_without_api_key(self, tmp_path, monkeypatch):
         """Without API key, only models.dev results are returned."""
@@ -229,8 +270,12 @@ class TestOllamaCloudMergedDiscovery:
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["model-a"]) as mock_api, \
-             patch("agent.models_dev.fetch_models_dev", return_value={}):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models", return_value=["model-a"]
+            ) as mock_api,
+            patch("agent.models_dev.fetch_models_dev", return_value={}),
+        ):
             first = fetch_ollama_cloud_models(force_refresh=True)
             assert first == ["model-a"]
             assert mock_api.call_count == 1
@@ -247,15 +292,22 @@ class TestOllamaCloudMergedDiscovery:
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["model-a"]) as mock_api, \
-             patch("agent.models_dev.fetch_models_dev", return_value={}):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models", return_value=["model-a"]
+            ) as mock_api,
+            patch("agent.models_dev.fetch_models_dev", return_value={}),
+        ):
             fetch_ollama_cloud_models(force_refresh=True)
             fetch_ollama_cloud_models(force_refresh=True)
             assert mock_api.call_count == 2
 
     def test_stale_cache_used_on_total_failure(self, tmp_path, monkeypatch):
         """If both API and models.dev fail, stale cache is returned."""
-        from openagents_cli.models import fetch_ollama_cloud_models, _save_ollama_cloud_cache
+        from openagents_cli.models import (
+            fetch_ollama_cloud_models,
+            _save_ollama_cloud_cache,
+        )
 
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
@@ -265,6 +317,7 @@ class TestOllamaCloudMergedDiscovery:
 
         # Make the cache appear stale by backdating it
         import json
+
         cache_path = tmp_path / "ollama_cloud_models_cache.json"
         with open(cache_path) as f:
             data = json.load(f)
@@ -272,8 +325,10 @@ class TestOllamaCloudMergedDiscovery:
         with open(cache_path, "w") as f:
             json.dump(data, f)
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=None), \
-             patch("agent.models_dev.fetch_models_dev", return_value={}):
+        with (
+            patch("openagents_cli.models.fetch_api_models", return_value=None),
+            patch("agent.models_dev.fetch_models_dev", return_value={}),
+        ):
             result = fetch_ollama_cloud_models(force_refresh=True)
 
         assert result == ["stale-model"]
@@ -293,19 +348,27 @@ class TestOllamaCloudMergedDiscovery:
 
 # ── Model Normalization ──
 
+
 class TestOllamaCloudModelNormalization:
     def test_passthrough_bare_name(self):
         """Ollama Cloud is a passthrough provider — model names used as-is."""
-        assert normalize_model_for_provider("qwen3.5:397b", "ollama-cloud") == "qwen3.5:397b"
+        assert (
+            normalize_model_for_provider("qwen3.5:397b", "ollama-cloud")
+            == "qwen3.5:397b"
+        )
 
     def test_passthrough_with_tag(self):
-        assert normalize_model_for_provider("cogito-2.1:671b", "ollama-cloud") == "cogito-2.1:671b"
+        assert (
+            normalize_model_for_provider("cogito-2.1:671b", "ollama-cloud")
+            == "cogito-2.1:671b"
+        )
 
     def test_passthrough_no_tag(self):
         assert normalize_model_for_provider("glm-5", "ollama-cloud") == "glm-5"
 
 
 # ── URL-to-Provider Mapping ──
+
 
 class TestOllamaCloudUrlMapping:
     def test_url_to_provider(self):
@@ -319,6 +382,7 @@ class TestOllamaCloudUrlMapping:
 
 
 # ── models.dev Integration ──
+
 
 class TestOllamaCloudModelsDev:
     def test_ollama_cloud_mapped(self):
@@ -346,11 +410,13 @@ class TestOllamaCloudModelsDev:
 
 # ── Agent Init (no SyntaxError) ──
 
+
 class TestOllamaCloudAgentInit:
     def test_agent_imports_without_error(self):
         """Verify run_agent.py has no SyntaxError."""
         import importlib
         import run_agent
+
         importlib.reload(run_agent)
 
     def test_ollama_cloud_agent_uses_chat_completions(self, monkeypatch):
@@ -359,6 +425,7 @@ class TestOllamaCloudAgentInit:
         with patch("run_agent.OpenAI") as mock_openai:
             mock_openai.return_value = MagicMock()
             from run_agent import AIAgent
+
             agent = AIAgent(
                 model="qwen3.5:397b",
                 provider="ollama-cloud",
@@ -371,9 +438,11 @@ class TestOllamaCloudAgentInit:
 
 # ── providers.py New System ──
 
+
 class TestOllamaCloudProvidersNew:
     def test_overlay_exists(self):
         from openagents_cli.providers import HERMES_OVERLAYS
+
         assert "ollama-cloud" in HERMES_OVERLAYS
         overlay = HERMES_OVERLAYS["ollama-cloud"]
         assert overlay.transport == "openai_chat"
@@ -381,19 +450,23 @@ class TestOllamaCloudProvidersNew:
 
     def test_alias_resolves(self):
         from openagents_cli.providers import normalize_provider as np
+
         assert np("ollama") == "custom"  # bare "ollama" = local
         assert np("ollama-cloud") == "ollama-cloud"
 
     def test_label_override(self):
         from openagents_cli.providers import _LABEL_OVERRIDES
+
         assert _LABEL_OVERRIDES.get("ollama-cloud") == "Ollama Cloud"
 
     def test_get_label(self):
         from openagents_cli.providers import get_label
+
         assert get_label("ollama-cloud") == "Ollama Cloud"
 
     def test_get_provider(self):
         from openagents_cli.providers import get_provider
+
         pdef = get_provider("ollama-cloud")
         assert pdef is not None
         assert pdef.id == "ollama-cloud"
@@ -401,6 +474,7 @@ class TestOllamaCloudProvidersNew:
 
 
 # ── Cloud Suffix Stripping ──
+
 
 class TestOllamaCloudSuffixStripping:
     """models.dev appends :cloud / -cloud suffixes that the live API omits.
@@ -417,9 +491,7 @@ class TestOllamaCloudSuffixStripping:
         monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
 
         mock_mdev = {
-            "ollama-cloud": {
-                "models": {"kimi-k2.6:cloud": {"tool_call": True}}
-            }
+            "ollama-cloud": {"models": {"kimi-k2.6:cloud": {"tool_call": True}}}
         }
         with patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev):
             result = fetch_ollama_cloud_models(force_refresh=True)
@@ -435,9 +507,7 @@ class TestOllamaCloudSuffixStripping:
         monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
 
         mock_mdev = {
-            "ollama-cloud": {
-                "models": {"qwen3-coder:480b-cloud": {"tool_call": True}}
-            }
+            "ollama-cloud": {"models": {"qwen3-coder:480b-cloud": {"tool_call": True}}}
         }
         with patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev):
             result = fetch_ollama_cloud_models(force_refresh=True)
@@ -445,7 +515,9 @@ class TestOllamaCloudSuffixStripping:
         assert "qwen3-coder:480b" in result
         assert "qwen3-coder:480b-cloud" not in result
 
-    def test_no_duplicate_when_live_clean_and_mdev_suffixed(self, tmp_path, monkeypatch):
+    def test_no_duplicate_when_live_clean_and_mdev_suffixed(
+        self, tmp_path, monkeypatch
+    ):
         """Live API returns clean ID; mdev has :cloud variant — result has exactly one entry."""
         from openagents_cli.models import fetch_ollama_cloud_models
 
@@ -460,8 +532,13 @@ class TestOllamaCloudSuffixStripping:
                 }
             }
         }
-        with patch("openagents_cli.models.fetch_api_models", return_value=["kimi-k2.6", "glm-5.1"]), \
-             patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["kimi-k2.6", "glm-5.1"],
+            ),
+            patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev),
+        ):
             result = fetch_ollama_cloud_models(force_refresh=True)
 
         assert result.count("kimi-k2.6") == 1
@@ -477,9 +554,7 @@ class TestOllamaCloudSuffixStripping:
         monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
 
         mock_mdev = {
-            "ollama-cloud": {
-                "models": {"nemotron-3-nano:30b": {"tool_call": True}}
-            }
+            "ollama-cloud": {"models": {"nemotron-3-nano:30b": {"tool_call": True}}}
         }
         with patch("agent.models_dev.fetch_models_dev", return_value=mock_mdev):
             result = fetch_ollama_cloud_models(force_refresh=True)
@@ -492,6 +567,10 @@ class TestOllamaCloudSuffixStripping:
 
         assert _strip_ollama_cloud_suffix("kimi-k2.6:cloud") == "kimi-k2.6"
         assert _strip_ollama_cloud_suffix("glm-5.1:cloud") == "glm-5.1"
-        assert _strip_ollama_cloud_suffix("qwen3-coder:480b-cloud") == "qwen3-coder:480b"
-        assert _strip_ollama_cloud_suffix("nemotron-3-nano:30b") == "nemotron-3-nano:30b"
+        assert (
+            _strip_ollama_cloud_suffix("qwen3-coder:480b-cloud") == "qwen3-coder:480b"
+        )
+        assert (
+            _strip_ollama_cloud_suffix("nemotron-3-nano:30b") == "nemotron-3-nano:30b"
+        )
         assert _strip_ollama_cloud_suffix("") == ""

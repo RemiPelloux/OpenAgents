@@ -13,8 +13,8 @@ use chrono::Utc;
 use contract_core::{
     AcceptanceCriterionEvidence, CognitiveEvidenceReference, CognitiveObservation,
     CognitiveObservationType, CognitiveRisk, CognitiveScope, CognitiveScopeType,
-    EngineeringWorkspaceEvidence, GitEvidence, QaEvidence, QaRequirement, SkillReference,
-    SkillSource, TestEvidence, WorkerArtifact, WorkerJob, WorkerResult,
+    EngineeringWorkspaceEvidence, ExecutionMode, GitEvidence, QaEvidence, QaRequirement,
+    SkillReference, SkillSource, TestEvidence, WorkerArtifact, WorkerJob, WorkerResult,
 };
 use reqwest::{header::LOCATION, redirect::Policy};
 use scraper::{Html, Selector};
@@ -143,7 +143,8 @@ pub async fn execute(
     if job.organization_id != config.organization_id {
         anyhow::bail!("WORKSPACE_TENANT_MISMATCH");
     }
-    if !config.git_sign_commits {
+    let inspect = job.execution_mode == ExecutionMode::Inspect;
+    if !inspect && !config.git_sign_commits {
         anyhow::bail!("UNSIGNED_ENGINEERING_COMMITS_DISABLED");
     }
     let inputs = job.inputs.get("inputs").unwrap_or(&job.inputs);
@@ -160,12 +161,33 @@ pub async fn execute(
     .await?;
     let repository_name = string(inputs, "repository_name")?;
     verify_repository_remote(&repository, &config.git_remote, &remote_url).await?;
-    if inputs.get("requires_human_review").and_then(Value::as_bool) != Some(true) {
-        anyhow::bail!("HUMAN_REVIEW_POLICY_REQUIRED");
+    match (
+        inspect,
+        inputs.get("requires_human_review").and_then(Value::as_bool),
+    ) {
+        (true, Some(false)) => {}
+        (false, Some(true)) => {}
+        (true, _) => anyhow::bail!("INSPECTION_READ_ONLY_POLICY_REQUIRED"),
+        (false, _) => anyhow::bail!("HUMAN_REVIEW_POLICY_REQUIRED"),
+    }
+    if inspect && inputs.get("read_only").and_then(Value::as_bool) != Some(true) {
+        anyhow::bail!("INSPECTION_READ_ONLY_POLICY_REQUIRED");
     }
     let base_ref = string(inputs, "base_ref")?;
-    let tests = string_array(inputs, "test_commands")?;
-    let qa_requirements = parse_qa_requirements(inputs, &tests)?;
+    let tests = if inspect {
+        let commands = optional_string_array(inputs, "test_commands")?;
+        if !commands.is_empty() || inputs.get("delivery_policy").is_some() {
+            anyhow::bail!("INSPECTION_MUTATING_POLICY_FORBIDDEN");
+        }
+        Vec::new()
+    } else {
+        string_array(inputs, "test_commands")?
+    };
+    let qa_requirements = if inspect {
+        Vec::new()
+    } else {
+        parse_qa_requirements(inputs, &tests)?
+    };
     let prompt = string(inputs, "prompt")?;
     let loaded_skills = load_required_skills(job, config).await?;
     store
@@ -176,7 +198,12 @@ pub async fn execute(
             json!({"skills":loaded_skills.iter().map(|skill| &skill.reference).collect::<Vec<_>>() }),
         )
         .await;
-    let prompt = engineering_prompt(&prompt, &loaded_skills, &job.acceptance_criteria)?;
+    let prompt = engineering_prompt(
+        &prompt,
+        &loaded_skills,
+        &job.acceptance_criteria,
+        job.execution_mode,
+    )?;
     if contains_secret(&serde_json::to_string(inputs)?) {
         anyhow::bail!("INPUT_SECRET_REJECTED");
     }
@@ -230,6 +257,11 @@ pub async fn execute(
             )
             .await;
     }
+    let inspection_before = if inspect {
+        Some(capture_inspection_probes(&config.git_binary, &workspace, &git_dir).await?)
+    } else {
+        None
+    };
     let engine = run_opencode(OpenCodeSpec {
         config,
         job,
@@ -240,6 +272,7 @@ pub async fn execute(
         workspace_id: &external_repository_id,
         workspace_dependencies: &materialized_dependencies,
         prompt: &prompt,
+        read_only: inspect,
         store,
     })
     .await?;
@@ -252,15 +285,118 @@ pub async fn execute(
         );
         anyhow::bail!("ENGINE_SECRET_LEAK_REJECTED");
     }
-    if engine.exit_status != 0 {
-        anyhow::bail!(
-            "OPENCODE_FAILED: exit_status={}; terminal={}; stderr={}",
-            engine.exit_status,
-            opencode_terminal_status(&engine.stdout),
-            bounded_diagnostic(&engine.stderr),
-        );
-    }
+    let execution_report =
+        validate_opencode_terminal(&engine.stdout, engine.exit_status, &engine.stderr)?;
     ensure_not_cancelled(store, run_id).await?;
+    if inspect {
+        let inspection_after =
+            capture_inspection_probes(&config.git_binary, &workspace, &git_dir).await?;
+        if inspection_before.as_ref() != Some(&inspection_after) {
+            anyhow::bail!("INSPECTION_WORKSPACE_MUTATED");
+        }
+        verify_workspace_dependencies_clean(&config.git_binary, &materialized_dependencies).await?;
+        let changed_files = empty_changed_files_artifact(&base_sha);
+        let report_artifact = persist_inspection_report(
+            &workspace_root,
+            run_id,
+            job,
+            config,
+            &repository_name,
+            &base_ref,
+            &inspection_after,
+            &execution_report,
+            &materialized_dependencies,
+        )
+        .await?;
+        let artifact = persist_opencode_evidence(&workspace_root, run_id, &engine.stdout).await?;
+        let prompt_sha256 = format!("{:x}", Sha256::digest(prompt.as_bytes()));
+        let execution_contract = WorkerArtifact {
+            kind: "execution_contract".into(),
+            name: "Verified read-only skills and acceptance criteria".into(),
+            uri: format!("openagents://runs/{run_id}/execution-contract"),
+            sha256: Some(prompt_sha256.clone()),
+            metadata: json!({
+                "execution_mode":"inspect",
+                "skills":loaded_skills.iter().map(|skill| json!({
+                    "reference":skill.reference,
+                    "content_sha256":format!("{:x}", Sha256::digest(skill.body.as_bytes())),
+                    "content_bytes":skill.body.len(),
+                })).collect::<Vec<_>>(),
+                "acceptance_criteria":job.acceptance_criteria,
+                "prompt_injected":true,
+                "prompt_sha256":prompt_sha256,
+                "immutable_probes":["head","branch","status","readme","diff"],
+            }),
+        };
+        let acceptance_evidence = job
+            .acceptance_criteria
+            .iter()
+            .map(|criterion| AcceptanceCriterionEvidence {
+                criterion: criterion.clone(),
+                passed: true,
+                evidence: execution_report.clone(),
+                sources: vec![report_artifact.uri.clone()],
+            })
+            .collect();
+        let cognitive_observations = engineering_cognitive_observations(
+            job,
+            run_id,
+            &loaded_skills,
+            &engine.cognitive_events,
+        );
+        store
+            .update(
+                run_id,
+                RunStatus::Running,
+                "inspection.completed",
+                json!({
+                    "execution_mode":"inspect",
+                    "head_sha":base_sha,
+                    "branch":inspection_after["branch"],
+                    "diff_empty":true,
+                    "changed_files":[],
+                    "provider":"openai-compatible",
+                    "model":config.llm_model,
+                    "correlation_id":job.correlation_id,
+                }),
+            )
+            .await;
+        return Ok(WorkerResult {
+            run_id,
+            artifacts: vec![artifact, report_artifact, changed_files, execution_contract],
+            stderr: nonempty(sanitize(&engine.stderr)),
+            exit_status: 0,
+            tests: Vec::new(),
+            git: Some(GitEvidence {
+                repository: repository.display().to_string(),
+                worktree: workspace.display().to_string(),
+                branch: inspection_after["branch"]
+                    .as_str()
+                    .unwrap_or(&expected_branch)
+                    .to_string(),
+                commit_sha: base_sha,
+                clean: true,
+                pushed: false,
+                remote: None,
+            }),
+            engine_session_id: engine.session_id,
+            loaded_skills: loaded_skills
+                .iter()
+                .map(|skill| skill.reference.clone())
+                .collect(),
+            acceptance_evidence,
+            cognitive_observations,
+            engineering_workspace: Some(EngineeringWorkspaceEvidence {
+                organization_id: job.organization_id,
+                run_id,
+                repository_name,
+                workspace_root: workspace_root.display().to_string(),
+                repository_folder: workspace.display().to_string(),
+            }),
+            qa: Vec::new(),
+            pull_request: None,
+        });
+    }
     let git = commit_changes(CommitSpec {
         workspace: &workspace,
         git_dir: &git_dir,
@@ -423,6 +559,7 @@ fn engineering_prompt(
     task: &str,
     loaded_skills: &[LoadedSkill],
     acceptance_criteria: &[String],
+    execution_mode: ExecutionMode,
 ) -> anyhow::Result<String> {
     let skill_context = loaded_skills
         .iter()
@@ -439,6 +576,19 @@ fn engineering_prompt(
         .collect::<Vec<_>>()
         .join("\n\n");
     let criteria = serde_json::to_string_pretty(acceptance_criteria)?;
+    if execution_mode == ExecutionMode::Inspect {
+        return Ok(format!(
+            "{task}\n\nOpenOS required skill instructions (immutable references verified by OpenAgents):\n{skill_context}\n\n\
+             OpenOS acceptance criteria (address every item in the terminal report):\n{criteria}\n\n\
+             OpenOS read-only inspection contract:\n\
+             - Inspect the current repository and the declared read-only dependencies.\n\
+             - Do not create, edit, delete, rename, install, format, build, test, commit, push, or open a pull request.\n\
+             - Do not write Git refs, configuration, hooks, indexes, or worktree metadata.\n\
+             - Report the observed HEAD, branch, clean status, README findings, and empty final diff.\n\
+             - Return a substantive terminal report grounded only in files and commands you actually read.\n\
+             - Fail explicitly when evidence is unavailable; never invent findings."
+        ));
+    }
     Ok(format!(
         "{task}\n\nOpenOS required skill instructions (immutable references verified by OpenAgents):\n{skill_context}\n\n\
          OpenOS acceptance criteria (satisfy every item and leave evidence in the diff or declared test output):\n{criteria}\n\n\
@@ -768,6 +918,139 @@ fn changed_files_artifact(
     })
 }
 
+fn empty_changed_files_artifact(head_sha: &str) -> WorkerArtifact {
+    WorkerArtifact {
+        kind: "changed_files".into(),
+        name: "Changed files".into(),
+        uri: format!("git://{head_sha}/changed-files"),
+        sha256: Some(format!("{:x}", Sha256::digest([]))),
+        metadata: json!({
+            "base_sha":head_sha,
+            "commit_sha":head_sha,
+            "files":[],
+            "patches":[],
+            "patches_truncated":false,
+            "expected_empty":true,
+        }),
+    }
+}
+
+async fn capture_inspection_probes(
+    git_binary: &Path,
+    workspace: &Path,
+    git_dir: &Path,
+) -> anyhow::Result<Value> {
+    let head_sha = output_text(
+        trusted_git_command(git_binary, workspace, git_dir).args(["rev-parse", "HEAD"]),
+        "inspection git HEAD",
+    )
+    .await?;
+    let branch = output_text(
+        trusted_git_command(git_binary, workspace, git_dir).args(["branch", "--show-current"]),
+        "inspection git branch",
+    )
+    .await?;
+    let status = output_text(
+        trusted_git_command(git_binary, workspace, git_dir).args([
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+        ]),
+        "inspection git status",
+    )
+    .await?;
+    let diff = output_text(
+        trusted_git_command(git_binary, workspace, git_dir).args([
+            "diff",
+            "--no-ext-diff",
+            "--binary",
+            "HEAD",
+        ]),
+        "inspection git diff",
+    )
+    .await?;
+    if !status.is_empty() || !diff.is_empty() {
+        anyhow::bail!("INSPECTION_WORKSPACE_DIRTY");
+    }
+    let mut readme = None;
+    let mut entries = fs::read_dir(workspace).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name.eq_ignore_ascii_case("readme") || name.to_ascii_lowercase().starts_with("readme.") {
+            let bytes = fs::read(entry.path()).await?;
+            readme = Some(json!({
+                "path":name,
+                "bytes":bytes.len(),
+                "sha256":format!("{:x}", Sha256::digest(&bytes)),
+            }));
+            break;
+        }
+    }
+    Ok(json!({
+        "head_sha":head_sha,
+        "branch":branch,
+        "status":"clean",
+        "readme":readme,
+        "diff_empty":true,
+    }))
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn persist_inspection_report(
+    root: &Path,
+    run_id: Uuid,
+    job: &WorkerJob,
+    config: &Config,
+    repository_name: &str,
+    base_ref: &str,
+    probes: &Value,
+    report: &str,
+    dependencies: &[(PathBuf, String)],
+) -> anyhow::Result<WorkerArtifact> {
+    let evidence = json!({
+        "schema":"openos.engineering-inspection/v1",
+        "execution_mode":"inspect",
+        "run_id":run_id,
+        "organization_id":job.organization_id,
+        "correlation_id":job.correlation_id,
+        "repository_name":repository_name,
+        "base_ref":base_ref,
+        "provider":"openai-compatible",
+        "model":config.llm_model,
+        "probes":probes,
+        "dependencies":dependencies.iter().map(|(path, sha)| json!({
+            "path":path,
+            "head_sha":sha,
+            "status":"clean",
+        })).collect::<Vec<_>>(),
+        "changed_files":[],
+        "report":report,
+    });
+    let serialized = serde_json::to_vec_pretty(&evidence)?;
+    let path = root.join(format!("{run_id}-inspection-report-v1.json"));
+    fs::write(&path, &serialized).await?;
+    Ok(WorkerArtifact {
+        kind: "inspection_report".into(),
+        name: "Read-only engineering inspection".into(),
+        uri: file_uri(&path),
+        sha256: Some(format!("{:x}", Sha256::digest(&serialized))),
+        metadata: json!({
+            "schema":"openos.engineering-inspection/v1",
+            "execution_mode":"inspect",
+            "head_sha":probes.get("head_sha"),
+            "branch":probes.get("branch"),
+            "status":probes.get("status"),
+            "readme":probes.get("readme"),
+            "diff_empty":true,
+            "changed_files":[],
+            "provider":"openai-compatible",
+            "model":config.llm_model,
+            "correlation_id":job.correlation_id,
+            "bytes":serialized.len(),
+        }),
+    })
+}
+
 fn bounded_git_diff(
     git_binary: &Path,
     workspace: &Path,
@@ -908,11 +1191,19 @@ fn diff_line_counts(diff: &str) -> (usize, usize) {
 
 fn validate_job(job: &WorkerJob) -> anyhow::Result<()> {
     let supported = (job.job_type == "engineering.opencode"
+        && job.execution_mode == ExecutionMode::Change
         && job
             .required_capabilities
             .iter()
             .any(|value| value == "invoke_opencode"))
+        || (job.job_type == "engineering.inspect"
+            && job.execution_mode == ExecutionMode::Inspect
+            && job
+                .required_capabilities
+                .iter()
+                .any(|value| value == "inspect_repository"))
         || (job.job_type == "agent.skill_author"
+            && job.execution_mode == ExecutionMode::Change
             && ["skill_author", "web_search", "web_extract"]
                 .iter()
                 .all(|required| {
@@ -3420,6 +3711,7 @@ struct OpenCodeSpec<'a> {
     workspace_id: &'a str,
     workspace_dependencies: &'a [(PathBuf, String)],
     prompt: &'a str,
+    read_only: bool,
     store: &'a RunStore,
 }
 
@@ -3634,6 +3926,7 @@ async fn run_opencode(spec: OpenCodeSpec<'_>) -> anyhow::Result<EngineOutput> {
         workspace_id,
         workspace_dependencies,
         prompt,
+        read_only,
         store,
     } = spec;
     restore_candidate_git_pointer(workspace, git_dir).await?;
@@ -3663,9 +3956,9 @@ async fn run_opencode(spec: OpenCodeSpec<'_>) -> anyhow::Result<EngineOutput> {
     for (path, _) in workspace_dependencies {
         command.arg("--ro").arg(path);
     }
+    command.args(["--rw", "/dev"]);
     command
-        .args(["--rw", "/dev"])
-        .arg("--rw")
+        .arg(if read_only { "--ro" } else { "--rw" })
         .arg(workspace)
         .arg("--rw")
         .arg(&runtime_home.0)
@@ -4469,6 +4762,16 @@ fn string_array(value: &Value, key: &str) -> anyhow::Result<Vec<String>> {
     Ok(values)
 }
 
+fn optional_string_array(value: &Value, key: &str) -> anyhow::Result<Vec<String>> {
+    value
+        .get(key)
+        .cloned()
+        .map(serde_json::from_value)
+        .transpose()
+        .map(|values| values.unwrap_or_default())
+        .map_err(Into::into)
+}
+
 fn session_id(value: &Value) -> Option<String> {
     value
         .get("session_id")
@@ -4483,10 +4786,26 @@ fn session_id(value: &Value) -> Option<String> {
 }
 
 fn safe_event(value: &Value) -> Value {
+    let event_type = value.get("type").and_then(Value::as_str);
+    let subtype = value.get("subtype").and_then(Value::as_str);
+    let is_error = value.get("is_error").and_then(Value::as_bool);
+    let terminal_status = if event_type == Some("result") {
+        match (subtype, is_error) {
+            (Some("success"), Some(false)) => Some("success"),
+            (Some("success"), Some(true)) => Some("contradictory"),
+            (Some(_), Some(true)) => Some("error"),
+            (Some(_), Some(false)) => Some("contradictory"),
+            _ => Some("malformed"),
+        }
+    } else {
+        None
+    };
     json!({
         "schema":"openos.opencode-event/v1",
-        "type":value.get("type").and_then(Value::as_str).and_then(safe_metadata_string),
-        "subtype":value.get("subtype").and_then(Value::as_str).and_then(safe_metadata_string),
+        "type":event_type.and_then(safe_metadata_string),
+        "subtype":subtype.and_then(safe_metadata_string),
+        "is_error":is_error,
+        "terminal_status":terminal_status,
         "session_id":session_id(value)
     })
 }
@@ -4527,6 +4846,48 @@ fn opencode_terminal_status(stdout: &str) -> String {
             )
         })
         .unwrap_or_else(|| "missing".into())
+}
+
+fn validate_opencode_terminal(
+    stdout: &str,
+    exit_status: i32,
+    stderr: &str,
+) -> anyhow::Result<String> {
+    let terminal = stdout
+        .lines()
+        .rev()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .find(|event| event.get("type").and_then(Value::as_str) == Some("result"))
+        .ok_or_else(|| anyhow::anyhow!("OPENCODE_PROTOCOL_TERMINAL_MISSING"))?;
+    let subtype = terminal
+        .get("subtype")
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow::anyhow!("OPENCODE_PROTOCOL_TERMINAL_MALFORMED"))?;
+    let is_error = terminal
+        .get("is_error")
+        .and_then(Value::as_bool)
+        .ok_or_else(|| anyhow::anyhow!("OPENCODE_PROTOCOL_TERMINAL_MALFORMED"))?;
+    let success = subtype == "success";
+    if success == is_error {
+        anyhow::bail!(
+            "OPENCODE_PROTOCOL_CONTRADICTORY_TERMINAL: subtype={subtype};is_error={is_error}"
+        );
+    }
+    if exit_status != 0 || is_error {
+        anyhow::bail!(
+            "OPENCODE_FAILED: exit_status={exit_status};terminal={};stderr={}",
+            opencode_terminal_status(stdout),
+            bounded_diagnostic(stderr),
+        );
+    }
+    let report = terminal
+        .get("result")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("OPENCODE_TERMINAL_REPORT_MISSING"))?;
+    let (report, _) = bounded_utf8(report, MAX_ACCEPTANCE_REPORT_BYTES);
+    Ok(report.to_string())
 }
 
 fn bounded_diagnostic(value: &str) -> String {
@@ -6628,6 +6989,7 @@ mod tests {
             "Implement documentation ingestion for OpenFoo.",
             &skills,
             &["The declared test command passes.".into()],
+            ExecutionMode::Change,
         )
         .unwrap();
         assert!(prompt.contains("open-code@1"));
@@ -6835,5 +7197,82 @@ mod tests {
             Some(target)
         );
         assert!(normalize_search_result_url("https://www.bing.com/search?q=spec").is_none());
+    }
+
+    #[test]
+    fn rejects_contradictory_or_malformed_opencode_terminals() {
+        let contradictory =
+            r#"{"type":"result","subtype":"success","is_error":true,"result":"done"}"#;
+        assert!(validate_opencode_terminal(contradictory, 0, "")
+            .unwrap_err()
+            .to_string()
+            .contains("OPENCODE_PROTOCOL_CONTRADICTORY_TERMINAL"));
+        let malformed = r#"{"type":"result","subtype":"success","result":"done"}"#;
+        assert_eq!(
+            validate_opencode_terminal(malformed, 0, "")
+                .unwrap_err()
+                .to_string(),
+            "OPENCODE_PROTOCOL_TERMINAL_MALFORMED"
+        );
+        let success =
+            r#"{"type":"result","subtype":"success","is_error":false,"result":"grounded report"}"#;
+        assert_eq!(
+            validate_opencode_terminal(success, 0, "").unwrap(),
+            "grounded report"
+        );
+    }
+
+    #[tokio::test]
+    async fn inspection_probes_preserve_target_and_dependency_revisions() {
+        let root = tempfile::tempdir().unwrap();
+        let repository = root.path().join("target");
+        std::fs::create_dir_all(&repository).unwrap();
+        let run_git = |arguments: &[&str]| {
+            let status = std::process::Command::new("git")
+                .arg("-C")
+                .arg(&repository)
+                .args(arguments)
+                .status()
+                .unwrap();
+            assert!(status.success(), "git command failed: {arguments:?}");
+        };
+        run_git(&["init", "-b", "main"]);
+        run_git(&["config", "user.name", "OpenOS Test"]);
+        run_git(&["config", "user.email", "test@openos.local"]);
+        std::fs::write(repository.join("README.md"), "# Inspection target\n").unwrap();
+        run_git(&["add", "README.md"]);
+        run_git(&["commit", "-m", "initial"]);
+        let git_dir = externalize_test_git_dir(&repository);
+
+        let before = capture_inspection_probes(Path::new("git"), &repository, &git_dir)
+            .await
+            .unwrap();
+        let head = before["head_sha"].as_str().unwrap().to_string();
+        verify_workspace_dependencies_clean(
+            Path::new("git"),
+            &[(repository.clone(), head.clone())],
+        )
+        .await
+        .unwrap();
+
+        let after = capture_inspection_probes(Path::new("git"), &repository, &git_dir)
+            .await
+            .unwrap();
+        assert_eq!(before, after);
+        std::fs::write(repository.join("README.md"), "mutated\n").unwrap();
+        assert!(
+            capture_inspection_probes(Path::new("git"), &repository, &git_dir)
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("INSPECTION_WORKSPACE_DIRTY")
+        );
+        assert!(
+            verify_workspace_dependencies_clean(Path::new("git"), &[(repository, head)],)
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("WORKSPACE_DEPENDENCY_MUTATED")
+        );
     }
 }

@@ -37,6 +37,7 @@ class TestMergeHelper:
 
     def test_merge_mdev_raises_returns_curated(self):
         """Offline / broken models.dev must not break the catalog path."""
+
         def boom(_provider):
             raise RuntimeError("network down")
 
@@ -109,9 +110,15 @@ class TestProviderModelIdsPreferred:
         with (
             patch(
                 "openagents_cli.auth.resolve_api_key_provider_credentials",
-                return_value={"api_key": "sk-test", "base_url": "https://api.moonshot.ai/v1"},
+                return_value={
+                    "api_key": "sk-test",
+                    "base_url": "https://api.moonshot.ai/v1",
+                },
             ),
-            patch("providers.base.ProviderProfile.fetch_models", return_value=["kimi-k2.6"]),
+            patch(
+                "providers.base.ProviderProfile.fetch_models",
+                return_value=["kimi-k2.6"],
+            ),
         ):
             out = provider_model_ids("kimi-coding")
         # Curated-first order; curated newest (k2.7-code) stays ahead of live.
@@ -128,8 +135,13 @@ class TestProviderModelIdsPreferred:
             return None
 
         with (
-            patch("openagents_cli.main._prompt_api_key", return_value=("sk-kimi-test", False)),
-            patch("openagents_cli.auth._prompt_model_selection", side_effect=fake_select),
+            patch(
+                "openagents_cli.main._prompt_api_key",
+                return_value=("sk-kimi-test", False),
+            ),
+            patch(
+                "openagents_cli.auth._prompt_model_selection", side_effect=fake_select
+            ),
             patch("openagents_cli.config.get_env_value", return_value=""),
             patch("openagents_cli.config.save_env_value"),
         ):

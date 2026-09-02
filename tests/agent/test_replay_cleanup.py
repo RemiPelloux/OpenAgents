@@ -23,7 +23,11 @@ def _assistant_tc(name):
         "role": "assistant",
         "content": "",
         "tool_calls": [
-            {"id": "c1", "type": "function", "function": {"name": name, "arguments": "{}"}}
+            {
+                "id": "c1",
+                "type": "function",
+                "function": {"name": name, "arguments": "{}"},
+            }
         ],
     }
 
@@ -59,8 +63,12 @@ def test_strip_interrupted_tool_tails_removes_interrupted_block():
 
 
 def test_strip_interrupted_tool_tails_preserves_successful_block():
-    history = [_user("hi"), _assistant_tc("read_file"), _tool("ok"),
-               {"role": "assistant", "content": "done"}]
+    history = [
+        _user("hi"),
+        _assistant_tc("read_file"),
+        _tool("ok"),
+        {"role": "assistant", "content": "done"},
+    ]
     out = strip_interrupted_tool_tails(history)
     assert out == history
 
@@ -75,7 +83,8 @@ def test_sanitize_replay_history_combines_both():
     # interrupted block in the middle + dangling tail at the end
     history = [
         _user("first"),
-        _assistant_tc("terminal"), _tool("[Command interrupted]"),
+        _assistant_tc("terminal"),
+        _tool("[Command interrupted]"),
         _user("second"),
         _assistant_tc("write_file"),  # dangling
     ]

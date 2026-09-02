@@ -2,6 +2,7 @@
 
 Provides polite retry + JSON convenience + User-Agent enforcement.
 """
+
 from __future__ import annotations
 
 import json
@@ -62,7 +63,11 @@ def get(
                 ) from e
             if e.code in {500, 502, 503, 504} and attempt < max_retries:
                 retry_after = e.headers.get("Retry-After") if e.headers else None
-                wait = float(retry_after) if (retry_after and retry_after.isdigit()) else backoff ** (attempt + 1)
+                wait = (
+                    float(retry_after)
+                    if (retry_after and retry_after.isdigit())
+                    else backoff ** (attempt + 1)
+                )
                 time.sleep(wait)
                 last_err = e
                 continue

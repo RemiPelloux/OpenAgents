@@ -43,13 +43,13 @@ from plugins.spotify.tools import (
 )
 
 _TOOLS = (
-    ("spotify_playback",  SPOTIFY_PLAYBACK_SCHEMA,  _handle_spotify_playback,  "🎵"),
-    ("spotify_devices",   SPOTIFY_DEVICES_SCHEMA,   _handle_spotify_devices,   "🔈"),
-    ("spotify_queue",     SPOTIFY_QUEUE_SCHEMA,     _handle_spotify_queue,     "📻"),
-    ("spotify_search",    SPOTIFY_SEARCH_SCHEMA,    _handle_spotify_search,    "🔎"),
+    ("spotify_playback", SPOTIFY_PLAYBACK_SCHEMA, _handle_spotify_playback, "🎵"),
+    ("spotify_devices", SPOTIFY_DEVICES_SCHEMA, _handle_spotify_devices, "🔈"),
+    ("spotify_queue", SPOTIFY_QUEUE_SCHEMA, _handle_spotify_queue, "📻"),
+    ("spotify_search", SPOTIFY_SEARCH_SCHEMA, _handle_spotify_search, "🔎"),
     ("spotify_playlists", SPOTIFY_PLAYLISTS_SCHEMA, _handle_spotify_playlists, "📚"),
-    ("spotify_albums",    SPOTIFY_ALBUMS_SCHEMA,    _handle_spotify_albums,    "💿"),
-    ("spotify_library",   SPOTIFY_LIBRARY_SCHEMA,   _handle_spotify_library,   "❤️"),
+    ("spotify_albums", SPOTIFY_ALBUMS_SCHEMA, _handle_spotify_albums, "💿"),
+    ("spotify_library", SPOTIFY_LIBRARY_SCHEMA, _handle_spotify_library, "❤️"),
 )
 
 

@@ -12,6 +12,7 @@ Subcommands:
 The handlers are kept here (rather than in
 ``openagents_cli/main.py``) so the LSP module ships self-contained.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -99,6 +100,7 @@ def _cmd_status(emit_json: bool) -> int:
 
     if emit_json:
         import json
+
         payload = {
             "service": info,
             "registry": [
@@ -164,9 +166,7 @@ def _cmd_status(emit_json: bool) -> int:
         ext_summary = ", ".join(list(s.extensions)[:5])
         if len(s.extensions) > 5:
             ext_summary += f", … (+{len(s.extensions) - 5})"
-        out.append(
-            f"  {marker} {s.server_id:24s} [{status:11s}] {ext_summary}"
-        )
+        out.append(f"  {marker} {s.server_id:24s} [{status:11s}] {ext_summary}")
         if s.description:
             out.append(f"      {s.description}")
     sys.stdout.write("\n".join(out) + "\n")
@@ -182,14 +182,13 @@ def _cmd_list(installed_only: bool) -> int:
         status = detect_status(pkg)
         if installed_only and status != "installed":
             continue
-        sys.stdout.write(
-            f"{s.server_id:24s} [{status:11s}] {','.join(s.extensions)}\n"
-        )
+        sys.stdout.write(f"{s.server_id:24s} [{status:11s}] {','.join(s.extensions)}\n")
     return 0
 
 
 def _cmd_install(server_id: str) -> int:
     from agent.lsp.install import try_install, INSTALL_RECIPES, detect_status
+
     pkg = _recipe_pkg_for(server_id)
     pre_status = detect_status(pkg)
     if pre_status == "installed":
@@ -288,6 +287,7 @@ def _backend_warnings() -> list:
     """
     import shutil as _shutil
     from agent.lsp.install import _existing_binary
+
     notes: list = []
     bash_installed = _existing_binary("bash-language-server") is not None
     if bash_installed and _shutil.which("shellcheck") is None:

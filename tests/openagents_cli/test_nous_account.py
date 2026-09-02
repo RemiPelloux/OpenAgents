@@ -81,19 +81,19 @@ def _reset_cache():
 
 
 def test_valid_jwt_with_paid_access_true(monkeypatch):
-    token = _jwt(
-        {
-            "sub": "user_123",
-            "org_id": "org_123",
-            "client_id": "hermes-cli",
-            "product_id": "nous-openagents",
-            "nous_client": "openagents",
-            "exp": int(time.time()) + 900,
-            "paid_access": True,
-            "subscription_tier": 2,
-        }
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "client_id": "hermes-cli",
+        "product_id": "nous-openagents",
+        "nous_client": "openagents",
+        "exp": int(time.time()) + 900,
+        "paid_access": True,
+        "subscription_tier": 2,
+    })
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token)
     )
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token))
 
     info = get_nous_portal_account_info()
 
@@ -109,15 +109,15 @@ def test_valid_jwt_with_paid_access_true(monkeypatch):
 
 
 def test_valid_jwt_with_paid_access_false(monkeypatch):
-    token = _jwt(
-        {
-            "sub": "user_123",
-            "org_id": "org_123",
-            "exp": int(time.time()) + 900,
-            "paid_access": False,
-        }
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "exp": int(time.time()) + 900,
+        "paid_access": False,
+    })
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token)
     )
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token))
 
     info = get_nous_portal_account_info()
 
@@ -128,14 +128,14 @@ def test_valid_jwt_with_paid_access_false(monkeypatch):
 
 
 def test_valid_jwt_missing_paid_access_is_unknown_not_paid(monkeypatch):
-    token = _jwt(
-        {
-            "sub": "user_123",
-            "org_id": "org_123",
-            "exp": int(time.time()) + 900,
-        }
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "exp": int(time.time()) + 900,
+    })
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token)
     )
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token))
 
     info = get_nous_portal_account_info()
 
@@ -146,14 +146,12 @@ def test_valid_jwt_missing_paid_access_is_unknown_not_paid(monkeypatch):
 
 
 def test_expired_jwt_falls_back_to_fresh_account(monkeypatch):
-    token = _jwt(
-        {
-            "sub": "user_123",
-            "org_id": "org_123",
-            "exp": int(time.time()) - 60,
-            "paid_access": False,
-        }
-    )
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "exp": int(time.time()) - 60,
+        "paid_access": False,
+    })
     payload = _account_payload(
         allowed=True,
         subscription={
@@ -167,9 +165,15 @@ def test_expired_jwt_falls_back_to_fresh_account(monkeypatch):
         subscription_credits=12.25,
         purchased_credits=7.75,
     )
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token))
-    monkeypatch.setattr("openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token")
-    monkeypatch.setattr("openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload)
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token"
+    )
+    monkeypatch.setattr(
+        "openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload
+    )
 
     info = get_nous_portal_account_info()
 
@@ -238,10 +242,20 @@ def test_expired_jwt_falls_back_to_fresh_account(monkeypatch):
     ],
 )
 def test_fresh_account_payload_normalization(monkeypatch, payload, expected_paid):
-    token = _jwt({"sub": "user_123", "org_id": "org_123", "exp": int(time.time()) + 900})
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token))
-    monkeypatch.setattr("openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token")
-    monkeypatch.setattr("openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload)
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "exp": int(time.time()) + 900,
+    })
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token"
+    )
+    monkeypatch.setattr(
+        "openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload
+    )
 
     info = get_nous_portal_account_info(force_fresh=True)
 
@@ -257,23 +271,27 @@ def test_fresh_account_payload_normalization(monkeypatch, payload, expected_paid
 
 
 def test_force_fresh_uses_account_api_even_when_jwt_is_valid(monkeypatch):
-    token = _jwt(
-        {
-            "sub": "user_123",
-            "org_id": "org_123",
-            "exp": int(time.time()) + 900,
-            "paid_access": False,
-        }
-    )
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "exp": int(time.time()) + 900,
+        "paid_access": False,
+    })
     payload = _account_payload(
         allowed=True,
         subscription=None,
         subscription_credits=0,
         purchased_credits=5,
     )
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token))
-    monkeypatch.setattr("openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token")
-    monkeypatch.setattr("openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload)
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token"
+    )
+    monkeypatch.setattr(
+        "openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload
+    )
 
     info = get_nous_portal_account_info(force_fresh=True)
 
@@ -282,7 +300,9 @@ def test_force_fresh_uses_account_api_even_when_jwt_is_valid(monkeypatch):
 
 
 def test_no_oauth_token_reports_inference_key_present(monkeypatch):
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: {})
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: {}
+    )
 
     class _Entry:
         label = "manual-nous"
@@ -321,16 +341,16 @@ def test_no_oauth_token_reports_inference_key_present(monkeypatch):
 
 
 def test_pool_oauth_entry_uses_jwt_snapshot(monkeypatch):
-    token = _jwt(
-        {
-            "sub": "user_123",
-            "org_id": "org_123",
-            "client_id": "hermes-cli",
-            "exp": int(time.time()) + 900,
-            "paid_access": True,
-        }
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "client_id": "hermes-cli",
+        "exp": int(time.time()) + 900,
+        "paid_access": True,
+    })
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: {}
     )
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: {})
 
     class _Entry:
         label = "dashboard device_code"
@@ -371,22 +391,24 @@ def test_pool_oauth_entry_uses_jwt_snapshot(monkeypatch):
 
 
 def test_pool_oauth_entry_force_fresh_uses_account_api(monkeypatch):
-    token = _jwt(
-        {
-            "sub": "user_123",
-            "org_id": "org_123",
-            "exp": int(time.time()) + 900,
-            "paid_access": False,
-        }
-    )
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "exp": int(time.time()) + 900,
+        "paid_access": False,
+    })
     payload = _account_payload(
         allowed=True,
         subscription=None,
         subscription_credits=0,
         purchased_credits=3,
     )
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: {})
-    monkeypatch.setattr("openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload)
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: {}
+    )
+    monkeypatch.setattr(
+        "openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload
+    )
 
     class _Entry:
         label = "dashboard device_code"
@@ -436,7 +458,9 @@ def test_entitlement_message_returns_none_for_paid_access():
         portal_base_url="https://portal.example.test",
     )
 
-    assert format_nous_portal_entitlement_message(info, capability="paid models") is None
+    assert (
+        format_nous_portal_entitlement_message(info, capability="paid models") is None
+    )
 
 
 def test_entitlement_message_for_inference_key_without_portal_login():
@@ -552,15 +576,25 @@ def test_entitlement_message_for_account_missing():
 
 
 def test_account_payload_parses_org_slug_and_name(monkeypatch):
-    token = _jwt({"sub": "user_123", "org_id": "org_123", "exp": int(time.time()) + 900})
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "exp": int(time.time()) + 900,
+    })
     payload = {
         "user": {"email": "alice@example.test"},
         "organisation": {"id": "org_123", "slug": "acme", "name": "Acme Inc"},
         "paid_service_access": {"allowed": True, "paid_access": True},
     }
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token))
-    monkeypatch.setattr("openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token")
-    monkeypatch.setattr("openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload)
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token"
+    )
+    monkeypatch.setattr(
+        "openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload
+    )
 
     info = get_nous_portal_account_info(force_fresh=True)
 
@@ -571,15 +605,25 @@ def test_account_payload_parses_org_slug_and_name(monkeypatch):
 
 def test_account_payload_org_without_slug_leaves_fields_none(monkeypatch):
     # Mirrors current main: organisation: { id } only (slug nullable on the portal).
-    token = _jwt({"sub": "user_123", "org_id": "org_123", "exp": int(time.time()) + 900})
+    token = _jwt({
+        "sub": "user_123",
+        "org_id": "org_123",
+        "exp": int(time.time()) + 900,
+    })
     payload = {
         "user": {"email": "alice@example.test"},
         "organisation": {"id": "org_123"},
         "paid_service_access": {"allowed": True, "paid_access": True},
     }
-    monkeypatch.setattr("openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token))
-    monkeypatch.setattr("openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token")
-    monkeypatch.setattr("openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload)
+    monkeypatch.setattr(
+        "openagents_cli.auth.get_provider_auth_state", lambda provider: _state(token)
+    )
+    monkeypatch.setattr(
+        "openagents_cli.auth.resolve_nous_access_token", lambda: "fresh-token"
+    )
+    monkeypatch.setattr(
+        "openagents_cli.nous_account._fetch_nous_account_info", lambda *a, **kw: payload
+    )
 
     info = get_nous_portal_account_info(force_fresh=True)
 

@@ -32,7 +32,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 
 # Repo root = three levels up from tests/agent/<file>.
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_REPO_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
@@ -58,15 +60,65 @@ class _MockHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.end_headers()
-            chunks = [{"id": "m", "choices": [{"index": 0, "delta": {"role": "assistant", "content": ""}, "finish_reason": None}]}]
+            chunks = [
+                {
+                    "id": "m",
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"role": "assistant", "content": ""},
+                            "finish_reason": None,
+                        }
+                    ],
+                }
+            ]
             if content:
-                chunks.append({"id": "m", "choices": [{"index": 0, "delta": {"content": content}, "finish_reason": None}]})
+                chunks.append({
+                    "id": "m",
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": content},
+                            "finish_reason": None,
+                        }
+                    ],
+                })
             if tcs:
                 for ti, tc in enumerate(tcs):
-                    chunks.append({"id": "m", "choices": [{"index": 0, "delta": {"tool_calls": [{
-                        "index": ti, "id": tc["id"], "type": "function",
-                        "function": {"name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}}]}, "finish_reason": None}]})
-            chunks.append({"id": "m", "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls" if tcs else "stop"}]})
+                    chunks.append({
+                        "id": "m",
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {
+                                    "tool_calls": [
+                                        {
+                                            "index": ti,
+                                            "id": tc["id"],
+                                            "type": "function",
+                                            "function": {
+                                                "name": tc["function"]["name"],
+                                                "arguments": tc["function"][
+                                                    "arguments"
+                                                ],
+                                            },
+                                        }
+                                    ]
+                                },
+                                "finish_reason": None,
+                            }
+                        ],
+                    })
+            chunks.append({
+                "id": "m",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {},
+                        "finish_reason": "tool_calls" if tcs else "stop",
+                    }
+                ],
+            })
             for c in chunks:
                 self.wfile.write(f"data: {json.dumps(c)}\n\n".encode())
             self.wfile.write(b"data: [DONE]\n\n")
@@ -86,11 +138,23 @@ class _MockHandler(BaseHTTPRequestHandler):
 def _tc_resp(name: str, args: str = "{}") -> dict:
     return {
         "id": "m",
-        "choices": [{"index": 0, "message": {
-            "role": "assistant", "content": "",
-            "tool_calls": [{"id": "call_1", "type": "function",
-                            "function": {"name": name, "arguments": args}}]},
-            "finish_reason": "tool_calls"}],
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {"name": name, "arguments": args},
+                        }
+                    ],
+                },
+                "finish_reason": "tool_calls",
+            }
+        ],
         "usage": {"prompt_tokens": 10, "completion_tokens": 0, "total_tokens": 10},
     }
 
@@ -98,7 +162,13 @@ def _tc_resp(name: str, args: str = "{}") -> dict:
 def _text_resp(text: str) -> dict:
     return {
         "id": "m",
-        "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": text},
+                "finish_reason": "stop",
+            }
+        ],
         "usage": {"prompt_tokens": 10, "completion_tokens": 0, "total_tokens": 10},
     }
 
@@ -121,18 +191,35 @@ def agent_env():
     # Import fresh so the patched conversation_loop is exercised even when the
     # module was imported earlier in the same worker.
     for mod in list(sys.modules):
-        if mod == "run_agent" or mod.startswith("agent.") or mod.startswith("tools.") or mod.startswith("hermes_"):
+        if (
+            mod == "run_agent"
+            or mod.startswith("agent.")
+            or mod.startswith("tools.")
+            or mod.startswith("hermes_")
+        ):
             del sys.modules[mod]
     from run_agent import AIAgent
 
     agent = AIAgent(
-        api_key="test-key", base_url=f"http://127.0.0.1:{port}/v1",
-        provider="openai-compat", model="test-model",
-        max_iterations=10, enabled_toolsets=[],
-        quiet_mode=True, skip_context_files=True, skip_memory=True,
-        save_trajectories=False, platform="cli",
+        api_key="test-key",
+        base_url=f"http://127.0.0.1:{port}/v1",
+        provider="openai-compat",
+        model="test-model",
+        max_iterations=10,
+        enabled_toolsets=[],
+        quiet_mode=True,
+        skip_context_files=True,
+        skip_memory=True,
+        save_trajectories=False,
+        platform="cli",
     )
-    agent.valid_tool_names = {"terminal", "read_file", "write_file", "execute_code", "session_search"}
+    agent.valid_tool_names = {
+        "terminal",
+        "read_file",
+        "write_file",
+        "execute_code",
+        "session_search",
+    }
 
     try:
         yield agent, _MockHandler
@@ -161,7 +248,9 @@ def test_empty_tool_name_gets_terse_error_no_catalog(agent_env, blank):
     handler.response_queue.append(_tc_resp(blank, "{}"))
     handler.response_queue.append(_text_resp("Recovered in plain text."))
 
-    agent.run_conversation("read ./payload and report", conversation_history=[], task_id="t")
+    agent.run_conversation(
+        "read ./payload and report", conversation_history=[], task_id="t"
+    )
 
     joined = " ".join(_tool_results(handler))
     assert "tool name was empty" in joined

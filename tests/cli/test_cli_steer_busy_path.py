@@ -56,14 +56,16 @@ def _make_cli():
         "prompt_toolkit.formatted_text": MagicMock(),
         "prompt_toolkit.auto_suggest": MagicMock(),
     }
-    with patch.dict(sys.modules, prompt_toolkit_stubs), patch.dict(
-        "os.environ", clean_env, clear=False
+    with (
+        patch.dict(sys.modules, prompt_toolkit_stubs),
+        patch.dict("os.environ", clean_env, clear=False),
     ):
         import cli as _cli_mod
 
         _cli_mod = importlib.reload(_cli_mod)
-        with patch.object(_cli_mod, "get_tool_definitions", return_value=[]), patch.dict(
-            _cli_mod.__dict__, {"CLI_CONFIG": _clean_config}
+        with (
+            patch.object(_cli_mod, "get_tool_definitions", return_value=[]),
+            patch.dict(_cli_mod.__dict__, {"CLI_CONFIG": _clean_config}),
         ):
             return _cli_mod.HermesCLI()
 
@@ -74,7 +76,10 @@ class TestSteerInlineDetector:
     def test_detects_steer_when_agent_running(self):
         cli = _make_cli()
         cli._agent_running = True
-        assert cli._should_handle_steer_command_inline("/steer focus on error handling") is True
+        assert (
+            cli._should_handle_steer_command_inline("/steer focus on error handling")
+            is True
+        )
 
     def test_ignores_steer_when_agent_idle(self):
         """Idle-path /steer should fall through to the normal process_loop
@@ -100,7 +105,10 @@ class TestSteerInlineDetector:
         """Image payloads take the normal path; steer doesn't accept images."""
         cli = _make_cli()
         cli._agent_running = True
-        assert cli._should_handle_steer_command_inline("/steer text", has_images=True) is False
+        assert (
+            cli._should_handle_steer_command_inline("/steer text", has_images=True)
+            is False
+        )
 
 
 class TestSteerBusyPathDispatch:

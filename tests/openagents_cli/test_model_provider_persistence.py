@@ -45,6 +45,7 @@ class TestSaveModelChoiceAlwaysDict:
         _save_model_choice("kimi-k2.5")
 
         import yaml
+
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
         model = config.get("model")
         assert isinstance(model, dict), (
@@ -55,6 +56,7 @@ class TestSaveModelChoiceAlwaysDict:
     def test_dict_model_stays_dict(self, config_home):
         """When config.model is already a dict, _save_model_choice preserves it."""
         import yaml
+
         (config_home / "config.yaml").write_text(
             "model:\n  default: old-model\n  provider: openrouter\n"
         )
@@ -85,7 +87,9 @@ class TestProviderPersistsAfterModelSave:
             assert kwargs["sort_keys"] is False
             raise OSError("simulated atomic write failure")
 
-        with patch("openagents_cli.auth.atomic_yaml_write", side_effect=_boom) as mock_write:
+        with patch(
+            "openagents_cli.auth.atomic_yaml_write", side_effect=_boom
+        ) as mock_write:
             with pytest.raises(OSError, match="simulated atomic write failure"):
                 _update_config_for_provider(
                     "nous",
@@ -96,7 +100,9 @@ class TestProviderPersistsAfterModelSave:
         assert mock_write.call_count == 1
         assert config_path.read_text(encoding="utf-8") == original_text
 
-    def test_api_key_provider_saved_when_model_was_string(self, config_home, monkeypatch):
+    def test_api_key_provider_saved_when_model_was_string(
+        self, config_home, monkeypatch
+    ):
         """_model_flow_api_key_provider must persist the provider even when
         config.model started as a plain string."""
         from openagents_cli.auth import PROVIDER_REGISTRY
@@ -113,12 +119,17 @@ class TestProviderPersistsAfterModelSave:
 
         # Mock the model selection prompt to return "kimi-k2.5"
         # Also mock input() for the base URL prompt and builtins.input
-        with patch("openagents_cli.auth._prompt_model_selection", return_value="kimi-k2.5"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value=""):
+        with (
+            patch(
+                "openagents_cli.auth._prompt_model_selection", return_value="kimi-k2.5"
+            ),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "kimi-coding", "old-model")
 
         import yaml
+
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
         model = config.get("model")
         assert isinstance(model, dict), f"model should be dict, got {type(model)}"
@@ -132,36 +143,45 @@ class TestProviderPersistsAfterModelSave:
         from openagents_cli.main import _model_flow_copilot
         from openagents_cli.config import load_config
 
-        with patch(
-            "openagents_cli.auth.resolve_api_key_provider_credentials",
-            return_value={
-                "provider": "copilot",
-                "api_key": "gh-cli-token",
-                "base_url": "https://api.githubcopilot.com",
-                "source": "gh auth token",
-            },
-        ), patch(
-            "openagents_cli.models.fetch_github_model_catalog",
-            return_value=[
-                {
-                    "id": "gpt-4.1",
-                    "capabilities": {"type": "chat", "supports": {}},
-                    "supported_endpoints": ["/chat/completions"],
+        with (
+            patch(
+                "openagents_cli.auth.resolve_api_key_provider_credentials",
+                return_value={
+                    "provider": "copilot",
+                    "api_key": "gh-cli-token",
+                    "base_url": "https://api.githubcopilot.com",
+                    "source": "gh auth token",
                 },
-                {
-                    "id": "gpt-5.4",
-                    "capabilities": {"type": "chat", "supports": {"reasoning_effort": ["low", "medium", "high"]}},
-                    "supported_endpoints": ["/responses"],
-                },
-            ],
-        ), patch(
-            "openagents_cli.auth._prompt_model_selection",
-            return_value="gpt-5.4",
-        ), patch(
-            "openagents_cli.main._prompt_reasoning_effort_selection",
-            return_value="high",
-        ), patch(
-            "openagents_cli.auth.deactivate_provider",
+            ),
+            patch(
+                "openagents_cli.models.fetch_github_model_catalog",
+                return_value=[
+                    {
+                        "id": "gpt-4.1",
+                        "capabilities": {"type": "chat", "supports": {}},
+                        "supported_endpoints": ["/chat/completions"],
+                    },
+                    {
+                        "id": "gpt-5.4",
+                        "capabilities": {
+                            "type": "chat",
+                            "supports": {"reasoning_effort": ["low", "medium", "high"]},
+                        },
+                        "supported_endpoints": ["/responses"],
+                    },
+                ],
+            ),
+            patch(
+                "openagents_cli.auth._prompt_model_selection",
+                return_value="gpt-5.4",
+            ),
+            patch(
+                "openagents_cli.main._prompt_reasoning_effort_selection",
+                return_value="high",
+            ),
+            patch(
+                "openagents_cli.auth.deactivate_provider",
+            ),
         ):
             _model_flow_copilot(load_config(), "old-model")
 
@@ -193,11 +213,16 @@ class TestProviderPersistsAfterModelSave:
         # Patch fetch_api_models so the named custom flow returns one model;
         # force the curses menu to error so the input() fallback runs; patch
         # input to auto-select the first model from the fallback prompt.
-        with patch("openagents_cli.auth._save_model_choice"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("openagents_cli.models.fetch_api_models", return_value=["gpt-5.4"]), \
-             patch("openagents_cli.curses_ui.curses_radiolist", side_effect=OSError("no tty in test")), \
-             patch("builtins.input", return_value="1"):
+        with (
+            patch("openagents_cli.auth._save_model_choice"),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("openagents_cli.models.fetch_api_models", return_value=["gpt-5.4"]),
+            patch(
+                "openagents_cli.curses_ui.curses_radiolist",
+                side_effect=OSError("no tty in test"),
+            ),
+            patch("builtins.input", return_value="1"),
+        ):
             _model_flow_named_custom({}, provider_info)
 
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
@@ -212,50 +237,60 @@ class TestProviderPersistsAfterModelSave:
         from openagents_cli.main import _model_flow_copilot_acp
         from openagents_cli.config import load_config
 
-        with patch(
-            "openagents_cli.auth.get_external_process_provider_status",
-            return_value={
-                "resolved_command": "/usr/local/bin/copilot",
-                "command": "copilot",
-                "base_url": "acp://copilot",
-            },
-        ), patch(
-            "openagents_cli.auth.resolve_external_process_provider_credentials",
-            return_value={
-                "provider": "copilot-acp",
-                "api_key": "copilot-acp",
-                "base_url": "acp://copilot",
-                "command": "/usr/local/bin/copilot",
-                "args": ["--acp", "--stdio"],
-                "source": "process",
-            },
-        ), patch(
-            "openagents_cli.auth.resolve_api_key_provider_credentials",
-            return_value={
-                "provider": "copilot",
-                "api_key": "gh-cli-token",
-                "base_url": "https://api.githubcopilot.com",
-                "source": "gh auth token",
-            },
-        ), patch(
-            "openagents_cli.models.fetch_github_model_catalog",
-            return_value=[
-                {
-                    "id": "gpt-4.1",
-                    "capabilities": {"type": "chat", "supports": {}},
-                    "supported_endpoints": ["/chat/completions"],
+        with (
+            patch(
+                "openagents_cli.auth.get_external_process_provider_status",
+                return_value={
+                    "resolved_command": "/usr/local/bin/copilot",
+                    "command": "copilot",
+                    "base_url": "acp://copilot",
                 },
-                {
-                    "id": "gpt-5.4",
-                    "capabilities": {"type": "chat", "supports": {"reasoning_effort": ["low", "medium", "high"]}},
-                    "supported_endpoints": ["/responses"],
+            ),
+            patch(
+                "openagents_cli.auth.resolve_external_process_provider_credentials",
+                return_value={
+                    "provider": "copilot-acp",
+                    "api_key": "copilot-acp",
+                    "base_url": "acp://copilot",
+                    "command": "/usr/local/bin/copilot",
+                    "args": ["--acp", "--stdio"],
+                    "source": "process",
                 },
-            ],
-        ), patch(
-            "openagents_cli.auth._prompt_model_selection",
-            return_value="gpt-5.4",
-        ), patch(
-            "openagents_cli.auth.deactivate_provider",
+            ),
+            patch(
+                "openagents_cli.auth.resolve_api_key_provider_credentials",
+                return_value={
+                    "provider": "copilot",
+                    "api_key": "gh-cli-token",
+                    "base_url": "https://api.githubcopilot.com",
+                    "source": "gh auth token",
+                },
+            ),
+            patch(
+                "openagents_cli.models.fetch_github_model_catalog",
+                return_value=[
+                    {
+                        "id": "gpt-4.1",
+                        "capabilities": {"type": "chat", "supports": {}},
+                        "supported_endpoints": ["/chat/completions"],
+                    },
+                    {
+                        "id": "gpt-5.4",
+                        "capabilities": {
+                            "type": "chat",
+                            "supports": {"reasoning_effort": ["low", "medium", "high"]},
+                        },
+                        "supported_endpoints": ["/responses"],
+                    },
+                ],
+            ),
+            patch(
+                "openagents_cli.auth._prompt_model_selection",
+                return_value="gpt-5.4",
+            ),
+            patch(
+                "openagents_cli.auth.deactivate_provider",
+            ),
         ):
             _model_flow_copilot_acp(load_config(), "old-model")
 
@@ -269,19 +304,31 @@ class TestProviderPersistsAfterModelSave:
         assert model.get("default") == "gpt-5.4"
         assert model.get("api_mode") == "chat_completions"
 
-    def test_opencode_go_models_are_selectable_and_persist_normalized(self, config_home, monkeypatch):
+    def test_opencode_go_models_are_selectable_and_persist_normalized(
+        self, config_home, monkeypatch
+    ):
         from openagents_cli.main import _model_flow_api_key_provider
         from openagents_cli.config import load_config
 
         monkeypatch.setenv("OPENCODE_GO_API_KEY", "test-key")
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["opencode-go/kimi-k2.5", "opencode-go/minimax-m2.7"]), \
-             patch("openagents_cli.auth._prompt_model_selection", return_value="kimi-k2.5"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value=""):
-            _model_flow_api_key_provider(load_config(), "opencode-go", "opencode-go/kimi-k2.5")
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["opencode-go/kimi-k2.5", "opencode-go/minimax-m2.7"],
+            ),
+            patch(
+                "openagents_cli.auth._prompt_model_selection", return_value="kimi-k2.5"
+            ),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value=""),
+        ):
+            _model_flow_api_key_provider(
+                load_config(), "opencode-go", "opencode-go/kimi-k2.5"
+            )
 
         import yaml
+
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
         model = config.get("model")
         assert isinstance(model, dict)
@@ -289,7 +336,9 @@ class TestProviderPersistsAfterModelSave:
         assert model.get("default") == "kimi-k2.5"
         assert model.get("api_mode") == "chat_completions"
 
-    def test_opencode_go_same_provider_switch_recomputes_api_mode(self, config_home, monkeypatch):
+    def test_opencode_go_same_provider_switch_recomputes_api_mode(
+        self, config_home, monkeypatch
+    ):
         from openagents_cli.main import _model_flow_api_key_provider
         from openagents_cli.config import load_config
 
@@ -302,20 +351,28 @@ class TestProviderPersistsAfterModelSave:
             "  api_mode: chat_completions\n"
         )
 
-        with patch("openagents_cli.models.fetch_api_models", return_value=["opencode-go/kimi-k2.5", "opencode-go/minimax-m2.5"]), \
-             patch("openagents_cli.auth._prompt_model_selection", return_value="minimax-m2.5"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value=""):
+        with (
+            patch(
+                "openagents_cli.models.fetch_api_models",
+                return_value=["opencode-go/kimi-k2.5", "opencode-go/minimax-m2.5"],
+            ),
+            patch(
+                "openagents_cli.auth._prompt_model_selection",
+                return_value="minimax-m2.5",
+            ),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "opencode-go", "kimi-k2.5")
 
         import yaml
+
         config = yaml.safe_load((config_home / "config.yaml").read_text()) or {}
         model = config.get("model")
         assert isinstance(model, dict)
         assert model.get("provider") == "opencode-go"
         assert model.get("default") == "minimax-m2.5"
         assert model.get("api_mode") == "anthropic_messages"
-
 
 
 class TestBaseUrlValidation:
@@ -341,15 +398,20 @@ class TestBaseUrlValidation:
         from openagents_cli.config import load_config, get_env_value
 
         # User types a shell command instead of a URL at the base URL prompt
-        with patch("openagents_cli.auth._prompt_model_selection", return_value="MiniMax-M2"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value="nano ~/.openagents/.env"):
+        with (
+            patch(
+                "openagents_cli.auth._prompt_model_selection", return_value="MiniMax-M2"
+            ),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value="nano ~/.openagents/.env"),
+        ):
             _model_flow_api_key_provider(load_config(), "minimax", "old-model")
 
         # The garbage value should NOT have been saved
         saved = get_env_value("MINIMAX_BASE_URL") or ""
-        assert not saved or saved.startswith(("http://", "https://")), \
+        assert not saved or saved.startswith(("http://", "https://")), (
             f"Non-URL value was saved as MINIMAX_BASE_URL: {saved}"
+        )
         captured = capsys.readouterr()
         assert "Invalid URL" in captured.out
 
@@ -366,9 +428,13 @@ class TestBaseUrlValidation:
         from openagents_cli.main import _model_flow_api_key_provider
         from openagents_cli.config import load_config, get_env_value
 
-        with patch("openagents_cli.auth._prompt_model_selection", return_value="MiniMax-M2"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value="https://custom.minimax.example/v1"):
+        with (
+            patch(
+                "openagents_cli.auth._prompt_model_selection", return_value="MiniMax-M2"
+            ),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value="https://custom.minimax.example/v1"),
+        ):
             _model_flow_api_key_provider(load_config(), "minimax", "old-model")
 
         saved = get_env_value("MINIMAX_BASE_URL") or ""
@@ -388,9 +454,13 @@ class TestBaseUrlValidation:
         from openagents_cli.main import _model_flow_api_key_provider
         from openagents_cli.config import load_config, get_env_value
 
-        with patch("openagents_cli.auth._prompt_model_selection", return_value="MiniMax-M2"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value=""):
+        with (
+            patch(
+                "openagents_cli.auth._prompt_model_selection", return_value="MiniMax-M2"
+            ),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "minimax", "old-model")
 
         saved = get_env_value("MINIMAX_BASE_URL") or ""
@@ -409,10 +479,12 @@ class TestZaiEndpointPicker:
         global_url = ZAI_ENDPOINTS[0][1]  # "https://api.z.ai/api/paas/v4"
         monkeypatch.setenv("GLM_API_KEY", "test-key")
 
-        with patch("openagents_cli.main._prompt_provider_choice", return_value=0), \
-             patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value=""):
+        with (
+            patch("openagents_cli.main._prompt_provider_choice", return_value=0),
+            patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "zai", "old-model")
 
         model = load_config()["model"]
@@ -428,10 +500,14 @@ class TestZaiEndpointPicker:
         monkeypatch.setenv("GLM_API_KEY", "test-key")
 
         # Index 2 = Coding Plan Global in ZAI_ENDPOINTS
-        with patch("openagents_cli.main._prompt_provider_choice", return_value=2), \
-             patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5.2"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value=""):
+        with (
+            patch("openagents_cli.main._prompt_provider_choice", return_value=2),
+            patch(
+                "openagents_cli.auth._prompt_model_selection", return_value="glm-5.2"
+            ),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "zai", "old-model")
 
         model = load_config()["model"]
@@ -446,10 +522,12 @@ class TestZaiEndpointPicker:
         cn_url = ZAI_ENDPOINTS[1][1]  # "https://open.bigmodel.cn/api/paas/v4"
         monkeypatch.setenv("GLM_API_KEY", "test-key")
 
-        with patch("openagents_cli.main._prompt_provider_choice", return_value=1), \
-             patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value=""):
+        with (
+            patch("openagents_cli.main._prompt_provider_choice", return_value=1),
+            patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "zai", "old-model")
 
         model = load_config()["model"]
@@ -463,11 +541,16 @@ class TestZaiEndpointPicker:
         monkeypatch.setenv("GLM_API_KEY", "test-key")
 
         from openagents_cli.auth import ZAI_ENDPOINTS
+
         custom_idx = len(ZAI_ENDPOINTS)  # last option = custom proxy
-        with patch("openagents_cli.main._prompt_provider_choice", return_value=custom_idx), \
-             patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value="https://proxy.example.com/glm/v4"):
+        with (
+            patch(
+                "openagents_cli.main._prompt_provider_choice", return_value=custom_idx
+            ),
+            patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value="https://proxy.example.com/glm/v4"),
+        ):
             _model_flow_api_key_provider(load_config(), "zai", "old-model")
 
         saved = get_env_value("GLM_BASE_URL") or ""
@@ -481,12 +564,17 @@ class TestZaiEndpointPicker:
         monkeypatch.setenv("GLM_API_KEY", "test-key")
         monkeypatch.delenv("GLM_BASE_URL", raising=False)
         from openagents_cli.auth import ZAI_ENDPOINTS
+
         custom_idx = len(ZAI_ENDPOINTS)
 
-        with patch("openagents_cli.main._prompt_provider_choice", return_value=custom_idx), \
-             patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value="not-a-url"):
+        with (
+            patch(
+                "openagents_cli.main._prompt_provider_choice", return_value=custom_idx
+            ),
+            patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value="not-a-url"),
+        ):
             _model_flow_api_key_provider(load_config(), "zai", "old-model")
 
         # The invalid URL should not have been saved as base_url
@@ -504,10 +592,12 @@ class TestZaiEndpointPicker:
         monkeypatch.setenv("GLM_BASE_URL", "https://existing.example/v4")
 
         # _prompt_provider_choice returns None on cancel
-        with patch("openagents_cli.main._prompt_provider_choice", return_value=None), \
-             patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"), \
-             patch("openagents_cli.auth.deactivate_provider"), \
-             patch("builtins.input", return_value=""):
+        with (
+            patch("openagents_cli.main._prompt_provider_choice", return_value=None),
+            patch("openagents_cli.auth._prompt_model_selection", return_value="glm-5"),
+            patch("openagents_cli.auth.deactivate_provider"),
+            patch("builtins.input", return_value=""),
+        ):
             _model_flow_api_key_provider(load_config(), "zai", "old-model")
 
         # env var is preserved (not overwritten on cancel)
@@ -528,14 +618,18 @@ class TestZaiEndpointPicker:
             captured["choices"] = choices
             return default
 
-        with patch("openagents_cli.main._prompt_provider_choice", side_effect=fake_choice):
+        with patch(
+            "openagents_cli.main._prompt_provider_choice", side_effect=fake_choice
+        ):
             result = _select_zai_endpoint(coding_url)
 
         # Default should point at index 2 (coding-global)
         assert captured["default"] == 2
         assert result == coding_url
 
-    def test_custom_url_active_defaults_to_custom_option(self, config_home, monkeypatch):
+    def test_custom_url_active_defaults_to_custom_option(
+        self, config_home, monkeypatch
+    ):
         """When a non-standard URL is active, Custom proxy should be default."""
         from openagents_cli.auth import ZAI_ENDPOINTS
         from openagents_cli.model_setup_flows import _select_zai_endpoint
@@ -550,9 +644,12 @@ class TestZaiEndpointPicker:
             captured["default"] = default
             return default
 
-        with patch("openagents_cli.main._prompt_provider_choice", side_effect=fake_choice), \
-             patch("builtins.input", return_value=""):
+        with (
+            patch(
+                "openagents_cli.main._prompt_provider_choice", side_effect=fake_choice
+            ),
+            patch("builtins.input", return_value=""),
+        ):
             _select_zai_endpoint(custom_url)
 
         assert captured["default"] == expected_default
-

@@ -8,13 +8,15 @@ Build the real image and verify the actual runtime behavior:
   4. Invalid UIDs are rejected
   5. The remapped user can write to the data volume
 """
+
 from __future__ import annotations
 
 from tests.docker.conftest import docker_exec_sh, start_container
 
 
 def test_puid_pgid_remaps_hermes_user(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """PUID=1000 PGID=1000 must remap the hermes user to UID 1000."""
     start_container(built_image, container_name, "PUID=1000", "PGID=1000")
@@ -39,10 +41,18 @@ def test_puid_pgid_remaps_hermes_user(
 
 
 def test_hermes_uid_gid_take_precedence_over_aliases(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """HERMES_UID/HERMES_GID must win over PUID/PGID when both are set."""
-    start_container(built_image, container_name, "HERMES_UID=2000", "HERMES_GID=2001", "PUID=1000", "PGID=1000")
+    start_container(
+        built_image,
+        container_name,
+        "HERMES_UID=2000",
+        "HERMES_GID=2001",
+        "PUID=1000",
+        "PGID=1000",
+    )
 
     r = docker_exec_sh(container_name, "id -u hermes", timeout=10)
     assert r.stdout.strip() == "2000", (
@@ -56,15 +66,14 @@ def test_hermes_uid_gid_take_precedence_over_aliases(
 
 
 def test_nas_low_uid_accepted(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """NAS-style low UIDs (99:100, common on Unraid) must be accepted."""
     start_container(built_image, container_name, "PUID=99", "PGID=100")
 
     r = docker_exec_sh(container_name, "id -u hermes", timeout=10)
-    assert r.stdout.strip() == "99", (
-        f"expected hermes UID 99, got: {r.stdout.strip()}"
-    )
+    assert r.stdout.strip() == "99", f"expected hermes UID 99, got: {r.stdout.strip()}"
 
     r = docker_exec_sh(container_name, "id -g hermes", timeout=10)
     assert r.stdout.strip() == "100", (
@@ -73,7 +82,8 @@ def test_nas_low_uid_accepted(
 
 
 def test_remap_enables_data_volume_writes(
-    built_image: str, container_name: str,
+    built_image: str,
+    container_name: str,
 ) -> None:
     """After remap, the hermes user must be able to write to /opt/data."""
     start_container(built_image, container_name, "PUID=1000", "PGID=1000")

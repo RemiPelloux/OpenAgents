@@ -14,6 +14,7 @@ locally so the agent doesn't re-download for every query.
 
 Output CSV columns match the original `fetch_icij_offshore.py` contract.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -80,7 +81,10 @@ def _download(dest: Path, force: bool = False) -> Path:
 def _open_csv(zf: zipfile.ZipFile, name_pattern: str):
     """Open the first CSV matching name_pattern (case-insensitive substring)."""
     for info in zf.infolist():
-        if name_pattern.lower() in info.filename.lower() and info.filename.lower().endswith(".csv"):
+        if (
+            name_pattern.lower() in info.filename.lower()
+            and info.filename.lower().endswith(".csv")
+        ):
             return zf.open(info), info.filename
     return None, None
 
@@ -122,7 +126,9 @@ def fetch(
 
     with zipfile.ZipFile(zip_path) as zf:
         for node_type, csv_substring in targets:
-            relevant_needles = [n for (k, n) in needles if k in {node_type, "Entity", "Officer"}] or []
+            relevant_needles = [
+                n for (k, n) in needles if k in {node_type, "Entity", "Officer"}
+            ] or []
             # Only scan a CSV if we have a needle that could plausibly match it,
             # or if we have ONLY a jurisdiction filter.
             applicable_needles = [n for (k, n) in needles if k == node_type]
@@ -148,27 +154,37 @@ def fetch(
                         matched = True  # jurisdiction-only sweep
                     if not matched:
                         continue
-                    jur = (row.get("jurisdiction_description") or row.get("country_codes") or "").strip()
-                    if jur_norm and jur_norm not in jur.upper() and jur_norm not in (row.get("countries") or "").upper():
+                    jur = (
+                        row.get("jurisdiction_description")
+                        or row.get("country_codes")
+                        or ""
+                    ).strip()
+                    if (
+                        jur_norm
+                        and jur_norm not in jur.upper()
+                        and jur_norm not in (row.get("countries") or "").upper()
+                    ):
                         continue
                     node_id = (row.get("node_id") or "").strip()
-                    rows.append(
-                        {
-                            "node_id": node_id,
-                            "name": name,
-                            "node_type": node_type,
-                            "country_codes": row.get("country_codes", "") or "",
-                            "countries": row.get("countries", "") or "",
-                            "jurisdiction": jur,
-                            "incorporation_date": row.get("incorporation_date", "") or "",
-                            "inactivation_date": row.get("inactivation_date", "") or "",
-                            "source": row.get("sourceID", "") or row.get("source", "") or "",
-                            "entity_url": (
-                                f"https://offshoreleaks.icij.org/nodes/{node_id}" if node_id else ""
-                            ),
-                            "connections": "",
-                        }
-                    )
+                    rows.append({
+                        "node_id": node_id,
+                        "name": name,
+                        "node_type": node_type,
+                        "country_codes": row.get("country_codes", "") or "",
+                        "countries": row.get("countries", "") or "",
+                        "jurisdiction": jur,
+                        "incorporation_date": row.get("incorporation_date", "") or "",
+                        "inactivation_date": row.get("inactivation_date", "") or "",
+                        "source": row.get("sourceID", "")
+                        or row.get("source", "")
+                        or "",
+                        "entity_url": (
+                            f"https://offshoreleaks.icij.org/nodes/{node_id}"
+                            if node_id
+                            else ""
+                        ),
+                        "connections": "",
+                    })
                     if len(rows) >= limit:
                         break
             if len(rows) >= limit:
@@ -197,9 +213,16 @@ def fetch(
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--entity", help="Search by entity name (substring, case-insensitive)")
-    p.add_argument("--officer", help="Search by officer / individual name (substring, case-insensitive)")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--entity", help="Search by entity name (substring, case-insensitive)"
+    )
+    p.add_argument(
+        "--officer",
+        help="Search by officer / individual name (substring, case-insensitive)",
+    )
     p.add_argument("--jurisdiction", help="Filter results by jurisdiction substring")
     p.add_argument("--limit", type=int, default=500)
     p.add_argument("--out", required=True)

@@ -64,7 +64,9 @@ def _install_fake_tools_package(*, credential_mounts=None):
 
     interrupt_event = threading.Event()
     sys.modules["tools.interrupt"] = types.SimpleNamespace(
-        set_interrupt=lambda value=True: interrupt_event.set() if value else interrupt_event.clear(),
+        set_interrupt=lambda value=True: interrupt_event.set()
+        if value
+        else interrupt_event.clear(),
         is_interrupted=lambda: interrupt_event.is_set(),
         _interrupt_event=interrupt_event,
     )
@@ -78,7 +80,9 @@ def _install_fake_tools_package(*, credential_mounts=None):
         def _prepare_command(self, command: str):
             return command, None
 
-    sys.modules["tools.environments.base"] = types.SimpleNamespace(BaseEnvironment=_DummyBaseEnvironment)
+    sys.modules["tools.environments.base"] = types.SimpleNamespace(
+        BaseEnvironment=_DummyBaseEnvironment
+    )
     sys.modules["tools.managed_tool_gateway"] = types.SimpleNamespace(
         resolve_managed_tool_gateway=lambda vendor: types.SimpleNamespace(
             vendor=vendor,
@@ -108,7 +112,9 @@ class _FakeResponse:
 
 def test_managed_modal_execute_polls_until_completed(monkeypatch):
     _install_fake_tools_package()
-    managed_modal = _load_tool_module("tools.environments.managed_modal", "environments/managed_modal.py")
+    managed_modal = _load_tool_module(
+        "tools.environments.managed_modal", "environments/managed_modal.py"
+    )
     modal_common = sys.modules["tools.environments.modal_utils"]
 
     calls = []
@@ -123,13 +129,18 @@ def test_managed_modal_execute_polls_until_completed(monkeypatch):
         if method == "GET" and "/execs/" in url:
             poll_count["value"] += 1
             if poll_count["value"] == 1:
-                return _FakeResponse(200, {"execId": url.rsplit("/", 1)[-1], "status": "running"})
-            return _FakeResponse(200, {
-                "execId": url.rsplit("/", 1)[-1],
-                "status": "completed",
-                "output": "hello",
-                "returncode": 0,
-            })
+                return _FakeResponse(
+                    200, {"execId": url.rsplit("/", 1)[-1], "status": "running"}
+                )
+            return _FakeResponse(
+                200,
+                {
+                    "execId": url.rsplit("/", 1)[-1],
+                    "status": "completed",
+                    "output": "hello",
+                    "returncode": 0,
+                },
+            )
         if method == "POST" and url.endswith("/terminate"):
             return _FakeResponse(200, {"status": "terminated"})
         raise AssertionError(f"Unexpected request: {method} {url}")
@@ -147,7 +158,9 @@ def test_managed_modal_execute_polls_until_completed(monkeypatch):
 
 def test_managed_modal_create_sends_a_stable_idempotency_key(monkeypatch):
     _install_fake_tools_package()
-    managed_modal = _load_tool_module("tools.environments.managed_modal", "environments/managed_modal.py")
+    managed_modal = _load_tool_module(
+        "tools.environments.managed_modal", "environments/managed_modal.py"
+    )
 
     create_headers = []
 
@@ -171,7 +184,9 @@ def test_managed_modal_create_sends_a_stable_idempotency_key(monkeypatch):
 
 def test_managed_modal_execute_cancels_on_interrupt(monkeypatch):
     interrupt_event = _install_fake_tools_package()
-    managed_modal = _load_tool_module("tools.environments.managed_modal", "environments/managed_modal.py")
+    managed_modal = _load_tool_module(
+        "tools.environments.managed_modal", "environments/managed_modal.py"
+    )
     modal_common = sys.modules["tools.environments.modal_utils"]
 
     calls = []
@@ -183,7 +198,9 @@ def test_managed_modal_execute_cancels_on_interrupt(monkeypatch):
         if method == "POST" and url.endswith("/execs"):
             return _FakeResponse(202, {"execId": json["execId"], "status": "running"})
         if method == "GET" and "/execs/" in url:
-            return _FakeResponse(200, {"execId": url.rsplit("/", 1)[-1], "status": "running"})
+            return _FakeResponse(
+                200, {"execId": url.rsplit("/", 1)[-1], "status": "running"}
+            )
         if method == "POST" and url.endswith("/cancel"):
             return _FakeResponse(202, {"status": "cancelling"})
         if method == "POST" and url.endswith("/terminate"):
@@ -206,14 +223,18 @@ def test_managed_modal_execute_cancels_on_interrupt(monkeypatch):
     }
     assert any(call[0] == "POST" and call[1].endswith("/cancel") for call in calls)
     poll_calls = [call for call in calls if call[0] == "GET" and "/execs/" in call[1]]
-    cancel_calls = [call for call in calls if call[0] == "POST" and call[1].endswith("/cancel")]
+    cancel_calls = [
+        call for call in calls if call[0] == "POST" and call[1].endswith("/cancel")
+    ]
     assert poll_calls[0][3] == (1.0, 5.0)
     assert cancel_calls[0][3] == (1.0, 5.0)
 
 
 def test_managed_modal_execute_returns_descriptive_error_on_missing_exec(monkeypatch):
     _install_fake_tools_package()
-    managed_modal = _load_tool_module("tools.environments.managed_modal", "environments/managed_modal.py")
+    managed_modal = _load_tool_module(
+        "tools.environments.managed_modal", "environments/managed_modal.py"
+    )
     modal_common = sys.modules["tools.environments.modal_utils"]
 
     def fake_request(method, url, headers=None, json=None, timeout=None):
@@ -238,9 +259,13 @@ def test_managed_modal_execute_returns_descriptive_error_on_missing_exec(monkeyp
     assert "not found" in result["output"].lower()
 
 
-def test_managed_modal_create_and_cleanup_preserve_gateway_persistence_fields(monkeypatch):
+def test_managed_modal_create_and_cleanup_preserve_gateway_persistence_fields(
+    monkeypatch,
+):
     _install_fake_tools_package()
-    managed_modal = _load_tool_module("tools.environments.managed_modal", "environments/managed_modal.py")
+    managed_modal = _load_tool_module(
+        "tools.environments.managed_modal", "environments/managed_modal.py"
+    )
 
     create_payloads = []
     terminate_payloads = []
@@ -263,27 +288,33 @@ def test_managed_modal_create_and_cleanup_preserve_gateway_persistence_fields(mo
     )
     env.cleanup()
 
-    assert create_payloads == [{
-        "image": "python:3.11",
-        "cwd": "/root",
-        "cpu": 1.0,
-        "memoryMiB": 5120.0,
-        "timeoutMs": 3_600_000,
-        "idleTimeoutMs": 300_000,
-        "persistentFilesystem": False,
-        "logicalKey": "task-managed-persist",
-    }]
+    assert create_payloads == [
+        {
+            "image": "python:3.11",
+            "cwd": "/root",
+            "cpu": 1.0,
+            "memoryMiB": 5120.0,
+            "timeoutMs": 3_600_000,
+            "idleTimeoutMs": 300_000,
+            "persistentFilesystem": False,
+            "logicalKey": "task-managed-persist",
+        }
+    ]
     assert terminate_payloads == [{"snapshotBeforeTerminate": False}]
 
 
 def test_managed_modal_rejects_host_credential_passthrough():
     _install_fake_tools_package(
-        credential_mounts=[{
-            "host_path": "/tmp/token.json",
-            "container_path": "/root/.hermes/token.json",
-        }]
+        credential_mounts=[
+            {
+                "host_path": "/tmp/token.json",
+                "container_path": "/root/.hermes/token.json",
+            }
+        ]
     )
-    managed_modal = _load_tool_module("tools.environments.managed_modal", "environments/managed_modal.py")
+    managed_modal = _load_tool_module(
+        "tools.environments.managed_modal", "environments/managed_modal.py"
+    )
 
     with pytest.raises(ValueError, match="credential-file passthrough"):
         managed_modal.ManagedModalEnvironment(image="python:3.11")
@@ -291,7 +322,9 @@ def test_managed_modal_rejects_host_credential_passthrough():
 
 def test_managed_modal_execute_times_out_and_cancels(monkeypatch):
     _install_fake_tools_package()
-    managed_modal = _load_tool_module("tools.environments.managed_modal", "environments/managed_modal.py")
+    managed_modal = _load_tool_module(
+        "tools.environments.managed_modal", "environments/managed_modal.py"
+    )
     modal_common = sys.modules["tools.environments.modal_utils"]
 
     calls = []
@@ -304,7 +337,9 @@ def test_managed_modal_execute_times_out_and_cancels(monkeypatch):
         if method == "POST" and url.endswith("/execs"):
             return _FakeResponse(202, {"execId": json["execId"], "status": "running"})
         if method == "GET" and "/execs/" in url:
-            return _FakeResponse(200, {"execId": url.rsplit("/", 1)[-1], "status": "running"})
+            return _FakeResponse(
+                200, {"execId": url.rsplit("/", 1)[-1], "status": "running"}
+            )
         if method == "POST" and url.endswith("/cancel"):
             return _FakeResponse(202, {"status": "cancelling"})
         if method == "POST" and url.endswith("/terminate"):

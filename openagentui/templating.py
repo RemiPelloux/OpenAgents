@@ -31,14 +31,18 @@ def _stringify(value: Any) -> str:
         return str(value)
 
 
-def _resolve_path(path: str, variables: Dict[str, Any], node_results: Dict[str, Any]) -> Any:
+def _resolve_path(
+    path: str, variables: Dict[str, Any], node_results: Dict[str, Any]
+) -> Any:
     parts = path.split(".")
     if parts[0] == "nodes" and len(parts) >= 2:
         node_id = parts[1]
         result = node_results.get(node_id)
         if result is None:
             return None
-        value: Any = result.output if hasattr(result, "output") else result.get("output")
+        value: Any = (
+            result.output if hasattr(result, "output") else result.get("output")
+        )
         # parts[2] is the literal "output" keyword in the "nodes.<id>.output[.field...]"
         # convention — already consumed above, so drilling continues from parts[3:].
         for part in parts[3:]:
@@ -57,7 +61,9 @@ def _resolve_path(path: str, variables: Dict[str, Any], node_results: Dict[str, 
     return value
 
 
-def render(text: Any, *, variables: Dict[str, Any], node_results: Dict[str, Any]) -> Any:
+def render(
+    text: Any, *, variables: Dict[str, Any], node_results: Dict[str, Any]
+) -> Any:
     """Substitute ``{{ path }}`` placeholders in ``text``.
 
     Non-string input is returned unchanged (node config fields are
@@ -73,5 +79,10 @@ def render(text: Any, *, variables: Dict[str, Any], node_results: Dict[str, Any]
     return _PLACEHOLDER_RE.sub(_sub, text)
 
 
-def render_dict(data: Dict[str, Any], *, variables: Dict[str, Any], node_results: Dict[str, Any]) -> Dict[str, Any]:
-    return {k: render(v, variables=variables, node_results=node_results) for k, v in data.items()}
+def render_dict(
+    data: Dict[str, Any], *, variables: Dict[str, Any], node_results: Dict[str, Any]
+) -> Dict[str, Any]:
+    return {
+        k: render(v, variables=variables, node_results=node_results)
+        for k, v in data.items()
+    }

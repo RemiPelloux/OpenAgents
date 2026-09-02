@@ -12,77 +12,81 @@ from openagentui.schema import Workflow
 
 
 def _linear_workflow() -> Workflow:
-    return Workflow.from_dict(
-        {
-            "id": "wf_linear",
-            "name": "Linear",
-            "nodes": [
-                {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
-                {
-                    "id": "set1",
-                    "type": "set-state",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"stateKey": "greeting", "stateValue": "hi {{ name }}"},
-                },
-                {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
-            ],
-            "edges": [
-                {"id": "e1", "source": "start", "target": "set1"},
-                {"id": "e2", "source": "set1", "target": "end"},
-            ],
-        }
-    )
+    return Workflow.from_dict({
+        "id": "wf_linear",
+        "name": "Linear",
+        "nodes": [
+            {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
+            {
+                "id": "set1",
+                "type": "set-state",
+                "position": {"x": 0, "y": 0},
+                "data": {"stateKey": "greeting", "stateValue": "hi {{ name }}"},
+            },
+            {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
+        ],
+        "edges": [
+            {"id": "e1", "source": "start", "target": "set1"},
+            {"id": "e2", "source": "set1", "target": "end"},
+        ],
+    })
 
 
 def _branching_workflow() -> Workflow:
-    return Workflow.from_dict(
-        {
-            "id": "wf_branch",
-            "name": "Branch",
-            "nodes": [
-                {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
-                {"id": "check", "type": "if-else", "position": {"x": 0, "y": 0}, "data": {"condition": "count > 3"}},
-                {
-                    "id": "big",
-                    "type": "set-state",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"stateKey": "size", "stateValue": "big"},
-                },
-                {
-                    "id": "small",
-                    "type": "set-state",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"stateKey": "size", "stateValue": "small"},
-                },
-                {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
-            ],
-            "edges": [
-                {"id": "e1", "source": "start", "target": "check"},
-                {"id": "e2", "source": "check", "target": "big", "sourceHandle": "true"},
-                {"id": "e3", "source": "check", "target": "small", "sourceHandle": "false"},
-                {"id": "e4", "source": "big", "target": "end"},
-                {"id": "e5", "source": "small", "target": "end"},
-            ],
-        }
-    )
+    return Workflow.from_dict({
+        "id": "wf_branch",
+        "name": "Branch",
+        "nodes": [
+            {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
+            {
+                "id": "check",
+                "type": "if-else",
+                "position": {"x": 0, "y": 0},
+                "data": {"condition": "count > 3"},
+            },
+            {
+                "id": "big",
+                "type": "set-state",
+                "position": {"x": 0, "y": 0},
+                "data": {"stateKey": "size", "stateValue": "big"},
+            },
+            {
+                "id": "small",
+                "type": "set-state",
+                "position": {"x": 0, "y": 0},
+                "data": {"stateKey": "size", "stateValue": "small"},
+            },
+            {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
+        ],
+        "edges": [
+            {"id": "e1", "source": "start", "target": "check"},
+            {"id": "e2", "source": "check", "target": "big", "sourceHandle": "true"},
+            {"id": "e3", "source": "check", "target": "small", "sourceHandle": "false"},
+            {"id": "e4", "source": "big", "target": "end"},
+            {"id": "e5", "source": "small", "target": "end"},
+        ],
+    })
 
 
 def _approval_workflow() -> Workflow:
-    return Workflow.from_dict(
-        {
-            "id": "wf_approval",
-            "name": "Approval",
-            "nodes": [
-                {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
-                {"id": "gate", "type": "user-approval", "position": {"x": 0, "y": 0}, "data": {"approvalMessage": "ok?"}},
-                {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
-            ],
-            "edges": [
-                {"id": "e1", "source": "start", "target": "gate"},
-                {"id": "e2", "source": "gate", "target": "end", "sourceHandle": "approved"},
-            ],
-        }
-    )
+    return Workflow.from_dict({
+        "id": "wf_approval",
+        "name": "Approval",
+        "nodes": [
+            {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
+            {
+                "id": "gate",
+                "type": "user-approval",
+                "position": {"x": 0, "y": 0},
+                "data": {"approvalMessage": "ok?"},
+            },
+            {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
+        ],
+        "edges": [
+            {"id": "e1", "source": "start", "target": "gate"},
+            {"id": "e2", "source": "gate", "target": "end", "sourceHandle": "approved"},
+        ],
+    })
 
 
 def test_run_workflow_completes_linear_graph():
@@ -134,7 +138,12 @@ def test_resume_execution_unknown_id_raises():
 
 
 def test_run_workflow_missing_start_node_fails():
-    workflow = Workflow.from_dict({"id": "wf_empty", "name": "Empty", "nodes": [], "edges": []})
+    workflow = Workflow.from_dict({
+        "id": "wf_empty",
+        "name": "Empty",
+        "nodes": [],
+        "edges": [],
+    })
     execution = run_workflow(workflow)
     assert execution.status == "failed"
     assert "no nodes" in execution.error or "start" in execution.error

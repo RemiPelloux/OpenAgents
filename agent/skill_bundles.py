@@ -183,7 +183,9 @@ def scan_bundles() -> Dict[str, Dict[str, Any]]:
         if key in out:
             logger.warning(
                 "Duplicate bundle slug %s from %s; keeping %s",
-                key, f, out[key]["path"],
+                key,
+                f,
+                out[key]["path"],
             )
             continue
         out[key] = info
@@ -225,8 +227,11 @@ def reload_bundles() -> Dict[str, Any]:
     the same display logic. Returns a dict with ``added``, ``removed``,
     ``unchanged``, and ``total`` keys.
     """
+
     def _snapshot(cmds: Dict[str, Dict[str, Any]]) -> Dict[str, str]:
-        return {k.lstrip("/"): (v or {}).get("description", "") for k, v in cmds.items()}
+        return {
+            k.lstrip("/"): (v or {}).get("description", "") for k, v in cmds.items()
+        }
 
     before = _snapshot(_bundles_cache)
     new = scan_bundles()
@@ -297,13 +302,12 @@ def build_bundle_invocation_message(
 
         try:
             from tools.skill_usage import bump_use
+
             bump_use(skill_name)
         except Exception:
             pass
 
-        activation_note = (
-            f'[Loaded as part of the "{bundle_name}" skill bundle.]'
-        )
+        activation_note = f'[Loaded as part of the "{bundle_name}" skill bundle.]'
         skill_blocks.append(
             _build_skill_message(
                 loaded_skill,
@@ -332,9 +336,7 @@ def build_bundle_invocation_message(
     if extra_instruction:
         header_lines.extend(["", f"Bundle instruction: {extra_instruction}"])
     if user_instruction:
-        header_lines.extend(
-            ["", f"User instruction: {user_instruction}"]
-        )
+        header_lines.extend(["", f"User instruction: {user_instruction}"])
 
     header = "\n".join(header_lines)
     return ("\n\n".join([header, *skill_blocks]), loaded_names, missing)

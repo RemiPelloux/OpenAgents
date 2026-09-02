@@ -46,9 +46,7 @@ logger = logging.getLogger(__name__)
 # instead of the transcript appearing to silently reset. Keep the marker phrase
 # intact if you reword COMPACTION_STATUS.
 COMPACTION_STATUS_MARKER = "Compacting context"
-COMPACTION_STATUS = (
-    f"🗜️ {COMPACTION_STATUS_MARKER} — summarizing earlier conversation so I can continue..."
-)
+COMPACTION_STATUS = f"🗜️ {COMPACTION_STATUS_MARKER} — summarizing earlier conversation so I can continue..."
 
 
 def _compression_lock_holder(agent: Any) -> str:
@@ -63,6 +61,7 @@ def _compression_lock_holder(agent: Any) -> str:
     we want each acquire to be unique).
     """
     import threading
+
     return (
         f"pid={os.getpid()}"
         f":tid={threading.get_ident()}"
@@ -111,9 +110,11 @@ def check_compression_model_feasibility(agent: Any) -> None:
             main_runtime=agent._current_main_runtime(),
         )
         if client is None or not aux_model:
-            fb_client, fb_model, fb_label = _try_configured_fallback_for_unavailable_client(
-                "compression",
-                _aux_cfg_provider,
+            fb_client, fb_model, fb_label = (
+                _try_configured_fallback_for_unavailable_client(
+                    "compression",
+                    _aux_cfg_provider,
+                )
             )
             if fb_client is not None and fb_model:
                 client, aux_model = fb_client, fb_model
@@ -151,17 +152,27 @@ def check_compression_model_feasibility(agent: Any) -> None:
         # fallbacks, which don't require auth — pass empty string rather
         # than minting a bearer JWT just to look up a context length.
         _raw_aux_key = getattr(client, "api_key", "")
-        aux_api_key = "" if (callable(_raw_aux_key) and not isinstance(_raw_aux_key, str)) else str(_raw_aux_key or "")
+        aux_api_key = (
+            ""
+            if (callable(_raw_aux_key) and not isinstance(_raw_aux_key, str))
+            else str(_raw_aux_key or "")
+        )
 
         aux_context = get_model_context_length(
             aux_model,
             base_url=aux_base_url,
             api_key=aux_api_key,
-            config_context_length=getattr(agent, "_aux_compression_context_length_config", None),
+            config_context_length=getattr(
+                agent, "_aux_compression_context_length_config", None
+            ),
             # Each model must be resolved with its own provider so that
             # provider-specific paths (e.g. Bedrock static table, OpenRouter API)
             # are invoked for the correct client, not inherited from the main model.
-            provider=(_aux_cfg_provider if _aux_cfg_provider and _aux_cfg_provider != "auto" else getattr(agent, "provider", "")),
+            provider=(
+                _aux_cfg_provider
+                if _aux_cfg_provider and _aux_cfg_provider != "auto"
+                else getattr(agent, "provider", "")
+            ),
             custom_providers=agent._custom_providers,
         )
 
@@ -202,9 +213,7 @@ def check_compression_model_feasibility(agent: Any) -> None:
             # sensible number rather than the original too-high value.
             main_ctx = agent.context_compressor.context_length
             if main_ctx:
-                agent.context_compressor.threshold_percent = (
-                    new_threshold / main_ctx
-                )
+                agent.context_compressor.threshold_percent = new_threshold / main_ctx
             safe_pct = int((aux_context / main_ctx) * 100) if main_ctx else 50
             # Build human-readable "model (provider)" labels for both
             # the main model and the compression model so users can
@@ -221,15 +230,14 @@ def check_compression_model_feasibility(agent: Any) -> None:
             if not _aux_provider_label:
                 try:
                     from urllib.parse import urlparse
+
                     _aux_provider_label = (
                         urlparse(aux_base_url).hostname or aux_base_url
                     )
                 except Exception:
                     _aux_provider_label = aux_base_url or "auto"
             _main_label = (
-                f"{_main_model} ({_main_provider})"
-                if _main_provider
-                else _main_model
+                f"{_main_model} ({_main_provider})" if _main_provider else _main_model
             )
             _aux_label = f"{aux_model} ({_aux_provider_label})"
             msg = (
@@ -265,9 +273,7 @@ def check_compression_model_feasibility(agent: Any) -> None:
         # so the session refuses to start.
         raise
     except Exception as exc:
-        logger.debug(
-            "Compression feasibility check failed (non-fatal): %s", exc
-        )
+        logger.debug("Compression feasibility check failed (non-fatal): %s", exc)
 
 
 def replay_compression_warning(agent: Any) -> None:
@@ -288,7 +294,9 @@ def replay_compression_warning(agent: Any) -> None:
             pass
 
 
-def conversation_history_after_compression(agent: Any, messages: list) -> Optional[list]:
+def conversation_history_after_compression(
+    agent: Any, messages: list
+) -> Optional[list]:
     """Return the correct flush baseline after a compression boundary.
 
     Legacy compression rotates to a fresh child session. That child has not
@@ -373,8 +381,10 @@ def compress_context(
     compacted_in_place = False
     logger.info(
         "context compression started: session=%s messages=%d tokens=~%s model=%s focus=%r",
-        agent.session_id or "none", _pre_msg_count,
-        f"{approx_tokens:,}" if approx_tokens else "unknown", agent.model,
+        agent.session_id or "none",
+        _pre_msg_count,
+        f"{approx_tokens:,}" if approx_tokens else "unknown",
+        agent.model,
         focus_topic,
     )
     agent._emit_status(COMPACTION_STATUS)
@@ -438,7 +448,9 @@ def compress_context(
                     "(%s: %s) — proceeding without lock. This usually means a "
                     "stale in-memory module after an update; restart the "
                     "process (or `hermes update`) to resync.",
-                    _lock_sid, type(_lock_err).__name__, _lock_err,
+                    _lock_sid,
+                    type(_lock_err).__name__,
+                    _lock_err,
                 )
             _lock_acquired = True  # treat as acquired-but-unlocked; proceed
         if not _lock_acquired:
@@ -449,7 +461,8 @@ def compress_context(
             logger.warning(
                 "compression skipped: another path is compressing session=%s "
                 "(holder=%s) — returning messages unchanged to avoid session fork",
-                _lock_sid, existing,
+                _lock_sid,
+                existing,
             )
             _lock_holder = None  # don't release a lock we don't own
             # Surface to the user once — quiet for downstream auto-compress loops
@@ -484,11 +497,15 @@ def compress_context(
             pass
 
     try:
-        compressed = agent.context_compressor.compress(messages, current_tokens=approx_tokens, focus_topic=focus_topic, force=force)
+        compressed = agent.context_compressor.compress(
+            messages, current_tokens=approx_tokens, focus_topic=focus_topic, force=force
+        )
     except TypeError:
         # Plugin context engine with strict signature that doesn't accept
         # focus_topic / force — fall back to calling without them.
-        compressed = agent.context_compressor.compress(messages, current_tokens=approx_tokens)
+        compressed = agent.context_compressor.compress(
+            messages, current_tokens=approx_tokens
+        )
     except BaseException:
         # ANY exception during compress() must release the lock so the
         # session isn't permanently blocked from future compression.
@@ -501,7 +518,10 @@ def compress_context(
     # session has logically ended), and let auto-compress callers detect
     # the no-op via len(returned) == len(input).
     if getattr(agent.context_compressor, "_last_compress_aborted", False):
-        _err = getattr(agent.context_compressor, "_last_summary_error", None) or "unknown error"
+        _err = (
+            getattr(agent.context_compressor, "_last_summary_error", None)
+            or "unknown error"
+        )
         if getattr(agent, "_last_compression_summary_warning", None) != _err:
             agent._last_compression_summary_warning = _err
             agent._emit_warning(
@@ -528,8 +548,12 @@ def compress_context(
         # and get recovered by retrying on main?  Surface that so users
         # know their auxiliary.compression.model setting is broken even
         # though compression succeeded.
-        _aux_fail_model = getattr(agent.context_compressor, "_last_aux_model_failure_model", None)
-        _aux_fail_err = getattr(agent.context_compressor, "_last_aux_model_failure_error", None)
+        _aux_fail_model = getattr(
+            agent.context_compressor, "_last_aux_model_failure_model", None
+        )
+        _aux_fail_err = getattr(
+            agent.context_compressor, "_last_aux_model_failure_error", None
+        )
         if _aux_fail_model:
             # Dedup on (model, error) so we don't spam on every compaction
             _aux_key = (_aux_fail_model, _aux_fail_err)
@@ -600,7 +624,9 @@ def compress_context(
                 old_title = agent._session_db.get_session_title(agent.session_id)
                 agent._session_db.end_session(agent.session_id, "compression")
                 old_session_id = agent.session_id
-                agent.session_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+                agent.session_id = (
+                    f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+                )
                 # Ordering contract: the agent thread updates the contextvar here;
                 # the gateway propagates to SessionEntry after run_in_executor returns.
                 try:
@@ -628,7 +654,8 @@ def compress_context(
                 try:
                     agent._session_db.create_session(
                         session_id=agent.session_id,
-                        source=agent.platform or os.environ.get("HERMES_SESSION_SOURCE", "cli"),
+                        source=agent.platform
+                        or os.environ.get("HERMES_SESSION_SOURCE", "cli"),
                         model=agent.model,
                         model_config=agent._session_init_model_config,
                         parent_session_id=old_session_id,
@@ -646,16 +673,19 @@ def compress_context(
                     logger.warning(
                         "Compression child session create failed (%s) — "
                         "rolling back to parent session %s to avoid an orphan.",
-                        _cs_err, old_session_id,
+                        _cs_err,
+                        old_session_id,
                     )
                     agent.session_id = old_session_id
                     try:
                         from gateway.session_context import set_current_session_id
+
                         set_current_session_id(agent.session_id)
                     except Exception:
                         os.environ["HERMES_SESSION_ID"] = agent.session_id
                     try:
                         from openagents_logging import set_session_context
+
                         set_session_context(agent.session_id)
                     except Exception:
                         pass
@@ -678,13 +708,18 @@ def compress_context(
                 # active goal silently dies at the boundary (#33618).
                 try:
                     from openagents_cli.goals import migrate_goal_to_session
-                    migrate_goal_to_session(old_session_id, agent.session_id, reason="compression")
+
+                    migrate_goal_to_session(
+                        old_session_id, agent.session_id, reason="compression"
+                    )
                 except Exception as _goal_err:
                     logger.debug("Could not migrate goal on compression: %s", _goal_err)
                 # Auto-number the title for the continuation session
                 if old_title:
                     try:
-                        new_title = agent._session_db.get_next_title_in_lineage(old_title)
+                        new_title = agent._session_db.get_next_title_in_lineage(
+                            old_title
+                        )
                         agent._session_db.set_session_title(agent.session_id, new_title)
                     except (ValueError, Exception) as e:
                         logger.debug("Could not propagate title on compression: %s", e)
@@ -704,10 +739,15 @@ def compress_context(
             if locals().get("old_session_id") is None and not in_place:
                 logger.warning(
                     "Compression rotation aborted and rolled back to the "
-                    "parent session (%s): %s", agent.session_id or "?", e,
+                    "parent session (%s): %s",
+                    agent.session_id or "?",
+                    e,
                 )
             else:
-                logger.warning("Session DB compression split failed — new session will NOT be indexed: %s", e)
+                logger.warning(
+                    "Session DB compression split failed — new session will NOT be indexed: %s",
+                    e,
+                )
 
     # Compaction-boundary bookkeeping, computed once. `old_session_id` is only
     # bound in the rotation branch; in-place leaves it unset. `_boundary_parent`
@@ -773,13 +813,16 @@ def compress_context(
     # transcript was compacted on the same id rather than rotated.
     if getattr(agent, "event_callback", None):
         try:
-            agent.event_callback("session:compress", {
-                "platform": agent.platform or "",
-                "session_id": agent.session_id,
-                "old_session_id": _old_sid or "",
-                "in_place": in_place,
-                "compression_count": agent.context_compressor.compression_count,
-            })
+            agent.event_callback(
+                "session:compress",
+                {
+                    "platform": agent.platform or "",
+                    "session_id": agent.session_id,
+                    "old_session_id": _old_sid or "",
+                    "in_place": in_place,
+                    "compression_count": agent.context_compressor.compression_count,
+                },
+            )
         except Exception as e:
             logger.debug("event_callback error on session:compress: %s", e)
 
@@ -807,13 +850,16 @@ def compress_context(
     # file it needs the full content, not a "file unchanged" stub.
     try:
         from tools.file_tools import reset_file_dedup
+
         reset_file_dedup(task_id)
     except Exception:
         pass
 
     logger.info(
         "context compression done: session=%s messages=%d->%d rough_tokens=~%s awaiting_real_usage=true",
-        agent.session_id or "none", _pre_msg_count, len(compressed),
+        agent.session_id or "none",
+        _pre_msg_count,
+        len(compressed),
         f"{_compressed_est:,}",
     )
     # Release the lock on the OLD session_id only AFTER rotation completed
@@ -884,10 +930,12 @@ def try_shrink_image_parts_in_messages(
         try:
             import base64 as _b64_dim
             import io as _io_dim
+
             header_d, _, data_d = data_url.partition(",")
             if not data_d or not data_url.startswith("data:"):
                 return None
             from PIL import Image as _PILImage
+
             with _PILImage.open(_io_dim.BytesIO(_b64_dim.b64decode(data_d))) as _img:
                 return _img.size
         except Exception:
@@ -932,17 +980,24 @@ def try_shrink_image_parts_in_messages(
             header, _, data = url.partition(",")
             mime = "image/jpeg"
             if header.startswith("data:"):
-                mime_part = header[len("data:"):].split(";", 1)[0].strip()
+                mime_part = header[len("data:") :].split(";", 1)[0].strip()
                 if mime_part.startswith("image/"):
                     mime = mime_part
             import base64 as _b64
+
             raw = _b64.b64decode(data)
             suffix = {
-                "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp",
-                "image/jpeg": ".jpg", "image/jpg": ".jpg", "image/bmp": ".bmp",
+                "image/png": ".png",
+                "image/gif": ".gif",
+                "image/webp": ".webp",
+                "image/jpeg": ".jpg",
+                "image/jpg": ".jpg",
+                "image/bmp": ".bmp",
             }.get(mime, ".jpg")
             tmp = tempfile.NamedTemporaryFile(
-                prefix="hermes_shrink_", suffix=suffix, delete=False,
+                prefix="hermes_shrink_",
+                suffix=suffix,
+                delete=False,
             )
             try:
                 tmp.write(raw)
@@ -1013,7 +1068,7 @@ def try_shrink_image_parts_in_messages(
         header, _, data = data_url.partition(",")
         media_type = "image/jpeg"
         if header.startswith("data:"):
-            candidate = header[len("data:"):].split(";", 1)[0].strip()
+            candidate = header[len("data:") :].split(";", 1)[0].strip()
             if candidate.startswith("image/"):
                 media_type = candidate
         source["type"] = "base64"
@@ -1064,7 +1119,8 @@ def try_shrink_image_parts_in_messages(
     if changed_count:
         logger.info(
             "image-shrink recovery: re-encoded %d image part(s) to fit under %.0f MB",
-            changed_count, target_bytes / (1024 * 1024),
+            changed_count,
+            target_bytes / (1024 * 1024),
         )
     if unshrinkable_oversized:
         # At least one oversized image could not be shrunk under the target.
@@ -1074,7 +1130,8 @@ def try_shrink_image_parts_in_messages(
         logger.warning(
             "image-shrink recovery: %d oversized image part(s) could not be "
             "shrunk under %.0f MB — not retrying (would re-send rejected payload)",
-            unshrinkable_oversized, target_bytes / (1024 * 1024),
+            unshrinkable_oversized,
+            target_bytes / (1024 * 1024),
         )
         return False
     return changed_count > 0

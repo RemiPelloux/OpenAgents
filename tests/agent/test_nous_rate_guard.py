@@ -115,7 +115,10 @@ class TestNousRateLimitRemaining:
         assert nous_rate_limit_remaining() is None
 
     def test_returns_remaining_seconds_when_active(self, rate_guard_env):
-        from agent.nous_rate_guard import record_nous_rate_limit, nous_rate_limit_remaining
+        from agent.nous_rate_guard import (
+            record_nous_rate_limit,
+            nous_rate_limit_remaining,
+        )
 
         record_nous_rate_limit(headers={"x-ratelimit-reset-requests-1h": "600"})
         remaining = nous_rate_limit_remaining()
@@ -129,7 +132,9 @@ class TestNousRateLimitRemaining:
         state_dir = os.path.dirname(_state_path())
         os.makedirs(state_dir, exist_ok=True)
         with open(_state_path(), "w") as f:
-            json.dump({"reset_at": time.time() - 10, "recorded_at": time.time() - 100}, f)
+            json.dump(
+                {"reset_at": time.time() - 10, "recorded_at": time.time() - 100}, f
+            )
 
         assert nous_rate_limit_remaining() is None
         # File should be cleaned up
@@ -234,10 +239,15 @@ class TestAuxiliaryClientIntegration:
 
         # Mock _read_nous_auth to return valid creds (would normally succeed)
         import agent.auxiliary_client as aux
-        monkeypatch.setattr(aux, "_read_nous_auth", lambda: {
-            "access_token": "test-token",
-            "inference_base_url": "https://api.nous.test/v1",
-        })
+
+        monkeypatch.setattr(
+            aux,
+            "_read_nous_auth",
+            lambda: {
+                "access_token": "test-token",
+                "inference_base_url": "https://api.nous.test/v1",
+            },
+        )
 
         result = aux._try_nous()
         assert result == (None, None)
@@ -314,9 +324,10 @@ class TestIsGenuineNousRateLimit:
 
         assert is_genuine_nous_rate_limit(headers=None) is False
         assert is_genuine_nous_rate_limit(headers={}) is False
-        assert is_genuine_nous_rate_limit(
-            headers={"content-type": "application/json"}
-        ) is False
+        assert (
+            is_genuine_nous_rate_limit(headers={"content-type": "application/json"})
+            is False
+        )
 
     def test_exhausted_bucket_with_short_reset_is_not_genuine(self):
         # remaining == 0 but reset in < 60s: almost certainly a
@@ -354,9 +365,10 @@ class TestIsGenuineNousRateLimit:
             "x-ratelimit-reset-tokens-1h": "2000",
         }
         last_state = parse_rate_limit_headers(prior_headers, provider="nous")
-        assert is_genuine_nous_rate_limit(
-            headers=None, last_known_state=last_state
-        ) is True
+        assert (
+            is_genuine_nous_rate_limit(headers=None, last_known_state=last_state)
+            is True
+        )
 
     def test_last_known_state_all_healthy_stays_upstream(self):
         # Prior state was healthy; bare 429 arrives; should be treated
@@ -379,13 +391,12 @@ class TestIsGenuineNousRateLimit:
             "x-ratelimit-reset-tokens-1h": "2000",
         }
         last_state = parse_rate_limit_headers(prior_headers, provider="nous")
-        assert is_genuine_nous_rate_limit(
-            headers=None, last_known_state=last_state
-        ) is False
+        assert (
+            is_genuine_nous_rate_limit(headers=None, last_known_state=last_state)
+            is False
+        )
 
     def test_none_last_state_and_no_headers_is_upstream(self):
         from agent.nous_rate_guard import is_genuine_nous_rate_limit
 
-        assert is_genuine_nous_rate_limit(
-            headers=None, last_known_state=None
-        ) is False
+        assert is_genuine_nous_rate_limit(headers=None, last_known_state=None) is False

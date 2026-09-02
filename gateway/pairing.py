@@ -41,13 +41,13 @@ ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 8
 
 # Timing constants
-CODE_TTL_SECONDS = 3600             # Codes expire after 1 hour
-RATE_LIMIT_SECONDS = 600            # 1 request per user per 10 minutes
-LOCKOUT_SECONDS = 3600              # Lockout duration after too many failures
+CODE_TTL_SECONDS = 3600  # Codes expire after 1 hour
+RATE_LIMIT_SECONDS = 600  # 1 request per user per 10 minutes
+LOCKOUT_SECONDS = 3600  # Lockout duration after too many failures
 
 # Limits
-MAX_PENDING_PER_PLATFORM = 3        # Max pending codes per platform
-MAX_FAILED_ATTEMPTS = 5             # Failed approvals before lockout
+MAX_PENDING_PER_PLATFORM = 3  # Max pending codes per platform
+MAX_FAILED_ATTEMPTS = 5  # Failed approvals before lockout
 
 PAIRING_DIR = get_openagents_dir("platforms/pairing", "pairing")
 
@@ -317,8 +317,9 @@ class PairingStore:
             self._save_json(self._pending_path(platform), pending)
 
             # Add to approved list
-            self._approve_user(platform, matched_entry["user_id"],
-                               matched_entry.get("user_name", ""))
+            self._approve_user(
+                platform, matched_entry["user_id"], matched_entry.get("user_name", "")
+            )
 
             return {
                 "user_id": matched_entry["user_id"],
@@ -348,7 +349,9 @@ class PairingStore:
                         continue
                     age_min = int((time.time() - created_at) / 60)
                     hash_val = info.get("hash")
-                    code_display = hash_val[:8] if isinstance(hash_val, str) else "legacy"
+                    code_display = (
+                        hash_val[:8] if isinstance(hash_val, str) else "legacy"
+                    )
                     results.append({
                         "platform": p,
                         "code": code_display,
@@ -407,8 +410,11 @@ class PairingStore:
             lockout_key = f"_lockout:{platform}"
             limits[lockout_key] = time.time() + LOCKOUT_SECONDS
             limits[fail_key] = 0  # Reset counter
-            print(f"[pairing] Platform {platform} locked out for {LOCKOUT_SECONDS}s "
-                  f"after {MAX_FAILED_ATTEMPTS} failed attempts", flush=True)
+            print(
+                f"[pairing] Platform {platform} locked out for {LOCKOUT_SECONDS}s "
+                f"after {MAX_FAILED_ATTEMPTS} failed attempts",
+                flush=True,
+            )
         self._save_json(self._rate_limit_path(), limits)
 
     # ----- Cleanup -----

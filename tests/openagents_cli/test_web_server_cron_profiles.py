@@ -51,7 +51,9 @@ def test_call_cron_for_profile_routes_storage_and_restores_globals(isolated_prof
 
 
 @pytest.mark.asyncio
-async def test_list_cron_jobs_all_includes_default_and_named_profiles(isolated_profiles):
+async def test_list_cron_jobs_all_includes_default_and_named_profiles(
+    isolated_profiles,
+):
     from openagents_cli import web_server
 
     default_job = web_server._call_cron_for_profile(
@@ -78,7 +80,9 @@ async def test_list_cron_jobs_all_includes_default_and_named_profiles(isolated_p
     assert by_id[default_job["id"]]["hermes_home"] == str(isolated_profiles["default"])
     assert by_id[worker_job["id"]]["profile"] == "worker_alpha"
     assert by_id[worker_job["id"]]["is_default_profile"] is False
-    assert by_id[worker_job["id"]]["hermes_home"] == str(isolated_profiles["worker_alpha"])
+    assert by_id[worker_job["id"]]["hermes_home"] == str(
+        isolated_profiles["worker_alpha"]
+    )
 
 
 @pytest.mark.asyncio
@@ -160,7 +164,9 @@ async def test_cron_mutation_without_profile_finds_named_profile_job(isolated_pr
 
 
 @pytest.mark.asyncio
-async def test_update_cron_job_normalizes_dashboard_core_fields(isolated_profiles, tmp_path):
+async def test_update_cron_job_normalizes_dashboard_core_fields(
+    isolated_profiles, tmp_path
+):
     from openagents_cli import web_server
 
     scripts_dir = isolated_profiles["worker_alpha"] / "scripts"

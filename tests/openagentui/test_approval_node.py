@@ -7,7 +7,9 @@ from openagentui.schema import WorkflowExecution, WorkflowNode
 
 
 def _ctx(execution_id="exec1"):
-    node = WorkflowNode(id="approve1", type="user-approval", data={"approvalMessage": "Send it?"})
+    node = WorkflowNode(
+        id="approve1", type="user-approval", data={"approvalMessage": "Send it?"}
+    )
     execution = WorkflowExecution(id=execution_id, workflow_id="wf1")
     return NodeContext(node=node, execution=execution)
 

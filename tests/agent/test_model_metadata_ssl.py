@@ -62,7 +62,9 @@ class TestResolveRequestsVerify:
         clean_env.setenv("REQUESTS_CA_BUNDLE", str(other))
         assert _resolve_requests_verify() == bundle_file
 
-    def test_priority_requests_over_ssl_cert_file(self, clean_env, tmp_path, bundle_file):
+    def test_priority_requests_over_ssl_cert_file(
+        self, clean_env, tmp_path, bundle_file
+    ):
         other = tmp_path / "other.pem"
         other.write_text("stub")
         clean_env.setenv("REQUESTS_CA_BUNDLE", bundle_file)

@@ -11,6 +11,7 @@ in .env), the toggle was silently ignored in both `hermes chat` and
 Fix: bridge `security.redact_secrets` from config.yaml → `HERMES_REDACT_SECRETS`
 env var in `openagents_cli/main.py` BEFORE the `setup_logging()` call.
 """
+
 import os
 import subprocess
 import sys

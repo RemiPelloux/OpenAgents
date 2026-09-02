@@ -21,6 +21,7 @@ import time
 def _clear_approval_state():
     """Reset all module-level approval state between tests."""
     from tools import approval as mod
+
     mod._gateway_queues.clear()
     mod._gateway_notify_cbs.clear()
     mod._session_approved.clear()
@@ -44,8 +45,11 @@ class TestApprovalInterrupt:
         set_interrupt(False)
         self._saved_env = {
             k: os.environ.get(k)
-            for k in ("HERMES_GATEWAY_SESSION", "HERMES_YOLO_MODE",
-                      "HERMES_SESSION_KEY")
+            for k in (
+                "HERMES_GATEWAY_SESSION",
+                "HERMES_YOLO_MODE",
+                "HERMES_SESSION_KEY",
+            )
         }
         os.environ.pop("HERMES_YOLO_MODE", None)
         os.environ["HERMES_GATEWAY_SESSION"] = "1"

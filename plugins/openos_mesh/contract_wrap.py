@@ -53,21 +53,21 @@ def wrap_signed_hop(
     key = _resolve_signing_key(signer)
     if not contract_url or not key:
         if _strict_signature_required():
-            raise RuntimeError(f"OpenContract signing required for {signer} on {contract_id}")
+            raise RuntimeError(
+                f"OpenContract signing required for {signer} on {contract_id}"
+            )
         return payload
 
     corr = correlation_id or str(payload.get("correlation_id") or "")
-    body = json.dumps(
-        {
-            "contract_id": contract_id,
-            "correlation_id": corr,
-            "satisfied_prerequisites": prerequisites or [],
-            "payload": payload,
-            "goal_met": goal_met,
-            "signer_id": signer,
-            "signing_key": key,
-        }
-    ).encode()
+    body = json.dumps({
+        "contract_id": contract_id,
+        "correlation_id": corr,
+        "satisfied_prerequisites": prerequisites or [],
+        "payload": payload,
+        "goal_met": goal_met,
+        "signer_id": signer,
+        "signing_key": key,
+    }).encode()
     req = urllib.request.Request(
         f"{contract_url}/v1/contracts/{contract_id}/wrap",
         data=body,

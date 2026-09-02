@@ -73,11 +73,13 @@ class TestExpressionPreScan:
         # Public-safe to is_safe_url, but the always-blocked floor catches IMDS.
         monkeypatch.setattr(browser_tool, "_is_safe_url", lambda url: True)
         monkeypatch.setattr(
-            browser_tool, "_is_always_blocked_url",
+            browser_tool,
+            "_is_always_blocked_url",
             lambda url: "169.254.169.254" in url,
         )
         monkeypatch.setattr(
-            browser_tool, "_run_browser_command",
+            browser_tool,
+            "_run_browser_command",
             lambda *a, **k: {"success": True, "data": {"result": "creds"}},
         )
 
@@ -91,7 +93,8 @@ class TestExpressionPreScan:
         monkeypatch.setattr(browser_tool, "_is_always_blocked_url", lambda url: False)
         # After the (public) eval, the page-URL recheck must also see a public URL.
         monkeypatch.setattr(
-            browser_tool, "_run_browser_command",
+            browser_tool,
+            "_run_browser_command",
             lambda task_id, command, args=None, **k: (
                 {"success": True, "data": {"result": PUBLIC_URL}}
                 if args == ["window.location.href"]
@@ -106,7 +109,8 @@ class TestExpressionPreScan:
     def test_skips_prescan_for_local_backend(self, monkeypatch):
         monkeypatch.setattr(browser_tool, "_is_local_backend", lambda: True)
         monkeypatch.setattr(
-            browser_tool, "_run_browser_command",
+            browser_tool,
+            "_run_browser_command",
             lambda *a, **k: {"success": True, "data": {"result": "local-ok"}},
         )
         result = _eval(f"fetch('{PRIVATE_URL}')")
@@ -118,7 +122,8 @@ class TestExpressionPreScan:
         monkeypatch.setattr(browser_tool, "_is_local_sidecar_key", lambda key: True)
         monkeypatch.setattr(browser_tool, "_allow_private_urls", lambda: False)
         monkeypatch.setattr(
-            browser_tool, "_run_browser_command",
+            browser_tool,
+            "_run_browser_command",
             lambda *a, **k: {"success": True, "data": {"result": "sidecar-ok"}},
         )
         result = _eval(f"fetch('{PRIVATE_URL}')")
@@ -129,7 +134,8 @@ class TestExpressionPreScan:
         monkeypatch.setattr(browser_tool, "_is_local_sidecar_key", lambda key: False)
         monkeypatch.setattr(browser_tool, "_allow_private_urls", lambda: True)
         monkeypatch.setattr(
-            browser_tool, "_run_browser_command",
+            browser_tool,
+            "_run_browser_command",
             lambda *a, **k: {"success": True, "data": {"result": "allowed"}},
         )
         result = _eval(f"fetch('{PRIVATE_URL}')")
@@ -155,7 +161,8 @@ class TestPostEvalPageRecheck:
         monkeypatch.setattr(browser_tool, "_is_safe_url", lambda url: False)
         monkeypatch.setattr(browser_tool, "_is_always_blocked_url", lambda url: False)
         monkeypatch.setattr(
-            browser_tool, "_run_browser_command",
+            browser_tool,
+            "_run_browser_command",
             lambda task_id, command, args=None, **k: (
                 {"success": True, "data": {"result": PRIVATE_URL}}
                 if args == ["window.location.href"]
@@ -173,7 +180,8 @@ class TestPostEvalPageRecheck:
         monkeypatch.setattr(browser_tool, "_is_safe_url", lambda url: True)
         monkeypatch.setattr(browser_tool, "_is_always_blocked_url", lambda url: False)
         monkeypatch.setattr(
-            browser_tool, "_run_browser_command",
+            browser_tool,
+            "_run_browser_command",
             lambda task_id, command, args=None, **k: (
                 {"success": True, "data": {"result": PUBLIC_URL}}
                 if args == ["window.location.href"]
@@ -210,7 +218,9 @@ class TestPostEvalPageRecheck:
 
 class TestExpressionScanHelper:
     def test_returns_first_private_literal(self, monkeypatch):
-        monkeypatch.setattr(browser_tool, "_is_safe_url", lambda url: "127.0.0.1" not in url)
+        monkeypatch.setattr(
+            browser_tool, "_is_safe_url", lambda url: "127.0.0.1" not in url
+        )
         monkeypatch.setattr(browser_tool, "_is_always_blocked_url", lambda url: False)
         out = browser_tool._expression_targets_private_url(
             "fetch('https://example.com'); fetch('http://127.0.0.1/x')"
@@ -225,5 +235,7 @@ class TestExpressionScanHelper:
     def test_strips_trailing_punctuation(self, monkeypatch):
         monkeypatch.setattr(browser_tool, "_is_safe_url", lambda url: False)
         monkeypatch.setattr(browser_tool, "_is_always_blocked_url", lambda url: False)
-        out = browser_tool._expression_targets_private_url("location.href='http://10.0.0.1/';")
+        out = browser_tool._expression_targets_private_url(
+            "location.href='http://10.0.0.1/';"
+        )
         assert out == "http://10.0.0.1/"

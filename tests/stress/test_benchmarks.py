@@ -34,7 +34,13 @@ def bench(label, fn, iterations=5):
     mn = times[0]
     md = times[len(times) // 2]
     mx = times[-1]
-    return {"label": label, "iter": iterations, "min_ms": mn, "median_ms": md, "max_ms": mx}
+    return {
+        "label": label,
+        "iter": iterations,
+        "min_ms": mn,
+        "median_ms": md,
+        "max_ms": mx,
+    }
 
 
 def seed_tasks(conn, kb, n, assignee="bench-worker", with_parents=False):
@@ -46,8 +52,11 @@ def seed_tasks(conn, kb, n, assignee="bench-worker", with_parents=False):
         else:
             parents = ()
         tid = kb.create_task(
-            conn, title=f"bench {i}", assignee=assignee,
-            tenant="bench", parents=parents,
+            conn,
+            title=f"bench {i}",
+            assignee=assignee,
+            tenant="bench",
+            parents=parents,
         )
         ids.append(tid)
     return ids
@@ -69,6 +78,7 @@ def main():
         print(f"\n== dispatch_once @ {n} tasks ==")
         # Fresh DB each time so we're not measuring cumulative effects
         import shutil
+
         shutil.rmtree(home, ignore_errors=True)
         os.makedirs(home)
         kb._INITIALIZED_PATHS.clear()
@@ -80,7 +90,9 @@ def main():
             lambda: kb.dispatch_once(conn, spawn_fn=lambda *_: None),
             iterations=5,
         )
-        print(f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms")
+        print(
+            f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms"
+        )
         r["n"] = n
         results.append(r)
         conn.close()
@@ -95,14 +107,16 @@ def main():
         conn = kb.connect()
         ids = seed_tasks(conn, kb, n, assignee=None, with_parents=True)
         # Complete the first 100 so some todo tasks might get promoted
-        for tid in ids[:min(100, n // 10)]:
+        for tid in ids[: min(100, n // 10)]:
             kb.complete_task(conn, tid, result="bench")
         r = bench(
             f"recompute_ready (n={n}, with parents)",
             lambda: kb.recompute_ready(conn),
             iterations=5,
         )
-        print(f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms")
+        print(
+            f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms"
+        )
         r["n"] = n
         results.append(r)
         conn.close()
@@ -121,21 +135,27 @@ def main():
             pid = kb.create_task(conn, title=f"parent {i}", assignee="p")
             kb.claim_task(conn, pid)
             kb.complete_task(
-                conn, pid,
+                conn,
+                pid,
                 summary=f"parent {i} result that is longer than a single token "
-                        f"so we actually measure the IO",
+                f"so we actually measure the IO",
                 metadata={"files": [f"file_{j}.py" for j in range(5)], "i": i},
             )
             parent_ids.append(pid)
         child_id = kb.create_task(
-            conn, title="child", assignee="c", parents=parent_ids,
+            conn,
+            title="child",
+            assignee="c",
+            parents=parent_ids,
         )
         r = bench(
             f"build_worker_context (parents={parent_count})",
             lambda: kb.build_worker_context(conn, child_id),
             iterations=10,
         )
-        print(f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms")
+        print(
+            f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms"
+        )
         r["parent_count"] = parent_count
         results.append(r)
         conn.close()
@@ -154,7 +174,9 @@ def main():
             lambda: kb.list_tasks(conn),
             iterations=5,
         )
-        print(f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms")
+        print(
+            f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms"
+        )
         r["n"] = n
         results.append(r)
         conn.close()
@@ -173,7 +195,9 @@ def main():
             lambda: kb.board_stats(conn),
             iterations=5,
         )
-        print(f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms")
+        print(
+            f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms"
+        )
         r["n"] = n
         results.append(r)
         conn.close()
@@ -196,7 +220,9 @@ def main():
             lambda: kb.list_runs(conn, tid),
             iterations=10,
         )
-        print(f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms")
+        print(
+            f"  min={r['min_ms']:.1f} median={r['median_ms']:.1f} max={r['max_ms']:.1f} ms"
+        )
         r["run_count"] = n
         results.append(r)
         conn.close()
@@ -208,7 +234,9 @@ def main():
     print("=" * 60)
     print(f"{'Benchmark':<50} {'min':>8} {'median':>8} {'max':>8}")
     for r in results:
-        print(f"{r['label']:<50} {r['min_ms']:>7.1f}ms {r['median_ms']:>7.1f}ms {r['max_ms']:>7.1f}ms")
+        print(
+            f"{r['label']:<50} {r['min_ms']:>7.1f}ms {r['median_ms']:>7.1f}ms {r['max_ms']:>7.1f}ms"
+        )
 
     # Save for future diffing.
     out_path = "/tmp/kanban_bench_results.json"

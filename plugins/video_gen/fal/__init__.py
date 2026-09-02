@@ -310,6 +310,7 @@ def _load_fal_client() -> Any:
         if _fal_client is not None:  # re-check inside the lock
             return _fal_client
         from tools.fal_common import import_fal_client
+
         _fal_client = import_fal_client()
         return _fal_client
 
@@ -345,7 +346,10 @@ def _get_managed_fal_video_client(managed_gateway):
         managed_gateway.nous_user_token,
     )
     with _managed_fal_video_client_lock:
-        if _managed_fal_video_client is not None and _managed_fal_video_client_config == client_config:
+        if (
+            _managed_fal_video_client is not None
+            and _managed_fal_video_client_config == client_config
+        ):
             return _managed_fal_video_client
 
         _load_fal_client()
@@ -367,7 +371,9 @@ def _submit_fal_video_request(endpoint: str, arguments: Dict[str, Any]):
     request_headers = {"x-idempotency-key": str(uuid.uuid4())}
     managed_gateway = _resolve_managed_fal_video_gateway()
     if managed_gateway is None:
-        return _fal_client.submit(endpoint, arguments=arguments, headers=request_headers)
+        return _fal_client.submit(
+            endpoint, arguments=arguments, headers=request_headers
+        )
 
     managed_client = _get_managed_fal_video_client(managed_gateway)
     try:
@@ -527,7 +533,9 @@ class FALVideoGenProvider(VideoGenProvider):
                         f"via `hermes tools` → Video Generation."
                     ),
                     error_type="modality_unsupported",
-                    provider="fal", model=family_id, prompt=prompt,
+                    provider="fal",
+                    model=family_id,
+                    prompt=prompt,
                 )
         else:
             endpoint = family.get("text_endpoint")
@@ -540,14 +548,18 @@ class FALVideoGenProvider(VideoGenProvider):
                         f"image-to-video endpoint, or pick a different family."
                     ),
                     error_type="modality_unsupported",
-                    provider="fal", model=family_id, prompt=prompt,
+                    provider="fal",
+                    model=family_id,
+                    prompt=prompt,
                 )
 
         if not prompt:
             return error_response(
                 error="prompt is required.",
                 error_type="missing_prompt",
-                provider="fal", model=family_id, prompt=prompt,
+                provider="fal",
+                model=family_id,
+                prompt=prompt,
             )
 
         payload = _build_payload(
@@ -568,12 +580,17 @@ class FALVideoGenProvider(VideoGenProvider):
         except Exception as exc:
             logger.warning(
                 "FAL video gen failed (family=%s, endpoint=%s): %s",
-                family_id, endpoint, exc, exc_info=True,
+                family_id,
+                endpoint,
+                exc,
+                exc_info=True,
             )
             return error_response(
                 error=f"FAL video generation failed: {exc}",
                 error_type="api_error",
-                provider="fal", model=family_id, prompt=prompt,
+                provider="fal",
+                model=family_id,
+                prompt=prompt,
                 aspect_ratio=aspect_ratio,
             )
 
@@ -588,7 +605,9 @@ class FALVideoGenProvider(VideoGenProvider):
             return error_response(
                 error="FAL returned no video URL in response",
                 error_type="empty_response",
-                provider="fal", model=family_id, prompt=prompt,
+                provider="fal",
+                model=family_id,
+                prompt=prompt,
             )
 
         extra: Dict[str, Any] = {"endpoint": endpoint}
@@ -604,7 +623,9 @@ class FALVideoGenProvider(VideoGenProvider):
             prompt=prompt,
             modality=modality_used,
             aspect_ratio=aspect_ratio if "aspect_ratio" in payload else "",
-            duration=int("".join(c for c in payload["duration"] if c.isdigit()) or "0") if "duration" in payload else 0,
+            duration=int("".join(c for c in payload["duration"] if c.isdigit()) or "0")
+            if "duration" in payload
+            else 0,
             provider="fal",
             extra=extra,
         )

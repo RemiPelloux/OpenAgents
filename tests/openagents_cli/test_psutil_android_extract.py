@@ -57,7 +57,9 @@ def test_prepare_patched_psutil_sdist_rejects_symlink_member(tmp_path):
     _build_psutil_archive(archive, malicious_symlink=True)
 
     destination = tmp_path / "extract"
-    with pytest.raises(PsutilAndroidInstallError, match="Unsupported archive member type"):
+    with pytest.raises(
+        PsutilAndroidInstallError, match="Unsupported archive member type"
+    ):
         prepare_patched_psutil_sdist(archive, destination)
 
     assert not (tmp_path / "outside" / "_common.py").exists()
@@ -85,8 +87,12 @@ def test_install_psutil_android_compat_uses_patched_tree(tmp_path):
             encoding="utf-8"
         )
 
-    with patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve), \
-         patch.object(hermes_main, "_run_install_with_heartbeat", side_effect=fake_run_install):
+    with (
+        patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve),
+        patch.object(
+            hermes_main, "_run_install_with_heartbeat", side_effect=fake_run_install
+        ),
+    ):
         hermes_main._install_psutil_android_compat(
             ["uv", "pip"],
             env={"HERMES_TEST": "1"},
@@ -116,10 +122,14 @@ def test_install_psutil_android_script_uses_patched_tree(tmp_path, monkeypatch, 
         return type("RunResult", (), {"returncode": 0})()
 
     monkeypatch.setattr(installer.sys, "argv", ["install_psutil_android.py"])
-    monkeypatch.setattr(installer, "_resolve_install_cmd", lambda *_args: ["python", "-m", "pip"])
+    monkeypatch.setattr(
+        installer, "_resolve_install_cmd", lambda *_args: ["python", "-m", "pip"]
+    )
 
-    with patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve), \
-         patch.object(installer.subprocess, "run", side_effect=fake_subprocess_run):
+    with (
+        patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve),
+        patch.object(installer.subprocess, "run", side_effect=fake_subprocess_run),
+    ):
         assert installer.main() == 0
 
     captured = capsys.readouterr()

@@ -80,14 +80,26 @@ class ToolSearchConfig:
         break the agent.
         """
         if raw is True:
-            return cls(enabled="auto", threshold_pct=10.0,
-                       search_default_limit=5, max_search_limit=20)
+            return cls(
+                enabled="auto",
+                threshold_pct=10.0,
+                search_default_limit=5,
+                max_search_limit=20,
+            )
         if raw is False:
-            return cls(enabled="off", threshold_pct=10.0,
-                       search_default_limit=5, max_search_limit=20)
+            return cls(
+                enabled="off",
+                threshold_pct=10.0,
+                search_default_limit=5,
+                max_search_limit=20,
+            )
         if not isinstance(raw, dict):
-            return cls(enabled="auto", threshold_pct=10.0,
-                       search_default_limit=5, max_search_limit=20)
+            return cls(
+                enabled="auto",
+                threshold_pct=10.0,
+                search_default_limit=5,
+                max_search_limit=20,
+            )
 
         enabled_raw = str(raw.get("enabled", "auto")).strip().lower()
         if enabled_raw in ("true", "1", "yes"):
@@ -103,8 +115,9 @@ class ToolSearchConfig:
         threshold_pct = max(0.0, min(100.0, threshold_pct))
 
         max_search_limit = max(1, min(50, _safe_int(raw.get("max_search_limit"), 20)))
-        search_default_limit = max(1, min(max_search_limit,
-                                          _safe_int(raw.get("search_default_limit"), 5)))
+        search_default_limit = max(
+            1, min(max_search_limit, _safe_int(raw.get("search_default_limit"), 5))
+        )
 
         return cls(
             enabled=enabled,
@@ -132,6 +145,7 @@ def load_config() -> ToolSearchConfig:
     """Load tool-search config from the user config file."""
     try:
         from openagents_cli.config import load_config as _load
+
         cfg = _load() or {}
         tools_cfg = cfg.get("tools") if isinstance(cfg.get("tools"), dict) else {}
         if not isinstance(tools_cfg, dict):
@@ -155,6 +169,7 @@ def _core_tool_names() -> frozenset[str]:
     """
     try:
         from toolsets import _HERMES_CORE_TOOLS
+
         return frozenset(_HERMES_CORE_TOOLS)
     except Exception:
         return frozenset()
@@ -175,6 +190,7 @@ def is_deferrable_tool_name(name: str) -> bool:
     # Check registry toolset for MCP prefix.
     try:
         from tools.registry import registry
+
         entry = registry.get_entry(name)
         if entry is None:
             return False
@@ -186,7 +202,9 @@ def is_deferrable_tool_name(name: str) -> bool:
         return False
 
 
-def classify_tools(tool_defs: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+def classify_tools(
+    tool_defs: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Split a tool-defs list into (visible, deferrable).
 
     ``visible`` retains every tool that must stay in the model-facing array:
@@ -225,7 +243,9 @@ def estimate_tokens_from_schemas(tool_defs: Iterable[Dict[str, Any]]) -> int:
     total_chars = 0
     for td in tool_defs:
         try:
-            total_chars += len(json.dumps(td, ensure_ascii=False, separators=(",", ":")))
+            total_chars += len(
+                json.dumps(td, ensure_ascii=False, separators=(",", ":"))
+            )
         except (TypeError, ValueError):
             total_chars += len(str(td))
     return int(math.ceil(total_chars / CHARS_PER_TOKEN))
@@ -297,10 +317,12 @@ def _entry_search_text(td: Dict[str, Any]) -> str:
     fn = td.get("function") or {}
     name = fn.get("name", "")
     desc = fn.get("description", "") or ""
-    params = ((fn.get("parameters") or {}).get("properties") or {})
+    params = (fn.get("parameters") or {}).get("properties") or {}
     param_names = " ".join(params.keys())
     # Break snake_case and dotted names into words for BM25.
-    name_words = name.replace("_", " ").replace(".", " ").replace("-", " ").replace(":", " ")
+    name_words = (
+        name.replace("_", " ").replace(".", " ").replace("-", " ").replace(":", " ")
+    )
     return f"{name_words} {desc} {param_names}"
 
 
@@ -308,6 +330,7 @@ def _classify_source(name: str) -> Tuple[str, str]:
     """Return (source_kind, source_name) for a registered tool name."""
     try:
         from tools.registry import registry
+
         entry = registry.get_entry(name)
         if entry is None:
             return ("other", "")
@@ -344,10 +367,16 @@ def build_catalog(tool_defs: List[Dict[str, Any]]) -> List[CatalogEntry]:
     return catalog
 
 
-def _bm25_score(query_tokens: List[str], doc_tokens: List[str],
-                doc_lengths: List[int], avg_dl: float,
-                doc_freq: Dict[str, int], n_docs: int,
-                k1: float = 1.5, b: float = 0.75) -> float:
+def _bm25_score(
+    query_tokens: List[str],
+    doc_tokens: List[str],
+    doc_lengths: List[int],
+    avg_dl: float,
+    doc_freq: Dict[str, int],
+    n_docs: int,
+    k1: float = 1.5,
+    b: float = 0.75,
+) -> float:
     """Standard BM25 score for one query against one document.
 
     Inlined small implementation rather than adding a dependency. Performance
@@ -375,7 +404,9 @@ def _bm25_score(query_tokens: List[str], doc_tokens: List[str],
     return score
 
 
-def search_catalog(catalog: List[CatalogEntry], query: str, limit: int = 5) -> List[CatalogEntry]:
+def search_catalog(
+    catalog: List[CatalogEntry], query: str, limit: int = 5
+) -> List[CatalogEntry]:
     """Return the top-``limit`` catalog entries for ``query`` by BM25.
 
     Falls back to a stable name-substring match when BM25 yields no hits
@@ -402,8 +433,9 @@ def search_catalog(catalog: List[CatalogEntry], query: str, limit: int = 5) -> L
 
     scored: List[Tuple[float, CatalogEntry]] = []
     for entry in catalog:
-        s = _bm25_score(query_tokens, entry._tokens, doc_lengths, avg_dl,
-                        doc_freq, n_docs)
+        s = _bm25_score(
+            query_tokens, entry._tokens, doc_lengths, avg_dl, doc_freq, n_docs
+        )
         if s > 0:
             scored.append((s, entry))
 
@@ -548,8 +580,11 @@ def assemble_tool_defs(
 
     # Defensive: strip any bridge tools that may already be in the list
     # (e.g. someone called assemble twice).
-    incoming = [td for td in tool_defs
-                if (td.get("function") or {}).get("name") not in BRIDGE_TOOL_NAMES]
+    incoming = [
+        td
+        for td in tool_defs
+        if (td.get("function") or {}).get("name") not in BRIDGE_TOOL_NAMES
+    ]
 
     visible, deferrable = classify_tools(incoming)
     if not deferrable:
@@ -562,7 +597,9 @@ def assemble_tool_defs(
             activated=False,
             deferred_count=len(deferrable),
             deferred_tokens=deferrable_tokens,
-            threshold_tokens=int((context_length or 0) * (config.threshold_pct / 100.0)),
+            threshold_tokens=int(
+                (context_length or 0) * (config.threshold_pct / 100.0)
+            ),
         )
 
     bridge = bridge_tool_schemas(len(deferrable))
@@ -571,7 +608,10 @@ def assemble_tool_defs(
 
     logger.info(
         "tool_search activated: %d core/visible tools kept, %d deferred (~%d tokens, threshold ~%d)",
-        len(visible), len(deferrable), deferrable_tokens, threshold_tokens,
+        len(visible),
+        len(deferrable),
+        deferrable_tokens,
+        threshold_tokens,
     )
 
     return AssemblyResult(
@@ -602,10 +642,12 @@ def _format_search_hit(entry: CatalogEntry) -> Dict[str, Any]:
     }
 
 
-def dispatch_tool_search(args: Dict[str, Any],
-                         *,
-                         current_tool_defs: List[Dict[str, Any]],
-                         config: Optional[ToolSearchConfig] = None) -> str:
+def dispatch_tool_search(
+    args: Dict[str, Any],
+    *,
+    current_tool_defs: List[Dict[str, Any]],
+    config: Optional[ToolSearchConfig] = None,
+) -> str:
     """Execute the ``tool_search`` bridge tool. Returns a JSON string."""
     if config is None:
         config = load_config()
@@ -617,44 +659,62 @@ def dispatch_tool_search(args: Dict[str, Any],
     if raw_limit is None:
         limit = config.search_default_limit
     else:
-        limit = max(1, min(config.max_search_limit, _safe_int(raw_limit, config.search_default_limit)))
+        limit = max(
+            1,
+            min(
+                config.max_search_limit,
+                _safe_int(raw_limit, config.search_default_limit),
+            ),
+        )
 
     _, deferrable = classify_tools(current_tool_defs)
     catalog = build_catalog(deferrable)
     hits = search_catalog(catalog, query, limit=limit)
-    return json.dumps({
-        "query": query,
-        "total_available": len(catalog),
-        "matches": [_format_search_hit(h) for h in hits],
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "query": query,
+            "total_available": len(catalog),
+            "matches": [_format_search_hit(h) for h in hits],
+        },
+        ensure_ascii=False,
+    )
 
 
-def dispatch_tool_describe(args: Dict[str, Any],
-                           *,
-                           current_tool_defs: List[Dict[str, Any]]) -> str:
+def dispatch_tool_describe(
+    args: Dict[str, Any], *, current_tool_defs: List[Dict[str, Any]]
+) -> str:
     """Execute the ``tool_describe`` bridge tool. Returns a JSON string."""
     name = str(args.get("name") or "").strip()
     if not name:
         return json.dumps({"error": "name is required"}, ensure_ascii=False)
     if not is_deferrable_tool_name(name):
-        return json.dumps({
-            "error": (
-                f"'{name}' is not a deferrable tool. If you see it in the tools list "
-                "already, call it directly; otherwise check the spelling against tool_search."
-            ),
-        }, ensure_ascii=False)
+        return json.dumps(
+            {
+                "error": (
+                    f"'{name}' is not a deferrable tool. If you see it in the tools list "
+                    "already, call it directly; otherwise check the spelling against tool_search."
+                ),
+            },
+            ensure_ascii=False,
+        )
     _, deferrable = classify_tools(current_tool_defs)
     for td in deferrable:
         fn = td.get("function") or {}
         if fn.get("name") == name:
-            return json.dumps({
-                "name": name,
-                "description": fn.get("description", ""),
-                "parameters": fn.get("parameters", {}),
-            }, ensure_ascii=False)
-    return json.dumps({
-        "error": f"'{name}' is not currently available. Re-run tool_search to refresh.",
-    }, ensure_ascii=False)
+            return json.dumps(
+                {
+                    "name": name,
+                    "description": fn.get("description", ""),
+                    "parameters": fn.get("parameters", {}),
+                },
+                ensure_ascii=False,
+            )
+    return json.dumps(
+        {
+            "error": f"'{name}' is not currently available. Re-run tool_search to refresh.",
+        },
+        ensure_ascii=False,
+    )
 
 
 def scoped_deferrable_names(tool_defs: List[Dict[str, Any]]) -> frozenset[str]:
@@ -677,7 +737,9 @@ def scoped_deferrable_names(tool_defs: List[Dict[str, Any]]) -> frozenset[str]:
     return frozenset(names)
 
 
-def resolve_underlying_call(args: Dict[str, Any]) -> Tuple[Optional[str], Dict[str, Any], Optional[str]]:
+def resolve_underlying_call(
+    args: Dict[str, Any],
+) -> Tuple[Optional[str], Dict[str, Any], Optional[str]]:
     """Parse a ``tool_call`` invocation into (underlying_name, args, error_msg).
 
     Used by:
@@ -691,7 +753,11 @@ def resolve_underlying_call(args: Dict[str, Any]) -> Tuple[Optional[str], Dict[s
     if not name:
         return None, {}, "tool_call requires a 'name' argument"
     if name in BRIDGE_TOOL_NAMES:
-        return None, {}, f"tool_call cannot invoke '{name}' (it is itself a bridge tool)"
+        return (
+            None,
+            {},
+            f"tool_call cannot invoke '{name}' (it is itself a bridge tool)",
+        )
     raw_args = args.get("arguments")
     if raw_args is None:
         raw_args = {}
@@ -703,9 +769,13 @@ def resolve_underlying_call(args: Dict[str, Any]) -> Tuple[Optional[str], Dict[s
     if not isinstance(raw_args, dict):
         return None, {}, "tool_call 'arguments' must be an object"
     if not is_deferrable_tool_name(name):
-        return None, {}, (
-            f"'{name}' is not a deferrable tool. If it appears in the model-facing tools "
-            "list already, call it directly instead of via tool_call."
+        return (
+            None,
+            {},
+            (
+                f"'{name}' is not a deferrable tool. If it appears in the model-facing tools "
+                "list already, call it directly instead of via tool_call."
+            ),
         )
     return name, raw_args, None
 

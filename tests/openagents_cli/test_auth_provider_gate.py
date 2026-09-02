@@ -8,6 +8,7 @@ def _write_config(tmp_path, config: dict) -> None:
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
     import yaml
+
     (hermes_home / "config.yaml").write_text(yaml.dump(config))
 
 
@@ -29,39 +30,53 @@ def test_returns_false_when_no_config(tmp_path, monkeypatch):
     (tmp_path / "openagents").mkdir(parents=True, exist_ok=True)
 
     from openagents_cli.auth import is_provider_explicitly_configured
+
     assert is_provider_explicitly_configured("anthropic") is False
 
 
 def test_returns_true_when_active_provider_matches(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "openagents"))
-    _write_auth_store(tmp_path, {
-        "version": 1,
-        "providers": {},
-        "active_provider": "anthropic",
-    })
+    _write_auth_store(
+        tmp_path,
+        {
+            "version": 1,
+            "providers": {},
+            "active_provider": "anthropic",
+        },
+    )
 
     from openagents_cli.auth import is_provider_explicitly_configured
+
     assert is_provider_explicitly_configured("anthropic") is True
 
 
 def test_returns_true_when_config_provider_matches(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "openagents"))
-    _write_config(tmp_path, {"model": {"provider": "anthropic", "default": "claude-sonnet-4-6"}})
+    _write_config(
+        tmp_path, {"model": {"provider": "anthropic", "default": "claude-sonnet-4-6"}}
+    )
 
     from openagents_cli.auth import is_provider_explicitly_configured
+
     assert is_provider_explicitly_configured("anthropic") is True
 
 
 def test_returns_false_when_config_provider_is_different(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "openagents"))
-    _write_config(tmp_path, {"model": {"provider": "kimi-coding", "default": "kimi-k2"}})
-    _write_auth_store(tmp_path, {
-        "version": 1,
-        "providers": {},
-        "active_provider": None,
-    })
+    _write_config(
+        tmp_path, {"model": {"provider": "kimi-coding", "default": "kimi-k2"}}
+    )
+    _write_auth_store(
+        tmp_path,
+        {
+            "version": 1,
+            "providers": {},
+            "active_provider": None,
+        },
+    )
 
     from openagents_cli.auth import is_provider_explicitly_configured
+
     assert is_provider_explicitly_configured("anthropic") is False
 
 
@@ -71,6 +86,7 @@ def test_returns_true_when_anthropic_env_var_set(tmp_path, monkeypatch):
     (tmp_path / "openagents").mkdir(parents=True, exist_ok=True)
 
     from openagents_cli.auth import is_provider_explicitly_configured
+
     assert is_provider_explicitly_configured("anthropic") is True
 
 
@@ -81,4 +97,5 @@ def test_claude_code_oauth_token_does_not_count_as_explicit(tmp_path, monkeypatc
     (tmp_path / "openagents").mkdir(parents=True, exist_ok=True)
 
     from openagents_cli.auth import is_provider_explicitly_configured
+
     assert is_provider_explicitly_configured("anthropic") is False

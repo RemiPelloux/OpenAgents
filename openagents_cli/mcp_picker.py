@@ -120,11 +120,13 @@ def _enable_disable(name: str, *, enable: bool) -> None:
     server["enabled"] = enable
     cfg["mcp_servers"] = servers
     save_config(cfg)
-    print(color(
-        f"  ✓ '{name}' {'enabled' if enable else 'disabled'}. "
-        "Start a new OpenAgents session for changes to take effect.",
-        Colors.GREEN,
-    ))
+    print(
+        color(
+            f"  ✓ '{name}' {'enabled' if enable else 'disabled'}. "
+            "Start a new OpenAgents session for changes to take effect.",
+            Colors.GREEN,
+        )
+    )
 
 
 def _configure_tools(name: str) -> None:
@@ -210,11 +212,13 @@ def _handle_row(row: _Row) -> None:
     elif choice == 2:
         if prompt_yes_no(f"Uninstall '{row.name}'?", default=False):
             if uninstall_entry(row.name):
-                print(color(
-                    f"  ✓ Uninstalled '{row.name}'. "
-                    "Credentials in .env preserved — delete manually if no longer needed.",
-                    Colors.GREEN,
-                ))
+                print(
+                    color(
+                        f"  ✓ Uninstalled '{row.name}'. "
+                        "Credentials in .env preserved — delete manually if no longer needed.",
+                        Colors.GREEN,
+                    )
+                )
             else:
                 print(color(f"  '{row.name}' was not installed", Colors.DIM))
     elif choice == 3:
@@ -245,10 +249,12 @@ def _print_rows_text(rows: List[_Row]) -> None:
     for row in rows:
         print(f"  {_format_row(row)}")
     print()
-    print(color(
-        "  Install: hermes mcp install <name>    Picker: hermes mcp",
-        Colors.DIM,
-    ))
+    print(
+        color(
+            "  Install: hermes mcp install <name>    Picker: hermes mcp",
+            Colors.DIM,
+        )
+    )
 
     # Surface manifest-version warnings so users know when their OpenAgents is
     # too old to install everything in the catalog.
@@ -257,11 +263,13 @@ def _print_rows_text(rows: List[_Row]) -> None:
     if future:
         print()
         for name, _, msg in future:
-            print(color(
-                f"  ⚠ '{name}' requires a newer OpenAgents — run `hermes update` "
-                "to install this entry.",
-                Colors.YELLOW,
-            ))
+            print(
+                color(
+                    f"  ⚠ '{name}' requires a newer OpenAgents — run `hermes update` "
+                    "to install this entry.",
+                    Colors.YELLOW,
+                )
+            )
         print()
     print()
 
@@ -308,11 +316,13 @@ def install_by_name(identifier: str) -> int:
 
     entry = get_entry(identifier)
     if entry is None:
-        print(color(
-            f"  ✗ '{identifier}' is not in the catalog. "
-            "Run `hermes mcp catalog` to see available entries.",
-            Colors.RED,
-        ))
+        print(
+            color(
+                f"  ✗ '{identifier}' is not in the catalog. "
+                "Run `hermes mcp catalog` to see available entries.",
+                Colors.RED,
+            )
+        )
         return 1
     try:
         install_entry(entry, enable=True)

@@ -100,10 +100,12 @@ def test_normalize_codex_response_ignores_in_progress_server_side_tool_calls():
                 type="message",
                 role="assistant",
                 status="completed",
-                content=[SimpleNamespace(
-                    type="output_text",
-                    text="Milwaukee M18 blade 49-16-2734, ~$30 OEM.",
-                )],
+                content=[
+                    SimpleNamespace(
+                        type="output_text",
+                        text="Milwaukee M18 blade 49-16-2734, ~$30 OEM.",
+                    )
+                ],
             ),
             SimpleNamespace(type="web_search_call", status="in_progress"),
             SimpleNamespace(type="web_search_call", status="in_progress"),
@@ -155,15 +157,21 @@ def test_preflight_passes_native_web_search_tool_through():
         "input": [{"role": "user", "content": [{"type": "input_text", "text": "hi"}]}],
         "store": False,
         "tools": [
-            {"type": "function", "name": "read_file", "description": "Read.",
-             "parameters": {"type": "object", "properties": {}}},
+            {
+                "type": "function",
+                "name": "read_file",
+                "description": "Read.",
+                "parameters": {"type": "object", "properties": {}},
+            },
             {"type": "web_search"},
         ],
     }
     out = _preflight_codex_api_kwargs(kwargs, allow_stream=True)
     tools = out["tools"]
     assert {"type": "web_search"} in tools
-    assert any(t.get("type") == "function" and t.get("name") == "read_file" for t in tools)
+    assert any(
+        t.get("type") == "function" and t.get("name") == "read_file" for t in tools
+    )
 
 
 def test_preflight_still_rejects_unknown_tool_type():

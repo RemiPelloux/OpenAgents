@@ -1,4 +1,5 @@
 """Tests for openagents_logging — centralized logging setup."""
+
 import io
 import logging
 import os
@@ -11,6 +12,7 @@ from unittest.mock import patch
 import pytest
 
 import openagents_logging
+
 # Use whatever RotatingFileHandler class openagents_logging actually resolved so
 # the autouse fixture's isinstance checks (which strip rotating handlers
 # between tests) match the real handlers on every platform. openagents_logging
@@ -81,7 +83,8 @@ class TestSetupLogging:
         root = logging.getLogger()
 
         agent_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "agent.log" in getattr(h, "baseFilename", "")
         ]
@@ -93,7 +96,8 @@ class TestSetupLogging:
         root = logging.getLogger()
 
         error_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "errors.log" in getattr(h, "baseFilename", "")
         ]
@@ -102,11 +106,14 @@ class TestSetupLogging:
 
     def test_idempotent_no_duplicate_handlers(self, hermes_home):
         openagents_logging.setup_logging(hermes_home=hermes_home)
-        openagents_logging.setup_logging(hermes_home=hermes_home)  # second call — should be no-op
+        openagents_logging.setup_logging(
+            hermes_home=hermes_home
+        )  # second call — should be no-op
 
         root = logging.getLogger()
         agent_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "agent.log" in getattr(h, "baseFilename", "")
         ]
@@ -120,7 +127,8 @@ class TestSetupLogging:
 
         root = logging.getLogger()
         agent_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "agent.log" in getattr(h, "baseFilename", "")
         ]
@@ -131,7 +139,8 @@ class TestSetupLogging:
 
         root = logging.getLogger()
         agent_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "agent.log" in getattr(h, "baseFilename", "")
         ]
@@ -144,7 +153,8 @@ class TestSetupLogging:
 
         root = logging.getLogger()
         agent_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "agent.log" in getattr(h, "baseFilename", "")
         ]
@@ -203,6 +213,7 @@ class TestSetupLogging:
     def test_reads_config_yaml(self, hermes_home):
         """setup_logging reads logging.level from config.yaml."""
         import yaml
+
         config = {"logging": {"level": "DEBUG", "max_size_mb": 2, "backup_count": 1}}
         (hermes_home / "config.yaml").write_text(yaml.dump(config))
 
@@ -210,7 +221,8 @@ class TestSetupLogging:
 
         root = logging.getLogger()
         agent_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "agent.log" in getattr(h, "baseFilename", "")
         ]
@@ -221,6 +233,7 @@ class TestSetupLogging:
     def test_explicit_params_override_config(self, hermes_home):
         """Explicit function params take precedence over config.yaml."""
         import yaml
+
         config = {"logging": {"level": "DEBUG"}}
         (hermes_home / "config.yaml").write_text(yaml.dump(config))
 
@@ -228,7 +241,8 @@ class TestSetupLogging:
 
         root = logging.getLogger()
         agent_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "agent.log" in getattr(h, "baseFilename", "")
         ]
@@ -254,7 +268,8 @@ class TestGatewayMode:
         root = logging.getLogger()
 
         gw_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "gateway.log" in getattr(h, "baseFilename", "")
         ]
@@ -265,7 +280,8 @@ class TestGatewayMode:
         root = logging.getLogger()
 
         gw_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "gateway.log" in getattr(h, "baseFilename", "")
         ]
@@ -278,7 +294,8 @@ class TestGatewayMode:
 
         root = logging.getLogger()
         gw_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "gateway.log" in getattr(h, "baseFilename", "")
         ]
@@ -293,7 +310,9 @@ class TestGatewayMode:
         assert gw_log.exists()
         assert "gateway connected after cli init" in gw_log.read_text()
 
-    def test_gateway_log_created_after_cli_init_without_duplicate_handlers(self, hermes_home):
+    def test_gateway_log_created_after_cli_init_without_duplicate_handlers(
+        self, hermes_home
+    ):
         """Repeated gateway setup calls do not attach duplicate gateway handlers."""
         openagents_logging.setup_logging(hermes_home=hermes_home, mode="cli")
         openagents_logging.setup_logging(hermes_home=hermes_home, mode="gateway")
@@ -301,7 +320,8 @@ class TestGatewayMode:
 
         root = logging.getLogger()
         gw_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "gateway.log" in getattr(h, "baseFilename", "")
         ]
@@ -373,7 +393,8 @@ class TestGuiMode:
         root = logging.getLogger()
 
         gui_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "gui.log" in getattr(h, "baseFilename", "")
         ]
@@ -385,7 +406,8 @@ class TestGuiMode:
 
         root = logging.getLogger()
         gui_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, RotatingFileHandler)
             and "gui.log" in getattr(h, "baseFilename", "")
         ]
@@ -444,9 +466,12 @@ class TestSessionContext:
         assert "untagged message" in content
         # Should not have any [xxx] session tag
         import re
+
         for line in content.splitlines():
             if "untagged message" in line:
-                assert not re.search(r"\[.+?\]", line.split("INFO")[1].split("test.no_session")[0])
+                assert not re.search(
+                    r"\[.+?\]", line.split("INFO")[1].split("test.no_session")[0]
+                )
 
     def test_clear_session_context(self, hermes_home):
         """After clearing, session tag disappears."""
@@ -552,9 +577,7 @@ class TestComponentFilter:
 
     def test_passes_matching_prefix(self):
         f = openagents_logging._ComponentFilter(("gateway",))
-        record = logging.LogRecord(
-            "gateway.run", logging.INFO, "", 0, "msg", (), None
-        )
+        record = logging.LogRecord("gateway.run", logging.INFO, "", 0, "msg", (), None)
         assert f.filter(record) is True
 
     def test_passes_nested_matching_prefix(self):
@@ -578,18 +601,18 @@ class TestComponentFilter:
 
     def test_multiple_prefixes(self):
         f = openagents_logging._ComponentFilter(("agent", "run_agent", "model_tools"))
-        assert f.filter(logging.LogRecord(
-            "agent.compressor", logging.INFO, "", 0, "", (), None
-        ))
-        assert f.filter(logging.LogRecord(
-            "run_agent", logging.INFO, "", 0, "", (), None
-        ))
-        assert f.filter(logging.LogRecord(
-            "model_tools", logging.INFO, "", 0, "", (), None
-        ))
-        assert not f.filter(logging.LogRecord(
-            "tools.browser", logging.INFO, "", 0, "", (), None
-        ))
+        assert f.filter(
+            logging.LogRecord("agent.compressor", logging.INFO, "", 0, "", (), None)
+        )
+        assert f.filter(
+            logging.LogRecord("run_agent", logging.INFO, "", 0, "", (), None)
+        )
+        assert f.filter(
+            logging.LogRecord("model_tools", logging.INFO, "", 0, "", (), None)
+        )
+        assert not f.filter(
+            logging.LogRecord("tools.browser", logging.INFO, "", 0, "", (), None)
+        )
 
 
 class TestComponentPrefixes:
@@ -640,7 +663,8 @@ class TestSetupVerboseLogging:
 
         root = logging.getLogger()
         verbose_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, logging.StreamHandler)
             and not isinstance(h, RotatingFileHandler)
             and getattr(h, "_hermes_verbose", False)
@@ -655,7 +679,8 @@ class TestSetupVerboseLogging:
 
         root = logging.getLogger()
         verbose_handlers = [
-            h for h in root.handlers
+            h
+            for h in root.handlers
             if isinstance(h, logging.StreamHandler)
             and not isinstance(h, RotatingFileHandler)
             and getattr(h, "_hermes_verbose", False)
@@ -672,8 +697,11 @@ class TestAddRotatingHandler:
         formatter = logging.Formatter("%(message)s")
 
         openagents_logging._add_rotating_handler(
-            logger, log_path,
-            level=logging.INFO, max_bytes=1024, backup_count=1,
+            logger,
+            log_path,
+            level=logging.INFO,
+            max_bytes=1024,
+            backup_count=1,
             formatter=formatter,
         )
 
@@ -690,19 +718,24 @@ class TestAddRotatingHandler:
         formatter = logging.Formatter("%(message)s")
 
         openagents_logging._add_rotating_handler(
-            logger, log_path,
-            level=logging.INFO, max_bytes=1024, backup_count=1,
+            logger,
+            log_path,
+            level=logging.INFO,
+            max_bytes=1024,
+            backup_count=1,
             formatter=formatter,
         )
         openagents_logging._add_rotating_handler(
-            logger, log_path,
-            level=logging.INFO, max_bytes=1024, backup_count=1,
+            logger,
+            log_path,
+            level=logging.INFO,
+            max_bytes=1024,
+            backup_count=1,
             formatter=formatter,
         )
 
         rotating_handlers = [
-            h for h in logger.handlers
-            if isinstance(h, RotatingFileHandler)
+            h for h in logger.handlers if isinstance(h, RotatingFileHandler)
         ]
         assert len(rotating_handlers) == 1
         # Clean up
@@ -719,8 +752,11 @@ class TestAddRotatingHandler:
         component_filter = openagents_logging._ComponentFilter(("test",))
 
         openagents_logging._add_rotating_handler(
-            logger, log_path,
-            level=logging.INFO, max_bytes=1024, backup_count=1,
+            logger,
+            log_path,
+            level=logging.INFO,
+            max_bytes=1024,
+            backup_count=1,
             formatter=formatter,
             log_filter=component_filter,
         )
@@ -741,8 +777,11 @@ class TestAddRotatingHandler:
         formatter = logging.Formatter("%(session_tag)s%(message)s")
 
         openagents_logging._add_rotating_handler(
-            logger, log_path,
-            level=logging.INFO, max_bytes=1024, backup_count=1,
+            logger,
+            log_path,
+            level=logging.INFO,
+            max_bytes=1024,
+            backup_count=1,
             formatter=formatter,
         )
 
@@ -773,8 +812,11 @@ class TestAddRotatingHandler:
         try:
             with patch("openagents_cli.config.is_managed", return_value=True):
                 openagents_logging._add_rotating_handler(
-                    logger, log_path,
-                    level=logging.INFO, max_bytes=1024, backup_count=1,
+                    logger,
+                    log_path,
+                    level=logging.INFO,
+                    max_bytes=1024,
+                    backup_count=1,
                     formatter=formatter,
                 )
         finally:
@@ -797,8 +839,11 @@ class TestAddRotatingHandler:
         try:
             with patch("openagents_cli.config.is_managed", return_value=True):
                 openagents_logging._add_rotating_handler(
-                    logger, log_path,
-                    level=logging.INFO, max_bytes=1, backup_count=1,
+                    logger,
+                    log_path,
+                    level=logging.INFO,
+                    max_bytes=1,
+                    backup_count=1,
                     formatter=formatter,
                 )
                 handler = next(
@@ -828,7 +873,10 @@ class TestWindowsConcurrentLogLockTimeout:
         logger.setLevel(logging.INFO)
 
         handler = openagents_logging._ManagedRotatingFileHandler(
-            str(log_path), maxBytes=1, backupCount=1, encoding="utf-8",
+            str(log_path),
+            maxBytes=1,
+            backupCount=1,
+            encoding="utf-8",
         )
         handler.setFormatter(logging.Formatter("%(message)s"))
         logger.addHandler(handler)
@@ -859,7 +907,13 @@ class TestWindowsConcurrentLogLockTimeout:
         reaches stderr (the slash-worker surface)."""
         logger, handler = self._make_logger_and_handler(tmp_path / "agent.log")
         record = logger.makeRecord(
-            logger.name, logging.INFO, __file__, 0, "force rollover", (), None,
+            logger.name,
+            logging.INFO,
+            __file__,
+            0,
+            "force rollover",
+            (),
+            None,
         )
         try:
             with patch.object(openagents_logging.sys, "platform", "win32"):
@@ -880,7 +934,13 @@ class TestWindowsConcurrentLogLockTimeout:
         normal stdlib logging-error output — only the known CLH timeout is silent."""
         logger, handler = self._make_logger_and_handler(tmp_path / "agent.log")
         record = logger.makeRecord(
-            logger.name, logging.INFO, __file__, 0, "force rollover", (), None,
+            logger.name,
+            logging.INFO,
+            __file__,
+            0,
+            "force rollover",
+            (),
+            None,
         )
         try:
             with patch.object(openagents_logging.sys, "platform", "win32"):
@@ -908,6 +968,7 @@ class TestReadLoggingConfig:
 
     def test_reads_logging_section(self, hermes_home):
         import yaml
+
         config = {"logging": {"level": "DEBUG", "max_size_mb": 10, "backup_count": 5}}
         (hermes_home / "config.yaml").write_text(yaml.dump(config))
 
@@ -918,6 +979,7 @@ class TestReadLoggingConfig:
 
     def test_handles_missing_logging_section(self, hermes_home):
         import yaml
+
         config = {"model": "test"}
         (hermes_home / "config.yaml").write_text(yaml.dump(config))
 
@@ -936,9 +998,13 @@ class TestExternalRotationRecovery:
     instead of the file the operator expects to read.
     """
 
-    def _make_handler(self, log_path: Path) -> openagents_logging._ManagedRotatingFileHandler:
+    def _make_handler(
+        self, log_path: Path
+    ) -> openagents_logging._ManagedRotatingFileHandler:
         handler = openagents_logging._ManagedRotatingFileHandler(
-            str(log_path), maxBytes=10 * 1024 * 1024, backupCount=3,
+            str(log_path),
+            maxBytes=10 * 1024 * 1024,
+            backupCount=3,
             encoding="utf-8",
         )
         handler.setLevel(logging.INFO)
@@ -947,8 +1013,13 @@ class TestExternalRotationRecovery:
 
     def _emit(self, handler: logging.Handler, msg: str) -> None:
         record = logging.LogRecord(
-            name="gateway.run", level=logging.INFO, pathname="", lineno=0,
-            msg=msg, args=(), exc_info=None,
+            name="gateway.run",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg=msg,
+            args=(),
+            exc_info=None,
         )
         # Match the record factory that openagents_logging installs at import time.
         record.session_tag = ""
@@ -1036,7 +1107,10 @@ class TestExternalRotationRecovery:
 
         # Tiny maxBytes forces rollover after the first record.
         handler = openagents_logging._ManagedRotatingFileHandler(
-            str(log_path), maxBytes=1, backupCount=1, encoding="utf-8",
+            str(log_path),
+            maxBytes=1,
+            backupCount=1,
+            encoding="utf-8",
         )
         handler.setLevel(logging.INFO)
         handler.setFormatter(logging.Formatter("%(message)s"))
@@ -1054,7 +1128,8 @@ class TestExternalRotationRecovery:
             handler.close()
 
     def test_gateway_log_attached_after_external_rotation_then_re_setup(
-        self, hermes_home,
+        self,
+        hermes_home,
     ):
         """End-to-end Allen-reproduction: gateway.log gets externally rotated,
         ``setup_logging(mode='gateway')`` is re-called, the handler keeps
@@ -1070,8 +1145,10 @@ class TestExternalRotationRecovery:
 
         logging.getLogger("gateway.run").info("line BEFORE rotation")
         for h in logging.getLogger().handlers:
-            try: h.flush()
-            except Exception: pass
+            try:
+                h.flush()
+            except Exception:
+                pass
         assert "BEFORE rotation" in gw_path.read_text()
 
         # External actor renames the file out from under us.
@@ -1085,8 +1162,10 @@ class TestExternalRotationRecovery:
 
         logging.getLogger("gateway.run").info("line AFTER rotation")
         for h in logging.getLogger().handlers:
-            try: h.flush()
-            except Exception: pass
+            try:
+                h.flush()
+            except Exception:
+                pass
 
         # The new record must reach the live gateway.log, not the rotated
         # backup.  Allen's logs had everything past the rotation point
@@ -1102,12 +1181,15 @@ class TestSafeStderr:
     def test_returns_stderr_on_utf8_system(self, monkeypatch):
         """On UTF-8 systems, _safe_stderr() returns sys.stderr unchanged."""
         import io
+
         fake_stderr = io.StringIO()
         monkeypatch.setattr(sys, "stderr", fake_stderr)
         # On Linux/macOS, encoding is typically utf-8
         result = openagents_logging._safe_stderr()
         # Should return the same object (or a equivalent stream)
-        assert result is fake_stderr or getattr(result, "encoding", "").lower().startswith("utf")
+        assert result is fake_stderr or getattr(
+            result, "encoding", ""
+        ).lower().startswith("utf")
 
     def test_wraps_non_utf8_stderr(self, monkeypatch):
         """On non-UTF-8 systems (e.g. Windows cp949), wraps stderr with UTF-8."""
@@ -1115,6 +1197,7 @@ class TestSafeStderr:
 
         class FakeStderr:
             """Simulates a Windows stderr with legacy encoding."""
+
             encoding = "cp949"
             buffer = io.BytesIO()
 

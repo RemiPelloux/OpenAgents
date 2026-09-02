@@ -189,19 +189,28 @@ def register_cli(subparser) -> None:
     )
     p_create.add_argument("name", help="Bundle name (becomes the /slash command)")
     p_create.add_argument(
-        "--skill", "-s", action="append", default=[],
+        "--skill",
+        "-s",
+        action="append",
+        default=[],
         help="Skill name to include (repeat for multiple)",
     )
     p_create.add_argument(
-        "--description", "-d", default="",
+        "--description",
+        "-d",
+        default="",
         help="Human-readable description shown in /help and `hermes bundles list`",
     )
     p_create.add_argument(
-        "--instruction", "-i", default="",
+        "--instruction",
+        "-i",
+        default="",
         help="Extra guidance prepended to the loaded skill content",
     )
     p_create.add_argument(
-        "--force", "-f", action="store_true",
+        "--force",
+        "-f",
+        action="store_true",
         help="Overwrite an existing bundle with the same name",
     )
     p_create.set_defaults(_bundles_handler=_cmd_create)

@@ -19,7 +19,9 @@ def resolve_codex_binary() -> List[str]:
     which = shutil.which("codex")
     if which:
         return [which]
-    raise RuntimeError("Codex CLI not found. Install with `npm install -g @openai/codex` or set OPENOS_CODEX_PATH.")
+    raise RuntimeError(
+        "Codex CLI not found. Install with `npm install -g @openai/codex` or set OPENOS_CODEX_PATH."
+    )
 
 
 def verify_codex_binary() -> bool:

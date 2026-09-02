@@ -33,7 +33,9 @@ def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-def new_execution(workflow: Workflow, inputs: Optional[Dict[str, Any]] = None) -> WorkflowExecution:
+def new_execution(
+    workflow: Workflow, inputs: Optional[Dict[str, Any]] = None
+) -> WorkflowExecution:
     return WorkflowExecution(
         id=store.new_id("exec"),
         workflow_id=workflow.id,
@@ -62,13 +64,19 @@ class WorkflowEngine:
         edges = self.workflow.outgoing_edges(node_id)
         if not edges:
             return None
-        branch = result.output.get("branch") if isinstance(result.output, dict) else None
+        branch = (
+            result.output.get("branch") if isinstance(result.output, dict) else None
+        )
         if branch is None:
             return edges[0].target
         for edge in edges:
             if (edge.source_handle or "").lower() == str(branch).lower():
                 return edge.target
-        logger.warning("openagentui: node %s branch %r has no matching outgoing edge", node_id, branch)
+        logger.warning(
+            "openagentui: node %s branch %r has no matching outgoing edge",
+            node_id,
+            branch,
+        )
         return None
 
     def run(self, on_node: Optional[NodeCallback] = None) -> WorkflowExecution:
@@ -106,9 +114,13 @@ class WorkflowEngine:
                 on_node(NodeExecutionResult(node_id=node.id, status="running"))
             try:
                 result = executor(NodeContext(node=node, execution=execution))
-            except Exception as exc:  # defensive: a node executor must never crash the run
+            except (
+                Exception
+            ) as exc:  # defensive: a node executor must never crash the run
                 logger.exception("openagentui: unhandled error in node %s", node.id)
-                result = NodeExecutionResult(node_id=node.id, status="failed", error=str(exc))
+                result = NodeExecutionResult(
+                    node_id=node.id, status="failed", error=str(exc)
+                )
 
             execution.node_results[node.id] = result
             store.save_execution(execution)
@@ -157,13 +169,17 @@ def run_workflow(
     return WorkflowEngine(workflow, execution).run(on_node=on_node)
 
 
-def resume_execution(execution_id: str, on_node: Optional[NodeCallback] = None) -> WorkflowExecution:
+def resume_execution(
+    execution_id: str, on_node: Optional[NodeCallback] = None
+) -> WorkflowExecution:
     """Continue a paused (``waiting-approval``) execution from where it stopped."""
     execution = store.get_execution(execution_id)
     if execution is None:
         raise ValueError(f"unknown execution: {execution_id}")
     workflow = store.get_workflow(execution.workflow_id)
     if workflow is None:
-        raise ValueError(f"execution {execution_id} references missing workflow {execution.workflow_id}")
+        raise ValueError(
+            f"execution {execution_id} references missing workflow {execution.workflow_id}"
+        )
     execution.status = "running"
     return WorkflowEngine(workflow, execution).run(on_node=on_node)

@@ -50,7 +50,7 @@ from openagents_cli.nous_billing import (
 @pytest.mark.parametrize(
     "raw,expected",
     [
-        ("142.5", Decimal("142.5")),   # decimal string, NOT 2dp — the headline case
+        ("142.5", Decimal("142.5")),  # decimal string, NOT 2dp — the headline case
         ("100", Decimal("100")),
         ("10000", Decimal("10000")),
         ("0.01", Decimal("0.01")),
@@ -219,7 +219,9 @@ def test_other_403s_map_to_base_error_with_portal_url(error):
     with pytest.raises(BillingError) as ei:
         _raise_for_error(403, {"error": error, "portalUrl": "/billing?topup=open"})
     # Not a scope/auth/rate subclass — the generic gate-denial path.
-    assert not isinstance(ei.value, (BillingScopeRequired, BillingAuthError, BillingRateLimited))
+    assert not isinstance(
+        ei.value, (BillingScopeRequired, BillingAuthError, BillingRateLimited)
+    )
     assert ei.value.error == error
     # portalUrl resolved to an absolute deep-link (server sends it relative).
     assert (ei.value.portal_url or "").startswith("http")
@@ -366,9 +368,9 @@ def test_validate_amount_strips_dollar_sign():
         ("", "dollar amount"),
         ("0", "greater than"),
         ("-5", "greater than"),
-        ("10.005", "cent"),       # multipleOf 0.01 — sub-cent rejected
-        ("5", "Minimum"),         # below bounds.minUsd
-        ("99999", "Maximum"),     # above bounds.maxUsd
+        ("10.005", "cent"),  # multipleOf 0.01 — sub-cent rejected
+        ("5", "Minimum"),  # below bounds.minUsd
+        ("99999", "Maximum"),  # above bounds.maxUsd
     ],
 )
 def test_validate_amount_rejections(raw, err_substr):

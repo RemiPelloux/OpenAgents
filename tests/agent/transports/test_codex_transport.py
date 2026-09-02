@@ -11,11 +11,11 @@ from agent.transports.types import NormalizedResponse
 @pytest.fixture
 def transport():
     import agent.transports.codex  # noqa: F401
+
     return get_transport("codex_responses")
 
 
 class TestCodexTransportBasic:
-
     def test_api_mode(self, transport):
         assert transport.api_mode == "codex_responses"
 
@@ -23,14 +23,19 @@ class TestCodexTransportBasic:
         assert transport is not None
 
     def test_convert_tools(self, transport):
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "terminal",
-                "description": "Run a command",
-                "parameters": {"type": "object", "properties": {"command": {"type": "string"}}},
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "terminal",
+                    "description": "Run a command",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"command": {"type": "string"}},
+                    },
+                },
             }
-        }]
+        ]
         result = transport.convert_tools(tools)
         assert len(result) == 1
         assert result[0]["type"] == "function"
@@ -38,7 +43,6 @@ class TestCodexTransportBasic:
 
 
 class TestCodexBuildKwargs:
-
     def test_basic_kwargs(self, transport):
         messages = [
             {"role": "system", "content": "You are helpful."},
@@ -70,7 +74,9 @@ class TestCodexBuildKwargs:
     def test_reasoning_config(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             reasoning_config={"effort": "high"},
         )
         assert kw.get("reasoning", {}).get("effort") == "high"
@@ -78,7 +84,9 @@ class TestCodexBuildKwargs:
     def test_reasoning_disabled(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             reasoning_config={"enabled": False},
         )
         assert "reasoning" not in kw or kw.get("include") == []
@@ -90,7 +98,9 @@ class TestCodexBuildKwargs:
         cache key. The key is a 'pck_' hash and must NOT equal session_id."""
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             session_id="cron_job42_20260624_143000",
         )
         pck = kw.get("prompt_cache_key", "")
@@ -103,11 +113,15 @@ class TestCodexBuildKwargs:
         fix: repeated fires reuse the warm prefix instead of going cold."""
         messages = [{"role": "user", "content": "Hi"}]
         kw1 = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             session_id="cron_job42_20260624_143000",
         )
         kw2 = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             session_id="cron_job42_20260624_143500",
         )
         assert kw1["prompt_cache_key"] == kw2["prompt_cache_key"]
@@ -115,7 +129,9 @@ class TestCodexBuildKwargs:
     def test_github_responses_no_cache_key(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             session_id="test-session",
             is_github_responses=True,
         )
@@ -134,7 +150,9 @@ class TestCodexBuildKwargs:
         """
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-4.3", messages=messages, tools=[],
+            model="grok-4.3",
+            messages=messages,
+            tools=[],
             session_id="conv-xai-1",
             is_xai_responses=True,
         )
@@ -155,10 +173,14 @@ class TestCodexBuildKwargs:
         aren't silently clobbered by the transport."""
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-4.3", messages=messages, tools=[],
+            model="grok-4.3",
+            messages=messages,
+            tools=[],
             session_id="conv-xai-1",
             is_xai_responses=True,
-            request_overrides={"extra_body": {"prompt_cache_key": "caller-override", "other_field": 42}},
+            request_overrides={
+                "extra_body": {"prompt_cache_key": "caller-override", "other_field": 42}
+            },
         )
         eb = kw.get("extra_body", {})
         assert eb.get("prompt_cache_key") == "caller-override"
@@ -167,7 +189,9 @@ class TestCodexBuildKwargs:
     def test_max_tokens(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             max_tokens=4096,
         )
         assert kw.get("max_output_tokens") == 4096
@@ -175,7 +199,9 @@ class TestCodexBuildKwargs:
     def test_codex_backend_no_max_output_tokens(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             max_tokens=4096,
             is_codex_backend=True,
         )
@@ -243,7 +269,9 @@ class TestCodexBuildKwargs:
     def test_xai_headers(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-3", messages=messages, tools=[],
+            model="grok-3",
+            messages=messages,
+            tools=[],
             session_id="conv-123",
             is_xai_responses=True,
         )
@@ -252,7 +280,9 @@ class TestCodexBuildKwargs:
     def test_xai_headers_preserve_request_override_headers(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-3", messages=messages, tools=[],
+            model="grok-3",
+            messages=messages,
+            tools=[],
             session_id="conv-123",
             is_xai_responses=True,
             request_overrides={"extra_headers": {"X-Test": "1", "X-Trace": "abc"}},
@@ -266,7 +296,9 @@ class TestCodexBuildKwargs:
     def test_minimal_effort_clamped(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=messages, tools=[],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[],
             reasoning_config={"effort": "minimal"},
         )
         # "minimal" should be clamped to "low"
@@ -275,7 +307,9 @@ class TestCodexBuildKwargs:
     def test_xai_reasoning_effort_passed(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-4.3", messages=messages, tools=[],
+            model="grok-4.3",
+            messages=messages,
+            tools=[],
             is_xai_responses=True,
             reasoning_config={"effort": "high"},
         )
@@ -289,7 +323,9 @@ class TestCodexBuildKwargs:
         # full history.
         assert "reasoning.encrypted_content" in kw.get("include", [])
 
-    def test_xai_injects_native_web_search_when_client_web_search_present(self, transport):
+    def test_xai_injects_native_web_search_when_client_web_search_present(
+        self, transport
+    ):
         """xAI path swaps a client-side ``web_search`` function for xAI's
         native server-side ``web_search`` built-in so grok server-side search
         runs to completion (otherwise the turn stalls as
@@ -298,26 +334,45 @@ class TestCodexBuildKwargs:
         """
         messages = [{"role": "user", "content": "Find current prices."}]
         kw = transport.build_kwargs(
-            model="grok-composer-2.5-fast", messages=messages,
+            model="grok-composer-2.5-fast",
+            messages=messages,
             tools=[
-                {"type": "function", "function": {
-                    "name": "read_file", "description": "Read a file.",
-                    "parameters": {"type": "object",
-                                   "properties": {"path": {"type": "string"}}}}},
-                {"type": "function", "function": {
-                    "name": "web_search", "description": "Search the web.",
-                    "parameters": {"type": "object",
-                                   "properties": {"query": {"type": "string"}}}}},
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "read_file",
+                        "description": "Read a file.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"path": {"type": "string"}},
+                        },
+                    },
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "web_search",
+                        "description": "Search the web.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"query": {"type": "string"}},
+                        },
+                    },
+                },
             ],
             is_xai_responses=True,
         )
         tool_types = [t.get("type") for t in kw.get("tools", [])]
         assert "web_search" in tool_types, kw.get("tools")
         # Non-conflicting client-side tools are preserved.
-        names = [t.get("name") for t in kw.get("tools", []) if t.get("type") == "function"]
+        names = [
+            t.get("name") for t in kw.get("tools", []) if t.get("type") == "function"
+        ]
         assert "read_file" in names
 
-    def test_xai_does_not_inject_native_web_search_without_client_web_search(self, transport):
+    def test_xai_does_not_inject_native_web_search_without_client_web_search(
+        self, transport
+    ):
         """The native ``web_search`` built-in is a 1:1 swap for an
         already-requested client ``web_search`` — NOT an additive grant.  A
         turn whose toolset has no ``web_search`` (user never enabled the web
@@ -327,11 +382,21 @@ class TestCodexBuildKwargs:
         """
         messages = [{"role": "user", "content": "Read this file."}]
         kw = transport.build_kwargs(
-            model="grok-composer-2.5-fast", messages=messages,
-            tools=[{"type": "function", "function": {
-                "name": "read_file", "description": "Read a file.",
-                "parameters": {"type": "object",
-                               "properties": {"path": {"type": "string"}}}}}],
+            model="grok-composer-2.5-fast",
+            messages=messages,
+            tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "read_file",
+                        "description": "Read a file.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"path": {"type": "string"}},
+                        },
+                    },
+                }
+            ],
             is_xai_responses=True,
         )
         tools = kw.get("tools", [])
@@ -345,25 +410,35 @@ class TestCodexBuildKwargs:
         returns HTTP 400 'Duplicate tool names: web_search'."""
         messages = [{"role": "user", "content": "Search the web."}]
         kw = transport.build_kwargs(
-            model="grok-composer-2.5-fast", messages=messages,
-            tools=[{"type": "function", "function": {
-                "name": "web_search", "description": "Search the web.",
-                "parameters": {"type": "object",
-                               "properties": {"query": {"type": "string"}}}}}],
+            model="grok-composer-2.5-fast",
+            messages=messages,
+            tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "web_search",
+                        "description": "Search the web.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"query": {"type": "string"}},
+                        },
+                    },
+                }
+            ],
             is_xai_responses=True,
         )
         tools = kw.get("tools", [])
         # Exactly one tool named/typed web_search, and it is the native built-in.
         web_search_entries = [
-            t for t in tools
+            t
+            for t in tools
             if t.get("name") == "web_search" or t.get("type") == "web_search"
         ]
         assert len(web_search_entries) == 1
         assert web_search_entries[0] == {"type": "web_search"}
         # No client-side function form of web_search survives.
         assert not any(
-            t.get("type") == "function" and t.get("name") == "web_search"
-            for t in tools
+            t.get("type") == "function" and t.get("name") == "web_search" for t in tools
         )
 
     def test_non_xai_path_does_not_inject_native_web_search(self, transport):
@@ -371,24 +446,35 @@ class TestCodexBuildKwargs:
         keep the client-side web_search function untouched."""
         messages = [{"role": "user", "content": "Search."}]
         kw = transport.build_kwargs(
-            model="gpt-5.4", messages=messages,
-            tools=[{"type": "function", "function": {
-                "name": "web_search", "description": "Search the web.",
-                "parameters": {"type": "object",
-                               "properties": {"query": {"type": "string"}}}}}],
+            model="gpt-5.4",
+            messages=messages,
+            tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "web_search",
+                        "description": "Search the web.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"query": {"type": "string"}},
+                        },
+                    },
+                }
+            ],
             is_xai_responses=False,
         )
         tools = kw.get("tools", [])
         assert not any(t.get("type") == "web_search" for t in tools)
         assert any(
-            t.get("type") == "function" and t.get("name") == "web_search"
-            for t in tools
+            t.get("type") == "function" and t.get("name") == "web_search" for t in tools
         )
 
     def test_xai_reasoning_disabled_no_reasoning_key(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-4.3", messages=messages, tools=[],
+            model="grok-4.3",
+            messages=messages,
+            tools=[],
             is_xai_responses=True,
             reasoning_config={"enabled": False},
         )
@@ -398,7 +484,9 @@ class TestCodexBuildKwargs:
     def test_xai_minimal_effort_clamped(self, transport):
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-4.3", messages=messages, tools=[],
+            model="grok-4.3",
+            messages=messages,
+            tools=[],
             is_xai_responses=True,
             reasoning_config={"effort": "minimal"},
         )
@@ -418,7 +506,9 @@ class TestCodexBuildKwargs:
         messages = [{"role": "user", "content": "Hi"}]
         for model in ("grok-4", "grok-4-0709"):
             kw = transport.build_kwargs(
-                model=model, messages=messages, tools=[],
+                model=model,
+                messages=messages,
+                tools=[],
                 is_xai_responses=True,
                 reasoning_config={"effort": "high"},
             )
@@ -439,7 +529,9 @@ class TestCodexBuildKwargs:
             "grok-4-1-fast-non-reasoning",
         ):
             kw = transport.build_kwargs(
-                model=model, messages=messages, tools=[],
+                model=model,
+                messages=messages,
+                tools=[],
                 is_xai_responses=True,
                 reasoning_config={"effort": "low"},
             )
@@ -451,7 +543,9 @@ class TestCodexBuildKwargs:
         """Plain grok-3 rejects reasoning.effort — only grok-3-mini accepts it."""
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-3", messages=messages, tools=[],
+            model="grok-3",
+            messages=messages,
+            tools=[],
             is_xai_responses=True,
             reasoning_config={"effort": "medium"},
         )
@@ -462,7 +556,9 @@ class TestCodexBuildKwargs:
         messages = [{"role": "user", "content": "Hi"}]
         for model in ("grok-3-mini", "grok-3-mini-fast"):
             kw = transport.build_kwargs(
-                model=model, messages=messages, tools=[],
+                model=model,
+                messages=messages,
+                tools=[],
                 is_xai_responses=True,
                 reasoning_config={"effort": "high"},
             )
@@ -476,7 +572,9 @@ class TestCodexBuildKwargs:
         messages = [{"role": "user", "content": "Hi"}]
         for model in ("grok-4.20-0309-reasoning", "grok-4.20-0309-non-reasoning"):
             kw = transport.build_kwargs(
-                model=model, messages=messages, tools=[],
+                model=model,
+                messages=messages,
+                tools=[],
                 is_xai_responses=True,
                 reasoning_config={"effort": "high"},
             )
@@ -486,7 +584,9 @@ class TestCodexBuildKwargs:
         """grok-4.20-multi-agent-0309 is the one grok-4.20 variant that accepts effort."""
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-4.20-multi-agent-0309", messages=messages, tools=[],
+            model="grok-4.20-multi-agent-0309",
+            messages=messages,
+            tools=[],
             is_xai_responses=True,
             reasoning_config={"effort": "low"},
         )
@@ -496,7 +596,9 @@ class TestCodexBuildKwargs:
         """grok-code-fast-1 rejects reasoning.effort."""
         messages = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
-            model="grok-code-fast-1", messages=messages, tools=[],
+            model="grok-code-fast-1",
+            messages=messages,
+            tools=[],
             is_xai_responses=True,
             reasoning_config={"effort": "high"},
         )
@@ -507,14 +609,18 @@ class TestCodexBuildKwargs:
         messages = [{"role": "user", "content": "Hi"}]
         # Effort-capable
         kw = transport.build_kwargs(
-            model="x-ai/grok-3-mini", messages=messages, tools=[],
+            model="x-ai/grok-3-mini",
+            messages=messages,
+            tools=[],
             is_xai_responses=True,
             reasoning_config={"effort": "high"},
         )
         assert kw.get("reasoning") == {"effort": "high"}
         # Effort-incapable
         kw = transport.build_kwargs(
-            model="x-ai/grok-4-0709", messages=messages, tools=[],
+            model="x-ai/grok-4-0709",
+            messages=messages,
+            tools=[],
             is_xai_responses=True,
             reasoning_config={"effort": "high"},
         )
@@ -522,7 +628,6 @@ class TestCodexBuildKwargs:
 
 
 class TestCodexValidateResponse:
-
     def test_none_response(self, transport):
         assert transport.validate_response(None) is False
 
@@ -542,7 +647,6 @@ class TestCodexValidateResponse:
 
 
 class TestCodexMapFinishReason:
-
     def test_completed(self, transport):
         assert transport.map_finish_reason("completed") == "stop"
 
@@ -557,7 +661,6 @@ class TestCodexMapFinishReason:
 
 
 class TestCodexNormalizeResponse:
-
     def test_text_response(self, transport):
         """Normalize a simple text Codex response."""
         r = SimpleNamespace(
@@ -571,8 +674,12 @@ class TestCodexNormalizeResponse:
             ],
             status="completed",
             incomplete_details=None,
-            usage=SimpleNamespace(input_tokens=10, output_tokens=5,
-                                  input_tokens_details=None, output_tokens_details=None),
+            usage=SimpleNamespace(
+                input_tokens=10,
+                output_tokens=5,
+                input_tokens_details=None,
+                output_tokens_details=None,
+            ),
         )
         nr = transport.normalize_response(r)
         assert isinstance(nr, NormalizedResponse)
@@ -594,8 +701,12 @@ class TestCodexNormalizeResponse:
             ],
             status="completed",
             incomplete_details=None,
-            usage=SimpleNamespace(input_tokens=10, output_tokens=5,
-                                  input_tokens_details=None, output_tokens_details=None),
+            usage=SimpleNamespace(
+                input_tokens=10,
+                output_tokens=5,
+                input_tokens_details=None,
+                output_tokens_details=None,
+            ),
         )
         nr = transport.normalize_response(r)
         assert nr.codex_message_items == [
@@ -624,8 +735,12 @@ class TestCodexNormalizeResponse:
             ],
             status="completed",
             incomplete_details=None,
-            usage=SimpleNamespace(input_tokens=10, output_tokens=20,
-                                  input_tokens_details=None, output_tokens_details=None),
+            usage=SimpleNamespace(
+                input_tokens=10,
+                output_tokens=20,
+                input_tokens_details=None,
+                output_tokens_details=None,
+            ),
         )
         nr = transport.normalize_response(r)
         assert nr.finish_reason == "tool_calls"
@@ -633,7 +748,6 @@ class TestCodexNormalizeResponse:
         tc = nr.tool_calls[0]
         assert tc.name == "terminal"
         assert '"command"' in tc.arguments
-
 
 
 class TestCodexTransportTimeout:
@@ -711,6 +825,7 @@ class TestCodexTransportXaiServiceTierStrip:
     @pytest.fixture
     def transport(self):
         from agent.transports.codex import ResponsesApiTransport
+
         return ResponsesApiTransport()
 
     def test_xai_strips_service_tier_from_request_overrides(self, transport):
@@ -797,6 +912,7 @@ class TestPreflightSlashEnumStrip:
         """When the model name is Grok-family, slash-containing enum
         values are stripped so xAI doesn't 400 on the tool schema."""
         from agent.codex_responses_adapter import _preflight_codex_api_kwargs
+
         kwargs = self._make_kwargs(
             "grok-4.3",
             ["Qwen/Qwen3.5-0.8B", "openai/gpt-oss-20b", "plain-id"],
@@ -813,6 +929,7 @@ class TestPreflightSlashEnumStrip:
     def test_aggregator_prefixed_grok_also_strips(self):
         """Aggregator-prefixed (x-ai/grok-*) names hit the same path."""
         from agent.codex_responses_adapter import _preflight_codex_api_kwargs
+
         kwargs = self._make_kwargs(
             "x-ai/grok-4.3",
             ["Qwen/Qwen3.5-0.8B"],
@@ -826,6 +943,7 @@ class TestPreflightSlashEnumStrip:
         degrade tool-schema constraints on every codex_responses
         provider that isn't xAI."""
         from agent.codex_responses_adapter import _preflight_codex_api_kwargs
+
         kwargs = self._make_kwargs(
             "gpt-5.5",
             ["Qwen/Qwen3.5-0.8B", "plain-id"],
@@ -834,5 +952,6 @@ class TestPreflightSlashEnumStrip:
         params = result["tools"][0]["parameters"]
         # The enum must survive on non-xAI providers.
         assert params["properties"]["model_id"].get("enum") == [
-            "Qwen/Qwen3.5-0.8B", "plain-id"
+            "Qwen/Qwen3.5-0.8B",
+            "plain-id",
         ]

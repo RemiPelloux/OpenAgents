@@ -62,8 +62,10 @@ def test_update_via_zip_rejects_symlink_member(tmp_path, monkeypatch):
             dst.write(src.read())
         return dest, None
 
-    with patch("tempfile.mkdtemp", side_effect=capturing_mkdtemp), \
-         patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve):
+    with (
+        patch("tempfile.mkdtemp", side_effect=capturing_mkdtemp),
+        patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve),
+    ):
         # _update_via_zip catches ValueError, prints the message, and exits 1.
         # That's the contract: a malicious ZIP must fail the update, not
         # silently materialize a symlink.
@@ -113,10 +115,14 @@ def test_update_via_zip_accepts_normal_member(tmp_path, monkeypatch, capsys):
     # The function may sys.exit(1) when those commands fail; that's fine —
     # we only care that ZIP validation + extraction completed without
     # raising "symlink member".
-    with patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve), \
-         patch("subprocess.run") as fake_run, \
-         patch("subprocess.check_call"):
-        fake_run.return_value = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+    with (
+        patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve),
+        patch("subprocess.run") as fake_run,
+        patch("subprocess.check_call"),
+    ):
+        fake_run.return_value = type(
+            "R", (), {"returncode": 0, "stdout": "", "stderr": ""}
+        )()
         try:
             hermes_main._update_via_zip(args)
         except SystemExit:

@@ -31,6 +31,7 @@ def _reset_openagents_time_cache():
 # openagents_time.now() — core helper
 # =========================================================================
 
+
 class TestHermesTimeNow:
     """Test the timezone-aware now() helper."""
 
@@ -130,10 +131,10 @@ class TestGetTimezone:
         assert tz is None
 
 
-
 # =========================================================================
 # execute_code child env — TZ injection
 # =========================================================================
+
 
 @pytest.mark.skipif(sys.platform == "win32", reason="UDS not available on Windows")
 class TestCodeExecutionTZ:
@@ -147,6 +148,7 @@ class TestCodeExecutionTZ:
         monkeypatch.setenv("TERMINAL_ENV", "local")
         try:
             from tools.code_execution_tool import execute_code
+
             self._execute_code = execute_code
         except ImportError:
             pytest.skip("tools.code_execution_tool not importable (missing deps)")
@@ -156,6 +158,7 @@ class TestCodeExecutionTZ:
 
     def _mock_handle(self, function_name, function_args, task_id=None, user_task=None):
         import json as _json
+
         return _json.dumps({"error": f"unexpected tool call: {function_name}"})
 
     def test_tz_injected_when_configured(self):
@@ -166,22 +169,25 @@ class TestCodeExecutionTZ:
         (each execute_code spawns a real Python subprocess ~3s).
         """
         import json as _json
+
         os.environ["HERMES_TIMEZONE"] = "Asia/Kolkata"
 
         # One subprocess, three things checked:
         #   1) TZ is injected as "Asia/Kolkata"
         #   2) HERMES_TIMEZONE itself does NOT leak into the child env
         probe = (
-            'import os; '
+            "import os; "
             'print("TZ=" + os.environ.get("TZ", "NOT_SET")); '
             'print("HERMES_TIMEZONE=" + os.environ.get("HERMES_TIMEZONE", "NOT_SET"))'
         )
         with patch("model_tools.handle_function_call", side_effect=self._mock_handle):
-            result = _json.loads(self._execute_code(
-                code=probe,
-                task_id="tz-combined-test",
-                enabled_tools=[],
-            ))
+            result = _json.loads(
+                self._execute_code(
+                    code=probe,
+                    task_id="tz-combined-test",
+                    enabled_tools=[],
+                )
+            )
         assert result["status"] == "success"
         assert "TZ=Asia/Kolkata" in result["output"]
         assert "HERMES_TIMEZONE=NOT_SET" in result["output"], (
@@ -191,14 +197,17 @@ class TestCodeExecutionTZ:
     def test_tz_not_injected_when_empty(self):
         """When HERMES_TIMEZONE is not set, child process has no TZ."""
         import json as _json
+
         os.environ.pop("HERMES_TIMEZONE", None)
 
         with patch("model_tools.handle_function_call", side_effect=self._mock_handle):
-            result = _json.loads(self._execute_code(
-                code='import os; print(os.environ.get("TZ", "NOT_SET"))',
-                task_id="tz-test-empty",
-                enabled_tools=[],
-            ))
+            result = _json.loads(
+                self._execute_code(
+                    code='import os; print(os.environ.get("TZ", "NOT_SET"))',
+                    task_id="tz-test-empty",
+                    enabled_tools=[],
+                )
+            )
         assert result["status"] == "success"
         assert "NOT_SET" in result["output"]
 
@@ -206,6 +215,7 @@ class TestCodeExecutionTZ:
 # =========================================================================
 # Cron timezone-aware scheduling
 # =========================================================================
+
 
 class TestCronTimezone:
     """Verify cron paths use timezone-aware now()."""
@@ -221,6 +231,7 @@ class TestCronTimezone:
         """parse_schedule('30m') should produce a tz-aware run_at."""
         os.environ["HERMES_TIMEZONE"] = "Asia/Kolkata"
         from cron.jobs import parse_schedule
+
         result = parse_schedule("30m")
         run_at = datetime.fromisoformat(result["run_at"])
         # The stored timestamp should be tz-aware
@@ -230,6 +241,7 @@ class TestCronTimezone:
         """compute_next_run returns tz-aware timestamps."""
         os.environ["HERMES_TIMEZONE"] = "Asia/Kolkata"
         from cron.jobs import compute_next_run
+
         schedule = {"kind": "interval", "minutes": 60}
         result = compute_next_run(schedule)
         next_dt = datetime.fromisoformat(result)
@@ -238,6 +250,7 @@ class TestCronTimezone:
     def test_get_due_jobs_handles_naive_timestamps(self, tmp_path, monkeypatch):
         """Backward compat: naive timestamps from before tz support don't crash."""
         import cron.jobs as jobs_module
+
         monkeypatch.setattr(jobs_module, "CRON_DIR", tmp_path / "cron")
         monkeypatch.setattr(jobs_module, "JOBS_FILE", tmp_path / "cron" / "jobs.json")
         monkeypatch.setattr(jobs_module, "OUTPUT_DIR", tmp_path / "cron" / "output")
@@ -247,6 +260,7 @@ class TestCronTimezone:
 
         # Create a job with a NAIVE past timestamp (simulating pre-tz data)
         from cron.jobs import create_job, load_jobs, save_jobs, get_due_jobs
+
         job = create_job(prompt="Test job", schedule="every 1h")
         jobs = load_jobs()
         # Force a naive (no timezone) past timestamp
@@ -304,7 +318,9 @@ class TestCronTimezone:
         expected_local = utc_dt.astimezone(kolkata)
         assert result == expected_local
 
-    def test_ensure_aware_due_job_not_skipped_when_system_ahead(self, tmp_path, monkeypatch):
+    def test_ensure_aware_due_job_not_skipped_when_system_ahead(
+        self, tmp_path, monkeypatch
+    ):
         """Reproduce the actual bug: system tz ahead of OpenAgents tz caused
         overdue jobs to appear as not-yet-due.
 
@@ -313,6 +329,7 @@ class TestCronTimezone:
         be recognized as due after conversion.
         """
         import cron.jobs as jobs_module
+
         monkeypatch.setattr(jobs_module, "CRON_DIR", tmp_path / "cron")
         monkeypatch.setattr(jobs_module, "JOBS_FILE", tmp_path / "cron" / "jobs.json")
         monkeypatch.setattr(jobs_module, "OUTPUT_DIR", tmp_path / "cron" / "output")
@@ -341,6 +358,7 @@ class TestCronTimezone:
         """Naive past timestamps must be detected as due even when OpenAgents tz
         is behind system local tz — the scenario that triggered #806."""
         import cron.jobs as jobs_module
+
         monkeypatch.setattr(jobs_module, "CRON_DIR", tmp_path / "cron")
         monkeypatch.setattr(jobs_module, "JOBS_FILE", tmp_path / "cron" / "jobs.json")
         monkeypatch.setattr(jobs_module, "OUTPUT_DIR", tmp_path / "cron" / "output")
@@ -352,6 +370,7 @@ class TestCronTimezone:
         _reset_openagents_time_cache()
 
         from cron.jobs import create_job, load_jobs, save_jobs, get_due_jobs
+
         create_job(prompt="Cross-tz job", schedule="every 1h")
         jobs = load_jobs()
 
@@ -368,6 +387,7 @@ class TestCronTimezone:
     def test_create_job_stores_tz_aware_timestamps(self, tmp_path, monkeypatch):
         """New jobs store timezone-aware created_at and next_run_at."""
         import cron.jobs as jobs_module
+
         monkeypatch.setattr(jobs_module, "CRON_DIR", tmp_path / "cron")
         monkeypatch.setattr(jobs_module, "JOBS_FILE", tmp_path / "cron" / "jobs.json")
         monkeypatch.setattr(jobs_module, "OUTPUT_DIR", tmp_path / "cron" / "output")
@@ -376,6 +396,7 @@ class TestCronTimezone:
         _reset_openagents_time_cache()
 
         from cron.jobs import create_job
+
         job = create_job(prompt="TZ test", schedule="every 2h")
 
         created = datetime.fromisoformat(job["created_at"])

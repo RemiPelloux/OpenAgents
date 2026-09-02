@@ -5,6 +5,7 @@
 the in-container S6ServiceManager instead of falling through to the
 host systemd/launchd/windows code path.
 """
+
 from __future__ import annotations
 
 
@@ -13,6 +14,7 @@ import pytest
 
 class _CallRecorder:
     """Minimal stand-in for S6ServiceManager."""
+
     kind = "s6"
 
     def __init__(self) -> None:
@@ -33,8 +35,10 @@ def test_dispatch_returns_false_on_host(monkeypatch: pytest.MonkeyPatch) -> None
     return False and not invoke a manager — callers continue with
     their existing systemd/launchd/windows path."""
     from openagents_cli import gateway as gw
+
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "systemd",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "systemd",
     )
     # Should not even attempt to construct a manager.
     monkeypatch.setattr(
@@ -48,32 +52,43 @@ def test_dispatch_returns_true_and_calls_start_on_s6(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from openagents_cli import gateway as gw
+
     rec = _CallRecorder()
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     assert gw._dispatch_via_service_manager_if_s6("start", profile="coder") is True
     assert rec.calls == [("start", "gateway-coder")]
 
 
-@pytest.mark.parametrize("action,expected", [
-    ("start", "start"),
-    ("stop", "stop"),
-    ("restart", "restart"),
-])
+@pytest.mark.parametrize(
+    "action,expected",
+    [
+        ("start", "start"),
+        ("stop", "stop"),
+        ("restart", "restart"),
+    ],
+)
 def test_dispatch_translates_action_to_manager_method(
-    monkeypatch: pytest.MonkeyPatch, action: str, expected: str,
+    monkeypatch: pytest.MonkeyPatch,
+    action: str,
+    expected: str,
 ) -> None:
     from openagents_cli import gateway as gw
+
     rec = _CallRecorder()
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     assert gw._dispatch_via_service_manager_if_s6(action, profile="x") is True
     assert rec.calls == [(expected, "gateway-x")]
@@ -85,12 +100,15 @@ def test_dispatch_unknown_action_returns_false(
     """An unrecognized action (e.g. 'install') must not silently
     succeed — return False so the host code path handles it."""
     from openagents_cli import gateway as gw
+
     rec = _CallRecorder()
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     assert gw._dispatch_via_service_manager_if_s6("install", profile="x") is False
     assert rec.calls == []
@@ -102,15 +120,19 @@ def test_dispatch_defaults_profile_to_default(
     """When profile is None, the helper resolves it via _profile_arg().
     With no profile context set anywhere, that resolves to "default"."""
     from openagents_cli import gateway as gw
+
     rec = _CallRecorder()
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     monkeypatch.setattr(
-        "openagents_cli.gateway._profile_suffix", lambda: "",
+        "openagents_cli.gateway._profile_suffix",
+        lambda: "",
     )
     assert gw._dispatch_via_service_manager_if_s6("start") is True
     assert rec.calls == [("start", "gateway-default")]
@@ -136,8 +158,10 @@ def test_dispatch_all_returns_false_on_host(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from openagents_cli import gateway as gw
+
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "systemd",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "systemd",
     )
     monkeypatch.setattr(
         "openagents_cli.service_manager.get_service_manager",
@@ -151,12 +175,15 @@ def test_dispatch_all_iterates_every_profile_on_stop(
     capsys: pytest.CaptureFixture,
 ) -> None:
     from openagents_cli import gateway as gw
+
     rec = _ListingRecorder(["coder", "writer", "assistant"])
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     assert gw._dispatch_all_via_service_manager_if_s6("stop") is True
     assert rec.calls == [
@@ -173,12 +200,15 @@ def test_dispatch_all_iterates_every_profile_on_restart(
     capsys: pytest.CaptureFixture,
 ) -> None:
     from openagents_cli import gateway as gw
+
     rec = _ListingRecorder(["coder", "writer"])
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     assert gw._dispatch_all_via_service_manager_if_s6("restart") is True
     assert rec.calls == [
@@ -205,10 +235,12 @@ def test_dispatch_all_handles_partial_failure(
 
     rec = _FailOnWriter(["coder", "writer", "assistant"])
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     assert gw._dispatch_all_via_service_manager_if_s6("stop") is True
     # The two successful ones were called; writer raised before recording.
@@ -230,12 +262,15 @@ def test_dispatch_all_empty_list_reports_and_returns_true(
     fallback would just pkill nothing, which isn't useful inside a
     container."""
     from openagents_cli import gateway as gw
+
     rec = _ListingRecorder([])
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     assert gw._dispatch_all_via_service_manager_if_s6("stop") is True
     assert rec.calls == []
@@ -248,8 +283,10 @@ def test_dispatch_all_unknown_action_returns_false(
     """`start --all` is not a supported CLI surface; the helper must
     fall through to the host code path rather than no-op."""
     from openagents_cli import gateway as gw
+
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
         "openagents_cli.service_manager.get_service_manager",
@@ -282,10 +319,12 @@ def test_dispatch_renders_gateway_not_registered_friendly(
             raise GatewayNotRegisteredError("typo")
 
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: _RaisesMissing(),
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: _RaisesMissing(),
     )
 
     with pytest.raises(SystemExit) as excinfo:
@@ -319,10 +358,12 @@ def test_dispatch_renders_s6_command_error_friendly(
             )
 
     monkeypatch.setattr(
-        "openagents_cli.service_manager.detect_service_manager", lambda: "s6",
+        "openagents_cli.service_manager.detect_service_manager",
+        lambda: "s6",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: _RaisesS6Error(),
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: _RaisesS6Error(),
     )
 
     with pytest.raises(SystemExit) as excinfo:
@@ -356,7 +397,8 @@ def _stub_s6(monkeypatch: pytest.MonkeyPatch, *, on_s6: bool) -> _CallRecorder:
         lambda: "s6" if on_s6 else "systemd",
     )
     monkeypatch.setattr(
-        "openagents_cli.service_manager.get_service_manager", lambda: rec,
+        "openagents_cli.service_manager.get_service_manager",
+        lambda: rec,
     )
     return rec
 
@@ -379,7 +421,8 @@ def test_redirect_noop_on_host(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_redirect_fires_inside_s6_container(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Inside an s6 container, `gateway run` should:
 
@@ -429,7 +472,8 @@ def test_redirect_fires_inside_s6_container(
 
 
 def test_redirect_falls_back_when_sleep_missing(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Regression guard for issue #36208: when ``os.execvp("sleep", ...)``
     raises (no `sleep` on a clobbered/empty PATH, or a minimal image
@@ -546,7 +590,9 @@ def test_redirect_respects_no_supervise_flag(
     )
     monkeypatch.setattr(
         "openagents_cli.gateway.os.execvp",
-        lambda *a, **kw: pytest.fail("execvp should not run when --no-supervise is set"),
+        lambda *a, **kw: pytest.fail(
+            "execvp should not run when --no-supervise is set"
+        ),
     )
     monkeypatch.delenv("HERMES_S6_SUPERVISED_CHILD", raising=False)
     monkeypatch.delenv("HERMES_GATEWAY_NO_SUPERVISE", raising=False)
@@ -556,7 +602,8 @@ def test_redirect_respects_no_supervise_flag(
 
 @pytest.mark.parametrize("value", ["1", "true", "TRUE", "yes", "Yes"])
 def test_redirect_respects_no_supervise_env(
-    monkeypatch: pytest.MonkeyPatch, value: str,
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
 ) -> None:
     """`HERMES_GATEWAY_NO_SUPERVISE=1` (env var) must skip the redirect.
 

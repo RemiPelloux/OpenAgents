@@ -49,6 +49,7 @@ _TERMINAL_PATH_REGEX = re.compile(r"(?:^|\s)(/[^\s'\"`]+|\~/[^\s'\"`]+)")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _tracker_key(task_id: str, session_id: str) -> str:
     return task_id or session_id or "default"
 
@@ -125,6 +126,7 @@ def _extract_paths_from_terminal(args: Dict[str, Any], result: str) -> Set[str]:
 # Hooks
 # ---------------------------------------------------------------------------
 
+
 def _on_post_tool_call(
     tool_name: str = "",
     args: Optional[Dict[str, Any]] = None,
@@ -144,7 +146,9 @@ def _on_post_tool_call(
     elif tool_name == "patch":
         candidates = _extract_paths_from_patch(args)
     elif tool_name == "terminal":
-        candidates = _extract_paths_from_terminal(args, result if isinstance(result, str) else "")
+        candidates = _extract_paths_from_terminal(
+            args, result if isinstance(result, str) else ""
+        )
     else:
         return
 
@@ -245,9 +249,7 @@ def _handle_slash(raw_args: str) -> Optional[str]:
         )
         for item in prompt:
             lines.append(f"    [{item['category']}] {item['path']}")
-        lines.append(
-            f"\n  Total potential: {dg.fmt_size(auto_size + prompt_size)}"
-        )
+        lines.append(f"\n  Total potential: {dg.fmt_size(auto_size + prompt_size)}")
         return "\n".join(lines)
 
     if sub == "quick":
@@ -296,7 +298,8 @@ def _handle_slash(raw_args: str) -> Optional[str]:
         n = dg.forget(argv[1])
         return (
             f"Removed {n} tracking entr{'y' if n == 1 else 'ies'} for {argv[1]}."
-            if n else f"Not found in tracking: {argv[1]}"
+            if n
+            else f"Not found in tracking: {argv[1]}"
         )
 
     return f"Unknown subcommand: {sub}\n\n{_HELP_TEXT}"
@@ -305,6 +308,7 @@ def _handle_slash(raw_args: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Plugin registration
 # ---------------------------------------------------------------------------
+
 
 def register(ctx) -> None:
     ctx.register_hook("post_tool_call", _on_post_tool_call)

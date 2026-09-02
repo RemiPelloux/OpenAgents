@@ -67,7 +67,9 @@ def test_managed_install_refuses_and_does_not_set_pending_relaunch(capsys):
         _app=None,
         _pending_relaunch=None,
         # Use pytest.fail so any unexpected modal invocation surfaces as a failure.
-        _prompt_text_input_modal=lambda **_kw: pytest.fail("Modal should not be called"),
+        _prompt_text_input_modal=lambda **_kw: pytest.fail(
+            "Modal should not be called"
+        ),
     )
     self_._normalize_slash_confirm_choice = _bound(
         HermesCLI._normalize_slash_confirm_choice, self_

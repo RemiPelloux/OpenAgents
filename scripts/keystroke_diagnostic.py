@@ -33,6 +33,7 @@ Then in Hermes, bind the newline behaviour to that key:
     def handle_ctrl_enter(event):
         event.current_buffer.insert_text('\\n')
 """
+
 from prompt_toolkit import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout

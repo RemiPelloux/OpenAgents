@@ -30,6 +30,7 @@ def _state_path() -> str:
     """Return the path to the Nous rate limit state file."""
     try:
         from openagents_constants import get_openagents_home
+
         base = get_openagents_home()
     except ImportError:
         base = os.path.join(os.path.expanduser("~"), ".hermes")
@@ -130,7 +131,8 @@ def record_nous_rate_limit(
 
         logger.info(
             "Nous rate limit recorded: resets in %.0fs (at %.0f)",
-            reset_at - now, reset_at,
+            reset_at - now,
+            reset_at,
         )
     except Exception as exc:
         logger.debug("Failed to write Nous rate limit state: %s", exc)
@@ -238,7 +240,9 @@ def is_genuine_nous_rate_limit(
     # Signal 2: last-known-good state from a recent successful response.
     # Accepts either a RateLimitState (dataclass from rate_limit_tracker)
     # or a dict of bucket snapshots.
-    if last_known_state is not None and _has_exhausted_bucket_in_object(last_known_state):
+    if last_known_state is not None and _has_exhausted_bucket_in_object(
+        last_known_state
+    ):
         return True
 
     return False

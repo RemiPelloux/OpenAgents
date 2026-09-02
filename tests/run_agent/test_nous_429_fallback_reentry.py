@@ -14,6 +14,7 @@ exactly once more: the guard sees the breaker state recorded by
 ``record_nous_rate_limit()`` moments earlier and either activates a fallback
 provider (resetting retry_count) or returns the explicit rate-limit failure.
 """
+
 from __future__ import annotations
 
 import inspect

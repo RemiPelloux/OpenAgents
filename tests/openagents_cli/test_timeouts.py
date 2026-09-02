@@ -156,17 +156,21 @@ def test_resolved_api_call_timeout_priority(monkeypatch, tmp_path):
     (tmp_path / ".env").write_text("", encoding="utf-8")
 
     # Case A: config wins over env var
-    _write_config(tmp_path, """\
+    _write_config(
+        tmp_path,
+        """\
         providers:
           openrouter:
             request_timeout_seconds: 77
             models:
               openai/gpt-4o-mini:
                 timeout_seconds: 42
-        """)
+        """,
+    )
     monkeypatch.setenv("HERMES_API_TIMEOUT", "999")
 
     from run_agent import AIAgent
+
     agent = AIAgent(
         model="openai/gpt-4o-mini",
         provider="openrouter",
@@ -189,10 +193,13 @@ def test_resolved_api_call_timeout_priority(monkeypatch, tmp_path):
     # Clear the cached config load
     import importlib
     from openagents_cli import config as cfg_mod
+
     importlib.reload(cfg_mod)
     from openagents_cli import timeouts as to_mod
+
     importlib.reload(to_mod)
     import run_agent as ra_mod
+
     importlib.reload(ra_mod)
 
     agent2 = ra_mod.AIAgent(
@@ -217,17 +224,21 @@ def test_resolved_api_call_stale_timeout_priority(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
     (tmp_path / ".env").write_text("", encoding="utf-8")
 
-    _write_config(tmp_path, """\
+    _write_config(
+        tmp_path,
+        """\
         providers:
           openai-codex:
             stale_timeout_seconds: 600
             models:
               gpt-5.4:
                 stale_timeout_seconds: 1800
-        """)
+        """,
+    )
     monkeypatch.setenv("HERMES_API_CALL_STALE_TIMEOUT", "999")
 
     from run_agent import AIAgent
+
     agent = AIAgent(
         model="gpt-5.4",
         provider="openai-codex",
@@ -246,10 +257,13 @@ def test_resolved_api_call_stale_timeout_priority(monkeypatch, tmp_path):
     _write_config(tmp_path, "")
     import importlib
     from openagents_cli import config as cfg_mod
+
     importlib.reload(cfg_mod)
     from openagents_cli import timeouts as to_mod
+
     importlib.reload(to_mod)
     import run_agent as ra_mod
+
     importlib.reload(ra_mod)
 
     agent2 = ra_mod.AIAgent(
@@ -268,12 +282,15 @@ def test_resolved_api_call_stale_timeout_priority(monkeypatch, tmp_path):
     assert agent2._resolved_api_call_stale_timeout_base() == (90.0, True)
 
 
-def test_default_non_stream_stale_timeout_auto_disables_for_local_endpoints(monkeypatch, tmp_path):
+def test_default_non_stream_stale_timeout_auto_disables_for_local_endpoints(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
     (tmp_path / ".env").write_text("", encoding="utf-8")
     monkeypatch.delenv("HERMES_API_CALL_STALE_TIMEOUT", raising=False)
 
     from run_agent import AIAgent
+
     agent = AIAgent(
         model="qwen3:32b",
         provider="ollama-local",
@@ -288,12 +305,15 @@ def test_default_non_stream_stale_timeout_auto_disables_for_local_endpoints(monk
     assert agent._compute_non_stream_stale_timeout([]) == float("inf")
 
 
-def test_explicit_non_stream_stale_timeout_is_honored_for_local_endpoints(monkeypatch, tmp_path):
+def test_explicit_non_stream_stale_timeout_is_honored_for_local_endpoints(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
     (tmp_path / ".env").write_text("", encoding="utf-8")
     monkeypatch.setenv("HERMES_API_CALL_STALE_TIMEOUT", "300")
 
     from run_agent import AIAgent
+
     agent = AIAgent(
         model="qwen3:32b",
         provider="ollama-local",

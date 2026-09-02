@@ -9,14 +9,19 @@ from plugins.openos_engineering.tools import handle_create_ticket
 
 
 def test_create_ticket_wraps_cc_w4_001():
-    with patch(
-        "plugins.openos_engineering.ticket_client.wrap_signed_hop",
-        return_value={"contract_id": W4_PO_CREATE, "payload": {}},
-    ) as wrap_mock, patch(
-        "plugins.openos_engineering.ticket_client._post_json",
-        return_value={"id": "t1", "ticket_key": "OP-1", "correlation_id": "corr-1"},
+    with (
+        patch(
+            "plugins.openos_engineering.ticket_client.wrap_signed_hop",
+            return_value={"contract_id": W4_PO_CREATE, "payload": {}},
+        ) as wrap_mock,
+        patch(
+            "plugins.openos_engineering.ticket_client._post_json",
+            return_value={"id": "t1", "ticket_key": "OP-1", "correlation_id": "corr-1"},
+        ),
     ):
-        ticket = create_ticket("proj-1", "story", "Smoke test", acceptance_criteria=["pass"])
+        ticket = create_ticket(
+            "proj-1", "story", "Smoke test", acceptance_criteria=["pass"]
+        )
 
     assert wrap_mock.call_args.kwargs["contract_id"] == W4_PO_CREATE
     assert wrap_mock.call_args.kwargs["producer"] == "OpenAgents [product_owner]"

@@ -15,6 +15,7 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_hermes_tree(root: Path) -> None:
     """Create a realistic ~/.openagents directory structure for testing."""
     (root / "config.yaml").write_text("model:\n  provider: openrouter\n")
@@ -46,7 +47,9 @@ def _make_hermes_tree(root: Path) -> None:
     # Profiles
     (root / "profiles").mkdir(exist_ok=True)
     (root / "profiles" / "coder").mkdir()
-    (root / "profiles" / "coder" / "config.yaml").write_text("model:\n  provider: anthropic\n")
+    (root / "profiles" / "coder" / "config.yaml").write_text(
+        "model:\n  provider: anthropic\n"
+    )
     (root / "profiles" / "coder" / ".env").write_text("ANTHROPIC_API_KEY=sk-ant-123\n")
 
     # openagents repo (should be EXCLUDED)
@@ -79,22 +82,27 @@ def _symlink_file_or_skip(link: Path, target: Path) -> None:
 # _should_exclude tests
 # ---------------------------------------------------------------------------
 
+
 class TestShouldExclude:
     def test_excludes_hermes_agent(self):
         from openagents_cli.backup import _should_exclude
+
         assert _should_exclude(Path("openagents/run_agent.py"))
         assert _should_exclude(Path("openagents/.git/HEAD"))
 
     def test_excludes_pycache(self):
         from openagents_cli.backup import _should_exclude
+
         assert _should_exclude(Path("plugins/__pycache__/mod.cpython-312.pyc"))
 
     def test_excludes_pyc_files(self):
         from openagents_cli.backup import _should_exclude
+
         assert _should_exclude(Path("some/module.pyc"))
 
     def test_excludes_pid_files(self):
         from openagents_cli.backup import _should_exclude
+
         assert _should_exclude(Path("gateway.pid"))
         assert _should_exclude(Path("cron.pid"))
 
@@ -102,12 +110,14 @@ class TestShouldExclude:
         """checkpoints/ is session-local trajectory cache — hash-keyed,
         regenerated per-session, won't port to another machine anyway."""
         from openagents_cli.backup import _should_exclude
+
         assert _should_exclude(Path("checkpoints/abc123/trajectory.json"))
         assert _should_exclude(Path("checkpoints/deadbeef/step_0001.json"))
 
     def test_excludes_backups_dir(self):
         """backups/ is excluded so pre-update backups don't nest exponentially."""
         from openagents_cli.backup import _should_exclude
+
         assert _should_exclude(Path("backups/pre-update-2026-04-27-063400.zip"))
 
     def test_excludes_sqlite_sidecars(self):
@@ -115,6 +125,7 @@ class TestShouldExclude:
         safe-copied .db — pairing a fresh snapshot with stale sidecar state
         produces a torn restore."""
         from openagents_cli.backup import _should_exclude
+
         assert _should_exclude(Path("state.db-wal"))
         assert _should_exclude(Path("state.db-shm"))
         assert _should_exclude(Path("state.db-journal"))
@@ -124,34 +135,45 @@ class TestShouldExclude:
 
     def test_includes_config(self):
         from openagents_cli.backup import _should_exclude
+
         assert not _should_exclude(Path("config.yaml"))
 
     def test_includes_env(self):
         from openagents_cli.backup import _should_exclude
+
         assert not _should_exclude(Path(".env"))
 
     def test_includes_skills(self):
         from openagents_cli.backup import _should_exclude
+
         assert not _should_exclude(Path("skills/my-skill/SKILL.md"))
 
     def test_includes_profiles(self):
         from openagents_cli.backup import _should_exclude
+
         assert not _should_exclude(Path("profiles/coder/config.yaml"))
 
     def test_includes_sessions(self):
         from openagents_cli.backup import _should_exclude
+
         assert not _should_exclude(Path("sessions/abc.json"))
 
     def test_includes_logs(self):
         from openagents_cli.backup import _should_exclude
+
         assert not _should_exclude(Path("logs/agent.log"))
 
     def test_includes_nested_hermes_agent_in_skills(self):
         """skills/autonomous-ai-agents/openagents/ must NOT be excluded —
         only the root-level openagents/ repo is skipped."""
         from openagents_cli.backup import _should_exclude
-        assert not _should_exclude(Path("skills/autonomous-ai-agents/openagents/SKILL.md"))
-        assert not _should_exclude(Path("skills/autonomous-ai-agents/openagents/sub/item.txt"))
+
+        assert not _should_exclude(
+            Path("skills/autonomous-ai-agents/openagents/SKILL.md")
+        )
+        assert not _should_exclude(
+            Path("skills/autonomous-ai-agents/openagents/sub/item.txt")
+        )
 
     @pytest.mark.parametrize(
         "rel",
@@ -172,23 +194,28 @@ class TestShouldExclude:
         """Python dep trees and tool caches under OPENAGENTS_HOME must be skipped —
         these are what balloon a backup to hundreds of thousands of files."""
         from openagents_cli.backup import _should_exclude
+
         assert _should_exclude(Path(rel))
 
     def test_does_not_exclude_curator_archive(self):
         """skills/.archive/ holds restorable archived skills and MUST survive
         a backup — it is intentionally NOT in the exclusion set."""
         from openagents_cli.backup import _should_exclude
+
         assert not _should_exclude(Path("skills/.archive/old-skill/SKILL.md"))
 
     def test_does_not_exclude_legit_files_resembling_cache_names(self):
         """Only directory-component matches are excluded; a normal file is kept."""
         from openagents_cli.backup import _should_exclude
+
         assert not _should_exclude(Path("skills/my-skill/venv-notes.md"))
         assert not _should_exclude(Path("memories/cache.json"))
+
 
 # ---------------------------------------------------------------------------
 # Backup tests
 # ---------------------------------------------------------------------------
+
 
 class TestBackup:
     def test_creates_zip(self, tmp_path, monkeypatch):
@@ -205,6 +232,7 @@ class TestBackup:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         assert out_zip.exists()
@@ -242,6 +270,7 @@ class TestBackup:
         args = Namespace(output=str(out_zip))
 
         import openagents_cli.backup as backup_mod
+
         staged_dirs = []
         real_ntf = backup_mod.tempfile.NamedTemporaryFile
 
@@ -257,7 +286,9 @@ class TestBackup:
         assert staged_dirs, "no SQLite snapshot was staged"
         assert all(d == str(out_dir) for d in staged_dirs), staged_dirs
 
-    def test_pre_update_db_snapshots_staged_beside_output_zip(self, tmp_path, monkeypatch):
+    def test_pre_update_db_snapshots_staged_beside_output_zip(
+        self, tmp_path, monkeypatch
+    ):
         """The pre-update/pre-migration zip path (_write_full_zip_backup) must
         also stage SQLite snapshots beside its output zip, not in /tmp."""
         hermes_home = tmp_path / ".hermes"
@@ -271,6 +302,7 @@ class TestBackup:
         out_zip.parent.mkdir(parents=True, exist_ok=True)
 
         import openagents_cli.backup as backup_mod
+
         staged_dirs = []
         real_ntf = backup_mod.tempfile.NamedTemporaryFile
 
@@ -298,12 +330,15 @@ class TestBackup:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         with zipfile.ZipFile(out_zip, "r") as zf:
             names = zf.namelist()
             agent_files = [n for n in names if "openagents" in n]
-            assert agent_files == [], f"openagents files leaked into backup: {agent_files}"
+            assert agent_files == [], (
+                f"openagents files leaked into backup: {agent_files}"
+            )
 
     def test_excludes_dependency_and_cache_trees(self, tmp_path, monkeypatch):
         """A plugin venv / site-packages / pip cache under OPENAGENTS_HOME must be
@@ -314,7 +349,15 @@ class TestBackup:
         _make_hermes_tree(hermes_home)
 
         # Simulate the heavy regeneratable trees that ballooned the backup.
-        venv_pkg = hermes_home / "plugins" / "heavy" / ".venv" / "lib" / "site-packages" / "dep"
+        venv_pkg = (
+            hermes_home
+            / "plugins"
+            / "heavy"
+            / ".venv"
+            / "lib"
+            / "site-packages"
+            / "dep"
+        )
         venv_pkg.mkdir(parents=True)
         (venv_pkg / "__init__.py").write_text("# dep\n")
         pip_cache = hermes_home / ".cache" / "uv" / "wheels"
@@ -326,11 +369,14 @@ class TestBackup:
 
         out_zip = tmp_path / "backup.zip"
         from openagents_cli.backup import run_backup
+
         run_backup(Namespace(output=str(out_zip)))
 
         with zipfile.ZipFile(out_zip, "r") as zf:
             names = zf.namelist()
-        leaked = [n for n in names if ".venv" in n or "site-packages" in n or ".cache" in n]
+        leaked = [
+            n for n in names if ".venv" in n or "site-packages" in n or ".cache" in n
+        ]
         assert leaked == [], f"regeneratable trees leaked into backup: {leaked}"
         # Real data still present.
         assert "skills/my-skill/SKILL.md" in names
@@ -356,6 +402,7 @@ class TestBackup:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         with zipfile.ZipFile(out_zip, "r") as zf:
@@ -380,6 +427,7 @@ class TestBackup:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         with zipfile.ZipFile(out_zip, "r") as zf:
@@ -400,6 +448,7 @@ class TestBackup:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         with zipfile.ZipFile(out_zip, "r") as zf:
@@ -419,6 +468,7 @@ class TestBackup:
         args = Namespace(output=None)
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         # Should exist in home dir
@@ -441,6 +491,7 @@ class TestBackup:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         with zipfile.ZipFile(out_zip, "r") as zf:
@@ -453,6 +504,7 @@ class TestBackup:
 # _validate_backup_zip tests
 # ---------------------------------------------------------------------------
 
+
 class TestValidateBackupZip:
     def _make_zip(self, zip_path: Path, filenames: list[str]) -> None:
         with zipfile.ZipFile(zip_path, "w") as zf:
@@ -462,6 +514,7 @@ class TestValidateBackupZip:
     def test_state_db_passes(self, tmp_path):
         """A zip containing state.db is accepted as a valid OpenAgents backup."""
         from openagents_cli.backup import _validate_backup_zip
+
         zip_path = tmp_path / "backup.zip"
         self._make_zip(zip_path, ["state.db", "sessions/abc.json"])
         with zipfile.ZipFile(zip_path, "r") as zf:
@@ -471,6 +524,7 @@ class TestValidateBackupZip:
     def test_old_wrong_db_name_fails(self, tmp_path):
         """A zip with only openagents_state.db (old wrong name) is rejected."""
         from openagents_cli.backup import _validate_backup_zip
+
         zip_path = tmp_path / "old.zip"
         self._make_zip(zip_path, ["openagents_state.db", "memory_store.db"])
         with zipfile.ZipFile(zip_path, "r") as zf:
@@ -480,6 +534,7 @@ class TestValidateBackupZip:
     def test_config_yaml_passes(self, tmp_path):
         """A zip containing config.yaml is accepted (existing behaviour preserved)."""
         from openagents_cli.backup import _validate_backup_zip
+
         zip_path = tmp_path / "backup.zip"
         self._make_zip(zip_path, ["config.yaml", "skills/x/SKILL.md"])
         with zipfile.ZipFile(zip_path, "r") as zf:
@@ -490,6 +545,7 @@ class TestValidateBackupZip:
 # ---------------------------------------------------------------------------
 # Import tests
 # ---------------------------------------------------------------------------
+
 
 class TestImport:
     def _make_backup_zip(self, zip_path: Path, files: dict[str, str | bytes]) -> None:
@@ -509,21 +565,29 @@ class TestImport:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model:\n  provider: openrouter\n",
-            ".env": "OPENROUTER_API_KEY=sk-test\n",
-            "skills/my-skill/SKILL.md": "# My Skill\n",
-            "profiles/coder/config.yaml": "model:\n  provider: anthropic\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model:\n  provider: openrouter\n",
+                ".env": "OPENROUTER_API_KEY=sk-test\n",
+                "skills/my-skill/SKILL.md": "# My Skill\n",
+                "profiles/coder/config.yaml": "model:\n  provider: anthropic\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
-        assert (hermes_home / "config.yaml").read_text() == "model:\n  provider: openrouter\n"
+        assert (
+            hermes_home / "config.yaml"
+        ).read_text() == "model:\n  provider: openrouter\n"
         assert (hermes_home / ".env").read_text() == "OPENROUTER_API_KEY=sk-test\n"
-        assert (hermes_home / "skills" / "my-skill" / "SKILL.md").read_text() == "# My Skill\n"
+        assert (
+            hermes_home / "skills" / "my-skill" / "SKILL.md"
+        ).read_text() == "# My Skill\n"
         assert (hermes_home / "profiles" / "coder" / "config.yaml").exists()
 
     def test_strips_hermes_prefix(self, tmp_path, monkeypatch):
@@ -534,14 +598,18 @@ class TestImport:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            ".hermes/config.yaml": "model: test\n",
-            ".hermes/skills/a/SKILL.md": "# A\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                ".hermes/config.yaml": "model: test\n",
+                ".hermes/skills/a/SKILL.md": "# A\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         assert (hermes_home / "config.yaml").read_text() == "model: test\n"
@@ -561,6 +629,7 @@ class TestImport:
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         with pytest.raises(SystemExit):
             run_import(args)
 
@@ -572,14 +641,18 @@ class TestImport:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "random.zip"
-        self._make_backup_zip(zip_path, {
-            "some/random/file.txt": "hello",
-            "another/thing.json": "{}",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "some/random/file.txt": "hello",
+                "another/thing.json": "{}",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         with pytest.raises(SystemExit):
             run_import(args)
 
@@ -592,14 +665,18 @@ class TestImport:
 
         zip_path = tmp_path / "evil.zip"
         # Include a marker file so validation passes
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: test\n",
-            "../../etc/passwd": "root:x:0:0\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: test\n",
+                "../../etc/passwd": "root:x:0:0\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         # config.yaml should be restored
@@ -625,15 +702,19 @@ class TestImport:
         (hermes_home / "gateway_state.json").write_text(live_state)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: test\n",
-            # A backup from a laptop where the gateway was stopped.
-            "gateway_state.json": '{"gateway_state": "stopped", "desired_state": "stopped"}',
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: test\n",
+                # A backup from a laptop where the gateway was stopped.
+                "gateway_state.json": '{"gateway_state": "stopped", "desired_state": "stopped"}',
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         # config.yaml is restored normally...
@@ -650,14 +731,18 @@ class TestImport:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: test\n",
-            "gateway_state.json": '{"gateway_state": "stopped"}',
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: test\n",
+                "gateway_state.json": '{"gateway_state": "stopped"}',
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         assert (hermes_home / "config.yaml").exists()
@@ -673,22 +758,30 @@ class TestImport:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         live_state = '{"gateway_state": "running"}'
-        (hermes_home / "profiles" / "coder" / "gateway_state.json").write_text(live_state)
+        (hermes_home / "profiles" / "coder" / "gateway_state.json").write_text(
+            live_state
+        )
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: test\n",
-            "profiles/coder/config.yaml": "model: anthropic\n",
-            "profiles/coder/gateway_state.json": '{"gateway_state": "stopped"}',
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: test\n",
+                "profiles/coder/config.yaml": "model: anthropic\n",
+                "profiles/coder/gateway_state.json": '{"gateway_state": "stopped"}',
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         # Profile config is restored, but its live gateway state is preserved.
-        assert (hermes_home / "profiles" / "coder" / "config.yaml").read_text() == "model: anthropic\n"
+        assert (
+            hermes_home / "profiles" / "coder" / "config.yaml"
+        ).read_text() == "model: anthropic\n"
         assert (
             hermes_home / "profiles" / "coder" / "gateway_state.json"
         ).read_text() == live_state
@@ -707,17 +800,21 @@ class TestImport:
         (hermes_home / "processes.json").write_text('{"live": true}')
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: test\n",
-            "gateway.pid": "9999",
-            "cron.pid": "8888",
-            "gateway.lock": "7777",
-            "processes.json": '{"stale": true}',
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: test\n",
+                "gateway.pid": "9999",
+                "cron.pid": "8888",
+                "gateway.lock": "7777",
+                "processes.json": '{"stale": true}',
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         # Live runtime files are untouched; the backup's foreign ones never land.
@@ -737,13 +834,17 @@ class TestImport:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: restored\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: restored\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=False)
 
         from openagents_cli.backup import run_import
+
         with patch("builtins.input", return_value="n"):
             run_import(args)
 
@@ -759,13 +860,17 @@ class TestImport:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: restored\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: restored\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         assert (hermes_home / "config.yaml").read_text() == "model: restored\n"
@@ -779,6 +884,7 @@ class TestImport:
         args = Namespace(zipfile=str(tmp_path / "nonexistent.zip"), force=True)
 
         from openagents_cli.backup import run_import
+
         with pytest.raises(SystemExit):
             run_import(args)
 
@@ -791,27 +897,34 @@ class TestImport:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: openrouter\n",
-            ".env": "OPENROUTER_API_KEY=sk-secret\n",
-            "auth.json": '{"providers": {"nous": "token"}}',
-            "state.db": b"SQLite format 3\x00",
-            "profiles/coder/.env": "ANTHROPIC_API_KEY=sk-ant-secret\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: openrouter\n",
+                ".env": "OPENROUTER_API_KEY=sk-secret\n",
+                "auth.json": '{"providers": {"nous": "token"}}',
+                "state.db": b"SQLite format 3\x00",
+                "profiles/coder/.env": "ANTHROPIC_API_KEY=sk-ant-secret\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         for rel in (".env", "auth.json", "state.db", "profiles/coder/.env"):
             mode = (hermes_home / rel).stat().st_mode & 0o777
-            assert mode == 0o600, f"{rel} restored with mode {oct(mode)}, expected 0o600"
+            assert mode == 0o600, (
+                f"{rel} restored with mode {oct(mode)}, expected 0o600"
+            )
 
 
 # ---------------------------------------------------------------------------
 # Round-trip test
 # ---------------------------------------------------------------------------
+
 
 class TestRoundTrip:
     def test_backup_then_import(self, tmp_path, monkeypatch):
@@ -840,7 +953,9 @@ class TestRoundTrip:
         run_import(Namespace(zipfile=str(out_zip), force=True))
 
         # Verify key files
-        assert (dst_home / "config.yaml").read_text() == "model:\n  provider: openrouter\n"
+        assert (
+            dst_home / "config.yaml"
+        ).read_text() == "model:\n  provider: openrouter\n"
         assert (dst_home / ".env").read_text() == "OPENROUTER_API_KEY=sk-test-123\n"
         assert (dst_home / "skills" / "my-skill" / "SKILL.md").exists()
         assert (dst_home / "profiles" / "coder" / "config.yaml").exists()
@@ -859,26 +974,32 @@ class TestRoundTrip:
 # Validate / detect-prefix unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestFormatSize:
     def test_bytes(self):
         from openagents_cli.backup import _format_size
+
         assert _format_size(512) == "512 B"
 
     def test_kilobytes(self):
         from openagents_cli.backup import _format_size
+
         assert "KB" in _format_size(2048)
 
     def test_megabytes(self):
         from openagents_cli.backup import _format_size
+
         assert "MB" in _format_size(5 * 1024 * 1024)
 
     def test_gigabytes(self):
         from openagents_cli.backup import _format_size
-        assert "GB" in _format_size(3 * 1024 ** 3)
+
+        assert "GB" in _format_size(3 * 1024**3)
 
     def test_terabytes(self):
         from openagents_cli.backup import _format_size
-        assert "TB" in _format_size(2 * 1024 ** 4)
+
+        assert "TB" in _format_size(2 * 1024**4)
 
 
 class TestValidation:
@@ -966,6 +1087,7 @@ class TestValidation:
 # Edge case tests for uncovered paths
 # ---------------------------------------------------------------------------
 
+
 class TestBackupEdgeCases:
     def test_nonexistent_hermes_home(self, tmp_path, monkeypatch):
         """Backup exits when hermes home doesn't exist."""
@@ -976,6 +1098,7 @@ class TestBackupEdgeCases:
         args = Namespace(output=str(tmp_path / "out.zip"))
 
         from openagents_cli.backup import run_backup
+
         with pytest.raises(SystemExit):
             run_backup(args)
 
@@ -994,6 +1117,7 @@ class TestBackupEdgeCases:
         args = Namespace(output=str(out_dir))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         zips = list(out_dir.glob("hermes-backup-*.zip"))
@@ -1012,6 +1136,7 @@ class TestBackupEdgeCases:
         args = Namespace(output=str(out_path))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         # Should have .tar.zip suffix
@@ -1031,6 +1156,7 @@ class TestBackupEdgeCases:
         args = Namespace(output=str(tmp_path / "out.zip"))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         # No zip should be created
@@ -1054,6 +1180,7 @@ class TestBackupEdgeCases:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         try:
             run_backup(args)
         finally:
@@ -1081,6 +1208,7 @@ class TestBackupEdgeCases:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         # Zip should still be created with the valid files
@@ -1105,6 +1233,7 @@ class TestBackupEdgeCases:
         args = Namespace(output=str(out_zip))
 
         from openagents_cli.backup import run_backup
+
         run_backup(args)
 
         # The zip should exist but not contain itself
@@ -1131,6 +1260,7 @@ class TestImportEdgeCases:
         args = Namespace(zipfile=str(not_zip), force=True)
 
         from openagents_cli.backup import run_import
+
         with pytest.raises(SystemExit):
             run_import(args)
 
@@ -1148,6 +1278,7 @@ class TestImportEdgeCases:
         args = Namespace(zipfile=str(zip_path), force=False)
 
         from openagents_cli.backup import run_import
+
         with patch("builtins.input", side_effect=EOFError):
             with pytest.raises(SystemExit):
                 run_import(args)
@@ -1166,6 +1297,7 @@ class TestImportEdgeCases:
         args = Namespace(zipfile=str(zip_path), force=False)
 
         from openagents_cli.backup import run_import
+
         with patch("builtins.input", side_effect=KeyboardInterrupt):
             with pytest.raises(SystemExit):
                 run_import(args)
@@ -1183,14 +1315,18 @@ class TestImportEdgeCases:
         locked_dir.chmod(0o555)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: test\n",
-            "locked/secret.txt": "data",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: test\n",
+                "locked/secret.txt": "data",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         try:
             run_import(args)
         finally:
@@ -1216,6 +1352,7 @@ class TestImportEdgeCases:
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         assert (hermes_home / "config.yaml").exists()
@@ -1225,6 +1362,7 @@ class TestImportEdgeCases:
 # ---------------------------------------------------------------------------
 # Profile restoration tests
 # ---------------------------------------------------------------------------
+
 
 class TestProfileRestoration:
     def _make_backup_zip(self, zip_path: Path, files: dict[str, str | bytes]) -> None:
@@ -1244,16 +1382,20 @@ class TestProfileRestoration:
         wrapper_dir.mkdir(parents=True)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model:\n  provider: openrouter\n",
-            "profiles/coder/config.yaml": "model:\n  provider: anthropic\n",
-            "profiles/coder/.env": "ANTHROPIC_API_KEY=sk-test\n",
-            "profiles/researcher/config.yaml": "model:\n  provider: deepseek\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model:\n  provider: openrouter\n",
+                "profiles/coder/config.yaml": "model:\n  provider: anthropic\n",
+                "profiles/coder/.env": "ANTHROPIC_API_KEY=sk-test\n",
+                "profiles/researcher/config.yaml": "model:\n  provider: deepseek\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         # Profile directories should exist
@@ -1279,15 +1421,19 @@ class TestProfileRestoration:
         wrapper_dir.mkdir(parents=True)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: test\n",
-            "profiles/valid/config.yaml": "model: test\n",
-            "profiles/empty/readme.txt": "nothing here\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: test\n",
+                "profiles/valid/config.yaml": "model: test\n",
+                "profiles/empty/readme.txt": "nothing here\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         from openagents_cli.backup import run_import
+
         run_import(args)
 
         # Only valid profile should get a wrapper
@@ -1302,15 +1448,22 @@ class TestProfileRestoration:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
-        self._make_backup_zip(zip_path, {
-            "config.yaml": "model: test\n",
-            "profiles/coder/config.yaml": "model: test\n",
-        })
+        self._make_backup_zip(
+            zip_path,
+            {
+                "config.yaml": "model: test\n",
+                "profiles/coder/config.yaml": "model: test\n",
+            },
+        )
 
         args = Namespace(zipfile=str(zip_path), force=True)
 
         # Simulate profiles module not being available
-        original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
+        original_import = (
+            __builtins__.__import__
+            if hasattr(__builtins__, "__import__")
+            else __import__
+        )
 
         def fake_import(name, *a, **kw):
             if name == "openagents_cli.profiles":
@@ -1318,6 +1471,7 @@ class TestProfileRestoration:
             return original_import(name, *a, **kw)
 
         from openagents_cli.backup import run_import
+
         with patch("builtins.__import__", side_effect=fake_import):
             run_import(args)
 
@@ -1329,9 +1483,11 @@ class TestProfileRestoration:
 # SQLite safe copy tests
 # ---------------------------------------------------------------------------
 
+
 class TestSafeCopyDb:
     def test_copies_valid_database(self, tmp_path):
         from openagents_cli.backup import _safe_copy_db
+
         src = tmp_path / "test.db"
         dst = tmp_path / "copy.db"
 
@@ -1351,6 +1507,7 @@ class TestSafeCopyDb:
 
     def test_copies_wal_mode_database(self, tmp_path):
         from openagents_cli.backup import _safe_copy_db
+
         src = tmp_path / "wal.db"
         dst = tmp_path / "copy.db"
 
@@ -1373,6 +1530,7 @@ class TestSafeCopyDb:
 # ---------------------------------------------------------------------------
 # Quick state snapshot tests
 # ---------------------------------------------------------------------------
+
 
 class TestQuickSnapshot:
     @pytest.fixture
@@ -1400,6 +1558,7 @@ class TestQuickSnapshot:
 
     def test_creates_snapshot(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
         assert snap_id is not None
         snap_dir = hermes_home / "state-snapshots" / snap_id
@@ -1408,11 +1567,13 @@ class TestQuickSnapshot:
 
     def test_label_in_id(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot
+
         snap_id = create_quick_snapshot(label="before-upgrade", hermes_home=hermes_home)
         assert "before-upgrade" in snap_id
 
     def test_state_db_safely_copied(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
         db_copy = hermes_home / "state-snapshots" / snap_id / "state.db"
         assert db_copy.exists()
@@ -1425,11 +1586,15 @@ class TestQuickSnapshot:
 
     def test_copies_nested_files(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
-        assert (hermes_home / "state-snapshots" / snap_id / "cron" / "jobs.json").exists()
+        assert (
+            hermes_home / "state-snapshots" / snap_id / "cron" / "jobs.json"
+        ).exists()
 
     def test_copies_channel_aliases(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
         copied = hermes_home / "state-snapshots" / snap_id / "channel_aliases.json"
         assert copied.exists()
@@ -1437,6 +1602,7 @@ class TestQuickSnapshot:
 
     def test_missing_files_skipped(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
         with open(hermes_home / "state-snapshots" / snap_id / "manifest.json") as f:
             meta = json.load(f)
@@ -1445,12 +1611,14 @@ class TestQuickSnapshot:
 
     def test_empty_home_returns_none(self, tmp_path):
         from openagents_cli.backup import create_quick_snapshot
+
         empty = tmp_path / "empty"
         empty.mkdir()
         assert create_quick_snapshot(hermes_home=empty) is None
 
     def test_list_snapshots(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot, list_quick_snapshots
+
         id1 = create_quick_snapshot(label="first", hermes_home=hermes_home)
         id2 = create_quick_snapshot(label="second", hermes_home=hermes_home)
 
@@ -1461,6 +1629,7 @@ class TestQuickSnapshot:
 
     def test_list_limit(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot, list_quick_snapshots
+
         for i in range(5):
             create_quick_snapshot(label=f"s{i}", hermes_home=hermes_home)
         snaps = list_quick_snapshots(limit=3, hermes_home=hermes_home)
@@ -1468,6 +1637,7 @@ class TestQuickSnapshot:
 
     def test_restore_config(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot, restore_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
 
         (hermes_home / "config.yaml").write_text("model:\n  provider: anthropic\n")
@@ -1479,6 +1649,7 @@ class TestQuickSnapshot:
 
     def test_restore_state_db(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot, restore_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
 
         conn = sqlite3.connect(str(hermes_home / "state.db"))
@@ -1495,17 +1666,28 @@ class TestQuickSnapshot:
 
     def test_restore_nonexistent(self, hermes_home):
         from openagents_cli.backup import restore_quick_snapshot
+
         assert restore_quick_snapshot("nonexistent", hermes_home=hermes_home) is False
 
     def test_auto_prune(self, hermes_home):
-        from openagents_cli.backup import create_quick_snapshot, list_quick_snapshots, _QUICK_DEFAULT_KEEP
+        from openagents_cli.backup import (
+            create_quick_snapshot,
+            list_quick_snapshots,
+            _QUICK_DEFAULT_KEEP,
+        )
+
         for i in range(_QUICK_DEFAULT_KEEP + 5):
             create_quick_snapshot(label=f"snap-{i:03d}", hermes_home=hermes_home)
         snaps = list_quick_snapshots(limit=100, hermes_home=hermes_home)
         assert len(snaps) <= _QUICK_DEFAULT_KEEP
 
     def test_manual_prune(self, hermes_home):
-        from openagents_cli.backup import create_quick_snapshot, prune_quick_snapshots, list_quick_snapshots
+        from openagents_cli.backup import (
+            create_quick_snapshot,
+            prune_quick_snapshots,
+            list_quick_snapshots,
+        )
+
         for i in range(10):
             create_quick_snapshot(label=f"s{i}", hermes_home=hermes_home)
         deleted = prune_quick_snapshots(keep=3, hermes_home=hermes_home)
@@ -1589,9 +1771,9 @@ class TestQuickSnapshot:
         # Other state still present → snapshot succeeds.
         assert snap_id is not None
 
-# ---------------------------------------------------------------------------
-# Pre-update backup (hermes update safety net)
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Pre-update backup (hermes update safety net)
+    # ---------------------------------------------------------------------------
 
     # -- security: path traversal regression coverage -----------------------
     # Per @egilewski audit on PR #9217: restore_quick_snapshot must reject
@@ -1612,18 +1794,18 @@ class TestQuickSnapshot:
         from openagents_cli.backup import restore_quick_snapshot
 
         hostile_ids = [
-            "../../etc",                # parent traversal
-            "../outside",               # single parent
-            "..",                       # bare parent dir
-            ".",                        # bare current dir
-            "subdir/snap",              # forward slash
-            "subdir\\snap",           # backslash (Windows-style)
-            "",                         # empty string
+            "../../etc",  # parent traversal
+            "../outside",  # single parent
+            "..",  # bare parent dir
+            ".",  # bare current dir
+            "subdir/snap",  # forward slash
+            "subdir\\snap",  # backslash (Windows-style)
+            "",  # empty string
         ]
         for hostile in hostile_ids:
-            assert restore_quick_snapshot(
-                hostile, hermes_home=hermes_home
-            ) is False, f"hostile snapshot_id was not rejected: {hostile!r}"
+            assert restore_quick_snapshot(hostile, hermes_home=hermes_home) is False, (
+                f"hostile snapshot_id was not rejected: {hostile!r}"
+            )
 
     def test_restore_rejects_manifest_rel_traversal(self, hermes_home):
         """A snapshot whose manifest.json contains a rel path that escapes
@@ -1695,15 +1877,21 @@ class TestQuickSnapshotProjectsKanban:
 
     def test_in_quick_state_files(self):
         from openagents_cli.backup import _QUICK_STATE_FILES
+
         # All per-profile user-created stores that the upgrade can wipe.
         for name in (
-            "projects.db", "kanban.db", "kanban/boards",
-            "response_store.db", "memory_store.db", "verification_evidence.db",
+            "projects.db",
+            "kanban.db",
+            "kanban/boards",
+            "response_store.db",
+            "memory_store.db",
+            "verification_evidence.db",
         ):
             assert name in _QUICK_STATE_FILES, name
 
     def test_projects_db_snapshotted(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
         copy = hermes_home / "state-snapshots" / snap_id / "projects.db"
         assert copy.exists()
@@ -1714,6 +1902,7 @@ class TestQuickSnapshotProjectsKanban:
 
     def test_kanban_db_snapshotted(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
         copy = hermes_home / "state-snapshots" / snap_id / "kanban.db"
         assert copy.exists()
@@ -1724,6 +1913,7 @@ class TestQuickSnapshotProjectsKanban:
 
     def test_restore_recreates_emptied_projects_db(self, hermes_home):
         from openagents_cli.backup import create_quick_snapshot, restore_quick_snapshot
+
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
 
         # Simulate the upgrade wiping the store back to an empty schema.
@@ -1755,8 +1945,13 @@ class TestQuickSnapshotProjectsKanban:
 
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
         copy = (
-            hermes_home / "state-snapshots" / snap_id
-            / "kanban" / "boards" / "work" / "kanban.db"
+            hermes_home
+            / "state-snapshots"
+            / snap_id
+            / "kanban"
+            / "boards"
+            / "work"
+            / "kanban.db"
         )
         assert copy.exists(), "non-default board kanban.db was not snapshotted"
 
@@ -1858,8 +2053,18 @@ class TestQuickSnapshotProjectsKanban:
         monkeypatch.setattr(bk, "_safe_copy_db", _spy)
         snap_id = create_quick_snapshot(hermes_home=hermes_home)
         # The board db was copied via _safe_copy_db (not raw copy).
-        assert any(s.endswith("boards/work/kanban.db") for s in called["db"]), called["db"]
-        copy = hermes_home / "state-snapshots" / snap_id / "kanban" / "boards" / "work" / "kanban.db"
+        assert any(s.endswith("boards/work/kanban.db") for s in called["db"]), called[
+            "db"
+        ]
+        copy = (
+            hermes_home
+            / "state-snapshots"
+            / snap_id
+            / "kanban"
+            / "boards"
+            / "work"
+            / "kanban.db"
+        )
         rows = sqlite3.connect(str(copy)).execute("SELECT * FROM tasks").fetchall()
         assert rows == [("w1", "ship")]
 
@@ -1877,6 +2082,7 @@ class TestPreUpdateBackup:
 
     def test_creates_backup_under_backups_dir(self, hermes_home):
         from openagents_cli.backup import create_pre_update_backup
+
         out = create_pre_update_backup(hermes_home=hermes_home)
         assert out is not None
         assert out.exists()
@@ -1888,6 +2094,7 @@ class TestPreUpdateBackup:
         """Pre-update backup should include the same user data that
         ``hermes backup`` would, and should exclude the same directories."""
         from openagents_cli.backup import create_pre_update_backup
+
         out = create_pre_update_backup(hermes_home=hermes_home)
         assert out is not None
         with zipfile.ZipFile(out) as zf:
@@ -1909,6 +2116,7 @@ class TestPreUpdateBackup:
         """The ``backups/`` directory must be excluded so that each backup
         doesn't grow exponentially by including all prior backups."""
         from openagents_cli.backup import create_pre_update_backup
+
         # First backup
         out1 = create_pre_update_backup(hermes_home=hermes_home)
         assert out1 is not None
@@ -1935,7 +2143,8 @@ class TestPreUpdateBackup:
             _t.sleep(1.05)  # ensure distinct seconds in timestamp
 
         remaining = sorted(
-            p.name for p in (hermes_home / "backups").iterdir()
+            p.name
+            for p in (hermes_home / "backups").iterdir()
             if p.name.startswith("pre-update-")
         )
         assert len(remaining) == 3
@@ -1963,6 +2172,7 @@ class TestPreUpdateBackup:
 
     def test_returns_none_if_root_missing(self, tmp_path):
         from openagents_cli.backup import create_pre_update_backup
+
         assert create_pre_update_backup(hermes_home=tmp_path / "does-not-exist") is None
 
     def test_keep_zero_does_not_delete_freshly_created_backup(self, hermes_home):
@@ -1973,6 +2183,7 @@ class TestPreUpdateBackup:
         set ``pre_update_backup: false`` instead.
         """
         from openagents_cli.backup import create_pre_update_backup
+
         out = create_pre_update_backup(hermes_home=hermes_home, keep=0)
         assert out is not None
         assert out.exists(), (
@@ -1984,6 +2195,7 @@ class TestPreUpdateBackup:
         """Mirror coverage: any value <1 should be floored, not literally
         applied as a slice index."""
         from openagents_cli.backup import create_pre_update_backup
+
         out = create_pre_update_backup(hermes_home=hermes_home, keep=-3)
         assert out is not None
         assert out.exists()
@@ -2003,13 +2215,13 @@ class TestPreUpdateBackup:
         third = create_pre_update_backup(hermes_home=hermes_home, keep=0)
 
         remaining = {
-            p.name for p in (hermes_home / "backups").iterdir()
+            p.name
+            for p in (hermes_home / "backups").iterdir()
             if p.name.startswith("pre-update-")
         }
         assert third.name in remaining, "Floor must preserve the new backup"
         assert first.name not in remaining and second.name not in remaining, (
-            f"keep=0 floor of 1 should still prune older backups; "
-            f"remaining={remaining}"
+            f"keep=0 floor of 1 should still prune older backups; remaining={remaining}"
         )
 
     def test_skips_symlinked_files(self, hermes_home, tmp_path):
@@ -2050,6 +2262,7 @@ class TestRunPreUpdateBackup:
     def test_backup_flag_creates_backup(self, hermes_home, capsys):
         """--backup forces the pre-update backup for one run even when config is off."""
         from openagents_cli.main import _run_pre_update_backup
+
         _run_pre_update_backup(Namespace(no_backup=False, backup=True))
         out = capsys.readouterr().out
         assert "Creating pre-update backup" in out
@@ -2068,14 +2281,19 @@ class TestRunPreUpdateBackup:
         #48200 safety net opt in via the config knob or ``--backup``.
         """
         from openagents_cli.main import _run_pre_update_backup
+
         _run_pre_update_backup(Namespace(no_backup=False, backup=False))
         out = capsys.readouterr().out
         assert out == ""
-        assert not list((hermes_home / "backups").glob("pre-update-*.zip")) \
-            if (hermes_home / "backups").exists() else True
+        assert (
+            not list((hermes_home / "backups").glob("pre-update-*.zip"))
+            if (hermes_home / "backups").exists()
+            else True
+        )
 
     def test_no_backup_flag_skips(self, hermes_home, capsys):
         from openagents_cli.main import _run_pre_update_backup
+
         _run_pre_update_backup(Namespace(no_backup=True, backup=False))
         out = capsys.readouterr().out
         assert "skipped (--no-backup)" in out
@@ -2089,16 +2307,21 @@ class TestRunPreUpdateBackup:
         """Users who explicitly set updates.pre_update_backup: true still get
         a backup on every update — this is the opt-in legacy behavior."""
         import yaml
-        (hermes_home / "config.yaml").write_text(yaml.safe_dump({
-            "_config_version": 22,
-            "updates": {"pre_update_backup": True},
-        }))
+
+        (hermes_home / "config.yaml").write_text(
+            yaml.safe_dump({
+                "_config_version": 22,
+                "updates": {"pre_update_backup": True},
+            })
+        )
         import sys as _sys
+
         for mod in list(_sys.modules.keys()):
             if mod.startswith("openagents_cli.config"):
                 del _sys.modules[mod]
 
         from openagents_cli.main import _run_pre_update_backup
+
         _run_pre_update_backup(Namespace(no_backup=False, backup=False))
         out = capsys.readouterr().out
         assert "Creating pre-update backup" in out
@@ -2110,36 +2333,49 @@ class TestRunPreUpdateBackup:
         """Explicit pre_update_backup: false behaves the same as the default —
         silent no-op, no message spam."""
         import yaml
-        (hermes_home / "config.yaml").write_text(yaml.safe_dump({
-            "_config_version": 22,
-            "updates": {"pre_update_backup": False},
-        }))
+
+        (hermes_home / "config.yaml").write_text(
+            yaml.safe_dump({
+                "_config_version": 22,
+                "updates": {"pre_update_backup": False},
+            })
+        )
         # Ensure config module re-reads
         import sys as _sys
+
         for mod in list(_sys.modules.keys()):
             if mod.startswith("openagents_cli.config"):
                 del _sys.modules[mod]
 
         from openagents_cli.main import _run_pre_update_backup
+
         _run_pre_update_backup(Namespace(no_backup=False, backup=False))
         out = capsys.readouterr().out
         assert out == ""
-        assert not list((hermes_home / "backups").glob("pre-update-*.zip")) \
-            if (hermes_home / "backups").exists() else True
+        assert (
+            not list((hermes_home / "backups").glob("pre-update-*.zip"))
+            if (hermes_home / "backups").exists()
+            else True
+        )
 
     def test_cli_flag_overrides_enabled_config(self, hermes_home, capsys):
         """--no-backup wins even when config says pre_update_backup: true."""
         import yaml
-        (hermes_home / "config.yaml").write_text(yaml.safe_dump({
-            "_config_version": 22,
-            "updates": {"pre_update_backup": True},
-        }))
+
+        (hermes_home / "config.yaml").write_text(
+            yaml.safe_dump({
+                "_config_version": 22,
+                "updates": {"pre_update_backup": True},
+            })
+        )
         import sys as _sys
+
         for mod in list(_sys.modules.keys()):
             if mod.startswith("openagents_cli.config"):
                 del _sys.modules[mod]
 
         from openagents_cli.main import _run_pre_update_backup
+
         _run_pre_update_backup(Namespace(no_backup=True, backup=False))
         out = capsys.readouterr().out
         assert "skipped (--no-backup)" in out
@@ -2148,6 +2384,7 @@ class TestRunPreUpdateBackup:
 # ---------------------------------------------------------------------------
 # Pre-migration backup (hermes claw migrate safety net)
 # ---------------------------------------------------------------------------
+
 
 class TestPreMigrationBackup:
     """Tests for create_pre_migration_backup — the auto-backup
@@ -2162,6 +2399,7 @@ class TestPreMigrationBackup:
 
     def test_creates_backup_under_backups_dir(self, hermes_home):
         from openagents_cli.backup import create_pre_migration_backup
+
         out = create_pre_migration_backup(hermes_home=hermes_home)
         assert out is not None
         assert out.exists()
@@ -2175,6 +2413,7 @@ class TestPreMigrationBackup:
         """Pre-migration backup reuses the same exclusion rules as
         ``hermes backup`` / ``create_pre_update_backup`` — no drift."""
         from openagents_cli.backup import create_pre_migration_backup
+
         out = create_pre_migration_backup(hermes_home=hermes_home)
         assert out is not None
         with zipfile.ZipFile(out) as zf:
@@ -2191,7 +2430,11 @@ class TestPreMigrationBackup:
     def test_restorable_with_hermes_import(self, hermes_home, tmp_path):
         """The zip produced by pre-migration backup must be a valid Hermes
         backup — `hermes import` should accept it."""
-        from openagents_cli.backup import create_pre_migration_backup, _validate_backup_zip
+        from openagents_cli.backup import (
+            create_pre_migration_backup,
+            _validate_backup_zip,
+        )
+
         out = create_pre_migration_backup(hermes_home=hermes_home)
         assert out is not None
         with zipfile.ZipFile(out) as zf:
@@ -2200,6 +2443,7 @@ class TestPreMigrationBackup:
 
     def test_does_not_recurse_into_prior_backups(self, hermes_home):
         from openagents_cli.backup import create_pre_migration_backup
+
         out1 = create_pre_migration_backup(hermes_home=hermes_home)
         assert out1 is not None
         out2 = create_pre_migration_backup(hermes_home=hermes_home)
@@ -2220,11 +2464,14 @@ class TestPreMigrationBackup:
             _t.sleep(1.05)  # timestamp resolution
 
         remaining = sorted((hermes_home / "backups").glob("pre-migration-*.zip"))
-        assert len(remaining) <= 3, f"expected <=3 backups retained, got {len(remaining)}"
+        assert len(remaining) <= 3, (
+            f"expected <=3 backups retained, got {len(remaining)}"
+        )
 
     def test_missing_hermes_home_returns_none(self, tmp_path):
         """Fresh install with no ~/.openagents yet — nothing to back up."""
         from openagents_cli.backup import create_pre_migration_backup
+
         missing = tmp_path / "does-not-exist"
         out = create_pre_migration_backup(hermes_home=missing)
         assert out is None
@@ -2232,22 +2479,30 @@ class TestPreMigrationBackup:
     def test_does_not_touch_pre_update_backups(self, hermes_home):
         """Pre-migration rotation must only prune pre-migration-*.zip files,
         leaving pre-update-*.zip backups untouched."""
-        from openagents_cli.backup import create_pre_update_backup, create_pre_migration_backup
+        from openagents_cli.backup import (
+            create_pre_update_backup,
+            create_pre_migration_backup,
+        )
+
         update_backup = create_pre_update_backup(hermes_home=hermes_home, keep=5)
         assert update_backup is not None and update_backup.exists()
         # Spin up a lot of migration backups with keep=1
         import time as _t
+
         for _ in range(3):
             out = create_pre_migration_backup(hermes_home=hermes_home, keep=1)
             assert out is not None
             _t.sleep(1.05)
         # Update backup must still be there
-        assert update_backup.exists(), "pre-migration rotation wrongly pruned the pre-update backup"
+        assert update_backup.exists(), (
+            "pre-migration rotation wrongly pruned the pre-update backup"
+        )
 
 
 # ---------------------------------------------------------------------------
 # Cron jobs auto-restore after silent migration loss (issue #34600)
 # ---------------------------------------------------------------------------
+
 
 class TestRestoreCronJobsIfEmptied:
     """`hermes update` config migration can leave cron/jobs.json valid-but-empty,
@@ -2261,10 +2516,12 @@ class TestRestoreCronJobsIfEmptied:
 
     def _make_snapshot(self, hermes_home: Path, label="pre-update"):
         from openagents_cli.backup import create_quick_snapshot
+
         return create_quick_snapshot(label=label, hermes_home=hermes_home, keep=5)
 
     def test_restores_when_emptied_after_migration(self, tmp_path):
         from openagents_cli.backup import restore_cron_jobs_if_emptied
+
         hermes_home = tmp_path / ".hermes"
         jobs_path = hermes_home / "cron" / "jobs.json"
         # Pre-update: 3 real jobs.
@@ -2287,6 +2544,7 @@ class TestRestoreCronJobsIfEmptied:
 
     def test_noop_when_live_file_still_has_jobs(self, tmp_path):
         from openagents_cli.backup import restore_cron_jobs_if_emptied
+
         hermes_home = tmp_path / ".hermes"
         jobs_path = hermes_home / "cron" / "jobs.json"
         self._seed_jobs(jobs_path, [{"id": "a"}, {"id": "b"}])
@@ -2300,6 +2558,7 @@ class TestRestoreCronJobsIfEmptied:
         """Desktop scheduler overwrites jobs.json with its own small set,
         losing tool-created crons while keeping desktop-tracked ones."""
         from openagents_cli.backup import restore_cron_jobs_if_emptied
+
         hermes_home = tmp_path / ".hermes"
         jobs_path = hermes_home / "cron" / "jobs.json"
         # Pre-update: 19 jobs (18 tool-created + 1 desktop watchdog).
@@ -2324,6 +2583,7 @@ class TestRestoreCronJobsIfEmptied:
 
     def test_noop_when_snapshot_had_no_jobs(self, tmp_path):
         from openagents_cli.backup import restore_cron_jobs_if_emptied
+
         hermes_home = tmp_path / ".hermes"
         jobs_path = hermes_home / "cron" / "jobs.json"
         # Pre-update genuinely had zero jobs; current is also empty.
@@ -2338,6 +2598,7 @@ class TestRestoreCronJobsIfEmptied:
         """An unparseable live file is left alone — that's a different failure
         mode the user should see, not silently overwrite."""
         from openagents_cli.backup import restore_cron_jobs_if_emptied
+
         hermes_home = tmp_path / ".hermes"
         jobs_path = hermes_home / "cron" / "jobs.json"
         self._seed_jobs(jobs_path, [{"id": "a"}])
@@ -2351,6 +2612,7 @@ class TestRestoreCronJobsIfEmptied:
 
     def test_noop_when_snapshot_id_missing(self, tmp_path):
         from openagents_cli.backup import restore_cron_jobs_if_emptied
+
         hermes_home = tmp_path / ".hermes"
         jobs_path = hermes_home / "cron" / "jobs.json"
         self._seed_jobs(jobs_path, [])
@@ -2361,6 +2623,7 @@ class TestRestoreCronJobsIfEmptied:
         """A legacy snapshot storing a bare JSON list (not {"jobs": [...]}) is
         still counted and restored."""
         from openagents_cli.backup import restore_cron_jobs_if_emptied
+
         hermes_home = tmp_path / ".hermes"
         jobs_path = hermes_home / "cron" / "jobs.json"
         jobs_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2379,6 +2642,7 @@ class TestRestoreCronJobsIfEmptied:
 # location, NOT under OPENAGENTS_HOME. (backup/import cycle data-loss fix)
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryProviderExternalPaths:
     def _make_min_tree(self, hermes_home: Path) -> None:
         hermes_home.mkdir(parents=True, exist_ok=True)
@@ -2386,7 +2650,9 @@ class TestMemoryProviderExternalPaths:
         (hermes_home / ".env").write_text("OPENROUTER_API_KEY=sk-test\n")
         (hermes_home / "state.db").write_bytes(b"x")
 
-    def test_backup_captures_external_paths_under_external_prefix(self, tmp_path, monkeypatch):
+    def test_backup_captures_external_paths_under_external_prefix(
+        self, tmp_path, monkeypatch
+    ):
         """Provider state under ~/.honcho is archived beneath _external/,
         encoded relative to the home directory."""
         hermes_home = tmp_path / ".hermes"
@@ -2402,6 +2668,7 @@ class TestMemoryProviderExternalPaths:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         import openagents_cli.backup as backup_mod
+
         monkeypatch.setattr(
             backup_mod, "_collect_memory_provider_external_paths", lambda: [honcho]
         )
@@ -2429,6 +2696,7 @@ class TestMemoryProviderExternalPaths:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         import openagents_cli.backup as backup_mod
+
         monkeypatch.setattr(
             backup_mod, "_collect_memory_provider_external_paths", lambda: [outside]
         )
@@ -2443,7 +2711,9 @@ class TestMemoryProviderExternalPaths:
         (outside / "leak.json").unlink()
         outside.rmdir()
 
-    def test_import_restores_external_to_home_relative_location(self, tmp_path, monkeypatch):
+    def test_import_restores_external_to_home_relative_location(
+        self, tmp_path, monkeypatch
+    ):
         """_external/ members restore to ~/<relpath>, not under OPENAGENTS_HOME,
         and credential-shaped files get 0600."""
         dst_home = tmp_path / "dst"
@@ -2462,6 +2732,7 @@ class TestMemoryProviderExternalPaths:
         monkeypatch.setattr(Path, "home", lambda: dst_home)
 
         from openagents_cli.backup import run_import
+
         run_import(Namespace(zipfile=str(zip_path), force=True))
 
         restored = dst_home / ".honcho" / "config.json"
@@ -2491,6 +2762,7 @@ class TestMemoryProviderExternalPaths:
         monkeypatch.setattr(Path, "home", lambda: dst_home)
 
         from openagents_cli.backup import run_import
+
         run_import(Namespace(zipfile=str(zip_path), force=True))
 
         assert not sentinel.exists()

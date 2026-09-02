@@ -6,7 +6,6 @@ Rules:
 - Non-local with explicit path: keep as-is.
 """
 
-
 _CWD_PLACEHOLDERS = (".", "auto", "cwd")
 
 

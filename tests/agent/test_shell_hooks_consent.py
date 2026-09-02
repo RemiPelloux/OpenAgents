@@ -41,7 +41,10 @@ class TestTTYPromptFlow:
         script = _write_hook_script(tmp_path)
         plugins._plugin_manager = plugins.PluginManager()
 
-        with patch("sys.stdin") as mock_stdin, patch("builtins.input", return_value="y"):
+        with (
+            patch("sys.stdin") as mock_stdin,
+            patch("builtins.input", return_value="y"),
+        ):
             mock_stdin.isatty.return_value = True
             registered = shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
@@ -60,16 +63,23 @@ class TestTTYPromptFlow:
         script = _write_hook_script(tmp_path)
         plugins._plugin_manager = plugins.PluginManager()
 
-        with patch("sys.stdin") as mock_stdin, patch("builtins.input", return_value="n"):
+        with (
+            patch("sys.stdin") as mock_stdin,
+            patch("builtins.input", return_value="n"),
+        ):
             mock_stdin.isatty.return_value = True
             registered = shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
                 accept_hooks=False,
             )
         assert registered == []
-        assert shell_hooks.allowlist_entry_for(
-            "on_session_start", str(script),
-        ) is None
+        assert (
+            shell_hooks.allowlist_entry_for(
+                "on_session_start",
+                str(script),
+            )
+            is None
+        )
 
     def test_subsequent_use_does_not_prompt(self, tmp_path):
         """After the first approval, re-registration must be silent."""
@@ -79,7 +89,10 @@ class TestTTYPromptFlow:
         plugins._plugin_manager = plugins.PluginManager()
 
         # First call: TTY, approved.
-        with patch("sys.stdin") as mock_stdin, patch("builtins.input", return_value="y"):
+        with (
+            patch("sys.stdin") as mock_stdin,
+            patch("builtins.input", return_value="y"),
+        ):
             mock_stdin.isatty.return_value = True
             shell_hooks.register_from_config(
                 {"hooks": {"on_session_start": [{"command": str(script)}]}},
@@ -90,8 +103,12 @@ class TestTTYPromptFlow:
         shell_hooks.reset_for_tests()
 
         # Second call: TTY, input() must NOT be called.
-        with patch("sys.stdin") as mock_stdin, patch(
-            "builtins.input", side_effect=AssertionError("should not prompt"),
+        with (
+            patch("sys.stdin") as mock_stdin,
+            patch(
+                "builtins.input",
+                side_effect=AssertionError("should not prompt"),
+            ),
         ):
             mock_stdin.isatty.return_value = True
             registered = shell_hooks.register_from_config(
@@ -175,7 +192,8 @@ class TestAllowlistOps:
         shell_hooks._record_approval("on_session_start", str(script))
 
         entry = shell_hooks.allowlist_entry_for(
-            "on_session_start", str(script),
+            "on_session_start",
+            str(script),
         )
         assert entry is not None
         assert entry["script_mtime_at_approval"] is not None
@@ -185,15 +203,23 @@ class TestAllowlistOps:
     def test_revoke_removes_entry(self, tmp_path):
         script = _write_hook_script(tmp_path)
         shell_hooks._record_approval("on_session_start", str(script))
-        assert shell_hooks.allowlist_entry_for(
-            "on_session_start", str(script),
-        ) is not None
+        assert (
+            shell_hooks.allowlist_entry_for(
+                "on_session_start",
+                str(script),
+            )
+            is not None
+        )
 
         removed = shell_hooks.revoke(str(script))
         assert removed == 1
-        assert shell_hooks.allowlist_entry_for(
-            "on_session_start", str(script),
-        ) is None
+        assert (
+            shell_hooks.allowlist_entry_for(
+                "on_session_start",
+                str(script),
+            )
+            is None
+        )
 
     def test_revoke_unknown_returns_zero(self, tmp_path):
         assert shell_hooks.revoke(str(tmp_path / "never-approved.sh")) == 0
@@ -207,7 +233,8 @@ class TestAllowlistOps:
 
         shell_hooks._record_approval("on_session_start", "~/hook.sh")
         entry = shell_hooks.allowlist_entry_for(
-            "on_session_start", "~/hook.sh",
+            "on_session_start",
+            "~/hook.sh",
         )
         assert entry is not None
         # Must not be None — the tilde was expanded before stat().
@@ -218,13 +245,15 @@ class TestAllowlistOps:
         script = _write_hook_script(tmp_path)
         shell_hooks._record_approval("on_session_start", str(script))
         original_entry = shell_hooks.allowlist_entry_for(
-            "on_session_start", str(script),
+            "on_session_start",
+            str(script),
         )
         assert original_entry is not None
 
         # Touch the script to bump its mtime then re-approve.
         import os
         import time
+
         new_mtime = original_entry.get("script_mtime_at_approval")
         time.sleep(0.01)
         os.utime(script, None)  # current time
@@ -234,9 +263,9 @@ class TestAllowlistOps:
         # Exactly one entry per (event, command).
         approvals = shell_hooks.load_allowlist().get("approvals", [])
         matching = [
-            e for e in approvals
-            if e.get("event") == "on_session_start"
-            and e.get("command") == str(script)
+            e
+            for e in approvals
+            if e.get("event") == "on_session_start" and e.get("command") == str(script)
         ]
         assert len(matching) == 1
 
@@ -253,60 +282,103 @@ class TestHooksAutoAcceptParsing:
     """
 
     def test_bool_true_accepts(self):
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": True}, accept_hooks_arg=False,
-        ) is True
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": True},
+                accept_hooks_arg=False,
+            )
+            is True
+        )
 
     def test_bool_false_rejects(self):
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": False}, accept_hooks_arg=False,
-        ) is False
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": False},
+                accept_hooks_arg=False,
+            )
+            is False
+        )
 
     def test_string_false_rejects(self):
         # The bug: bool("false") is True. Must be parsed, not coerced.
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": "false"}, accept_hooks_arg=False,
-        ) is False
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": "false"},
+                accept_hooks_arg=False,
+            )
+            is False
+        )
 
     def test_string_no_rejects(self):
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": "no"}, accept_hooks_arg=False,
-        ) is False
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": "no"},
+                accept_hooks_arg=False,
+            )
+            is False
+        )
 
     def test_string_true_accepts(self):
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": "true"}, accept_hooks_arg=False,
-        ) is True
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": "true"},
+                accept_hooks_arg=False,
+            )
+            is True
+        )
 
     def test_string_true_case_insensitive(self):
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": "  TRUE  "}, accept_hooks_arg=False,
-        ) is True
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": "  TRUE  "},
+                accept_hooks_arg=False,
+            )
+            is True
+        )
 
     def test_string_yes_on_one_accept(self):
         for val in ("yes", "on", "1"):
-            assert shell_hooks._resolve_effective_accept(
-                {"hooks_auto_accept": val}, accept_hooks_arg=False,
-            ) is True, val
+            assert (
+                shell_hooks._resolve_effective_accept(
+                    {"hooks_auto_accept": val},
+                    accept_hooks_arg=False,
+                )
+                is True
+            ), val
 
     def test_missing_key_rejects(self):
-        assert shell_hooks._resolve_effective_accept(
-            {}, accept_hooks_arg=False,
-        ) is False
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {},
+                accept_hooks_arg=False,
+            )
+            is False
+        )
 
     def test_none_rejects(self):
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": None}, accept_hooks_arg=False,
-        ) is False
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": None},
+                accept_hooks_arg=False,
+            )
+            is False
+        )
 
     def test_integer_ignored(self):
         # Only bool and str are honored; anything else (including 1) is False.
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": 1}, accept_hooks_arg=False,
-        ) is False
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": 1},
+                accept_hooks_arg=False,
+            )
+            is False
+        )
 
     def test_cli_arg_overrides_config(self):
-        assert shell_hooks._resolve_effective_accept(
-            {"hooks_auto_accept": "false"}, accept_hooks_arg=True,
-        ) is True
-
+        assert (
+            shell_hooks._resolve_effective_accept(
+                {"hooks_auto_accept": "false"},
+                accept_hooks_arg=True,
+            )
+            is True
+        )

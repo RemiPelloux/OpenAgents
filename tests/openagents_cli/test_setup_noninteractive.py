@@ -74,9 +74,17 @@ class TestNonInteractiveSetup:
         with (
             patch("openagents_cli.setup.ensure_hermes_home"),
             patch("openagents_cli.setup.load_config", return_value={}),
-            patch("openagents_cli.setup.get_openagents_home", return_value="/tmp/.hermes"),
-            patch("openagents_cli.auth.get_active_provider", side_effect=AssertionError("wizard continued")),
-            patch("builtins.input", side_effect=AssertionError("input should not be called")),
+            patch(
+                "openagents_cli.setup.get_openagents_home", return_value="/tmp/.hermes"
+            ),
+            patch(
+                "openagents_cli.auth.get_active_provider",
+                side_effect=AssertionError("wizard continued"),
+            ),
+            patch(
+                "builtins.input",
+                side_effect=AssertionError("input should not be called"),
+            ),
         ):
             run_setup_wizard(args)
 
@@ -92,10 +100,18 @@ class TestNonInteractiveSetup:
         with (
             patch("openagents_cli.setup.ensure_hermes_home"),
             patch("openagents_cli.setup.load_config", return_value={}),
-            patch("openagents_cli.setup.get_openagents_home", return_value="/tmp/.hermes"),
-            patch("openagents_cli.auth.get_active_provider", side_effect=AssertionError("wizard continued")),
+            patch(
+                "openagents_cli.setup.get_openagents_home", return_value="/tmp/.hermes"
+            ),
+            patch(
+                "openagents_cli.auth.get_active_provider",
+                side_effect=AssertionError("wizard continued"),
+            ),
             patch("sys.stdin") as mock_stdin,
-            patch("builtins.input", side_effect=AssertionError("input should not be called")),
+            patch(
+                "builtins.input",
+                side_effect=AssertionError("input should not be called"),
+            ),
         ):
             mock_stdin.isatty.return_value = False
             run_setup_wizard(args)
@@ -103,13 +119,19 @@ class TestNonInteractiveSetup:
         out = capsys.readouterr().out
         assert "hermes config set model.provider custom" in out
 
-    def test_reset_flag_rewrites_config_before_noninteractive_exit(self, tmp_path, monkeypatch, capsys):
+    def test_reset_flag_rewrites_config_before_noninteractive_exit(
+        self, tmp_path, monkeypatch, capsys
+    ):
         """--reset should rewrite config.yaml even when the wizard cannot run interactively."""
         from openagents_cli.setup import run_setup_wizard
 
         monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
         cfg = load_config()
-        cfg["model"] = {"provider": "custom", "base_url": "http://localhost:8080/v1", "default": "llama3"}
+        cfg["model"] = {
+            "provider": "custom",
+            "base_url": "http://localhost:8080/v1",
+            "default": "llama3",
+        }
         cfg["agent"]["max_turns"] = 12
         save_config(cfg)
 
@@ -130,10 +152,15 @@ class TestNonInteractiveSetup:
         args = _make_chat_args()
 
         with (
-            patch("openagents_cli.main._has_any_provider_configured", return_value=False),
+            patch(
+                "openagents_cli.main._has_any_provider_configured", return_value=False
+            ),
             patch("openagents_cli.main.cmd_setup") as mock_setup,
             patch("sys.stdin") as mock_stdin,
-            patch("builtins.input", side_effect=AssertionError("input should not be called")),
+            patch(
+                "builtins.input",
+                side_effect=AssertionError("input should not be called"),
+            ),
         ):
             mock_stdin.isatty.return_value = False
             with pytest.raises(SystemExit) as exc:

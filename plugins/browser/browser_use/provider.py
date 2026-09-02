@@ -125,7 +125,9 @@ class BrowserUseBrowserProvider(BrowserProvider):
     # Config resolution (direct API key OR managed Nous gateway)
     # ------------------------------------------------------------------
 
-    def _get_config_or_none(self, *, refresh_token: bool = True) -> Optional[Dict[str, Any]]:
+    def _get_config_or_none(
+        self, *, refresh_token: bool = True
+    ) -> Optional[Dict[str, Any]]:
         # Import here to avoid a hard dependency at module-import time —
         # managed_tool_gateway pulls in the Nous auth stack which can be
         # heavy and is not needed for direct-API-key users.
@@ -164,9 +166,7 @@ class BrowserUseBrowserProvider(BrowserProvider):
 
         config = self._get_config_or_none()
         if config is None:
-            message = (
-                "Browser Use requires a direct BROWSER_USE_API_KEY credential."
-            )
+            message = "Browser Use requires a direct BROWSER_USE_API_KEY credential."
             if managed_nous_tools_enabled():
                 message = (
                     "Browser Use requires either a direct BROWSER_USE_API_KEY "
@@ -218,9 +218,7 @@ class BrowserUseBrowserProvider(BrowserProvider):
             # into a clean RuntimeError for end users.
             if managed_mode:
                 raise
-            raise RuntimeError(
-                f"Browser Use API connection failed: {exc}"
-            ) from exc
+            raise RuntimeError(f"Browser Use API connection failed: {exc}") from exc
 
         if not response.ok:
             if managed_mode and not _should_preserve_pending_create_key(response):

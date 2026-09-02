@@ -46,14 +46,16 @@ def _make_cli(**kwargs):
         "prompt_toolkit.formatted_text": MagicMock(),
         "prompt_toolkit.auto_suggest": MagicMock(),
     }
-    with patch.dict(sys.modules, prompt_toolkit_stubs), patch.dict(
-        "os.environ", clean_env, clear=False
+    with (
+        patch.dict(sys.modules, prompt_toolkit_stubs),
+        patch.dict("os.environ", clean_env, clear=False),
     ):
         import cli as _cli_mod
 
         _cli_mod = importlib.reload(_cli_mod)
-        with patch.object(_cli_mod, "get_tool_definitions", return_value=[]), patch.dict(
-            _cli_mod.__dict__, {"CLI_CONFIG": _clean_config}
+        with (
+            patch.object(_cli_mod, "get_tool_definitions", return_value=[]),
+            patch.dict(_cli_mod.__dict__, {"CLI_CONFIG": _clean_config}),
         ):
             return _cli_mod.HermesCLI(**kwargs)
 
@@ -89,9 +91,19 @@ class TestExtensionHookDefaults:
         )
         # First element is Window(height=0), rest are the named widgets
         assert children[1:] == [
-            "sudo", "secret", "approval", "clarify", "spinner",
-            "spacer", "status", "top-rule", "image-bar", "input-area",
-            "bottom-rule", "voice-status", "completions-menu",
+            "sudo",
+            "secret",
+            "approval",
+            "clarify",
+            "spinner",
+            "spacer",
+            "status",
+            "top-rule",
+            "image-bar",
+            "input-area",
+            "bottom-rule",
+            "voice-status",
+            "completions-menu",
         ]
 
 

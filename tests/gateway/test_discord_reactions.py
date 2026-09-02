@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from gateway.config import Platform, PlatformConfig
-from gateway.platforms.base import MessageEvent, MessageType, ProcessingOutcome, SendResult
+from gateway.platforms.base import (
+    MessageEvent,
+    MessageType,
+    ProcessingOutcome,
+    SendResult,
+)
 from gateway.session import SessionSource, build_session_key
 
 
@@ -106,7 +111,10 @@ async def test_process_message_background_adds_and_swaps_reactions(adapter):
     await adapter._process_message_background(event, build_session_key(event.source))
 
     assert raw_message.add_reaction.await_args_list[0].args == ("👀",)
-    assert raw_message.remove_reaction.await_args_list[0].args == ("👀", adapter._client.user)
+    assert raw_message.remove_reaction.await_args_list[0].args == (
+        "👀",
+        adapter._client.user,
+    )
     assert raw_message.add_reaction.await_args_list[1].args == ("✅",)
 
 
@@ -149,7 +157,9 @@ async def test_interaction_backed_events_do_not_attempt_reactions(adapter):
 @pytest.mark.asyncio
 async def test_reaction_helper_failures_do_not_break_message_flow(adapter):
     raw_message = SimpleNamespace(
-        add_reaction=AsyncMock(side_effect=[RuntimeError("no perms"), RuntimeError("no perms")]),
+        add_reaction=AsyncMock(
+            side_effect=[RuntimeError("no perms"), RuntimeError("no perms")]
+        ),
         remove_reaction=AsyncMock(side_effect=RuntimeError("no perms")),
     )
 
@@ -235,7 +245,9 @@ async def test_reactions_enabled_by_default(adapter, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_on_processing_complete_cancelled_removes_eyes_without_terminal_reaction(adapter):
+async def test_on_processing_complete_cancelled_removes_eyes_without_terminal_reaction(
+    adapter,
+):
     raw_message = SimpleNamespace(
         add_reaction=AsyncMock(),
         remove_reaction=AsyncMock(),

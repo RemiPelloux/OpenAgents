@@ -9,10 +9,10 @@ If the subcommand token is consumed as a flag value (e.g. `hermes -c model`
 to resume a session named 'model'), the required=True parse raises
 SystemExit and the code falls back to the default required=False behaviour.
 """
+
 import argparse
 import io
 import sys
-
 
 
 def _build_parser():
@@ -21,7 +21,8 @@ def _build_parser():
     parser.add_argument("--version", "-V", action="store_true")
     parser.add_argument("--resume", "-r", metavar="SESSION", default=None)
     parser.add_argument(
-        "--continue", "-c",
+        "--continue",
+        "-c",
         dest="continue_last",
         nargs="?",
         const=True,
@@ -44,7 +45,9 @@ def _build_parser():
 
 def _safe_parse(parser, subparsers, argv):
     """Replica of the defensive parsing logic from main()."""
-    known_cmds = set(subparsers.choices.keys()) if hasattr(subparsers, "choices") else set()
+    known_cmds = (
+        set(subparsers.choices.keys()) if hasattr(subparsers, "choices") else set()
+    )
     has_cmd_token = any(t in known_cmds for t in argv if not t.startswith("-"))
 
     if has_cmd_token:
@@ -62,4 +65,3 @@ def _safe_parse(parser, subparsers, argv):
     else:
         subparsers.required = False
         return parser.parse_args(argv)
-

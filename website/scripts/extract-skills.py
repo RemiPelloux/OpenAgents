@@ -30,7 +30,9 @@ LOCAL_SKILL_DIRS = [
     ("skills", "built-in"),
     ("optional-skills", "optional"),
 ]
-UNIFIED_INDEX_PATH = os.path.join(REPO_ROOT, "website", "static", "api", "skills-index.json")
+UNIFIED_INDEX_PATH = os.path.join(
+    REPO_ROOT, "website", "static", "api", "skills-index.json"
+)
 LEGACY_INDEX_CACHE_DIR = os.path.join(REPO_ROOT, "skills", "index-cache")
 # Output to static/api/ so the file is CDN-served at /api/skills.json
 # rather than bundled into the page's JS chunk. At 50k+ skills the
@@ -76,7 +78,7 @@ CATEGORY_LABELS = {
 # Skills Hub UI uses. Keep these in sync with the SOURCE_CONFIG dict in
 # website/src/pages/skills/index.tsx.
 UNIFIED_SOURCE_LABELS = {
-    "official": "official",   # treated as our "optional" tier in the UI
+    "official": "official",  # treated as our "optional" tier in the UI
     "skills.sh": "skills.sh",
     "skills-sh": "skills.sh",
     "clawhub": "ClawHub",
@@ -118,7 +120,11 @@ def _extract_overview(body: str) -> str:
     paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
     for p in paragraphs[:6]:
         if p.startswith("#"):
-            lines = [ln for ln in p.split("\n") if ln.strip() and not ln.lstrip().startswith("#")]
+            lines = [
+                ln
+                for ln in p.split("\n")
+                if ln.strip() and not ln.lstrip().startswith("#")
+            ]
             if lines:
                 p = "\n".join(lines).strip()
             else:
@@ -214,9 +220,18 @@ def _source_url(source: str, identifier: str, extra: dict) -> str:
 
     # GitHub-backed taps (openai/anthropic/nvidia/hf/gstack/VoltAgent/...):
     # identifier is "owner/repo/<path...>" — link to the directory on GitHub.
-    if src in {"github", "openai", "anthropic", "huggingface", "nvidia",
-               "gstack", "voltagent", "minimax", "claude marketplace",
-               "claude-marketplace"}:
+    if src in {
+        "github",
+        "openai",
+        "anthropic",
+        "huggingface",
+        "nvidia",
+        "gstack",
+        "voltagent",
+        "minimax",
+        "claude marketplace",
+        "claude-marketplace",
+    }:
         parts = [p for p in identifier.split("/") if p]
         if len(parts) >= 2:
             owner, repo = parts[0], parts[1]
@@ -227,21 +242,37 @@ def _source_url(source: str, identifier: str, extra: dict) -> str:
 
     if src == "clawhub":
         # identifier is a bare slug (the "clawhub/" prefix is added at install time)
-        slug = identifier[len("clawhub/"):] if identifier.startswith("clawhub/") else identifier
+        slug = (
+            identifier[len("clawhub/") :]
+            if identifier.startswith("clawhub/")
+            else identifier
+        )
         return f"https://clawhub.ai/skills/{slug}"
 
     if src in {"skills.sh", "skills-sh"}:
         # "skills-sh/owner/repo/skill" -> the skills.sh detail page
-        rest = identifier[len("skills-sh/"):] if identifier.startswith("skills-sh/") else identifier
+        rest = (
+            identifier[len("skills-sh/") :]
+            if identifier.startswith("skills-sh/")
+            else identifier
+        )
         return f"https://skills.sh/skills/{rest}"
 
     if src == "lobehub":
-        slug = identifier[len("lobehub/"):] if identifier.startswith("lobehub/") else identifier
+        slug = (
+            identifier[len("lobehub/") :]
+            if identifier.startswith("lobehub/")
+            else identifier
+        )
         return f"https://lobehub.com/agent/{slug}"
 
     if src in {"browse.sh", "browse-sh"}:
         # "browse-sh/<hostname>/<task-id>" -> browse.sh task page
-        rest = identifier[len("browse-sh/"):] if identifier.startswith("browse-sh/") else identifier
+        rest = (
+            identifier[len("browse-sh/") :]
+            if identifier.startswith("browse-sh/")
+            else identifier
+        )
         return f"https://browse.sh/skills/{rest}"
 
     return ""
@@ -315,7 +346,9 @@ def extract_local_skills():
                 "description": fm.get("description", ""),
                 "overview": overview,
                 "category": category,
-                "categoryLabel": CATEGORY_LABELS.get(category, category.replace("-", " ").title()),
+                "categoryLabel": CATEGORY_LABELS.get(
+                    category, category.replace("-", " ").title()
+                ),
                 "source": source_label,
                 "tags": tags or [],
                 "platforms": fm.get("platforms", []),
@@ -391,7 +424,9 @@ def extract_unified_index_skills():
         if source_id == "github":
             source_label = _label_for_github_identifier(identifier)
         else:
-            source_label = UNIFIED_SOURCE_LABELS.get(source_id, source_id or "community")
+            source_label = UNIFIED_SOURCE_LABELS.get(
+                source_id, source_id or "community"
+            )
 
         # Guess a category from tags so the UI's category filter has a chance.
         category = _guess_category(tags)
@@ -423,7 +458,9 @@ def extract_unified_index_skills():
             "overview": "",
             "category": category,
             "categoryLabel": category_label_override,  # set from sidecar, else filled in _consolidate_small_categories
-            "fixedCategory": bool(category_label_override),  # sidecar categories are exempt from small-cat collapse
+            "fixedCategory": bool(
+                category_label_override
+            ),  # sidecar categories are exempt from small-cat collapse
             "source": source_label,
             "tags": tags,
             "platforms": [],
@@ -471,8 +508,12 @@ def extract_legacy_cache_skills():
                 if not isinstance(agent, dict):
                     continue
                 skills.append({
-                    "name": agent.get("identifier", agent.get("meta", {}).get("title", "unknown")),
-                    "description": (agent.get("meta", {}).get("description", "") or "").split("\n")[0][:200],
+                    "name": agent.get(
+                        "identifier", agent.get("meta", {}).get("title", "unknown")
+                    ),
+                    "description": (
+                        agent.get("meta", {}).get("description", "") or ""
+                    ).split("\n")[0][:200],
                     "category": _guess_category(agent.get("meta", {}).get("tags", [])),
                     "categoryLabel": "",
                     "source": source_label,
@@ -505,7 +546,9 @@ def extract_legacy_cache_skills():
         if not s["categoryLabel"]:
             s["categoryLabel"] = CATEGORY_LABELS.get(
                 s["category"],
-                s["category"].replace("-", " ").title() if s["category"] else "Uncategorized",
+                s["category"].replace("-", " ").title()
+                if s["category"]
+                else "Uncategorized",
             )
 
     return skills
@@ -514,45 +557,121 @@ def extract_legacy_cache_skills():
 TAG_TO_CATEGORY = {}
 for _cat, _tags in {
     "software-development": [
-        "programming", "code", "coding", "software-development",
-        "frontend-development", "backend-development", "web-development",
-        "react", "python", "typescript", "java", "rust", "cli",
-        "developer-tools", "development", "api", "database", "debugging",
-        "documentation", "testing", "test", "architecture",
+        "programming",
+        "code",
+        "coding",
+        "software-development",
+        "frontend-development",
+        "backend-development",
+        "web-development",
+        "react",
+        "python",
+        "typescript",
+        "java",
+        "rust",
+        "cli",
+        "developer-tools",
+        "development",
+        "api",
+        "database",
+        "debugging",
+        "documentation",
+        "testing",
+        "test",
+        "architecture",
     ],
     "autonomous-ai-agents": [
-        "ai", "agent", "agents", "ai-agent", "ai-agents", "agentic",
-        "agentic-ai", "ai-assistant", "assistant", "multi-agent",
-        "autonomous", "llm", "rag", "prompt", "prompts", "a2a", "acp",
+        "ai",
+        "agent",
+        "agents",
+        "ai-agent",
+        "ai-agents",
+        "agentic",
+        "agentic-ai",
+        "ai-assistant",
+        "assistant",
+        "multi-agent",
+        "autonomous",
+        "llm",
+        "rag",
+        "prompt",
+        "prompts",
+        "a2a",
+        "acp",
     ],
     "creative": [
-        "writing", "design", "creative", "art", "image-generation",
-        "image", "content", "video-editing", "content-creation",
+        "writing",
+        "design",
+        "creative",
+        "art",
+        "image-generation",
+        "image",
+        "content",
+        "video-editing",
+        "content-creation",
     ],
     "research": ["education", "academic", "academic-writing", "research", "knowledge"],
     "social-media": ["marketing", "seo", "social-media", "advertising", "creator"],
     "productivity": [
-        "productivity", "business", "automation", "calendar", "email",
-        "document", "documents", "office", "notes", "note-taking",
-        "collaboration", "workflow", "crm",
+        "productivity",
+        "business",
+        "automation",
+        "calendar",
+        "email",
+        "document",
+        "documents",
+        "office",
+        "notes",
+        "note-taking",
+        "collaboration",
+        "workflow",
+        "crm",
     ],
     "data-science": ["data", "data-science", "analytics", "analysis", "visualization"],
     "mlops": ["machine-learning", "deep-learning", "mlops", "training", "fine-tuning"],
-    "devops": ["devops", "docker", "kubernetes", "infrastructure", "deployment", "monitoring", "ci-cd"],
+    "devops": [
+        "devops",
+        "docker",
+        "kubernetes",
+        "infrastructure",
+        "deployment",
+        "monitoring",
+        "ci-cd",
+    ],
     "gaming": ["gaming", "game", "game-development"],
     "media": ["music", "media", "video", "audio", "podcast", "youtube"],
     "health": ["health", "fitness", "medical", "wellness"],
     "translation": ["translation", "language-learning", "i18n", "localization"],
     "security": ["security", "cybersecurity", "auth", "compliance", "audit", "privacy"],
     "blockchain": [
-        "blockchain", "crypto", "cryptocurrency", "defi", "web3",
-        "bitcoin", "ethereum", "nft", "trading", "arbitrage",
+        "blockchain",
+        "crypto",
+        "cryptocurrency",
+        "defi",
+        "web3",
+        "bitcoin",
+        "ethereum",
+        "nft",
+        "trading",
+        "arbitrage",
     ],
     "communication": ["communication", "chat", "messaging", "slack", "discord"],
     "domain": [
-        "finance", "accounting", "banking", "ecommerce", "e-commerce",
-        "shopping", "travel", "booking", "real-estate", "legal",
-        "government", "b2b", "b2b-sales", "entrepreneur", "budget",
+        "finance",
+        "accounting",
+        "banking",
+        "ecommerce",
+        "e-commerce",
+        "shopping",
+        "travel",
+        "booking",
+        "real-estate",
+        "legal",
+        "government",
+        "b2b",
+        "b2b-sales",
+        "entrepreneur",
+        "budget",
     ],
 }.items():
     for _t in _tags:
@@ -598,9 +717,7 @@ def _consolidate_small_categories(skills: list) -> list:
     # Skills with a sidecar-declared category (skills.sh.json grouping) keep
     # their category even if it's the only skill in it — the tap explicitly
     # chose that label, so it's not a heuristic guess to collapse away.
-    counts = Counter(
-        s["category"] for s in skills if not s.get("fixedCategory")
-    )
+    counts = Counter(s["category"] for s in skills if not s.get("fixedCategory"))
     small_cats = {cat for cat, n in counts.items() if n < MIN_CATEGORY_SIZE}
 
     for s in skills:
@@ -612,7 +729,9 @@ def _consolidate_small_categories(skills: list) -> list:
         elif not s["categoryLabel"]:
             s["categoryLabel"] = CATEGORY_LABELS.get(
                 s["category"],
-                s["category"].replace("-", " ").title() if s["category"] else "Uncategorized",
+                s["category"].replace("-", " ").title()
+                if s["category"]
+                else "Uncategorized",
             )
 
     return skills
@@ -638,12 +757,14 @@ def main():
     all_skills = _consolidate_small_categories(local + external)
 
     source_order = {"built-in": 0, "optional": 1}
-    all_skills.sort(key=lambda s: (
-        source_order.get(s["source"], 2),
-        1 if s["category"] == "other" else 0,
-        s["category"],
-        s["name"],
-    ))
+    all_skills.sort(
+        key=lambda s: (
+            source_order.get(s["source"], 2),
+            1 if s["category"] == "other" else 0,
+            s["category"],
+            s["name"],
+        )
+    )
 
     os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
     with open(OUTPUT, "w", encoding="utf-8") as f:
@@ -668,8 +789,10 @@ def main():
         json.dump(meta, f, separators=(",", ":"), ensure_ascii=False)
 
     print(f"Extracted {len(all_skills)} skills to {OUTPUT}")
-    print(f"  {len(local)} local ({sum(1 for s in local if s['source'] == 'built-in')} built-in, "
-          f"{sum(1 for s in local if s['source'] == 'optional')} optional)")
+    print(
+        f"  {len(local)} local ({sum(1 for s in local if s['source'] == 'built-in')} built-in, "
+        f"{sum(1 for s in local if s['source'] == 'optional')} optional)"
+    )
     print(f"  {len(external)} from {external_source}")
 
     print("By source:")

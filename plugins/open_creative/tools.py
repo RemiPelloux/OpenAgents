@@ -57,17 +57,17 @@ POST_DELIVERABLES_SCHEMA: Dict[str, Any] = {
 }
 
 
-def _openai_generate(prompt: str, api_key: str, size: str = "1024x1024") -> Optional[str]:
+def _openai_generate(
+    prompt: str, api_key: str, size: str = "1024x1024"
+) -> Optional[str]:
     import urllib.request
 
-    payload = json.dumps(
-        {
-            "model": "dall-e-3",
-            "prompt": prompt[:4000],
-            "n": 1,
-            "size": size,
-        }
-    ).encode()
+    payload = json.dumps({
+        "model": "dall-e-3",
+        "prompt": prompt[:4000],
+        "n": 1,
+        "size": size,
+    }).encode()
     req = urllib.request.Request(
         "https://api.openai.com/v1/images/generations",
         data=payload,
@@ -98,7 +98,9 @@ def handle_generate_openai_images(args: Dict[str, Any]) -> str:
     if not run_id or not corr:
         return "Error: workflow_run_id and correlation_id required"
 
-    api_key = resolve_brain_secret("openai_api_key", workflow_run_id=run_id, correlation_id=corr)
+    api_key = resolve_brain_secret(
+        "openai_api_key", workflow_run_id=run_id, correlation_id=corr
+    )
     if not api_key:
         api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
@@ -109,7 +111,11 @@ def handle_generate_openai_images(args: Dict[str, Any]) -> str:
     for prompt in prompts[:10]:
         url = _openai_generate(str(prompt), api_key, size)
         if url:
-            results.append({"id": str(uuid.uuid4()), "url": url, "prompt": str(prompt)[:500]})
+            results.append({
+                "id": str(uuid.uuid4()),
+                "url": url,
+                "prompt": str(prompt)[:500],
+            })
 
     if not results:
         return "Error: no images generated"
@@ -131,4 +137,8 @@ def handle_post_brain_deliverables(args: Dict[str, Any]) -> str:
         images=images,
         summary=str(args.get("summary") or ""),
     )
-    return "Deliverables posted to OpenBrain for review." if ok else "Failed to post deliverables."
+    return (
+        "Deliverables posted to OpenBrain for review."
+        if ok
+        else "Failed to post deliverables."
+    )

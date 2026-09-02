@@ -14,7 +14,16 @@ import ast
 from typing import Any, Dict
 
 _ALLOWED_BINOPS = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod)
-_ALLOWED_COMPARE = (ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.In, ast.NotIn)
+_ALLOWED_COMPARE = (
+    ast.Eq,
+    ast.NotEq,
+    ast.Lt,
+    ast.LtE,
+    ast.Gt,
+    ast.GtE,
+    ast.In,
+    ast.NotIn,
+)
 _ALLOWED_BOOLOP = (ast.And, ast.Or)
 _ALLOWED_UNARY = (ast.Not, ast.USub, ast.UAdd)
 
@@ -79,7 +88,9 @@ def _eval_node(node: ast.AST, variables: Dict[str, Any]) -> Any:
         left = _eval_node(node.left, variables)
         for op, comparator in zip(node.ops, node.comparators):
             if not isinstance(op, _ALLOWED_COMPARE):
-                raise UnsafeExpressionError(f"disallowed comparator: {type(op).__name__}")
+                raise UnsafeExpressionError(
+                    f"disallowed comparator: {type(op).__name__}"
+                )
             right = _eval_node(comparator, variables)
             result = {
                 ast.Eq: lambda a, b: a == b,

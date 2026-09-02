@@ -64,7 +64,8 @@ def test_notifier_watcher_runs_when_dispatch_enabled():
 
     with patch("openagents_cli.config.load_config", return_value=_fake_config(True)):
         with patch.object(
-            _kb, "list_boards",
+            _kb,
+            "list_boards",
             side_effect=lambda *a, **kw: past_gate.append(True) or [],
         ):
             with patch("asyncio.sleep", side_effect=fake_sleep):

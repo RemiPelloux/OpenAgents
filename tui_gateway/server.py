@@ -134,7 +134,9 @@ _db = None
 _db_error: str | None = None
 _stdout_lock = threading.Lock()
 _cfg_lock = threading.Lock()
-_sessions_lock = threading.RLock()  # reentrant: _close_session_by_id may run under callers that already hold it
+_sessions_lock = (
+    threading.RLock()
+)  # reentrant: _close_session_by_id may run under callers that already hold it
 _prompt_lock = threading.Lock()
 _cfg_cache: dict | None = None
 _cfg_mtime: float | None = None
@@ -175,48 +177,46 @@ _DETAIL_MODES = frozenset({"hidden", "collapsed", "expanded"})
 # everything else stays on the main thread so ordering stays sane for the
 # fast path.  write_json is already _stdout_lock-guarded, so concurrent
 # response writes are safe.
-_LONG_HANDLERS = frozenset(
-    {
-        "billing.step_up",
-        "browser.manage",
-        "cli.exec",
-        # Completion RPCs run inline on the reader thread by default, but both
-        # can block it for seconds: complete.path spawns `git ls-files` and
-        # fuzzy-ranks the whole repo (slow on large repos / WSL2 mounts), and
-        # complete.slash does first-call prompt_toolkit imports + a skill-dir
-        # scan. While either runs inline, prompt.submit / session.interrupt sit
-        # unread in the stdin pipe — the TUI appears frozen until the 120s RPC
-        # timeout fires (#21123). Routing them to the pool keeps the fast path
-        # responsive; completion is read-only and write_json is lock-guarded.
-        "complete.path",
-        "complete.slash",
-        "llm.oneshot",
-        # Pet RPCs hit the network (manifest fetch / spritesheet download) or do
-        # per-frame PNG decode/encode (pet.cells): inline they serialize on the
-        # reader thread, so picker previews trickle in one at a time and the
-        # animation poll stutters. On the pool they run concurrently.
-        "pet.cells",
-        "pet.gallery",
-        # Generation is the heaviest pet path by far — multiple image-model
-        # round-trips per call — so it must never block the reader thread.
-        "pet.generate",
-        "pet.hatch",
-        "pet.select",
-        "pet.thumb",
-        "plugins.manage",
-        "projects.discover_repos",
-        "projects.record_repos",
-        "projects.for_cwd",
-        "projects.tree",
-        "projects.project_sessions",
-        "session.branch",
-        "session.compress",
-        "session.resume",
-        "shell.exec",
-        "skills.manage",
-        "slash.exec",
-    }
-)
+_LONG_HANDLERS = frozenset({
+    "billing.step_up",
+    "browser.manage",
+    "cli.exec",
+    # Completion RPCs run inline on the reader thread by default, but both
+    # can block it for seconds: complete.path spawns `git ls-files` and
+    # fuzzy-ranks the whole repo (slow on large repos / WSL2 mounts), and
+    # complete.slash does first-call prompt_toolkit imports + a skill-dir
+    # scan. While either runs inline, prompt.submit / session.interrupt sit
+    # unread in the stdin pipe — the TUI appears frozen until the 120s RPC
+    # timeout fires (#21123). Routing them to the pool keeps the fast path
+    # responsive; completion is read-only and write_json is lock-guarded.
+    "complete.path",
+    "complete.slash",
+    "llm.oneshot",
+    # Pet RPCs hit the network (manifest fetch / spritesheet download) or do
+    # per-frame PNG decode/encode (pet.cells): inline they serialize on the
+    # reader thread, so picker previews trickle in one at a time and the
+    # animation poll stutters. On the pool they run concurrently.
+    "pet.cells",
+    "pet.gallery",
+    # Generation is the heaviest pet path by far — multiple image-model
+    # round-trips per call — so it must never block the reader thread.
+    "pet.generate",
+    "pet.hatch",
+    "pet.select",
+    "pet.thumb",
+    "plugins.manage",
+    "projects.discover_repos",
+    "projects.record_repos",
+    "projects.for_cwd",
+    "projects.tree",
+    "projects.project_sessions",
+    "session.branch",
+    "session.compress",
+    "session.resume",
+    "shell.exec",
+    "skills.manage",
+    "slash.exec",
+})
 
 try:
     _rpc_pool_workers = max(
@@ -454,7 +454,9 @@ def _transfer_active_session_slot(
             try:
                 old_lease.release()
             except Exception:
-                logger.debug("Failed to release stale active session slot", exc_info=True)
+                logger.debug(
+                    "Failed to release stale active session slot", exc_info=True
+                )
         session["active_session_lease"] = new_lease
         return True
     # Reserve failed — retain the existing lease rather than dropping it.
@@ -506,10 +508,7 @@ def _finalize_session(session: dict | None, end_reason: str = "tui_close") -> No
     # Best‑effort — the agent thread may still be mid‑turn, so only
     # previously completed messages are guaranteed.
     if agent is not None and hasattr(agent, "_persist_session"):
-        snapshot = (
-            getattr(agent, "_session_messages", None)
-            or history
-        )
+        snapshot = getattr(agent, "_session_messages", None) or history
         if snapshot:
             try:
                 agent._persist_session(snapshot, conversation_history=history)
@@ -633,7 +632,6 @@ def _close_session_by_id(sid: str, *, end_reason: str = "tui_close") -> bool:
     return True
 
 
-
 def _ws_session_is_orphaned(session: dict | None) -> bool:
     """True if a WS session has no live transport and no in-flight turn.
 
@@ -695,7 +693,9 @@ def _close_sessions_for_transport(
 
     Returns ``(reaped, detached)`` counts for disconnect-path observability."""
     with _sessions_lock:
-        owned = [(sid, s) for sid, s in _sessions.items() if s.get("transport") is transport]
+        owned = [
+            (sid, s) for sid, s in _sessions.items() if s.get("transport") is transport
+        ]
     reaped = 0
     detached = 0
     for sid, session in owned:
@@ -761,7 +761,9 @@ def _session_is_evictable(sid: str, session: dict, now: float) -> bool:
 def _reap_idle_sessions() -> None:
     now = time.time()
     with _sessions_lock:
-        victims = [sid for sid, s in _sessions.items() if _session_is_evictable(sid, s, now)]
+        victims = [
+            sid for sid, s in _sessions.items() if _session_is_evictable(sid, s, now)
+        ]
     for sid in victims:
         _close_session_by_id(sid, end_reason="idle_timeout")
     _enforce_session_cap()
@@ -812,7 +814,9 @@ def _enforce_session_cap() -> None:
         if total <= cap:
             return
         evictable = [
-            (sid, s) for sid, s in _sessions.items() if _session_is_lru_evictable(sid, s)
+            (sid, s)
+            for sid, s in _sessions.items()
+            if _session_is_lru_evictable(sid, s)
         ]
     # Oldest-touched first; only evict down to the cap (live/focused sessions on
     # a live transport are never eligible, so we may stop short of the cap).
@@ -914,7 +918,9 @@ def _profile_scoped(handler):
     """
 
     def wrapper(rid, params):
-        home = _profile_home(params.get("profile") if isinstance(params, dict) else None)
+        home = _profile_home(
+            params.get("profile") if isinstance(params, dict) else None
+        )
         if home is None:
             return handler(rid, params)
         token = set_openagents_home_override(home)
@@ -1218,9 +1224,13 @@ def _start_agent_build(sid: str, session: dict) -> None:
                     # them directly (no global config, no build-then-switch).
                     if override := current.get("model_override"):
                         kw["model_override"] = override
-                    if (reasoning := current.get("create_reasoning_override")) is not None:
+                    if (
+                        reasoning := current.get("create_reasoning_override")
+                    ) is not None:
                         kw["reasoning_config_override"] = reasoning
-                    if (tier := current.get("create_service_tier_override")) is not None:
+                    if (
+                        tier := current.get("create_service_tier_override")
+                    ) is not None:
                         kw["service_tier_override"] = tier
                 agent = _make_agent(sid, key, **kw)
             finally:
@@ -1278,7 +1288,9 @@ def _start_agent_build(sid: str, session: dict) -> None:
                 pass
             with _sessions_lock:
                 if sid in _sessions:
-                    _sessions[sid]["_notif_stop"] = _start_notification_poller(sid, _sessions[sid])
+                    _sessions[sid]["_notif_stop"] = _start_notification_poller(
+                        sid, _sessions[sid]
+                    )
             _notify_session_boundary("on_session_reset", key)
 
             info = _session_info(agent, current)
@@ -1623,7 +1635,11 @@ def _persist_branch_seed(session: dict) -> None:
             return
         try:
             for msg in seed:
-                db.append_message(session_id=key, role=msg.get("role", "user"), content=msg.get("content"))
+                db.append_message(
+                    session_id=key,
+                    role=msg.get("role", "user"),
+                    content=msg.get("content"),
+                )
             session["_branch_seed_persisted"] = True
         except Exception:
             logger.debug("branch seed persist failed", exc_info=True)
@@ -1675,7 +1691,10 @@ def _persist_session_git_meta(session: dict, cwd: str) -> None:
         return
     # Snapshot the routing fields now; the live session dict may be gone by the
     # time the thread runs. `_session_db` reopens the profile-correct db inside.
-    db_session = {"session_key": session_key, "profile_home": session.get("profile_home")}
+    db_session = {
+        "session_key": session_key,
+        "profile_home": session.get("profile_home"),
+    }
 
     def _run() -> None:
         try:
@@ -2048,9 +2067,7 @@ def _stored_session_runtime_overrides(row: dict | None) -> dict:
 
             healed = canonical_custom_identity(base_url=base_url or None)
         except Exception:
-            logger.debug(
-                "custom provider identity recovery failed", exc_info=True
-            )
+            logger.debug("custom provider identity recovery failed", exc_info=True)
         provider = healed or ("" if not base_url else provider)
 
     if model:
@@ -2105,13 +2122,9 @@ def _runtime_model_config(agent, existing: dict | None = None) -> dict:
                     canonical_custom_identity,
                 )
 
-                provider = (
-                    canonical_custom_identity(base_url=base_url) or provider
-                )
+                provider = canonical_custom_identity(base_url=base_url) or provider
             except Exception:
-                logger.debug(
-                    "custom provider identity lookup failed", exc_info=True
-                )
+                logger.debug("custom provider identity lookup failed", exc_info=True)
         config["provider"] = provider
     if base_url:
         config["base_url"] = base_url
@@ -2182,12 +2195,16 @@ def _persist_live_session_system_prompt(session: dict | None) -> None:
     try:
         prompt = agent._build_system_prompt(None)
         agent._cached_system_prompt = prompt
-        db.update_system_prompt(getattr(agent, "session_id", None) or session_key, prompt)
+        db.update_system_prompt(
+            getattr(agent, "session_id", None) or session_key, prompt
+        )
     except Exception:
         logger.debug("failed to persist live session system prompt", exc_info=True)
 
 
-def _append_model_switch_marker(session: dict | None, *, model: str, provider: str) -> None:
+def _append_model_switch_marker(
+    session: dict | None, *, model: str, provider: str
+) -> None:
     """Record a real system-history pivot after a live model switch."""
     if not session:
         return
@@ -2662,7 +2679,9 @@ def _apply_model_switch(
 
     if agent:
         try:
-            from openagents_cli.context_switch_guard import merge_preflight_compression_warning
+            from openagents_cli.context_switch_guard import (
+                merge_preflight_compression_warning,
+            )
 
             _cfg_ctx = None
             if isinstance(cfg, dict):
@@ -2972,6 +2991,7 @@ def _get_usage(agent) -> dict:
     # bar's ⛓ indicator; sourced from the same async_delegation registry.
     try:
         from tools.async_delegation import active_count as _async_active_count
+
         usage["active_subagents"] = _async_active_count()
     except Exception:
         pass
@@ -3059,7 +3079,7 @@ def _session_info(agent, session: dict | None = None) -> dict:
     session_key = str(
         (session or {}).get("session_key") or getattr(agent, "session_id", "") or ""
     )
-    cfg_personality = ((_load_cfg().get("display") or {}).get("personality") or "")
+    cfg_personality = (_load_cfg().get("display") or {}).get("personality") or ""
     personality = (session or {}).get("personality", cfg_personality)
     reasoning_config = getattr(agent, "reasoning_config", None)
     reasoning_effort = ""
@@ -3527,7 +3547,9 @@ def _mirror_subagent_to_child(event_type: str, payload: dict) -> None:
         return
     csid = live[0]
     with _child_mirrors_lock:
-        st = _child_mirrors.setdefault(child_key, {"seq": 0, "open_tool": None, "started": False})
+        st = _child_mirrors.setdefault(
+            child_key, {"seq": 0, "open_tool": None, "started": False}
+        )
         if not st["started"]:
             st["started"] = True
             _emit("message.start", csid)
@@ -3574,9 +3596,11 @@ def _agent_cbs(sid: str) -> dict:
         "tool_complete_callback": lambda tc_id, name, args, result: _on_tool_complete(
             sid, tc_id, name, args, result
         ),
-        "tool_progress_callback": lambda event_type, name=None, preview=None, args=None, **kwargs: _on_tool_progress(
-            sid, event_type, name, preview, args, **kwargs
-        ),
+        "tool_progress_callback": lambda event_type,
+        name=None,
+        preview=None,
+        args=None,
+        **kwargs: _on_tool_progress(sid, event_type, name, preview, args, **kwargs),
         "tool_gen_callback": lambda name: _tool_progress_enabled(sid)
         and _emit("tool.generating", sid, {"name": name}),
         "thinking_callback": lambda text: _emit("thinking.delta", sid, {"text": text}),
@@ -3638,7 +3662,10 @@ def _apply_project_workspace(task_id: str, path: str, _name: str = "") -> None:
             sid, session = key, _sessions[key]
         else:
             for cand_sid, cand in _sessions.items():
-                if cand.get("session_key") == key or getattr(cand.get("agent"), "session_id", None) == key:
+                if (
+                    cand.get("session_key") == key
+                    or getattr(cand.get("agent"), "session_id", None) == key
+                ):
                     sid, session = cand_sid, cand
                     break
 
@@ -3667,11 +3694,17 @@ def _apply_project_workspace(task_id: str, path: str, _name: str = "") -> None:
         info = (
             _session_info(agent, session)
             if agent is not None
-            else {"cwd": resolved, "branch": _git_branch_for_cwd(resolved), "lazy": True}
+            else {
+                "cwd": resolved,
+                "branch": _git_branch_for_cwd(resolved),
+                "lazy": True,
+            }
         )
         _emit("session.info", sid, info)
     except Exception:
-        logger.debug("failed to emit session.info after project workspace move", exc_info=True)
+        logger.debug(
+            "failed to emit session.info after project workspace move", exc_info=True
+        )
 
 
 def _wire_callbacks(sid: str):
@@ -3710,9 +3743,9 @@ def _render_personality_prompt(value) -> str:
     if isinstance(value, dict):
         parts = [value.get("system_prompt", "")]
         if value.get("tone"):
-            parts.append(f'Tone: {value["tone"]}')
+            parts.append(f"Tone: {value['tone']}")
         if value.get("style"):
-            parts.append(f'Style: {value["style"]}')
+            parts.append(f"Style: {value['style']}")
         return "\n".join(p for p in parts if p)
     return str(value)
 
@@ -3881,7 +3914,9 @@ def _background_agent_kwargs(agent, task_id: str) -> dict:
             agent, "provider_require_parameters", False
         ),
         "provider_data_collection": getattr(agent, "provider_data_collection", None),
-        "openrouter_min_coding_score": getattr(agent, "openrouter_min_coding_score", None),
+        "openrouter_min_coding_score": getattr(
+            agent, "openrouter_min_coding_score", None
+        ),
         "session_id": task_id,
         "reasoning_config": getattr(agent, "reasoning_config", None)
         or _load_reasoning_config(),
@@ -3895,17 +3930,17 @@ def _background_agent_kwargs(agent, task_id: str) -> dict:
 
 def _ephemeral_preview_agent_kwargs(agent, task_id: str) -> dict:
     kwargs = _background_agent_kwargs(agent, task_id)
-    kwargs.update(
-        {
-            "enabled_toolsets": ["terminal", "file"],
-            "session_db": None,
-            "skip_memory": True,
-        }
-    )
+    kwargs.update({
+        "enabled_toolsets": ["terminal", "file"],
+        "session_db": None,
+        "skip_memory": True,
+    })
     return kwargs
 
 
-def _preview_restart_history(session: dict, max_messages: int = 24, max_tool_chars: int = 1200) -> list[dict]:
+def _preview_restart_history(
+    session: dict, max_messages: int = 24, max_tool_chars: int = 1200
+) -> list[dict]:
     """Distill the parent session's recent history into a context the
     ephemeral preview-restart agent can actually use.
 
@@ -3992,7 +4027,11 @@ def _preview_restart_callbacks(parent: str, task_id: str) -> dict:
     def progress(message: str, level: str = "info") -> None:
         text = str(message or "").strip()
         if text:
-            _emit("preview.restart.progress", parent, {"task_id": task_id, "level": level, "text": text})
+            _emit(
+                "preview.restart.progress",
+                parent,
+                {"task_id": task_id, "level": level, "text": text},
+            )
 
     def tool_start(tool_call_id: str, name: str, args: dict) -> None:
         started_at[tool_call_id] = time.time()
@@ -4001,11 +4040,16 @@ def _preview_restart_callbacks(parent: str, task_id: str) -> dict:
 
     def tool_complete(tool_call_id: str, name: str, _args: dict, result: str) -> None:
         duration_s = time.time() - started_at.get(tool_call_id, time.time())
-        summary = _tool_summary(name, result, duration_s) or f"Finished {name}{f' in {_fmt_tool_duration(duration_s)}' if duration_s else ''}"
+        summary = (
+            _tool_summary(name, result, duration_s)
+            or f"Finished {name}{f' in {_fmt_tool_duration(duration_s)}' if duration_s else ''}"
+        )
         output = _preview_tool_result_preview(name, result)
         progress(summary + (f"\n{output}" if output else ""))
 
-    def tool_progress(event_type: str, name: str | None = None, preview: str | None = None, **_kwargs) -> None:
+    def tool_progress(
+        event_type: str, name: str | None = None, preview: str | None = None, **_kwargs
+    ) -> None:
         if preview:
             progress(str(preview))
         elif name:
@@ -4016,7 +4060,9 @@ def _preview_restart_callbacks(parent: str, task_id: str) -> dict:
         "tool_complete_callback": tool_complete,
         "tool_progress_callback": tool_progress,
         "tool_gen_callback": lambda name: progress(f"Preparing {name}"),
-        "status_callback": lambda kind, text=None: progress(text if text is not None else kind),
+        "status_callback": lambda kind, text=None: progress(
+            text if text is not None else kind
+        ),
     }
 
 
@@ -4120,6 +4166,7 @@ def _schedule_mcp_late_refresh(sid: str, agent) -> None:
             info = _session_info(agent, session)
         # Emit outside the lock — write_json must not block under _sessions_lock.
         _emit("session.info", sid, info)
+
     threading.Thread(
         target=_wait_then_refresh,
         name=f"tui-mcp-late-refresh-{sid}",
@@ -4412,7 +4459,9 @@ def _init_session(
     _wire_callbacks(sid)
     with _sessions_lock:
         if sid in _sessions:
-            _sessions[sid]["_notif_stop"] = _start_notification_poller(sid, _sessions[sid])
+            _sessions[sid]["_notif_stop"] = _start_notification_poller(
+                sid, _sessions[sid]
+            )
     _notify_session_boundary("on_session_reset", key)
     _emit("session.info", sid, _session_info(agent, _sessions.get(sid, {})))
     _schedule_mcp_late_refresh(sid, agent)
@@ -4619,9 +4668,11 @@ def _history_to_messages(history: list[dict]) -> list[dict]:
             tc_info = tool_call_args.get(tc_id) if tc_id else None
             name = (tc_info[0] if tc_info else None) or m.get("tool_name") or "tool"
             args = (tc_info[1] if tc_info else None) or {}
-            messages.append(
-                {"role": "tool", "name": name, "context": _tool_ctx(name, args)}
-            )
+            messages.append({
+                "role": "tool",
+                "name": name,
+                "context": _tool_ctx(name, args),
+            })
             continue
         # An assistant turn may carry only reasoning/thinking content with no
         # visible text (extended-thinking turns, thinking-only recovery
@@ -4747,17 +4798,15 @@ def _enqueue_prompt(session: dict, text: Any, transport: Any) -> None:
     the client that sent it even if the session transport is rebound meanwhile.
     """
     existing = session.get("queued_prompt")
-    if (
-        existing
-        and isinstance(existing.get("text"), str)
-        and isinstance(text, str)
-    ):
+    if existing and isinstance(existing.get("text"), str) and isinstance(text, str):
         prev = existing["text"]
         text = f"{prev}\n\n{text}" if prev and text else (prev or text)
     session["queued_prompt"] = {"text": text, "transport": transport}
 
 
-def _handle_busy_submit(rid, sid: str, session: dict, text: Any, transport: Any) -> dict:
+def _handle_busy_submit(
+    rid, sid: str, session: dict, text: Any, transport: Any
+) -> dict:
     """Apply the ``display.busy_input_mode`` policy to a prompt that lands while
     a turn is in flight, instead of rejecting it with ``session busy``.
 
@@ -4810,8 +4859,7 @@ def _drain_queued_prompt(rid, sid: str, session: dict) -> bool:
         _run_prompt_submit(rid, sid, session, queued["text"])
     except Exception as exc:
         print(
-            f"[tui_gateway] queued prompt dispatch failed: "
-            f"{type(exc).__name__}: {exc}",
+            f"[tui_gateway] queued prompt dispatch failed: {type(exc).__name__}: {exc}",
             file=sys.stderr,
         )
         with session["history_lock"]:
@@ -4855,7 +4903,9 @@ def _(rid, params: dict) -> dict:
     # workspace" instead of whatever folder the desktop launched in.
     raw_cwd = str(params.get("cwd") or "").strip()
     try:
-        explicit_cwd = bool(raw_cwd) and os.path.isdir(os.path.abspath(os.path.expanduser(raw_cwd)))
+        explicit_cwd = bool(raw_cwd) and os.path.isdir(
+            os.path.abspath(os.path.expanduser(raw_cwd))
+        )
     except Exception:
         explicit_cwd = False
     resolved_cwd = _completion_cwd(params)
@@ -4876,7 +4926,10 @@ def _(rid, params: dict) -> dict:
     # (resolved at build).
     create_model = str(params.get("model") or "").strip()
     session_model_override = (
-        {"model": create_model, "provider": str(params.get("provider") or "").strip() or None}
+        {
+            "model": create_model,
+            "provider": str(params.get("provider") or "").strip() or None,
+        }
         if create_model
         else None
     )
@@ -4904,7 +4957,9 @@ def _(rid, params: dict) -> dict:
             "agent_error": None,
             "agent_ready": ready,
             "attached_images": [],
-            "close_on_disconnect": is_truthy_value(params.get("close_on_disconnect", False)),
+            "close_on_disconnect": is_truthy_value(
+                params.get("close_on_disconnect", False)
+            ),
             "active_session_lease": lease,
             "cols": cols,
             "created_at": now,
@@ -5005,7 +5060,9 @@ def _(rid, params: dict) -> dict:
         fetch_limit = max(limit * 2, 200)
         rows = [
             s
-            for s in db.list_sessions_rich(source=None, limit=fetch_limit, order_by_last_active=True)
+            for s in db.list_sessions_rich(
+                source=None, limit=fetch_limit, order_by_last_active=True
+            )
             if (s.get("source") or "").strip().lower() not in deny
         ][:limit]
         return _ok(
@@ -5340,7 +5397,9 @@ def _(rid, params: dict) -> dict:
             history=history,
             lease=lease,
             source=str(params.get("source") or "tui").strip() or "tui",
-            close_on_disconnect=is_truthy_value(params.get("close_on_disconnect", False)),
+            close_on_disconnect=is_truthy_value(
+                params.get("close_on_disconnect", False)
+            ),
             profile_home=profile_home,
             lazy=True,
         )
@@ -5390,7 +5449,9 @@ def _(rid, params: dict) -> dict:
         try:
             db.reopen_session(target)
             raw_history = db.get_messages_as_conversation(target)
-            display_history = db.get_messages_as_conversation(target, include_ancestors=True)
+            display_history = db.get_messages_as_conversation(
+                target, include_ancestors=True
+            )
         except Exception as e:
             if lease is not None:
                 lease.release()
@@ -5413,7 +5474,9 @@ def _(rid, params: dict) -> dict:
             history=history,
             lease=lease,
             source=str(params.get("source") or "tui").strip() or "tui",
-            close_on_disconnect=is_truthy_value(params.get("close_on_disconnect", False)),
+            close_on_disconnect=is_truthy_value(
+                params.get("close_on_disconnect", False)
+            ),
             display_history_prefix=prefix,
             profile_home=profile_home,
             model_override=overrides.get("model_override"),
@@ -5456,7 +5519,9 @@ def _(rid, params: dict) -> dict:
         return _err(rid, 4090, limit_message)
     _enable_gateway_prompts()
     home_token = (
-        set_openagents_home_override(str(profile_home)) if profile_home is not None else None
+        set_openagents_home_override(str(profile_home))
+        if profile_home is not None
+        else None
     )
     try:
         db.reopen_session(target)
@@ -5592,11 +5657,15 @@ def _(rid, params: dict) -> dict:
     except ValueError as e:
         return _err(rid, 4017, str(e))
     agent = session.get("agent")
-    info = _session_info(agent, session) if agent is not None else {
-        "cwd": cwd,
-        "branch": _git_branch_for_cwd(cwd),
-        "lazy": True,
-    }
+    info = (
+        _session_info(agent, session)
+        if agent is not None
+        else {
+            "cwd": cwd,
+            "branch": _git_branch_for_cwd(cwd),
+            "lazy": True,
+        }
+    )
     _emit("session.info", params.get("session_id", ""), info)
     return _ok(rid, info)
 
@@ -5656,7 +5725,9 @@ def _session_live_item(sid: str, session: dict, current_sid: str = "") -> dict:
     return {
         "current": sid == current_sid,
         "id": sid,
-        "last_active": float(session.get("last_active") or session.get("created_at") or now),
+        "last_active": float(
+            session.get("last_active") or session.get("created_at") or now
+        ),
         "message_count": len(history),
         "model": str(getattr(agent, "model", "") or _resolve_model()),
         "preview": preview,
@@ -5955,7 +6026,9 @@ def _(rid, params: dict) -> dict:
     template = (params.get("template") or "").strip() or None
     instructions = params.get("instructions") or ""
     user_input = params.get("input") or ""
-    variables = params.get("variables") if isinstance(params.get("variables"), dict) else {}
+    variables = (
+        params.get("variables") if isinstance(params.get("variables"), dict) else {}
+    )
     task = (params.get("task") or "title_generation").strip() or "title_generation"
 
     try:
@@ -6238,7 +6311,12 @@ def _pet_row_frame_counts(spritesheet) -> dict:
             count = 0
             for col in range(cols):
                 left = col * constants.FRAME_W
-                frame = image.crop((left, top, left + constants.FRAME_W, top + constants.FRAME_H))
+                frame = image.crop((
+                    left,
+                    top,
+                    left + constants.FRAME_W,
+                    top + constants.FRAME_H,
+                ))
                 if render._frame_is_blank(frame):
                     break
                 count += 1
@@ -6258,7 +6336,9 @@ def _pet_config_scale() -> float:
         cfg = load_config()
         display = cfg.get("display", {}) if isinstance(cfg.get("display"), dict) else {}
         pet_cfg = display.get("pet", {}) if isinstance(display.get("pet"), dict) else {}
-        return float(pet_cfg.get("scale", constants.DEFAULT_SCALE) or constants.DEFAULT_SCALE)
+        return float(
+            pet_cfg.get("scale", constants.DEFAULT_SCALE) or constants.DEFAULT_SCALE
+        )
     except Exception:  # noqa: BLE001
         return constants.DEFAULT_SCALE
 
@@ -6322,7 +6402,9 @@ def _pet_active_selection():
     enabled = bool(pet_cfg.get("enabled"))
     configured_slug = str(pet_cfg.get("slug", "") or "")
     pet = store.resolve_active_pet(configured_slug) if enabled else None
-    scale = float(pet_cfg.get("scale", constants.DEFAULT_SCALE) or constants.DEFAULT_SCALE)
+    scale = float(
+        pet_cfg.get("scale", constants.DEFAULT_SCALE) or constants.DEFAULT_SCALE
+    )
     return enabled, pet, scale
 
 
@@ -6416,8 +6498,12 @@ def _(rid, params: dict) -> dict:
             from openagents_cli.config import load_config
 
             cfg = load_config()
-            display = cfg.get("display", {}) if isinstance(cfg.get("display"), dict) else {}
-            pet_cfg = display.get("pet", {}) if isinstance(display.get("pet"), dict) else {}
+            display = (
+                cfg.get("display", {}) if isinstance(cfg.get("display"), dict) else {}
+            )
+            pet_cfg = (
+                display.get("pet", {}) if isinstance(display.get("pet"), dict) else {}
+            )
         except Exception:
             pet_cfg = {}
 
@@ -6429,8 +6515,12 @@ def _(rid, params: dict) -> dict:
             return _ok(rid, {"enabled": False})
 
         state = str(params.get("state") or constants.PetState.IDLE.value)
-        scale = float(pet_cfg.get("scale", constants.DEFAULT_SCALE) or constants.DEFAULT_SCALE)
-        cols = int(params.get("cols") or 0) or constants.resolve_cols(scale, pet_cfg.get("unicode_cols", 0))
+        scale = float(
+            pet_cfg.get("scale", constants.DEFAULT_SCALE) or constants.DEFAULT_SCALE
+        )
+        cols = int(params.get("cols") or 0) or constants.resolve_cols(
+            scale, pet_cfg.get("unicode_cols", 0)
+        )
 
         # Graphics path: when the TUI is attached to a real TTY (``graphics``)
         # and the terminal speaks the kitty protocol, return a Unicode-
@@ -6441,7 +6531,11 @@ def _(rid, params: dict) -> dict:
         # kitty is grid-safe in Ink — iTerm/sixel stay on the fallback.
         if params.get("graphics"):
             configured = str(pet_cfg.get("render_mode", "auto") or "auto").lower()
-            gmode = render.detect_terminal_graphics() if configured in ("", "auto") else configured
+            gmode = (
+                render.detect_terminal_graphics()
+                if configured in ("", "auto")
+                else configured
+            )
             if gmode == "kitty":
                 image_id = render.kitty_image_id(pet.slug)
                 # kitty sizes from scaled pixels (_cell_box), so unicode_cols is moot here.
@@ -6479,9 +6573,7 @@ def _(rid, params: dict) -> dict:
         frames = []
         for i in range(count):
             grid = renderer.cells(state, i, cols=cols)
-            frames.append(
-                [[[*top, *bottom] for (top, bottom) in row] for row in grid]
-            )
+            frames.append([[[*top, *bottom] for (top, bottom) in row] for row in grid])
 
         return _ok(
             rid,
@@ -6523,8 +6615,12 @@ def _(rid, params: dict) -> dict:
             from openagents_cli.config import load_config
 
             cfg = load_config()
-            display = cfg.get("display", {}) if isinstance(cfg.get("display"), dict) else {}
-            pet_cfg = display.get("pet", {}) if isinstance(display.get("pet"), dict) else {}
+            display = (
+                cfg.get("display", {}) if isinstance(cfg.get("display"), dict) else {}
+            )
+            pet_cfg = (
+                display.get("pet", {}) if isinstance(display.get("pet"), dict) else {}
+            )
         except Exception:
             pet_cfg = {}
 
@@ -6542,34 +6638,31 @@ def _(rid, params: dict) -> dict:
 
             for entry in [] if local_only else fetch_manifest():
                 seen.add(entry.slug)
-                gallery.append(
-                    {
-                        "slug": entry.slug,
-                        "displayName": entry.display_name,
-                        "installed": entry.slug in installed,
-                        "spritesheetUrl": entry.spritesheet_url,
-                        # petdex exposes no popularity metric; "curated" (its
-                        # hand-picked/official set, identified by the asset path)
-                        # is the closest signal, so the picker can surface it first.
-                        "curated": "/curated/" in entry.spritesheet_url,
-                        "generated": entry.slug in installed and installed[entry.slug].generated,
-                    }
-                )
+                gallery.append({
+                    "slug": entry.slug,
+                    "displayName": entry.display_name,
+                    "installed": entry.slug in installed,
+                    "spritesheetUrl": entry.spritesheet_url,
+                    # petdex exposes no popularity metric; "curated" (its
+                    # hand-picked/official set, identified by the asset path)
+                    # is the closest signal, so the picker can surface it first.
+                    "curated": "/curated/" in entry.spritesheet_url,
+                    "generated": entry.slug in installed
+                    and installed[entry.slug].generated,
+                })
         except Exception as exc:  # noqa: BLE001 - offline: fall back to installed
             logger.debug("pet.gallery manifest fetch failed: %s", exc)
 
         # Always include locally-installed pets even if the gallery is unreachable.
         for slug, pet in installed.items():
             if slug not in seen:
-                gallery.append(
-                    {
-                        "slug": slug,
-                        "displayName": pet.display_name,
-                        "installed": True,
-                        "spritesheetUrl": "",
-                        "generated": pet.generated,
-                    }
-                )
+                gallery.append({
+                    "slug": slug,
+                    "displayName": pet.display_name,
+                    "installed": True,
+                    "spritesheetUrl": "",
+                    "generated": pet.generated,
+                })
 
         return _ok(
             rid,
@@ -6661,7 +6754,11 @@ def _(rid, params: dict) -> dict:
         filename, data = store.export_pet(slug)
         return _ok(
             rid,
-            {"ok": True, "filename": filename, "zipBase64": base64.standard_b64encode(data).decode("ascii")},
+            {
+                "ok": True,
+                "filename": filename,
+                "zipBase64": base64.standard_b64encode(data).decode("ascii"),
+            },
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("pet.export failed: %s", exc)
@@ -6733,7 +6830,8 @@ def _(rid, params: dict) -> dict:
             {
                 "ok": True,
                 "slug": slug,
-                "dataUri": "data:image/png;base64," + base64.standard_b64encode(data).decode("ascii"),
+                "dataUri": "data:image/png;base64,"
+                + base64.standard_b64encode(data).decode("ascii"),
             },
         )
     except Exception as exc:  # noqa: BLE001
@@ -6811,7 +6909,9 @@ def _pet_png_data_uri(path, *, max_px: int = 160) -> str:
     img.thumbnail((max_px, max_px), Image.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
-    return "data:image/png;base64," + base64.standard_b64encode(buf.getvalue()).decode("ascii")
+    return "data:image/png;base64," + base64.standard_b64encode(buf.getvalue()).decode(
+        "ascii"
+    )
 
 
 # Cooperative cancellation for the heavy pet generation paths. The client's Stop
@@ -6842,7 +6942,9 @@ def _pet_reference_images_from_data_url(ref_raw: str, stage) -> list:
     import binascii
     import re as _re
 
-    match = _re.match(r"^data:image/([a-zA-Z0-9.+-]+);base64,(.*)$", ref_raw, _re.DOTALL)
+    match = _re.match(
+        r"^data:image/([a-zA-Z0-9.+-]+);base64,(.*)$", ref_raw, _re.DOTALL
+    )
     if not match:
         raise ValueError("invalid reference image format")
 
@@ -6986,7 +7088,9 @@ def _(rid, params: dict) -> dict:
         sprite = None
         if provider_name:
             try:
-                sprite = resolve_provider(require_references=bool(reference_images), prefer=provider_name)
+                sprite = resolve_provider(
+                    require_references=bool(reference_images), prefer=provider_name
+                )
             except GenerationError as exc:
                 _pet_cancel_release(token)
                 return _err(rid, 5031, str(exc))
@@ -7016,7 +7120,12 @@ def _(rid, params: dict) -> dict:
                 _emit(
                     "pet.generate.progress",
                     "",
-                    {"token": token, "index": index, "dataUri": data_uri, "count": count},
+                    {
+                        "token": token,
+                        "index": index,
+                        "dataUri": data_uri,
+                        "count": count,
+                    },
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("pet.generate progress emit failed: %s", exc)
@@ -7166,7 +7275,9 @@ def _(rid, params: dict) -> dict:
             {
                 "logged_in": bool(view.logged_in),
                 "balance_lines": [
-                    line for line in view.balance_lines if not line.lstrip().startswith("📈")
+                    line
+                    for line in view.balance_lines
+                    if not line.lstrip().startswith("📈")
                 ],
                 "identity_line": view.identity_line,
                 "topup_url": view.topup_url,
@@ -7175,7 +7286,16 @@ def _(rid, params: dict) -> dict:
         )
     except Exception:
         # Fail-open: TUI treats this as "not logged in" and shows the prompt.
-        return _ok(rid, {"logged_in": False, "balance_lines": [], "identity_line": None, "topup_url": None, "depleted": False})
+        return _ok(
+            rid,
+            {
+                "logged_in": False,
+                "balance_lines": [],
+                "identity_line": None,
+                "topup_url": None,
+                "depleted": False,
+            },
+        )
 
 
 # ===========================================================================
@@ -7223,7 +7343,11 @@ def _serialize_billing_state(state) -> dict:
 
     card = None
     if state.card is not None:
-        card = {"brand": state.card.brand, "last4": state.card.last4, "masked": state.card.masked}
+        card = {
+            "brand": state.card.brand,
+            "last4": state.card.last4,
+            "masked": state.card.masked,
+        }
     monthly_cap = None
     if state.monthly_cap is not None:
         mc = state.monthly_cap
@@ -7280,7 +7404,10 @@ def _(rid, params: dict) -> dict:
         state = build_billing_state()
         return _ok(rid, _serialize_billing_state(state))
     except Exception:
-        return _ok(rid, {"ok": True, "logged_in": False, "error": "could not load billing state"})
+        return _ok(
+            rid,
+            {"ok": True, "logged_in": False, "error": "could not load billing state"},
+        )
 
 
 @method("billing.charge")
@@ -7296,17 +7423,35 @@ def _(rid, params: dict) -> dict:
 
     amount = params.get("amount_usd")
     if amount is None:
-        return _ok(rid, {"ok": False, "error": "invalid_request", "message": "amount_usd is required"})
+        return _ok(
+            rid,
+            {
+                "ok": False,
+                "error": "invalid_request",
+                "message": "amount_usd is required",
+            },
+        )
     key = params.get("idempotency_key") or new_idempotency_key()
     try:
         result = post_charge(amount_usd=amount, idempotency_key=key)
-        return _ok(rid, {"ok": True, "charge_id": result.get("chargeId"), "idempotency_key": key})
+        return _ok(
+            rid,
+            {"ok": True, "charge_id": result.get("chargeId"), "idempotency_key": key},
+        )
     except BillingError as exc:
         env = _serialize_billing_error(exc)
         env["idempotency_key"] = key  # so the TUI can reuse on retry
         return _ok(rid, env)
     except Exception as exc:
-        return _ok(rid, {"ok": False, "error": "error", "message": str(exc), "idempotency_key": key})
+        return _ok(
+            rid,
+            {
+                "ok": False,
+                "error": "error",
+                "message": str(exc),
+                "idempotency_key": key,
+            },
+        )
 
 
 @method("billing.charge_status")
@@ -7319,7 +7464,14 @@ def _(rid, params: dict) -> dict:
 
     charge_id = params.get("charge_id")
     if not charge_id:
-        return _ok(rid, {"ok": False, "error": "invalid_charge_id", "message": "charge_id is required"})
+        return _ok(
+            rid,
+            {
+                "ok": False,
+                "error": "invalid_charge_id",
+                "message": "charge_id is required",
+            },
+        )
     try:
         result = get_charge_status(charge_id)
         return _ok(
@@ -7351,8 +7503,17 @@ def _(rid, params: dict) -> dict:
         threshold = params.get("threshold")
         top_up_amount = params.get("top_up_amount")
         if threshold is None or top_up_amount is None:
-            return _ok(rid, {"ok": False, "error": "invalid_request", "message": "threshold and top_up_amount are required"})
-        patch_auto_top_up(enabled=enabled, threshold=threshold, top_up_amount=top_up_amount)
+            return _ok(
+                rid,
+                {
+                    "ok": False,
+                    "error": "invalid_request",
+                    "message": "threshold and top_up_amount are required",
+                },
+            )
+        patch_auto_top_up(
+            enabled=enabled, threshold=threshold, top_up_amount=top_up_amount
+        )
         return _ok(rid, {"ok": True})
     except BillingError as exc:
         return _ok(rid, _serialize_billing_error(exc))
@@ -7390,7 +7551,9 @@ def _(rid, params: dict) -> dict:
         )
         return _ok(rid, {"ok": True, "granted": bool(granted)})
     except Exception as exc:
-        return _ok(rid, {"ok": False, "error": "error", "message": str(exc), "granted": False})
+        return _ok(
+            rid, {"ok": False, "error": "error", "message": str(exc), "granted": False}
+        )
 
 
 @method("session.status")
@@ -7438,15 +7601,13 @@ def _(rid, params: dict) -> dict:
     title = (meta.get("title") or "").strip()
     if title:
         lines.append(f"Title: {title}")
-    lines.extend(
-        [
-            f"Model: {model} ({provider})",
-            f"Created: {created.strftime('%Y-%m-%d %H:%M')}",
-            f"Last Activity: {updated.strftime('%Y-%m-%d %H:%M')}",
-            f"Tokens: {int(usage.get('total') or 0):,}",
-            f"Agent Running: {'Yes' if session.get('running') else 'No'}",
-        ]
-    )
+    lines.extend([
+        f"Model: {model} ({provider})",
+        f"Created: {created.strftime('%Y-%m-%d %H:%M')}",
+        f"Last Activity: {updated.strftime('%Y-%m-%d %H:%M')}",
+        f"Tokens: {int(usage.get('total') or 0):,}",
+        f"Agent Running: {'Yes' if session.get('running') else 'No'}",
+    ])
     return _ok(rid, {"output": "\n".join(lines)})
 
 
@@ -7963,16 +8124,14 @@ def _(rid, params: dict) -> dict:
                 except Exception:
                     raw = {}
                 subagents = raw.get("subagents") or []
-                entries.append(
-                    {
-                        "path": str(p),
-                        "session_id": raw.get("session_id") or d.name,
-                        "finished_at": raw.get("finished_at") or stat.st_mtime,
-                        "started_at": raw.get("started_at"),
-                        "label": raw.get("label") or "",
-                        "count": len(subagents) if isinstance(subagents, list) else 0,
-                    }
-                )
+                entries.append({
+                    "path": str(p),
+                    "session_id": raw.get("session_id") or d.name,
+                    "finished_at": raw.get("finished_at") or stat.st_mtime,
+                    "started_at": raw.get("started_at"),
+                    "label": raw.get("label") or "",
+                    "count": len(subagents) if isinstance(subagents, list) else 0,
+                })
             except OSError:
                 continue
 
@@ -8059,23 +8218,31 @@ def _(rid, params: dict) -> dict:
             # interrupt the live turn) so it runs as the next turn. See
             # _handle_busy_submit for why the old "session busy" rejection
             # dropped messages when teardown outlived the client's retry window.
-            return _handle_busy_submit(rid, sid, session, text, t or session.get("transport"))
+            return _handle_busy_submit(
+                rid, sid, session, text, t or session.get("transport")
+            )
         # A watch session's run lives in the PARENT turn, so its own running
         # flag is False — without this, typing mid-run builds a second agent
         # racing the in-flight child on the same stored session (interleaved
         # transcript, stale fork). After the run completes, submitting is fine:
         # the upgrade resumes the child's transcript as a normal conversation.
-        if session.get("lazy") and _child_run_active(str(session.get("session_key") or "")):
+        if session.get("lazy") and _child_run_active(
+            str(session.get("session_key") or "")
+        ):
             return _err(rid, 4009, "subagent still running — wait for it to finish")
         if truncate_user_ordinal is not None:
             try:
                 ordinal = int(truncate_user_ordinal)
             except (TypeError, ValueError):
-                return _err(rid, 4004, "truncate_before_user_ordinal must be an integer")
+                return _err(
+                    rid, 4004, "truncate_before_user_ordinal must be an integer"
+                )
             history = session.get("history", [])
             user_indices = [i for i, m in enumerate(history) if m.get("role") == "user"]
             if ordinal >= len(user_indices):
-                return _err(rid, 4018, "target user message is no longer in session history")
+                return _err(
+                    rid, 4018, "target user message is no longer in session history"
+                )
             truncated = history[: user_indices[ordinal]]
             session["history"] = truncated
             session["history_version"] = int(session.get("history_version", 0)) + 1
@@ -8083,7 +8250,10 @@ def _(rid, params: dict) -> dict:
                 try:
                     db.replace_messages(session["session_key"], truncated)
                 except Exception as exc:
-                    print(f"[tui_gateway] prompt.submit: replace_messages failed: {exc}", file=sys.stderr)
+                    print(
+                        f"[tui_gateway] prompt.submit: replace_messages failed: {exc}",
+                        file=sys.stderr,
+                    )
         session["running"] = True
         session["_turn_cancel_requested"] = False
         session["last_active"] = time.time()
@@ -8228,7 +8398,9 @@ def _notification_poller_loop(
             continue
 
         _evt_sid = evt.get("session_id", "")
-        if evt.get("type") == "completion" and process_registry.is_completion_consumed(_evt_sid):
+        if evt.get("type") == "completion" and process_registry.is_completion_consumed(
+            _evt_sid
+        ):
             continue
 
         text = format_process_notification(evt)
@@ -8276,7 +8448,9 @@ def _notification_poller_loop(
             deferred.append(evt)
             continue
         _evt_sid = evt.get("session_id", "")
-        if evt.get("type") == "completion" and process_registry.is_completion_consumed(_evt_sid):
+        if evt.get("type") == "completion" and process_registry.is_completion_consumed(
+            _evt_sid
+        ):
             continue
         text = format_process_notification(evt)
         if not text:
@@ -8388,7 +8562,9 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
     def run():
         approval_token = None
         session_tokens = []
-        home_token = None  # per-turn OPENAGENTS_HOME override for a resumed remote profile
+        home_token = (
+            None  # per-turn OPENAGENTS_HOME override for a resumed remote profile
+        )
         goal_followup = None  # set by the post-turn goal hook below
         try:
             from tools.approval import (
@@ -8596,14 +8772,19 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
                 # worker-backed commands (/title etc.) target the live session.
                 # Fix for #20001.
                 _sync_session_key_after_compress(
-                    sid, session, clear_pending_title=False, restart_slash_worker=True,
+                    sid,
+                    session,
+                    clear_pending_title=False,
+                    restart_slash_worker=True,
                 )
 
                 raw = result.get("final_response", "")
                 status = (
                     "interrupted"
                     if result.get("interrupted")
-                    else "error" if result.get("error") else "complete"
+                    else "error"
+                    if result.get("error")
+                    else "complete"
                 )
                 # When the backend produced no visible response AND reported a
                 # real error (e.g. invalid model slug → provider 4xx), surface
@@ -8613,8 +8794,10 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
                 # Leaves the None-with-no-error path untouched: an empty
                 # successful turn still renders as empty, and the existing
                 # "(empty)" sentinel handling stays in its own lane.
-                if (not raw) and result.get("error") and (
-                    result.get("failed") or result.get("partial")
+                if (
+                    (not raw)
+                    and result.get("error")
+                    and (result.get("failed") or result.get("partial"))
                 ):
                     raw = f"Error: {result.get('error')}"
                 lr = result.get("last_reasoning")
@@ -8661,7 +8844,10 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
                         )
                         if goal_mgr.is_active():
                             try:
-                                from openagents_cli.goals import gather_background_processes as _gather_bg
+                                from openagents_cli.goals import (
+                                    gather_background_processes as _gather_bg,
+                                )
+
                                 _bg_procs = _gather_bg()
                             except Exception:
                                 _bg_procs = None
@@ -8703,7 +8889,8 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
                         session["pending_title"] = None
                         logger.info(
                             "Dropping pending title for session %s: %s",
-                            _session_key, exc,
+                            _session_key,
+                            exc,
                         )
                     except Exception:
                         # Transient DB failure — keep pending_title for retry.
@@ -8754,7 +8941,9 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
                         target=speak_text, args=(spoken,), daemon=True
                     ).start()
                 except ImportError:
-                    logger.warning("voice TTS skipped: openagents_cli.voice unavailable")
+                    logger.warning(
+                        "voice TTS skipped: openagents_cli.voice unavailable"
+                    )
                 except Exception as e:
                     logger.warning("voice TTS dispatch failed: %s", e)
         except Exception as e:
@@ -9007,7 +9196,9 @@ def _allowed_image_extensions() -> frozenset[str]:
         return frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"})
 
 
-def _queue_attached_image(session: dict, img_bytes: bytes, ext: str, *, prefix: str) -> Path:
+def _queue_attached_image(
+    session: dict, img_bytes: bytes, ext: str, *, prefix: str
+) -> Path:
     """Write image bytes into the gateway's images dir and queue them.
 
     Mirrors what ``image.attach`` does for a local path: appends to
@@ -9060,7 +9251,9 @@ def _(rid, params: dict) -> dict:
         return _err(rid, 4017, "image is empty")
     if len(img_bytes) > _ATTACH_BYTES_MAX_BYTES:
         mb = _ATTACH_BYTES_MAX_BYTES // (1024 * 1024)
-        return _err(rid, 4018, f"image too large ({len(img_bytes)} bytes; cap is {mb} MB)")
+        return _err(
+            rid, 4018, f"image too large ({len(img_bytes)} bytes; cap is {mb} MB)"
+        )
 
     filename = str(params.get("filename", "") or "")
     ext_hint = str(params.get("ext", "") or "").strip().lower()
@@ -9110,7 +9303,9 @@ def _(rid, params: dict) -> dict:
         return err
 
     if shutil.which("pdftoppm") is None:
-        return _err(rid, 5028, "pdftoppm not installed (poppler-utils package required)")
+        return _err(
+            rid, 5028, "pdftoppm not installed (poppler-utils package required)"
+        )
 
     raw_path = str(params.get("path", "") or "").strip()
     raw_b64 = str(params.get("content_base64") or params.get("data") or "").strip()
@@ -9127,9 +9322,13 @@ def _(rid, params: dict) -> dict:
                 return _err(rid, 4017, "decoded PDF is empty")
             if len(pdf_bytes) > _PDF_ATTACH_MAX_BYTES:
                 mb = _PDF_ATTACH_MAX_BYTES // (1024 * 1024)
-                return _err(rid, 4018, f"PDF too large ({len(pdf_bytes)} bytes; cap is {mb} MB)")
+                return _err(
+                    rid, 4018, f"PDF too large ({len(pdf_bytes)} bytes; cap is {mb} MB)"
+                )
             if pdf_bytes[:5] != b"%PDF-":
-                return _err(rid, 4017, "payload is not a PDF (missing %PDF- magic bytes)")
+                return _err(
+                    rid, 4017, "payload is not a PDF (missing %PDF- magic bytes)"
+                )
             pdf_path = td_path / "input.pdf"
             pdf_path.write_bytes(pdf_bytes)
             display_name = str(params.get("filename", "") or "uploaded.pdf")
@@ -9164,19 +9363,34 @@ def _(rid, params: dict) -> dict:
         if last_page < first_page:
             return _err(rid, 4015, "last_page must be >= first_page")
         if last_page - first_page + 1 > _PDF_ATTACH_MAX_PAGES:
-            return _err(rid, 4019, f"page range exceeds cap of {_PDF_ATTACH_MAX_PAGES} pages per attach call")
+            return _err(
+                rid,
+                4019,
+                f"page range exceeds cap of {_PDF_ATTACH_MAX_PAGES} pages per attach call",
+            )
 
         out_prefix = td_path / "page"
         argv = [
-            "pdftoppm", "-png", "-r", "150",
-            "-f", str(first_page), "-l", str(last_page),
-            str(pdf_path), str(out_prefix),
+            "pdftoppm",
+            "-png",
+            "-r",
+            "150",
+            "-f",
+            str(first_page),
+            "-l",
+            str(last_page),
+            str(pdf_path),
+            str(out_prefix),
         ]
         from openagents_cli._subprocess_compat import windows_hide_flags
 
         try:
             res = subprocess.run(
-                argv, capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL,
+                argv,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                stdin=subprocess.DEVNULL,
                 creationflags=windows_hide_flags(),
             )
         except subprocess.TimeoutExpired:
@@ -9196,8 +9410,14 @@ def _(rid, params: dict) -> dict:
                 page_int = int(page_num)
             except ValueError:
                 page_int = first_page + len(attached_pages)
-            dst = _queue_attached_image(session, src.read_bytes(), ".png", prefix=f"pdf_p{page_num}")
-            attached_pages.append({"path": str(dst), "page": page_int, **_image_meta(dst)})
+            dst = _queue_attached_image(
+                session, src.read_bytes(), ".png", prefix=f"pdf_p{page_num}"
+            )
+            attached_pages.append({
+                "path": str(dst),
+                "page": page_int,
+                **_image_meta(dst),
+            })
 
         return _ok(
             rid,
@@ -9305,7 +9525,9 @@ def _decode_attachment_data_url(data_url: str) -> bytes:
     import re as _re
 
     cleaned = (data_url or "").strip()
-    m = _re.match(r"^data:[^;,]*(?:;[^;,=]+=[^;,]+)*;base64,(.*)$", cleaned, _re.DOTALL | _re.I)
+    m = _re.match(
+        r"^data:[^;,]*(?:;[^;,=]+=[^;,]+)*;base64,(.*)$", cleaned, _re.DOTALL | _re.I
+    )
     if m:
         cleaned = m.group(1)
     cleaned = _re.sub(r"\s+", "", cleaned)
@@ -9578,7 +9800,9 @@ def _(rid, params: dict) -> dict:
     def run():
         # Pin the validated preview cwd, else the parent workspace — never an
         # invalid client path, which would silently fall back to the launch dir.
-        session_tokens = _set_session_context(task_id, cwd=(preview_cwd or _session_cwd(session)))
+        session_tokens = _set_session_context(
+            task_id, cwd=(preview_cwd or _session_cwd(session))
+        )
         try:
             from run_agent import AIAgent
             from tools.terminal_tool import register_task_env_overrides
@@ -9594,7 +9818,10 @@ def _(rid, params: dict) -> dict:
             _emit(
                 "preview.restart.progress",
                 parent,
-                {"task_id": task_id, "text": f"Starting hidden restart agent{history_note}"},
+                {
+                    "task_id": task_id,
+                    "text": f"Starting hidden restart agent{history_note}",
+                },
             )
             result = AIAgent(
                 **_ephemeral_preview_agent_kwargs(session["agent"], task_id),
@@ -9609,7 +9836,9 @@ def _(rid, params: dict) -> dict:
                 if isinstance(result, dict)
                 else str(result)
             )
-            _emit("preview.restart.complete", parent, {"task_id": task_id, "text": text})
+            _emit(
+                "preview.restart.complete", parent, {"task_id": task_id, "text": text}
+            )
         except Exception as e:
             _emit(
                 "preview.restart.complete",
@@ -9717,7 +9946,13 @@ def _(rid, params: dict) -> dict:
                 from openagents_cli.model_switch import parse_model_flags
 
                 parsed_flags = parse_model_flags(value)
-                _model_input, explicit_provider, _persist_global, _force_refresh, _is_session = parsed_flags
+                (
+                    _model_input,
+                    explicit_provider,
+                    _persist_global,
+                    _force_refresh,
+                    _is_session,
+                ) = parsed_flags
                 if session.get("agent") is None and not explicit_provider.strip():
                     session_id = params.get("session_id", "")
                     _start_agent_build(session_id, session)
@@ -10167,7 +10402,12 @@ def _(rid, params: dict) -> dict:
         os.environ["TERMINAL_CWD"] = cwd
         return _ok(
             rid,
-            {"key": "terminal.cwd", "value": cwd, "cwd": cwd, "branch": _git_branch_for_cwd(cwd)},
+            {
+                "key": "terminal.cwd",
+                "value": cwd,
+                "cwd": cwd,
+                "branch": _git_branch_for_cwd(cwd),
+            },
         )
 
     if key in {"prompt", "personality", "skin"}:
@@ -10226,7 +10466,9 @@ def _projects_payload(conn) -> dict:
     from openagents_cli import projects_db as pdb
 
     return {
-        "projects": [p.to_dict() for p in pdb.list_projects(conn, include_archived=True)],
+        "projects": [
+            p.to_dict() for p in pdb.list_projects(conn, include_archived=True)
+        ],
         "active_id": pdb.get_active_id(conn),
     }
 
@@ -10341,7 +10583,9 @@ def _(rid, params, pdb, conn) -> dict:
 @_projects_method("projects.archive")
 def _(rid, params, pdb, conn) -> dict:
     proj = _require_project(pdb, conn, params)
-    (pdb.restore_project if params.get("restore") else pdb.archive_project)(conn, proj.id)
+    (pdb.restore_project if params.get("restore") else pdb.archive_project)(
+        conn, proj.id
+    )
     return _ok(rid, _projects_payload(conn))
 
 
@@ -10354,15 +10598,26 @@ def _(rid, params, pdb, conn) -> dict:
 
 @_projects_method("projects.set_active")
 def _(rid, params, pdb, conn) -> dict:
-    pdb.set_active(conn, _require_project(pdb, conn, params).id if params.get("id") else None)
+    pdb.set_active(
+        conn, _require_project(pdb, conn, params).id if params.get("id") else None
+    )
     return _ok(rid, {"active_id": pdb.get_active_id(conn)})
 
 
 @_projects_method("projects.for_cwd")
 def _(rid, params, pdb, conn) -> dict:
-    cwd = _completion_cwd({"cwd": str(params.get("cwd") or "").strip()} if params.get("cwd") else {})
+    cwd = _completion_cwd(
+        {"cwd": str(params.get("cwd") or "").strip()} if params.get("cwd") else {}
+    )
     proj = pdb.project_for_path(conn, cwd)
-    return _ok(rid, {"project": proj.to_dict() if proj else None, "cwd": cwd, "branch": _git_branch_for_cwd(cwd)})
+    return _ok(
+        rid,
+        {
+            "project": proj.to_dict() if proj else None,
+            "cwd": cwd,
+            "branch": _git_branch_for_cwd(cwd),
+        },
+    )
 
 
 def _is_repo_junk(root: str) -> bool:
@@ -10398,7 +10653,9 @@ def _discover_repos_payload(db, *, conn=None, backfill: bool = True) -> list[dic
     repos: dict[str, dict] = {}
 
     def _agg(root: str) -> dict:
-        return repos.setdefault(root, {"root": root, "label": "", "sessions": 0, "last_active": 0.0})
+        return repos.setdefault(
+            root, {"root": root, "label": "", "sessions": 0, "last_active": 0.0}
+        )
 
     # Session-derived roots (common repo root, folding worktrees; cached) +
     # backfill the column so persisted git_repo_root matches the tree grouping.
@@ -10438,7 +10695,9 @@ def _discover_repos_payload(db, *, conn=None, backfill: bool = True) -> list[dic
                 agg = _agg(root)
                 if entry.get("label"):
                     agg["label"] = entry["label"]
-                agg["last_active"] = max(agg["last_active"], float(entry.get("last_seen") or 0))
+                agg["last_active"] = max(
+                    agg["last_active"], float(entry.get("last_seen") or 0)
+                )
 
         if conn is not None:
             _read(conn)
@@ -10450,7 +10709,9 @@ def _discover_repos_payload(db, *, conn=None, backfill: bool = True) -> list[dic
 
     out = sorted(repos.values(), key=lambda r: r["last_active"], reverse=True)
     for r in out:
-        r["label"] = r["label"] or os.path.basename(r["root"].rstrip("/\\")) or r["root"]
+        r["label"] = (
+            r["label"] or os.path.basename(r["root"].rstrip("/\\")) or r["root"]
+        )
     return out
 
 
@@ -10485,7 +10746,9 @@ def _(rid, params: dict) -> dict:
             pdb.record_discovered_repos(conn, pairs, replace=True)
 
         db = _get_db()
-        return _ok(rid, {"repos": _discover_repos_payload(db) if db is not None else []})
+        return _ok(
+            rid, {"repos": _discover_repos_payload(db) if db is not None else []}
+        )
     except Exception as e:
         return _err(rid, 5061, str(e))
 
@@ -10560,13 +10823,22 @@ def _project_tree_inputs(
         projects = [p.to_dict() for p in pdb.list_projects(conn)]
         active_id = pdb.get_active_id(conn)
         # backfill stays off the hot tree path — grouping uses the live resolver.
-        discovered = _discover_repos_payload(db, conn=conn, backfill=False) if include_discovered else []
+        discovered = (
+            _discover_repos_payload(db, conn=conn, backfill=False)
+            if include_discovered
+            else []
+        )
 
     return sessions, projects, discovered, active_id
 
 
 def _build_project_tree(
-    db, *, preview_limit: int, hydrate: bool, session_limit: int, include_discovered: bool
+    db,
+    *,
+    preview_limit: int,
+    hydrate: bool,
+    session_limit: int,
+    include_discovered: bool,
 ) -> tuple[dict, str | None]:
     """Gather inputs and run the one authoritative builder. Returns (tree, active_id)."""
     from tui_gateway import project_tree
@@ -10596,7 +10868,9 @@ def _(rid, params: dict) -> dict:
     try:
         db = _get_db()
         if db is None:
-            return _ok(rid, {"projects": [], "active_id": None, "scoped_session_ids": []})
+            return _ok(
+                rid, {"projects": [], "active_id": None, "scoped_session_ids": []}
+            )
 
         tree, active_id = _build_project_tree(
             db,
@@ -10607,7 +10881,11 @@ def _(rid, params: dict) -> dict:
         )
         return _ok(
             rid,
-            {"projects": tree["projects"], "active_id": active_id, "scoped_session_ids": tree["scoped_session_ids"]},
+            {
+                "projects": tree["projects"],
+                "active_id": active_id,
+                "scoped_session_ids": tree["scoped_session_ids"],
+            },
         )
     except Exception as e:
         return _err(rid, 5061, str(e))
@@ -10630,7 +10908,10 @@ def _(rid, params: dict) -> dict:
         # Drill-in only needs the entered project (which has sessions), so skip
         # the zero-session discovery tier entirely.
         tree, _active = _build_project_tree(
-            db, preview_limit=0, hydrate=True, session_limit=int(params.get("session_limit") or 5000),
+            db,
+            preview_limit=0,
+            hydrate=True,
+            session_limit=int(params.get("session_limit") or 5000),
             include_discovered=False,
         )
         proj = next((p for p in tree["projects"] if p["id"] == project_id), None)
@@ -10644,7 +10925,10 @@ def _(rid, params: dict) -> dict:
     key = params.get("key", "")
     if key == "provider":
         try:
-            from openagents_cli.models import list_available_providers, normalize_provider
+            from openagents_cli.models import (
+                list_available_providers,
+                normalize_provider,
+            )
 
             model = _resolve_model()
             parts = model.split("/", 1)
@@ -10663,7 +10947,9 @@ def _(rid, params: dict) -> dict:
     if key == "profile":
         from openagents_constants import display_openagents_home
 
-        return _ok(rid, {"home": str(_hermes_home), "display": display_openagents_home()})
+        return _ok(
+            rid, {"home": str(_hermes_home), "display": display_openagents_home()}
+        )
     if key == "project":
         cfg_terminal = _load_cfg().get("terminal") or {}
         raw = str(params.get("cwd", "") or cfg_terminal.get("cwd", "") or "").strip()
@@ -10807,10 +11093,15 @@ def _(rid, params: dict) -> dict:
         provider_configured = bool(_has_any_provider_configured())
         provider = runtime.get("provider") or "provider"
         source = str(runtime.get("source") or "")
-        if not provider_configured and provider == "bedrock" and source in {
-            "iam-role",
-            "aws-sdk-default-chain",
-        }:
+        if (
+            not provider_configured
+            and provider == "bedrock"
+            and source
+            in {
+                "iam-role",
+                "aws-sdk-default-chain",
+            }
+        ):
             return _ok(
                 rid,
                 {
@@ -11031,15 +11322,13 @@ def _(rid, params: dict) -> dict:
         return _err(rid, 5015, str(e))
 
 
-_TUI_HIDDEN: frozenset[str] = frozenset(
-    {
-        "sethome",
-        "set-home",
-        "commands",
-        "approve",
-        "deny",
-    }
-)
+_TUI_HIDDEN: frozenset[str] = frozenset({
+    "sethome",
+    "set-home",
+    "commands",
+    "approve",
+    "deny",
+})
 
 _TUI_EXTRA: list[tuple[str, str, str]] = [
     ("/compact", "Toggle compact display mode", "TUI"),
@@ -11057,19 +11346,17 @@ _TUI_EXTRA: list[tuple[str, str, str]] = [
 # so slash.exec routes them to command.dispatch internally (which handles
 # them and returns a structured payload) instead of erroring out and
 # relying on a client-side fallback. See #48848.
-_PENDING_INPUT_COMMANDS: frozenset[str] = frozenset(
-    {
-        "retry",
-        "queue",
-        "q",
-        "steer",
-        "plan",
-        "goal",
-        "moa",
-        "undo",
-        "learn",
-    }
-)
+_PENDING_INPUT_COMMANDS: frozenset[str] = frozenset({
+    "retry",
+    "queue",
+    "q",
+    "steer",
+    "plan",
+    "goal",
+    "moa",
+    "undo",
+    "learn",
+})
 
 _WORKER_BLOCKED_COMMANDS: frozenset[str] = frozenset({"snapshot", "snap"})
 
@@ -11550,7 +11837,9 @@ def _(rid, params: dict) -> dict:
             try:
                 n = int(arg_str.split()[0])
             except (ValueError, IndexError):
-                return _err(rid, 4004, f"undo: invalid count {arg_str!r} — use /undo or /undo N")
+                return _err(
+                    rid, 4004, f"undo: invalid count {arg_str!r} — use /undo or /undo N"
+                )
         if n < 1:
             n = 1
         try:
@@ -11608,7 +11897,8 @@ def _(rid, params: dict) -> dict:
         target_text = target_msg.get("content") or ""
         if isinstance(target_text, list):
             parts = [
-                p.get("text", "") for p in target_text
+                p.get("text", "")
+                for p in target_text
                 if isinstance(p, dict) and p.get("type") == "text"
             ]
             target_text = "\n".join(t for t in parts if t)
@@ -11680,25 +11970,23 @@ def _(rid, params: dict) -> dict:
 
 _FUZZY_CACHE_TTL_S = 5.0
 _FUZZY_CACHE_MAX_FILES = 20000
-_FUZZY_FALLBACK_EXCLUDES = frozenset(
-    {
-        ".git",
-        ".hg",
-        ".svn",
-        ".next",
-        ".cache",
-        ".venv",
-        "venv",
-        "node_modules",
-        "__pycache__",
-        "dist",
-        "build",
-        "target",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-    }
-)
+_FUZZY_FALLBACK_EXCLUDES = frozenset({
+    ".git",
+    ".hg",
+    ".svn",
+    ".next",
+    ".cache",
+    ".venv",
+    "venv",
+    "node_modules",
+    "__pycache__",
+    "dist",
+    "build",
+    "target",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+})
 _fuzzy_cache_lock = threading.Lock()
 _fuzzy_cache: dict[str, tuple[float, list[str]]] = {}
 
@@ -11914,13 +12202,11 @@ def _(rid, params: dict) -> dict:
             ranked.sort(key=lambda r: (r[0], len(r[1]), r[1]))
             tag = prefix_tag or "file"
             for _, rel, basename in ranked[:30]:
-                items.append(
-                    {
-                        "text": f"@{tag}:{rel}",
-                        "display": basename,
-                        "meta": os.path.dirname(rel),
-                    }
-                )
+                items.append({
+                    "text": f"@{tag}:{rel}",
+                    "display": basename,
+                    "meta": os.path.dirname(rel),
+                })
 
             return _ok(rid, {"items": items})
 
@@ -11970,13 +12256,11 @@ def _(rid, params: dict) -> dict:
             else:
                 text = rel + suffix
 
-            items.append(
-                {
-                    "text": text,
-                    "display": entry + suffix,
-                    "meta": "dir" if is_dir else "",
-                }
-            )
+            items.append({
+                "text": text,
+                "display": entry + suffix,
+                "meta": "dir" if is_dir else "",
+            })
             if len(items) >= 30:
                 break
     except Exception as e:
@@ -12042,7 +12326,9 @@ def _details_completions(text: str) -> list[dict] | None:
                 (
                     "section override"
                     if candidate in sections
-                    else "cycle global mode" if candidate == "cycle" else "global mode"
+                    else "cycle global mode"
+                    if candidate == "cycle"
+                    else "global mode"
                 ),
             )
             for candidate in candidates
@@ -12254,7 +12540,9 @@ def _(rid, params: dict) -> dict:
             current_base_url=getattr(agent, "base_url", "") if agent else "",
         )
         payload = build_models_payload(
-            ctx, picker_hints=True, max_models=50,
+            ctx,
+            picker_hints=True,
+            max_models=50,
         )
         provider_data = next(
             (p for p in payload["providers"] if p["slug"] == slug), None
@@ -12385,7 +12673,9 @@ def _mirror_slash_side_effects(sid: str, session: dict, command: str) -> str:
 
             with session["history_lock"]:
                 _after_messages = list(session.get("history", []))
-            _sys_prompt_after = getattr(agent, "_cached_system_prompt", "") or _sys_prompt
+            _sys_prompt_after = (
+                getattr(agent, "_cached_system_prompt", "") or _sys_prompt
+            )
             _tools_after = getattr(agent, "tools", None) or _tools
             _after_tokens = (
                 estimate_request_tokens_rough(
@@ -12988,7 +13278,10 @@ def _failure_messages(url: str, port: int, system: str) -> list[str]:
 
     command = manual_chrome_debug_command(port, system)
     hint = (
-        ["Start a Chromium-family browser with remote debugging, then retry /browser connect:", command]
+        [
+            "Start a Chromium-family browser with remote debugging, then retry /browser connect:",
+            command,
+        ]
         if command
         else [
             "No supported Chromium-family browser executable was found in this environment.",
@@ -13095,7 +13388,9 @@ def _browser_connect(rid, params: dict) -> dict:
                             break
 
                 if ok:
-                    announce(f"Chromium-family browser launched and listening on port {port}")
+                    announce(
+                        f"Chromium-family browser launched and listening on port {port}"
+                    )
                 else:
                     for line in _failure_messages(url, port, system)[1:]:
                         announce(line, level="error")
@@ -13220,15 +13515,13 @@ def _(rid, params: dict) -> dict:
             info = get_toolset_info(name)
             if not info:
                 continue
-            items.append(
-                {
-                    "name": name,
-                    "description": info["description"],
-                    "tool_count": info["tool_count"],
-                    "enabled": name in enabled if enabled else True,
-                    "tools": info["resolved_tools"],
-                }
-            )
+            items.append({
+                "name": name,
+                "description": info["description"],
+                "tool_count": info["tool_count"],
+                "enabled": name in enabled if enabled else True,
+                "tools": info["resolved_tools"],
+            })
         return _ok(rid, {"toolsets": items})
     except Exception as e:
         return _err(rid, 5031, str(e))
@@ -13253,12 +13546,10 @@ def _(rid, params: dict) -> dict:
             desc = str(tool["function"].get("description", "") or "").split("\n")[0]
             if ". " in desc:
                 desc = desc[: desc.index(". ") + 1]
-            sections.setdefault(get_toolset_for_tool(name) or "unknown", []).append(
-                {
-                    "name": name,
-                    "description": desc,
-                }
-            )
+            sections.setdefault(get_toolset_for_tool(name) or "unknown", []).append({
+                "name": name,
+                "description": desc,
+            })
 
         return _ok(
             rid,
@@ -13360,14 +13651,12 @@ def _(rid, params: dict) -> dict:
             info = get_toolset_info(name)
             if not info:
                 continue
-            items.append(
-                {
-                    "name": name,
-                    "description": info["description"],
-                    "tool_count": info["tool_count"],
-                    "enabled": name in enabled if enabled else True,
-                }
-            )
+            items.append({
+                "name": name,
+                "description": info["description"],
+                "tool_count": info["tool_count"],
+                "enabled": name in enabled if enabled else True,
+            })
         return _ok(rid, {"toolsets": items})
     except Exception as e:
         return _err(rid, 5032, str(e))
@@ -13538,15 +13827,13 @@ def _(rid, params: dict) -> dict:
             for name, version, desc, source, _dir, key in sorted(
                 _discover_all_plugins()
             ):
-                out.append(
-                    {
-                        "name": name,
-                        "version": str(version or ""),
-                        "description": desc or "",
-                        "source": source,
-                        "status": _plugin_status(name, enabled, disabled, key=key),
-                    }
-                )
+                out.append({
+                    "name": name,
+                    "version": str(version or ""),
+                    "description": desc or "",
+                    "source": source,
+                    "status": _plugin_status(name, enabled, disabled, key=key),
+                })
             return out
 
         if action == "list":
@@ -13598,7 +13885,9 @@ def _(rid, params: dict) -> dict:
         is_hardline, hardline_desc = detect_hardline_command(cmd)
         if is_hardline:
             return _err(
-                rid, 4005, f"blocked (hardline): {hardline_desc}. Use the agent for dangerous commands."
+                rid,
+                4005,
+                f"blocked (hardline): {hardline_desc}. Use the agent for dangerous commands.",
             )
         is_dangerous, _, desc = detect_dangerous_command(cmd)
         if is_dangerous:
@@ -13606,10 +13895,17 @@ def _(rid, params: dict) -> dict:
                 rid, 4005, f"blocked: {desc}. Use the agent for dangerous commands."
             )
     except ImportError:
-        return _err(rid, 5001, "shell.exec unavailable: approval safety module not importable")
+        return _err(
+            rid, 5001, "shell.exec unavailable: approval safety module not importable"
+        )
     try:
         r = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=30, cwd=os.getcwd(),
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=os.getcwd(),
             stdin=subprocess.DEVNULL,
         )
         return _ok(

@@ -53,7 +53,9 @@ def kanban_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def test_worker_block_is_not_auto_promoted_by_recompute_ready(kanban_home: Path) -> None:
+def test_worker_block_is_not_auto_promoted_by_recompute_ready(
+    kanban_home: Path,
+) -> None:
     """A standalone task that a worker explicitly blocks for review
     must stay blocked across an arbitrary number of dispatcher ticks.
     Before #28712's fix, ``recompute_ready`` would silently flip it
@@ -62,7 +64,8 @@ def test_worker_block_is_not_auto_promoted_by_recompute_ready(kanban_home: Path)
         tid = kb.create_task(conn, title="needs human review")
         kb.claim_task(conn, tid)
         assert kb.block_task(
-            conn, tid,
+            conn,
+            tid,
             reason="review-required: please verify ACL change",
             expected_run_id=kb.get_task(conn, tid).current_run_id,
         )
@@ -76,7 +79,9 @@ def test_worker_block_is_not_auto_promoted_by_recompute_ready(kanban_home: Path)
             assert kb.get_task(conn, tid).status == "blocked"
 
 
-def test_worker_block_on_child_with_done_parents_is_still_sticky(kanban_home: Path) -> None:
+def test_worker_block_on_child_with_done_parents_is_still_sticky(
+    kanban_home: Path,
+) -> None:
     """The parent-completion path is the one ``recompute_ready`` was
     designed for, so it's the most dangerous false-positive: even when
     every parent is done, a worker-initiated block on the child must
@@ -88,7 +93,8 @@ def test_worker_block_on_child_with_done_parents_is_still_sticky(kanban_home: Pa
 
         kb.claim_task(conn, child)
         kb.block_task(
-            conn, child,
+            conn,
+            child,
             reason="review-required: child needs sign-off",
             expected_run_id=kb.get_task(conn, child).current_run_id,
         )
@@ -156,7 +162,8 @@ def test_gave_up_event_alone_does_not_make_block_sticky(kanban_home: Path) -> No
         # Status + event match what _record_task_failure writes when
         # the breaker trips.
         conn.execute(
-            "UPDATE tasks SET status='blocked' WHERE id=?", (child,),
+            "UPDATE tasks SET status='blocked' WHERE id=?",
+            (child,),
         )
         conn.execute(
             "INSERT INTO task_events (task_id, kind, payload, created_at) "
@@ -184,7 +191,8 @@ def test_unblock_clears_sticky_state_and_lets_block_recover(kanban_home: Path) -
         tid = kb.create_task(conn, title="t")
         kb.claim_task(conn, tid)
         kb.block_task(
-            conn, tid,
+            conn,
+            tid,
             reason="review-required: ...",
             expected_run_id=kb.get_task(conn, tid).current_run_id,
         )
@@ -197,7 +205,8 @@ def test_unblock_clears_sticky_state_and_lets_block_recover(kanban_home: Path) -
         # block/unblock event is ``unblocked`` → guard does not fire
         # → recompute can recover.
         conn.execute(
-            "UPDATE tasks SET status='blocked' WHERE id=?", (tid,),
+            "UPDATE tasks SET status='blocked' WHERE id=?",
+            (tid,),
         )
         conn.commit()
 
@@ -235,7 +244,8 @@ def test_protocol_violation_loop_is_broken(kanban_home: Path) -> None:
         tid = kb.create_task(conn, title="loop reproducer")
         kb.claim_task(conn, tid)
         kb.block_task(
-            conn, tid,
+            conn,
+            tid,
             reason="review-required: human eyes please",
             expected_run_id=kb.get_task(conn, tid).current_run_id,
         )

@@ -22,7 +22,9 @@ from openagents_cli.auth import (
 )
 
 
-def _setup_hermes_auth(hermes_home: Path, *, access_token: str = "access", refresh_token: str = "refresh"):
+def _setup_hermes_auth(
+    hermes_home: Path, *, access_token: str = "access", refresh_token: str = "refresh"
+):
     """Write Codex tokens into the OpenAgents auth store."""
     hermes_home.mkdir(parents=True, exist_ok=True)
     auth_store = {
@@ -46,7 +48,11 @@ def _setup_hermes_auth(hermes_home: Path, *, access_token: str = "access", refre
 
 def _jwt_with_exp(exp_epoch: int) -> str:
     payload = {"exp": exp_epoch}
-    encoded = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).rstrip(b"=").decode("utf-8")
+    encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8"))
+        .rstrip(b"=")
+        .decode("utf-8")
+    )
     return f"h.{encoded}.s"
 
 
@@ -84,10 +90,14 @@ def test_resolve_codex_runtime_credentials_missing_access_token(tmp_path, monkey
     assert exc.value.relogin_required is True
 
 
-def test_resolve_codex_runtime_credentials_refreshes_expiring_token(tmp_path, monkeypatch):
+def test_resolve_codex_runtime_credentials_refreshes_expiring_token(
+    tmp_path, monkeypatch
+):
     hermes_home = tmp_path / "openagents"
     expiring_token = _jwt_with_exp(int(time.time()) - 10)
-    _setup_hermes_auth(hermes_home, access_token=expiring_token, refresh_token="refresh-old")
+    _setup_hermes_auth(
+        hermes_home, access_token=expiring_token, refresh_token="refresh-old"
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
     called = {"count": 0}
@@ -106,7 +116,9 @@ def test_resolve_codex_runtime_credentials_refreshes_expiring_token(tmp_path, mo
 
 def test_resolve_codex_runtime_credentials_force_refresh(tmp_path, monkeypatch):
     hermes_home = tmp_path / "openagents"
-    _setup_hermes_auth(hermes_home, access_token="access-current", refresh_token="refresh-old")
+    _setup_hermes_auth(
+        hermes_home, access_token="access-current", refresh_token="refresh-old"
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
     called = {"count": 0}
@@ -117,13 +129,17 @@ def test_resolve_codex_runtime_credentials_force_refresh(tmp_path, monkeypatch):
 
     monkeypatch.setattr("openagents_cli.auth._refresh_codex_auth_tokens", _fake_refresh)
 
-    resolved = resolve_codex_runtime_credentials(force_refresh=True, refresh_if_expiring=False)
+    resolved = resolve_codex_runtime_credentials(
+        force_refresh=True, refresh_if_expiring=False
+    )
 
     assert called["count"] == 1
     assert resolved["api_key"] == "access-forced"
 
 
-def test_resolve_codex_runtime_credentials_falls_back_to_pool_when_singleton_empty(tmp_path, monkeypatch):
+def test_resolve_codex_runtime_credentials_falls_back_to_pool_when_singleton_empty(
+    tmp_path, monkeypatch
+):
     """Regression for #32992 — chat path returns 401 when singleton is empty but pool has creds.
 
     The chat path historically went through ``resolve_codex_runtime_credentials`` which
@@ -161,7 +177,9 @@ def test_resolve_codex_runtime_credentials_falls_back_to_pool_when_singleton_emp
     assert resolved["base_url"]  # default codex backend URL
 
 
-def test_resolve_codex_runtime_credentials_pool_fallback_skips_exhausted(tmp_path, monkeypatch):
+def test_resolve_codex_runtime_credentials_pool_fallback_skips_exhausted(
+    tmp_path, monkeypatch
+):
     """The pool fallback skips entries currently in an exhaustion cooldown window."""
     import time as _time
 
@@ -194,7 +212,9 @@ def test_resolve_codex_runtime_credentials_pool_fallback_skips_exhausted(tmp_pat
     assert resolved["source"] == "credential_pool"
 
 
-def test_resolve_codex_runtime_credentials_pool_fallback_no_usable_entry(tmp_path, monkeypatch):
+def test_resolve_codex_runtime_credentials_pool_fallback_no_usable_entry(
+    tmp_path, monkeypatch
+):
     """When both singleton and pool are empty/unusable, the original AuthError propagates."""
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
@@ -244,42 +264,46 @@ def test_save_codex_tokens_syncs_credential_pool(tmp_path, monkeypatch):
     """
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {
-            "openai-codex": {
-                "tokens": {"access_token": "old-at", "refresh_token": "old-rt"},
-                "last_refresh": "2026-01-01T00:00:00Z",
-                "auth_mode": "chatgpt",
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {
+                "openai-codex": {
+                    "tokens": {"access_token": "old-at", "refresh_token": "old-rt"},
+                    "last_refresh": "2026-01-01T00:00:00Z",
+                    "auth_mode": "chatgpt",
+                },
             },
-        },
-        "credential_pool": {
-            "openai-codex": [
-                {
-                    "id": "abc123",
-                    "source": "device_code",
-                    "auth_type": "oauth",
-                    "access_token": "old-at",
-                    "refresh_token": "old-rt",
-                    "last_status": "exhausted",
-                    "last_error_code": 401,
-                    "last_error_reason": "token_invalidated",
-                    "last_error_reset_at": 9999999999,
-                },
-                {
-                    "id": "manual1",
-                    "source": "manual:codex",
-                    "auth_type": "oauth",
-                    "access_token": "manual-at",
-                    "refresh_token": "manual-rt",
-                },
-            ],
-        },
-    }))
+            "credential_pool": {
+                "openai-codex": [
+                    {
+                        "id": "abc123",
+                        "source": "device_code",
+                        "auth_type": "oauth",
+                        "access_token": "old-at",
+                        "refresh_token": "old-rt",
+                        "last_status": "exhausted",
+                        "last_error_code": 401,
+                        "last_error_reason": "token_invalidated",
+                        "last_error_reset_at": 9999999999,
+                    },
+                    {
+                        "id": "manual1",
+                        "source": "manual:codex",
+                        "auth_type": "oauth",
+                        "access_token": "manual-at",
+                        "refresh_token": "manual-rt",
+                    },
+                ],
+            },
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
-    _save_codex_tokens({"access_token": "new-at", "refresh_token": "new-rt"},
-                       last_refresh="2026-05-27T00:00:00Z")
+    _save_codex_tokens(
+        {"access_token": "new-at", "refresh_token": "new-rt"},
+        last_refresh="2026-05-27T00:00:00Z",
+    )
 
     auth = json.loads((hermes_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
@@ -322,61 +346,65 @@ def test_save_codex_tokens_syncs_manual_device_code_entries(tmp_path, monkeypatc
     """
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {
-            "openai-codex": {
-                "tokens": {"access_token": "old-at", "refresh_token": "old-rt"},
-                "last_refresh": "2026-01-01T00:00:00Z",
-                "auth_mode": "chatgpt",
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {
+                "openai-codex": {
+                    "tokens": {"access_token": "old-at", "refresh_token": "old-rt"},
+                    "last_refresh": "2026-01-01T00:00:00Z",
+                    "auth_mode": "chatgpt",
+                },
             },
-        },
-        "credential_pool": {
-            "openai-codex": [
-                {
-                    "id": "seeded",
-                    "source": "device_code",
-                    "auth_type": "oauth",
-                    "access_token": "old-at",
-                    "refresh_token": "old-rt",
-                },
-                # Legacy alias from the #33000 workaround era — its tokens
-                # match the singleton, so it is a true alias and SHOULD be
-                # refreshed (preserves #33538 behavior).
-                {
-                    "id": "legacy-alias",
-                    "source": "manual:device_code",
-                    "auth_type": "oauth",
-                    "access_token": "old-at",
-                    "refresh_token": "old-rt",
-                    "last_status": "exhausted",
-                    "last_error_code": 401,
-                    "last_error_reason": "token_invalidated",
-                },
-                # Independent account from `hermes auth add openai-codex` —
-                # its tokens are distinct from the singleton.  Must NOT be
-                # overwritten by a re-auth that targeted a different account
-                # (#39236).
-                {
-                    "id": "independent",
-                    "source": "manual:device_code",
-                    "auth_type": "oauth",
-                    "access_token": "independent-at",
-                    "refresh_token": "independent-rt",
-                },
-                {
-                    "id": "api-key",
-                    "source": "manual:api_key",
-                    "auth_type": "api_key",
-                    "access_token": "user-api-key",
-                },
-            ],
-        },
-    }))
+            "credential_pool": {
+                "openai-codex": [
+                    {
+                        "id": "seeded",
+                        "source": "device_code",
+                        "auth_type": "oauth",
+                        "access_token": "old-at",
+                        "refresh_token": "old-rt",
+                    },
+                    # Legacy alias from the #33000 workaround era — its tokens
+                    # match the singleton, so it is a true alias and SHOULD be
+                    # refreshed (preserves #33538 behavior).
+                    {
+                        "id": "legacy-alias",
+                        "source": "manual:device_code",
+                        "auth_type": "oauth",
+                        "access_token": "old-at",
+                        "refresh_token": "old-rt",
+                        "last_status": "exhausted",
+                        "last_error_code": 401,
+                        "last_error_reason": "token_invalidated",
+                    },
+                    # Independent account from `hermes auth add openai-codex` —
+                    # its tokens are distinct from the singleton.  Must NOT be
+                    # overwritten by a re-auth that targeted a different account
+                    # (#39236).
+                    {
+                        "id": "independent",
+                        "source": "manual:device_code",
+                        "auth_type": "oauth",
+                        "access_token": "independent-at",
+                        "refresh_token": "independent-rt",
+                    },
+                    {
+                        "id": "api-key",
+                        "source": "manual:api_key",
+                        "auth_type": "api_key",
+                        "access_token": "user-api-key",
+                    },
+                ],
+            },
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
-    _save_codex_tokens({"access_token": "fresh-at", "refresh_token": "fresh-rt"},
-                       last_refresh="2026-05-28T00:00:00Z")
+    _save_codex_tokens(
+        {"access_token": "fresh-at", "refresh_token": "fresh-rt"},
+        last_refresh="2026-05-28T00:00:00Z",
+    )
 
     auth = json.loads((hermes_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
@@ -406,7 +434,9 @@ def test_save_codex_tokens_syncs_manual_device_code_entries(tmp_path, monkeypatc
     assert "refresh_token" not in api_key or api_key.get("refresh_token") is None
 
 
-def test_save_codex_tokens_does_not_overwrite_independent_manual_entries(tmp_path, monkeypatch):
+def test_save_codex_tokens_does_not_overwrite_independent_manual_entries(
+    tmp_path, monkeypatch
+):
     """Re-auth must NOT overwrite ``manual:device_code`` entries that hold
     independent token material (different OpenAI/ChatGPT accounts).
 
@@ -425,52 +455,54 @@ def test_save_codex_tokens_does_not_overwrite_independent_manual_entries(tmp_pat
     """
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {
-            "openai-codex": {
-                # Old singleton tokens — represent "account A" which the user
-                # logged in with via setup originally.
-                "tokens": {"access_token": "acctA-at", "refresh_token": "acctA-rt"},
-                "last_refresh": "2026-01-01T00:00:00Z",
-                "auth_mode": "chatgpt",
-                "label": "account-A",
-            },
-        },
-        "credential_pool": {
-            "openai-codex": [
-                # The seeded singleton mirror of account A.
-                {
-                    "id": "seeded",
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {
+                "openai-codex": {
+                    # Old singleton tokens — represent "account A" which the user
+                    # logged in with via setup originally.
+                    "tokens": {"access_token": "acctA-at", "refresh_token": "acctA-rt"},
+                    "last_refresh": "2026-01-01T00:00:00Z",
+                    "auth_mode": "chatgpt",
                     "label": "account-A",
-                    "source": "device_code",
-                    "auth_type": "oauth",
-                    "access_token": "acctA-at",
-                    "refresh_token": "acctA-rt",
                 },
-                # Two INDEPENDENT manual entries added later via
-                # ``hermes auth add openai-codex`` (account B and account C).
-                # Each has its OWN distinct token material, unrelated to the
-                # singleton.
-                {
-                    "id": "acctB",
-                    "label": "account-B",
-                    "source": "manual:device_code",
-                    "auth_type": "oauth",
-                    "access_token": "acctB-at",
-                    "refresh_token": "acctB-rt",
-                },
-                {
-                    "id": "acctC",
-                    "label": "account-C",
-                    "source": "manual:device_code",
-                    "auth_type": "oauth",
-                    "access_token": "acctC-at",
-                    "refresh_token": "acctC-rt",
-                },
-            ],
-        },
-    }))
+            },
+            "credential_pool": {
+                "openai-codex": [
+                    # The seeded singleton mirror of account A.
+                    {
+                        "id": "seeded",
+                        "label": "account-A",
+                        "source": "device_code",
+                        "auth_type": "oauth",
+                        "access_token": "acctA-at",
+                        "refresh_token": "acctA-rt",
+                    },
+                    # Two INDEPENDENT manual entries added later via
+                    # ``hermes auth add openai-codex`` (account B and account C).
+                    # Each has its OWN distinct token material, unrelated to the
+                    # singleton.
+                    {
+                        "id": "acctB",
+                        "label": "account-B",
+                        "source": "manual:device_code",
+                        "auth_type": "oauth",
+                        "access_token": "acctB-at",
+                        "refresh_token": "acctB-rt",
+                    },
+                    {
+                        "id": "acctC",
+                        "label": "account-C",
+                        "source": "manual:device_code",
+                        "auth_type": "oauth",
+                        "access_token": "acctC-at",
+                        "refresh_token": "acctC-rt",
+                    },
+                ],
+            },
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
     # User re-authenticates account A — fresh device-code login produces new
@@ -520,40 +552,45 @@ def test_save_codex_tokens_still_refreshes_legacy_manual_alias(tmp_path, monkeyp
     """
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {
-            "openai-codex": {
-                "tokens": {"access_token": "shared-at", "refresh_token": "shared-rt"},
-                "last_refresh": "2026-01-01T00:00:00Z",
-                "auth_mode": "chatgpt",
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {
+                "openai-codex": {
+                    "tokens": {
+                        "access_token": "shared-at",
+                        "refresh_token": "shared-rt",
+                    },
+                    "last_refresh": "2026-01-01T00:00:00Z",
+                    "auth_mode": "chatgpt",
+                },
             },
-        },
-        "credential_pool": {
-            "openai-codex": [
-                {
-                    "id": "seeded",
-                    "source": "device_code",
-                    "auth_type": "oauth",
-                    "access_token": "shared-at",
-                    "refresh_token": "shared-rt",
-                },
-                {
-                    "id": "legacy",
-                    "label": "legacy-alias",
-                    "source": "manual:device_code",
-                    "auth_type": "oauth",
-                    # Token material matches the singleton — this is a true
-                    # alias from the #33000 workaround era.
-                    "access_token": "shared-at",
-                    "refresh_token": "shared-rt",
-                    "last_status": "exhausted",
-                    "last_error_code": 401,
-                    "last_error_reason": "token_invalidated",
-                },
-            ],
-        },
-    }))
+            "credential_pool": {
+                "openai-codex": [
+                    {
+                        "id": "seeded",
+                        "source": "device_code",
+                        "auth_type": "oauth",
+                        "access_token": "shared-at",
+                        "refresh_token": "shared-rt",
+                    },
+                    {
+                        "id": "legacy",
+                        "label": "legacy-alias",
+                        "source": "manual:device_code",
+                        "auth_type": "oauth",
+                        # Token material matches the singleton — this is a true
+                        # alias from the #33000 workaround era.
+                        "access_token": "shared-at",
+                        "refresh_token": "shared-rt",
+                        "last_status": "exhausted",
+                        "last_error_code": 401,
+                        "last_error_reason": "token_invalidated",
+                    },
+                ],
+            },
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
     _save_codex_tokens(
@@ -579,7 +616,9 @@ def test_save_codex_tokens_still_refreshes_legacy_manual_alias(tmp_path, monkeyp
     assert legacy["last_error_reason"] is None
 
 
-def test_save_codex_tokens_handles_missing_previous_singleton_tokens(tmp_path, monkeypatch):
+def test_save_codex_tokens_handles_missing_previous_singleton_tokens(
+    tmp_path, monkeypatch
+):
     """First-ever Codex save (no prior singleton tokens) must not crash.
 
     Edge case: a user has only pool entries (e.g. via direct auth.json edit
@@ -591,22 +630,24 @@ def test_save_codex_tokens_handles_missing_previous_singleton_tokens(tmp_path, m
     """
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {},
-        "credential_pool": {
-            "openai-codex": [
-                {
-                    "id": "preexisting",
-                    "label": "pre-existing-manual",
-                    "source": "manual:device_code",
-                    "auth_type": "oauth",
-                    "access_token": "preexisting-at",
-                    "refresh_token": "preexisting-rt",
-                },
-            ],
-        },
-    }))
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {},
+            "credential_pool": {
+                "openai-codex": [
+                    {
+                        "id": "preexisting",
+                        "label": "pre-existing-manual",
+                        "source": "manual:device_code",
+                        "auth_type": "oauth",
+                        "access_token": "preexisting-at",
+                        "refresh_token": "preexisting-rt",
+                    },
+                ],
+            },
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
     _save_codex_tokens(
@@ -633,26 +674,31 @@ def test_save_codex_tokens_alias_match_uses_access_token_only(tmp_path, monkeypa
     """
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {
-            "openai-codex": {
-                "tokens": {"access_token": "shared-at", "refresh_token": "shared-rt"},
-                "auth_mode": "chatgpt",
-            },
-        },
-        "credential_pool": {
-            "openai-codex": [
-                {
-                    "id": "alias-no-refresh",
-                    "source": "manual:device_code",
-                    "auth_type": "oauth",
-                    "access_token": "shared-at",
-                    # No refresh_token at all — legacy schema.
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {
+                "openai-codex": {
+                    "tokens": {
+                        "access_token": "shared-at",
+                        "refresh_token": "shared-rt",
+                    },
+                    "auth_mode": "chatgpt",
                 },
-            ],
-        },
-    }))
+            },
+            "credential_pool": {
+                "openai-codex": [
+                    {
+                        "id": "alias-no-refresh",
+                        "source": "manual:device_code",
+                        "auth_type": "oauth",
+                        "access_token": "shared-at",
+                        # No refresh_token at all — legacy schema.
+                    },
+                ],
+            },
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
     _save_codex_tokens(
@@ -668,7 +714,9 @@ def test_save_codex_tokens_alias_match_uses_access_token_only(tmp_path, monkeypa
     assert alias["refresh_token"] == "new-rt"
 
 
-def test_save_codex_tokens_clears_error_markers_only_on_refreshed_entries(tmp_path, monkeypatch):
+def test_save_codex_tokens_clears_error_markers_only_on_refreshed_entries(
+    tmp_path, monkeypatch
+):
     """Error markers must be cleared only on entries that were actually
     refreshed by this re-auth.  Independent ``manual:device_code`` entries
     with their own stale-error markers must be left alone (their stale state
@@ -676,38 +724,40 @@ def test_save_codex_tokens_clears_error_markers_only_on_refreshed_entries(tmp_pa
     """
     hermes_home = tmp_path / "openagents"
     hermes_home.mkdir(parents=True, exist_ok=True)
-    (hermes_home / "auth.json").write_text(json.dumps({
-        "version": 1,
-        "providers": {
-            "openai-codex": {
-                "tokens": {"access_token": "acctA-at", "refresh_token": "acctA-rt"},
-                "auth_mode": "chatgpt",
+    (hermes_home / "auth.json").write_text(
+        json.dumps({
+            "version": 1,
+            "providers": {
+                "openai-codex": {
+                    "tokens": {"access_token": "acctA-at", "refresh_token": "acctA-rt"},
+                    "auth_mode": "chatgpt",
+                },
             },
-        },
-        "credential_pool": {
-            "openai-codex": [
-                {
-                    "id": "seeded",
-                    "source": "device_code",
-                    "auth_type": "oauth",
-                    "access_token": "acctA-at",
-                    "refresh_token": "acctA-rt",
-                    "last_status": "exhausted",
-                    "last_error_code": 401,
-                },
-                {
-                    "id": "acctB",
-                    "source": "manual:device_code",
-                    "auth_type": "oauth",
-                    "access_token": "acctB-at",
-                    "refresh_token": "acctB-rt",
-                    "last_status": "exhausted",
-                    "last_error_code": 429,
-                    "last_error_reason": "quota_exhausted",
-                },
-            ],
-        },
-    }))
+            "credential_pool": {
+                "openai-codex": [
+                    {
+                        "id": "seeded",
+                        "source": "device_code",
+                        "auth_type": "oauth",
+                        "access_token": "acctA-at",
+                        "refresh_token": "acctA-rt",
+                        "last_status": "exhausted",
+                        "last_error_code": 401,
+                    },
+                    {
+                        "id": "acctB",
+                        "source": "manual:device_code",
+                        "auth_type": "oauth",
+                        "access_token": "acctB-at",
+                        "refresh_token": "acctB-rt",
+                        "last_status": "exhausted",
+                        "last_error_code": 429,
+                        "last_error_reason": "quota_exhausted",
+                    },
+                ],
+            },
+        })
+    )
     monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
     _save_codex_tokens(
@@ -736,9 +786,11 @@ def test_save_codex_tokens_clears_error_markers_only_on_refreshed_entries(tmp_pa
 def test_import_codex_cli_tokens(tmp_path, monkeypatch):
     codex_home = tmp_path / "codex-cli"
     codex_home.mkdir(parents=True, exist_ok=True)
-    (codex_home / "auth.json").write_text(json.dumps({
-        "tokens": {"access_token": "cli-at", "refresh_token": "cli-rt"},
-    }))
+    (codex_home / "auth.json").write_text(
+        json.dumps({
+            "tokens": {"access_token": "cli-at", "refresh_token": "cli-rt"},
+        })
+    )
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
     tokens = _import_codex_cli_tokens()
@@ -789,7 +841,9 @@ class _StubHTTPResponse:
         self.status_code = status_code
         self._payload = payload
         self.headers = headers or {}
-        self.text = json.dumps(payload) if isinstance(payload, (dict, list)) else str(payload)
+        self.text = (
+            json.dumps(payload) if isinstance(payload, (dict, list)) else str(payload)
+        )
 
     def json(self):
         if isinstance(self._payload, Exception):
@@ -920,7 +974,12 @@ def test_refresh_429_classified_as_quota_not_auth_failure(monkeypatch):
 
     response = _StubHTTPResponse(
         429,
-        {"error": {"message": "You hit your usage limit.", "code": "usage_limit_reached"}},
+        {
+            "error": {
+                "message": "You hit your usage limit.",
+                "code": "usage_limit_reached",
+            }
+        },
         headers={"retry-after": "120"},
     )
     _patch_httpx(monkeypatch, response)
@@ -960,7 +1019,10 @@ def test_is_rate_limited_auth_error_distinguishes_credential_errors():
     from openagents_cli.auth import CODEX_RATE_LIMITED_CODE, is_rate_limited_auth_error
 
     rate_limited = AuthError(
-        "quota", provider="openai-codex", code=CODEX_RATE_LIMITED_CODE, relogin_required=False
+        "quota",
+        provider="openai-codex",
+        code=CODEX_RATE_LIMITED_CODE,
+        relogin_required=False,
     )
     missing_creds = AuthError(
         "No Codex credentials stored.",
@@ -999,13 +1061,20 @@ def test_login_openai_codex_force_new_login_skips_existing_reuse_prompt(monkeypa
         called["last_refresh"] = last_refresh
 
     monkeypatch.setattr("openagents_cli.auth._save_codex_tokens", _fake_save)
-    monkeypatch.setattr("openagents_cli.auth._update_config_for_provider", lambda *args, **kwargs: "/tmp/config.yaml")
+    monkeypatch.setattr(
+        "openagents_cli.auth._update_config_for_provider",
+        lambda *args, **kwargs: "/tmp/config.yaml",
+    )
     monkeypatch.setattr(
         "builtins.input",
-        lambda prompt="": (_ for _ in ()).throw(AssertionError("force_new_login should not prompt for reuse/import")),
+        lambda prompt="": (_ for _ in ()).throw(
+            AssertionError("force_new_login should not prompt for reuse/import")
+        ),
     )
 
-    _login_openai_codex(SimpleNamespace(), PROVIDER_REGISTRY["openai-codex"], force_new_login=True)
+    _login_openai_codex(
+        SimpleNamespace(), PROVIDER_REGISTRY["openai-codex"], force_new_login=True
+    )
 
     assert called["device_login"] == 1
     assert called["tokens"]["access_token"] == "fresh-at"
@@ -1035,7 +1104,9 @@ def _patch_httpx_post(monkeypatch, responses):
         def post(self, *args, **kwargs):
             return next(seq)
 
-    monkeypatch.setattr("openagents_cli.auth.httpx.Client", lambda *a, **k: _FakeClient())
+    monkeypatch.setattr(
+        "openagents_cli.auth.httpx.Client", lambda *a, **k: _FakeClient()
+    )
 
 
 def test_device_code_login_retries_on_429_then_succeeds(monkeypatch):
@@ -1051,9 +1122,15 @@ def test_device_code_login_retries_on_429_then_succeeds(monkeypatch):
         monkeypatch,
         [
             _FakeResp(429, headers={"retry-after": "1"}),
-            _FakeResp(200, {"user_code": "ABCD", "device_auth_id": "dev-1", "interval": "5"}),
-            _FakeResp(200, {"authorization_code": "auth-code", "code_verifier": "verifier"}),
-            _FakeResp(200, {"access_token": "at", "refresh_token": "rt", "expires_in": 3600}),
+            _FakeResp(
+                200, {"user_code": "ABCD", "device_auth_id": "dev-1", "interval": "5"}
+            ),
+            _FakeResp(
+                200, {"authorization_code": "auth-code", "code_verifier": "verifier"}
+            ),
+            _FakeResp(
+                200, {"access_token": "at", "refresh_token": "rt", "expires_in": 3600}
+            ),
         ],
     )
     # Skip the polling sleep too (shares time.sleep, already patched).

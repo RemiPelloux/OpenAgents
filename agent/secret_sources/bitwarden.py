@@ -102,8 +102,9 @@ def _cache_key_str(cache_key: _CacheKey) -> str:
     return f"{token_fp}|{project_id}|{server_url}"
 
 
-def _read_disk_cache(cache_key: _CacheKey, ttl_seconds: float,
-                     home_path: Optional[Path] = None) -> Optional["_CachedFetch"]:
+def _read_disk_cache(
+    cache_key: _CacheKey, ttl_seconds: float, home_path: Optional[Path] = None
+) -> Optional["_CachedFetch"]:
     """Return a cached entry from disk if fresh, else None.
 
     Best-effort: any I/O or parse error returns None and we re-fetch.
@@ -134,8 +135,9 @@ def _read_disk_cache(cache_key: _CacheKey, ttl_seconds: float,
     return entry
 
 
-def _write_disk_cache(cache_key: _CacheKey, entry: "_CachedFetch",
-                      home_path: Optional[Path] = None) -> None:
+def _write_disk_cache(
+    cache_key: _CacheKey, entry: "_CachedFetch", home_path: Optional[Path] = None
+) -> None:
     """Persist a cache entry to disk atomically with mode 0600.
 
     Best-effort: any I/O error is swallowed (the next invocation will just
@@ -190,10 +192,10 @@ class FetchResult:
     """Outcome of a single BSM pull."""
 
     secrets: Dict[str, str] = field(default_factory=dict)
-    applied: List[str] = field(default_factory=list)   # set into os.environ
-    skipped: List[str] = field(default_factory=list)   # already set, not overridden
+    applied: List[str] = field(default_factory=list)  # set into os.environ
+    skipped: List[str] = field(default_factory=list)  # already set, not overridden
     warnings: List[str] = field(default_factory=list)  # non-fatal issues
-    error: Optional[str] = None                        # fatal: nothing was fetched
+    error: Optional[str] = None  # fatal: nothing was fetched
     binary_path: Optional[Path] = None
 
     @property
@@ -282,9 +284,7 @@ def _platform_asset_name() -> str:
             pass
         return f"bws-{arch}-unknown-linux-{libc}-{_BWS_VERSION}.zip"
 
-    raise RuntimeError(
-        f"Unsupported platform for bws auto-install: {system} {machine}"
-    )
+    raise RuntimeError(f"Unsupported platform for bws auto-install: {system} {machine}")
 
 
 def install_bws(*, force: bool = False) -> Path:
@@ -319,8 +319,7 @@ def install_bws(*, force: bool = False) -> Path:
         actual = _sha256_file(zip_path)
         if expected.lower() != actual.lower():
             raise RuntimeError(
-                f"Checksum mismatch for {asset_name}: "
-                f"expected {expected}, got {actual}"
+                f"Checksum mismatch for {asset_name}: expected {expected}, got {actual}"
             )
 
         with zipfile.ZipFile(zip_path) as zf:
@@ -338,9 +337,13 @@ def install_bws(*, force: bool = False) -> Path:
         shutil.copy2(extracted, staged)
         os.chmod(
             staged,
-            stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-            | stat.S_IRGRP | stat.S_IXGRP
-            | stat.S_IROTH | stat.S_IXOTH,
+            stat.S_IRUSR
+            | stat.S_IWUSR
+            | stat.S_IXUSR
+            | stat.S_IRGRP
+            | stat.S_IXGRP
+            | stat.S_IROTH
+            | stat.S_IXOTH,
         )
         os.replace(staged, target)
 
@@ -369,9 +372,7 @@ def _expected_sha256(checksum_file: Path, asset_name: str) -> str:
         parts = line.strip().split()
         if len(parts) >= 2 and parts[-1] == asset_name:
             return parts[0]
-    raise RuntimeError(
-        f"No checksum entry for {asset_name} in {checksum_file.name}"
-    )
+    raise RuntimeError(f"No checksum entry for {asset_name} in {checksum_file.name}")
 
 
 def _sha256_file(path: Path) -> str:
@@ -399,9 +400,7 @@ def _pick_zip_member(zf: zipfile.ZipFile, binary_name: str) -> str:
     return candidates[0]
 
 
-def _safe_extract_member(
-    zf: zipfile.ZipFile, member: str, dest_dir: Path
-) -> Path:
+def _safe_extract_member(zf: zipfile.ZipFile, member: str, dest_dir: Path) -> Path:
     """Extract a single archive member, refusing path traversal.
 
     ``ZipFile.extract`` will happily honour member names containing
@@ -539,9 +538,7 @@ def _run_bws_list(
         # bws writes auth/network errors to stderr in plain English.
         # Strip ANSI just in case and surface the first 200 chars.
         err = (proc.stderr or proc.stdout or "").strip().replace("\x1b", "")
-        raise RuntimeError(
-            f"bws exited {proc.returncode}: {err[:200]}"
-        )
+        raise RuntimeError(f"bws exited {proc.returncode}: {err[:200]}")
 
     raw = proc.stdout.strip()
     if not raw:
@@ -553,9 +550,7 @@ def _run_bws_list(
         raise RuntimeError(f"bws returned non-JSON output: {exc}") from exc
 
     if not isinstance(payload, list):
-        raise RuntimeError(
-            f"bws returned unexpected shape: {type(payload).__name__}"
-        )
+        raise RuntimeError(f"bws returned unexpected shape: {type(payload).__name__}")
 
     secrets: Dict[str, str] = {}
     warnings: List[str] = []
@@ -567,9 +562,7 @@ def _run_bws_list(
         if not isinstance(key, str) or not isinstance(value, str):
             continue
         if not _is_valid_env_name(key):
-            warnings.append(
-                f"Skipping secret {key!r}: not a valid env-var name"
-            )
+            warnings.append(f"Skipping secret {key!r}: not a valid env-var name")
             continue
         secrets[key] = value
     return secrets, warnings

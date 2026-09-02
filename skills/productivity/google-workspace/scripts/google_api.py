@@ -140,16 +140,26 @@ def _extract_message_body(msg: dict) -> str:
     body = ""
     payload = msg.get("payload", {})
     if payload.get("body", {}).get("data"):
-        body = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="replace")
+        body = base64.urlsafe_b64decode(payload["body"]["data"]).decode(
+            "utf-8", errors="replace"
+        )
     elif payload.get("parts"):
         for part in payload["parts"]:
-            if part.get("mimeType") == "text/plain" and part.get("body", {}).get("data"):
-                body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="replace")
+            if part.get("mimeType") == "text/plain" and part.get("body", {}).get(
+                "data"
+            ):
+                body = base64.urlsafe_b64decode(part["body"]["data"]).decode(
+                    "utf-8", errors="replace"
+                )
                 break
         if not body:
             for part in payload["parts"]:
-                if part.get("mimeType") == "text/html" and part.get("body", {}).get("data"):
-                    body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="replace")
+                if part.get("mimeType") == "text/html" and part.get("body", {}).get(
+                    "data"
+                ):
+                    body = base64.urlsafe_b64decode(part["body"]["data"]).decode(
+                        "utf-8", errors="replace"
+                    )
                     break
     return body
 
@@ -185,7 +195,9 @@ def get_credentials():
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
 
-    creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), _stored_token_scopes())
+    creds = Credentials.from_authorized_user_file(
+        str(TOKEN_PATH), _stored_token_scopes()
+    )
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
         TOKEN_PATH.write_text(
@@ -230,25 +242,26 @@ def gmail_search(args):
                 },
             )
             headers = _headers_dict(msg)
-            output.append(
-                {
-                    "id": msg["id"],
-                    "threadId": msg["threadId"],
-                    "from": headers.get("from", ""),
-                    "to": headers.get("to", ""),
-                    "subject": headers.get("subject", ""),
-                    "date": headers.get("date", ""),
-                    "snippet": msg.get("snippet", ""),
-                    "labels": msg.get("labelIds", []),
-                }
-            )
+            output.append({
+                "id": msg["id"],
+                "threadId": msg["threadId"],
+                "from": headers.get("from", ""),
+                "to": headers.get("to", ""),
+                "subject": headers.get("subject", ""),
+                "date": headers.get("date", ""),
+                "snippet": msg.get("snippet", ""),
+                "labels": msg.get("labelIds", []),
+            })
         print(json.dumps(output, indent=2, ensure_ascii=False))
         return
 
     service = build_service("gmail", "v1")
-    results = service.users().messages().list(
-        userId="me", q=args.query, maxResults=args.max
-    ).execute()
+    results = (
+        service.users()
+        .messages()
+        .list(userId="me", q=args.query, maxResults=args.max)
+        .execute()
+    )
     messages = results.get("messages", [])
     if not messages:
         print("No messages found.")
@@ -256,10 +269,17 @@ def gmail_search(args):
 
     output = []
     for msg_meta in messages:
-        msg = service.users().messages().get(
-            userId="me", id=msg_meta["id"], format="metadata",
-            metadataHeaders=["From", "To", "Subject", "Date"],
-        ).execute()
+        msg = (
+            service.users()
+            .messages()
+            .get(
+                userId="me",
+                id=msg_meta["id"],
+                format="metadata",
+                metadataHeaders=["From", "To", "Subject", "Date"],
+            )
+            .execute()
+        )
         headers = _headers_dict(msg)
         output.append({
             "id": msg["id"],
@@ -272,7 +292,6 @@ def gmail_search(args):
             "labels": msg.get("labelIds", []),
         })
     print(json.dumps(output, indent=2, ensure_ascii=False))
-
 
 
 def gmail_get(args):
@@ -296,9 +315,12 @@ def gmail_get(args):
         return
 
     service = build_service("gmail", "v1")
-    msg = service.users().messages().get(
-        userId="me", id=args.message_id, format="full"
-    ).execute()
+    msg = (
+        service.users()
+        .messages()
+        .get(userId="me", id=args.message_id, format="full")
+        .execute()
+    )
 
     headers = _headers_dict(msg)
     result = {
@@ -312,7 +334,6 @@ def gmail_get(args):
         "body": _extract_message_body(msg),
     }
     print(json.dumps(result, indent=2, ensure_ascii=False))
-
 
 
 def gmail_send(args):
@@ -335,7 +356,16 @@ def gmail_send(args):
             params={"userId": "me"},
             body=body,
         )
-        print(json.dumps({"status": "sent", "id": result["id"], "threadId": result.get("threadId", "")}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "sent",
+                    "id": result["id"],
+                    "threadId": result.get("threadId", ""),
+                },
+                indent=2,
+            )
+        )
         return
 
     service = build_service("gmail", "v1")
@@ -354,8 +384,16 @@ def gmail_send(args):
         body["threadId"] = args.thread_id
 
     result = service.users().messages().send(userId="me", body=body).execute()
-    print(json.dumps({"status": "sent", "id": result["id"], "threadId": result.get("threadId", "")}, indent=2))
-
+    print(
+        json.dumps(
+            {
+                "status": "sent",
+                "id": result["id"],
+                "threadId": result.get("threadId", ""),
+            },
+            indent=2,
+        )
+    )
 
 
 def gmail_reply(args):
@@ -390,14 +428,30 @@ def gmail_reply(args):
             params={"userId": "me"},
             body={"raw": raw, "threadId": original["threadId"]},
         )
-        print(json.dumps({"status": "sent", "id": result["id"], "threadId": result.get("threadId", "")}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "sent",
+                    "id": result["id"],
+                    "threadId": result.get("threadId", ""),
+                },
+                indent=2,
+            )
+        )
         return
 
     service = build_service("gmail", "v1")
-    original = service.users().messages().get(
-        userId="me", id=args.message_id, format="metadata",
-        metadataHeaders=["From", "Subject", "Message-ID"],
-    ).execute()
+    original = (
+        service.users()
+        .messages()
+        .get(
+            userId="me",
+            id=args.message_id,
+            format="metadata",
+            metadataHeaders=["From", "Subject", "Message-ID"],
+        )
+        .execute()
+    )
     headers = _headers_dict(original)
 
     subject = headers.get("subject", "")
@@ -417,22 +471,37 @@ def gmail_reply(args):
     body = {"raw": raw, "threadId": original["threadId"]}
 
     result = service.users().messages().send(userId="me", body=body).execute()
-    print(json.dumps({"status": "sent", "id": result["id"], "threadId": result.get("threadId", "")}, indent=2))
-
+    print(
+        json.dumps(
+            {
+                "status": "sent",
+                "id": result["id"],
+                "threadId": result.get("threadId", ""),
+            },
+            indent=2,
+        )
+    )
 
 
 def gmail_labels(args):
     if _gws_binary():
-        results = _run_gws(["gmail", "users", "labels", "list"], params={"userId": "me"})
-        labels = [{"id": l["id"], "name": l["name"], "type": l.get("type", "")} for l in results.get("labels", [])]
+        results = _run_gws(
+            ["gmail", "users", "labels", "list"], params={"userId": "me"}
+        )
+        labels = [
+            {"id": l["id"], "name": l["name"], "type": l.get("type", "")}
+            for l in results.get("labels", [])
+        ]
         print(json.dumps(labels, indent=2))
         return
 
     service = build_service("gmail", "v1")
     results = service.users().labels().list(userId="me").execute()
-    labels = [{"id": l["id"], "name": l["name"], "type": l.get("type", "")} for l in results.get("labels", [])]
+    labels = [
+        {"id": l["id"], "name": l["name"], "type": l.get("type", "")}
+        for l in results.get("labels", [])
+    ]
     print(json.dumps(labels, indent=2))
-
 
 
 def gmail_modify(args):
@@ -448,12 +517,23 @@ def gmail_modify(args):
             params={"userId": "me", "id": args.message_id},
             body=body,
         )
-        print(json.dumps({"id": result["id"], "labels": result.get("labelIds", [])}, indent=2))
+        print(
+            json.dumps(
+                {"id": result["id"], "labels": result.get("labelIds", [])}, indent=2
+            )
+        )
         return
 
     service = build_service("gmail", "v1")
-    result = service.users().messages().modify(userId="me", id=args.message_id, body=body).execute()
-    print(json.dumps({"id": result["id"], "labels": result.get("labelIds", [])}, indent=2))
+    result = (
+        service.users()
+        .messages()
+        .modify(userId="me", id=args.message_id, body=body)
+        .execute()
+    )
+    print(
+        json.dumps({"id": result["id"], "labels": result.get("labelIds", [])}, indent=2)
+    )
 
 
 # =========================================================================
@@ -464,7 +544,9 @@ def gmail_modify(args):
 def calendar_list(args):
     now = datetime.now(timezone.utc)
     time_min = _datetime_with_timezone(args.start or now.isoformat())
-    time_max = _datetime_with_timezone(args.end or (now + timedelta(days=7)).isoformat())
+    time_max = _datetime_with_timezone(
+        args.end or (now + timedelta(days=7)).isoformat()
+    )
 
     if _gws_binary():
         results = _run_gws(
@@ -483,8 +565,12 @@ def calendar_list(args):
             events.append({
                 "id": e["id"],
                 "summary": e.get("summary", "(no title)"),
-                "start": e.get("start", {}).get("dateTime", e.get("start", {}).get("date", "")),
-                "end": e.get("end", {}).get("dateTime", e.get("end", {}).get("date", "")),
+                "start": e.get("start", {}).get(
+                    "dateTime", e.get("start", {}).get("date", "")
+                ),
+                "end": e.get("end", {}).get(
+                    "dateTime", e.get("end", {}).get("date", "")
+                ),
                 "location": e.get("location", ""),
                 "description": e.get("description", ""),
                 "status": e.get("status", ""),
@@ -494,17 +580,27 @@ def calendar_list(args):
         return
 
     service = build_service("calendar", "v3")
-    results = service.events().list(
-        calendarId=args.calendar, timeMin=time_min, timeMax=time_max,
-        maxResults=args.max, singleEvents=True, orderBy="startTime",
-    ).execute()
+    results = (
+        service.events()
+        .list(
+            calendarId=args.calendar,
+            timeMin=time_min,
+            timeMax=time_max,
+            maxResults=args.max,
+            singleEvents=True,
+            orderBy="startTime",
+        )
+        .execute()
+    )
 
     events = []
     for e in results.get("items", []):
         events.append({
             "id": e["id"],
             "summary": e.get("summary", "(no title)"),
-            "start": e.get("start", {}).get("dateTime", e.get("start", {}).get("date", "")),
+            "start": e.get("start", {}).get(
+                "dateTime", e.get("start", {}).get("date", "")
+            ),
             "end": e.get("end", {}).get("dateTime", e.get("end", {}).get("date", "")),
             "location": e.get("location", ""),
             "description": e.get("description", ""),
@@ -512,7 +608,6 @@ def calendar_list(args):
             "htmlLink": e.get("htmlLink", ""),
         })
     print(json.dumps(events, indent=2, ensure_ascii=False))
-
 
 
 def calendar_create(args):
@@ -526,7 +621,9 @@ def calendar_create(args):
     if args.description:
         event["description"] = args.description
     if args.attendees:
-        event["attendees"] = [{"email": e.strip()} for e in args.attendees.split(",") if e.strip()]
+        event["attendees"] = [
+            {"email": e.strip()} for e in args.attendees.split(",") if e.strip()
+        ]
 
     if _gws_binary():
         result = _run_gws(
@@ -534,28 +631,40 @@ def calendar_create(args):
             params={"calendarId": args.calendar},
             body=event,
         )
-        print(json.dumps({
-            "status": "created",
-            "id": result["id"],
-            "summary": result.get("summary", ""),
-            "htmlLink": result.get("htmlLink", ""),
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "created",
+                    "id": result["id"],
+                    "summary": result.get("summary", ""),
+                    "htmlLink": result.get("htmlLink", ""),
+                },
+                indent=2,
+            )
+        )
         return
 
     service = build_service("calendar", "v3")
     result = service.events().insert(calendarId=args.calendar, body=event).execute()
-    print(json.dumps({
-        "status": "created",
-        "id": result["id"],
-        "summary": result.get("summary", ""),
-        "htmlLink": result.get("htmlLink", ""),
-    }, indent=2))
-
+    print(
+        json.dumps(
+            {
+                "status": "created",
+                "id": result["id"],
+                "summary": result.get("summary", ""),
+                "htmlLink": result.get("htmlLink", ""),
+            },
+            indent=2,
+        )
+    )
 
 
 def calendar_delete(args):
     if _gws_binary():
-        _run_gws(["calendar", "events", "delete"], params={"calendarId": args.calendar, "eventId": args.event_id})
+        _run_gws(
+            ["calendar", "events", "delete"],
+            params={"calendarId": args.calendar, "eventId": args.event_id},
+        )
         print(json.dumps({"status": "deleted", "eventId": args.event_id}))
         return
 
@@ -584,9 +693,15 @@ def drive_search(args):
         return
 
     service = build_service("drive", "v3")
-    results = service.files().list(
-        q=query, pageSize=args.max, fields="files(id, name, mimeType, modifiedTime, webViewLink)",
-    ).execute()
+    results = (
+        service.files()
+        .list(
+            q=query,
+            pageSize=args.max,
+            fields="files(id, name, mimeType, modifiedTime, webViewLink)",
+        )
+        .execute()
+    )
     files = results.get("files", [])
     print(json.dumps(files, indent=2, ensure_ascii=False))
 
@@ -618,25 +733,39 @@ def drive_upload(args):
         print(f"ERROR: file not found: {local_path}", file=sys.stderr)
         sys.exit(1)
 
-    mime = args.mime_type or mimetypes.guess_type(str(local_path))[0] or "application/octet-stream"
+    mime = (
+        args.mime_type
+        or mimetypes.guess_type(str(local_path))[0]
+        or "application/octet-stream"
+    )
     metadata = {"name": args.name or local_path.name}
     if args.parent:
         metadata["parents"] = [args.parent]
 
     service = build_service("drive", "v3")
     media = MediaFileUpload(str(local_path), mimetype=mime, resumable=True)
-    result = service.files().create(
-        body=metadata,
-        media_body=media,
-        fields="id, name, mimeType, webViewLink",
-    ).execute()
-    print(json.dumps({
-        "status": "uploaded",
-        "id": result["id"],
-        "name": result.get("name", ""),
-        "mimeType": result.get("mimeType", ""),
-        "webViewLink": result.get("webViewLink", ""),
-    }, indent=2, ensure_ascii=False))
+    result = (
+        service.files()
+        .create(
+            body=metadata,
+            media_body=media,
+            fields="id, name, mimeType, webViewLink",
+        )
+        .execute()
+    )
+    print(
+        json.dumps(
+            {
+                "status": "uploaded",
+                "id": result["id"],
+                "name": result.get("name", ""),
+                "mimeType": result.get("mimeType", ""),
+                "webViewLink": result.get("webViewLink", ""),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 def drive_download(args):
@@ -648,7 +777,9 @@ def drive_download(args):
     service = build_service("drive", "v3")
 
     # Look up the file to decide download vs export.
-    meta = service.files().get(fileId=args.file_id, fields="id, name, mimeType").execute()
+    meta = (
+        service.files().get(fileId=args.file_id, fields="id, name, mimeType").execute()
+    )
     mime = meta.get("mimeType", "")
     name = meta.get("name", args.file_id)
 
@@ -667,7 +798,9 @@ def drive_download(args):
         default_ext = native_export_map[mime][1]
         if not args.output and not out_path.suffix:
             out_path = out_path.with_suffix(default_ext)
-        request = service.files().export_media(fileId=args.file_id, mimeType=export_mime)
+        request = service.files().export_media(
+            fileId=args.file_id, mimeType=export_mime
+        )
     else:
         request = service.files().get_media(fileId=args.file_id)
 
@@ -679,13 +812,19 @@ def drive_download(args):
         _, done = downloader.next_chunk()
     fh.close()
 
-    print(json.dumps({
-        "status": "downloaded",
-        "id": args.file_id,
-        "name": name,
-        "path": str(out_path),
-        "mimeType": mime,
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "status": "downloaded",
+                "id": args.file_id,
+                "name": name,
+                "path": str(out_path),
+                "mimeType": mime,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 def drive_create_folder(args):
@@ -702,22 +841,34 @@ def drive_create_folder(args):
             params={"fields": "id, name, webViewLink"},
             body=body,
         )
-        print(json.dumps({
-            "status": "created",
-            "id": result["id"],
-            "name": result.get("name", ""),
-            "webViewLink": result.get("webViewLink", ""),
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "status": "created",
+                    "id": result["id"],
+                    "name": result.get("name", ""),
+                    "webViewLink": result.get("webViewLink", ""),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
     service = build_service("drive", "v3")
     result = service.files().create(body=body, fields="id, name, webViewLink").execute()
-    print(json.dumps({
-        "status": "created",
-        "id": result["id"],
-        "name": result.get("name", ""),
-        "webViewLink": result.get("webViewLink", ""),
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "status": "created",
+                "id": result["id"],
+                "name": result.get("name", ""),
+                "webViewLink": result.get("webViewLink", ""),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 def drive_share(args):
@@ -727,7 +878,10 @@ def drive_share(args):
     }
     if args.type in {"user", "group"}:
         if not args.email:
-            print("ERROR: --email is required for type=user or type=group", file=sys.stderr)
+            print(
+                "ERROR: --email is required for type=user or type=group",
+                file=sys.stderr,
+            )
             sys.exit(1)
         permission["emailAddress"] = args.email
     elif args.type == "domain":
@@ -745,29 +899,45 @@ def drive_share(args):
             },
             body=permission,
         )
-        print(json.dumps({
-            "status": "shared",
-            "permissionId": result.get("id", ""),
-            "fileId": args.file_id,
-            "role": permission["role"],
-            "type": permission["type"],
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "status": "shared",
+                    "permissionId": result.get("id", ""),
+                    "fileId": args.file_id,
+                    "role": permission["role"],
+                    "type": permission["type"],
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
     service = build_service("drive", "v3")
-    result = service.permissions().create(
-        fileId=args.file_id,
-        body=permission,
-        sendNotificationEmail=args.notify,
-        fields="id",
-    ).execute()
-    print(json.dumps({
-        "status": "shared",
-        "permissionId": result.get("id", ""),
-        "fileId": args.file_id,
-        "role": permission["role"],
-        "type": permission["type"],
-    }, indent=2, ensure_ascii=False))
+    result = (
+        service.permissions()
+        .create(
+            fileId=args.file_id,
+            body=permission,
+            sendNotificationEmail=args.notify,
+            fields="id",
+        )
+        .execute()
+    )
+    print(
+        json.dumps(
+            {
+                "status": "shared",
+                "permissionId": result.get("id", ""),
+                "fileId": args.file_id,
+                "role": permission["role"],
+                "type": permission["type"],
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 def drive_delete(args):
@@ -775,11 +945,19 @@ def drive_delete(args):
     if args.permanent:
         if _gws_binary():
             _run_gws(["drive", "files", "delete"], params={"fileId": args.file_id})
-            print(json.dumps({"status": "deleted", "fileId": args.file_id, "permanent": True}))
+            print(
+                json.dumps({
+                    "status": "deleted",
+                    "fileId": args.file_id,
+                    "permanent": True,
+                })
+            )
             return
         service = build_service("drive", "v3")
         service.files().delete(fileId=args.file_id).execute()
-        print(json.dumps({"status": "deleted", "fileId": args.file_id, "permanent": True}))
+        print(
+            json.dumps({"status": "deleted", "fileId": args.file_id, "permanent": True})
+        )
         return
 
     # Trash (reversible). Use files.update with trashed=True.
@@ -790,7 +968,13 @@ def drive_delete(args):
             params={"fileId": args.file_id},
             body=body,
         )
-        print(json.dumps({"status": "trashed", "fileId": args.file_id, "permanent": False}))
+        print(
+            json.dumps({
+                "status": "trashed",
+                "fileId": args.file_id,
+                "permanent": False,
+            })
+        )
         return
 
     service = build_service("drive", "v3")
@@ -827,11 +1011,16 @@ def contacts_list(args):
         return
 
     service = build_service("people", "v1")
-    results = service.people().connections().list(
-        resourceName="people/me",
-        pageSize=args.max,
-        personFields="names,emailAddresses,phoneNumbers",
-    ).execute()
+    results = (
+        service.people()
+        .connections()
+        .list(
+            resourceName="people/me",
+            pageSize=args.max,
+            personFields="names,emailAddresses,phoneNumbers",
+        )
+        .execute()
+    )
     contacts = []
     for person in results.get("connections", []):
         names = person.get("names", [{}])
@@ -860,11 +1049,16 @@ def sheets_get(args):
         return
 
     service = build_service("sheets", "v4")
-    result = service.spreadsheets().values().get(
-        spreadsheetId=args.sheet_id, range=args.range,
-    ).execute()
+    result = (
+        service.spreadsheets()
+        .values()
+        .get(
+            spreadsheetId=args.sheet_id,
+            range=args.range,
+        )
+        .execute()
+    )
     print(json.dumps(result.get("values", []), indent=2, ensure_ascii=False))
-
 
 
 def sheets_update(args):
@@ -881,16 +1075,38 @@ def sheets_update(args):
             },
             body=body,
         )
-        print(json.dumps({"updatedCells": result.get("updatedCells", 0), "updatedRange": result.get("updatedRange", "")}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "updatedCells": result.get("updatedCells", 0),
+                    "updatedRange": result.get("updatedRange", ""),
+                },
+                indent=2,
+            )
+        )
         return
 
     service = build_service("sheets", "v4")
-    result = service.spreadsheets().values().update(
-        spreadsheetId=args.sheet_id, range=args.range,
-        valueInputOption="USER_ENTERED", body=body,
-    ).execute()
-    print(json.dumps({"updatedCells": result.get("updatedCells", 0), "updatedRange": result.get("updatedRange", "")}, indent=2))
-
+    result = (
+        service.spreadsheets()
+        .values()
+        .update(
+            spreadsheetId=args.sheet_id,
+            range=args.range,
+            valueInputOption="USER_ENTERED",
+            body=body,
+        )
+        .execute()
+    )
+    print(
+        json.dumps(
+            {
+                "updatedCells": result.get("updatedCells", 0),
+                "updatedRange": result.get("updatedRange", ""),
+            },
+            indent=2,
+        )
+    )
 
 
 def sheets_append(args):
@@ -908,15 +1124,32 @@ def sheets_append(args):
             },
             body=body,
         )
-        print(json.dumps({"updatedCells": result.get("updates", {}).get("updatedCells", 0)}, indent=2))
+        print(
+            json.dumps(
+                {"updatedCells": result.get("updates", {}).get("updatedCells", 0)},
+                indent=2,
+            )
+        )
         return
 
     service = build_service("sheets", "v4")
-    result = service.spreadsheets().values().append(
-        spreadsheetId=args.sheet_id, range=args.range,
-        valueInputOption="USER_ENTERED", insertDataOption="INSERT_ROWS", body=body,
-    ).execute()
-    print(json.dumps({"updatedCells": result.get("updates", {}).get("updatedCells", 0)}, indent=2))
+    result = (
+        service.spreadsheets()
+        .values()
+        .append(
+            spreadsheetId=args.sheet_id,
+            range=args.range,
+            valueInputOption="USER_ENTERED",
+            insertDataOption="INSERT_ROWS",
+            body=body,
+        )
+        .execute()
+    )
+    print(
+        json.dumps(
+            {"updatedCells": result.get("updates", {}).get("updatedCells", 0)}, indent=2
+        )
+    )
 
 
 def sheets_create(args):
@@ -927,24 +1160,41 @@ def sheets_create(args):
 
     if _gws_binary():
         result = _run_gws(["sheets", "spreadsheets", "create"], body=body)
-        print(json.dumps({
-            "status": "created",
-            "spreadsheetId": result.get("spreadsheetId", ""),
-            "title": result.get("properties", {}).get("title", ""),
-            "spreadsheetUrl": result.get("spreadsheetUrl", ""),
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "status": "created",
+                    "spreadsheetId": result.get("spreadsheetId", ""),
+                    "title": result.get("properties", {}).get("title", ""),
+                    "spreadsheetUrl": result.get("spreadsheetUrl", ""),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
     service = build_service("sheets", "v4")
-    result = service.spreadsheets().create(
-        body=body, fields="spreadsheetId,properties,spreadsheetUrl",
-    ).execute()
-    print(json.dumps({
-        "status": "created",
-        "spreadsheetId": result.get("spreadsheetId", ""),
-        "title": result.get("properties", {}).get("title", ""),
-        "spreadsheetUrl": result.get("spreadsheetUrl", ""),
-    }, indent=2, ensure_ascii=False))
+    result = (
+        service.spreadsheets()
+        .create(
+            body=body,
+            fields="spreadsheetId,properties,spreadsheetUrl",
+        )
+        .execute()
+    )
+    print(
+        json.dumps(
+            {
+                "status": "created",
+                "spreadsheetId": result.get("spreadsheetId", ""),
+                "title": result.get("properties", {}).get("title", ""),
+                "spreadsheetUrl": result.get("spreadsheetUrl", ""),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 # =========================================================================
@@ -988,12 +1238,20 @@ def docs_create(args):
     if args.body and doc_id:
         _docs_insert_text(doc_id, args.body, index=1)
 
-    print(json.dumps({
-        "status": "created",
-        "documentId": doc_id,
-        "title": doc.get("title", ""),
-        "url": f"https://docs.google.com/document/d/{doc_id}/edit" if doc_id else "",
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "status": "created",
+                "documentId": doc_id,
+                "title": doc.get("title", ""),
+                "url": f"https://docs.google.com/document/d/{doc_id}/edit"
+                if doc_id
+                else "",
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 def docs_append(args):
@@ -1018,22 +1276,30 @@ def docs_append(args):
     text = args.text if args.text.endswith("\n") else args.text + "\n"
     _docs_insert_text(args.doc_id, text, index=insert_index)
 
-    print(json.dumps({
-        "status": "appended",
-        "documentId": args.doc_id,
-        "inserted_at": insert_index,
-        "characters": len(text),
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "status": "appended",
+                "documentId": args.doc_id,
+                "inserted_at": insert_index,
+                "characters": len(text),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 def _docs_insert_text(doc_id: str, text: str, index: int) -> None:
     """Send a batchUpdate with a single insertText request."""
-    requests = [{
-        "insertText": {
-            "location": {"index": index},
-            "text": text,
+    requests = [
+        {
+            "insertText": {
+                "location": {"index": index},
+                "text": text,
+            }
         }
-    }]
+    ]
     if _gws_binary():
         _run_gws(
             ["docs", "documents", "batchUpdate"],
@@ -1043,7 +1309,9 @@ def _docs_insert_text(doc_id: str, text: str, index: int) -> None:
         return
 
     service = build_service("docs", "v1")
-    service.documents().batchUpdate(documentId=doc_id, body={"requests": requests}).execute()
+    service.documents().batchUpdate(
+        documentId=doc_id, body={"requests": requests}
+    ).execute()
 
 
 # =========================================================================
@@ -1073,7 +1341,12 @@ def main():
     p.add_argument("--subject", required=True)
     p.add_argument("--body", required=True)
     p.add_argument("--cc", default="")
-    p.add_argument("--from", dest="from_header", default="", help="Custom From header (e.g. '\"Agent Name\" <user@example.com>')")
+    p.add_argument(
+        "--from",
+        dest="from_header",
+        default="",
+        help="Custom From header (e.g. '\"Agent Name\" <user@example.com>')",
+    )
     p.add_argument("--html", action="store_true", help="Send body as HTML")
     p.add_argument("--thread-id", default="", help="Thread ID for threading")
     p.set_defaults(func=gmail_send)
@@ -1081,7 +1354,12 @@ def main():
     p = gmail_sub.add_parser("reply")
     p.add_argument("message_id", help="Message ID to reply to")
     p.add_argument("--body", required=True)
-    p.add_argument("--from", dest="from_header", default="", help="Custom From header (e.g. '\"Agent Name\" <user@example.com>')")
+    p.add_argument(
+        "--from",
+        dest="from_header",
+        default="",
+        help="Custom From header (e.g. '\"Agent Name\" <user@example.com>')",
+    )
     p.set_defaults(func=gmail_reply)
 
     p = gmail_sub.add_parser("labels")
@@ -1090,7 +1368,9 @@ def main():
     p = gmail_sub.add_parser("modify")
     p.add_argument("message_id")
     p.add_argument("--add-labels", default="", help="Comma-separated label IDs to add")
-    p.add_argument("--remove-labels", default="", help="Comma-separated label IDs to remove")
+    p.add_argument(
+        "--remove-labels", default="", help="Comma-separated label IDs to remove"
+    )
     p.set_defaults(func=gmail_modify)
 
     # --- Calendar ---
@@ -1126,7 +1406,9 @@ def main():
     p = drv_sub.add_parser("search")
     p.add_argument("query")
     p.add_argument("--max", type=int, default=10)
-    p.add_argument("--raw-query", action="store_true", help="Use query as raw Drive API query")
+    p.add_argument(
+        "--raw-query", action="store_true", help="Use query as raw Drive API query"
+    )
     p.set_defaults(func=drive_search)
 
     p = drv_sub.add_parser("get")
@@ -1135,15 +1417,27 @@ def main():
 
     p = drv_sub.add_parser("upload")
     p.add_argument("path", help="Local file path to upload")
-    p.add_argument("--name", default="", help="Override file name in Drive (defaults to local filename)")
+    p.add_argument(
+        "--name",
+        default="",
+        help="Override file name in Drive (defaults to local filename)",
+    )
     p.add_argument("--parent", default="", help="Parent folder ID")
-    p.add_argument("--mime-type", default="", help="Override MIME type (auto-detected if omitted)")
+    p.add_argument(
+        "--mime-type", default="", help="Override MIME type (auto-detected if omitted)"
+    )
     p.set_defaults(func=drive_upload)
 
     p = drv_sub.add_parser("download")
     p.add_argument("file_id")
-    p.add_argument("--output", default="", help="Local output path (defaults to ./<name> in cwd)")
-    p.add_argument("--export-mime", default="", help="Export MIME for Google-native files (overrides defaults: pdf for Docs/Slides, csv for Sheets, png for Drawings)")
+    p.add_argument(
+        "--output", default="", help="Local output path (defaults to ./<name> in cwd)"
+    )
+    p.add_argument(
+        "--export-mime",
+        default="",
+        help="Export MIME for Google-native files (overrides defaults: pdf for Docs/Slides, csv for Sheets, png for Drawings)",
+    )
     p.set_defaults(func=drive_download)
 
     p = drv_sub.add_parser("create-folder")
@@ -1153,16 +1447,37 @@ def main():
 
     p = drv_sub.add_parser("share")
     p.add_argument("file_id")
-    p.add_argument("--role", default="reader", choices=["reader", "commenter", "writer", "fileOrganizer", "organizer", "owner"])
-    p.add_argument("--type", default="user", choices=["user", "group", "domain", "anyone"])
-    p.add_argument("--email", default="", help="Email address (required for type=user or type=group)")
+    p.add_argument(
+        "--role",
+        default="reader",
+        choices=[
+            "reader",
+            "commenter",
+            "writer",
+            "fileOrganizer",
+            "organizer",
+            "owner",
+        ],
+    )
+    p.add_argument(
+        "--type", default="user", choices=["user", "group", "domain", "anyone"]
+    )
+    p.add_argument(
+        "--email",
+        default="",
+        help="Email address (required for type=user or type=group)",
+    )
     p.add_argument("--domain", default="", help="Domain (required for type=domain)")
     p.add_argument("--notify", action="store_true", help="Send notification email")
     p.set_defaults(func=drive_share)
 
     p = drv_sub.add_parser("delete")
     p.add_argument("file_id")
-    p.add_argument("--permanent", action="store_true", help="Permanently delete (default is trash, which is reversible)")
+    p.add_argument(
+        "--permanent",
+        action="store_true",
+        help="Permanently delete (default is trash, which is reversible)",
+    )
     p.set_defaults(func=drive_delete)
 
     # --- Contacts ---
@@ -1196,7 +1511,9 @@ def main():
 
     p = sh_sub.add_parser("create")
     p.add_argument("--title", required=True, help="Spreadsheet title")
-    p.add_argument("--sheet-name", default="", help="Name of the first tab (defaults to 'Sheet1')")
+    p.add_argument(
+        "--sheet-name", default="", help="Name of the first tab (defaults to 'Sheet1')"
+    )
     p.set_defaults(func=sheets_create)
 
     # --- Docs ---
@@ -1214,7 +1531,9 @@ def main():
 
     p = docs_sub.add_parser("append")
     p.add_argument("doc_id")
-    p.add_argument("--text", required=True, help="Text to append to the end of the document")
+    p.add_argument(
+        "--text", required=True, help="Text to append to the end of the document"
+    )
     p.set_defaults(func=docs_append)
 
     args = parser.parse_args()

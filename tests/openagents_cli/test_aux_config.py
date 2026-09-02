@@ -75,7 +75,11 @@ def test_aux_tasks_keys_all_exist_in_default_config():
         ),
         ({"provider": "nous", "model": "gemini-3-flash"}, "nous · gemini-3-flash"),
         (
-            {"provider": "custom", "base_url": "http://localhost:11434/v1", "model": ""},
+            {
+                "provider": "custom",
+                "base_url": "http://localhost:11434/v1",
+                "model": "",
+            },
             "custom (localhost:11434/v1)",
         ),
         (
@@ -103,12 +107,15 @@ def test_format_aux_current_handles_non_dict():
 def test_save_aux_choice_persists_to_config_yaml(tmp_path, monkeypatch):
     """Saving a task writes provider/model/base_url/api_key to auxiliary.<task>."""
     from pathlib import Path
+
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     (tmp_path / ".hermes").mkdir(exist_ok=True)
 
     _save_aux_choice(
-        "vision", provider="openrouter", model="google/gemini-2.5-flash",
+        "vision",
+        provider="openrouter",
+        model="google/gemini-2.5-flash",
     )
     cfg = load_config()
     v = cfg["auxiliary"]["vision"]
@@ -121,6 +128,7 @@ def test_save_aux_choice_persists_to_config_yaml(tmp_path, monkeypatch):
 def test_save_aux_choice_preserves_timeout(tmp_path, monkeypatch):
     """Saving must NOT clobber user-tuned timeout values."""
     from pathlib import Path
+
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     (tmp_path / ".hermes").mkdir(exist_ok=True)
@@ -140,6 +148,7 @@ def test_save_aux_choice_preserves_timeout(tmp_path, monkeypatch):
 def test_save_aux_choice_does_not_touch_main_model(tmp_path, monkeypatch):
     """Aux config must never mutate model.default / model.provider / model.base_url."""
     from pathlib import Path
+
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     (tmp_path / ".hermes").mkdir(exist_ok=True)
@@ -156,8 +165,10 @@ def test_save_aux_choice_does_not_touch_main_model(tmp_path, monkeypatch):
     save_config(cfg)
 
     _save_aux_choice(
-        "compression", provider="custom",
-        base_url="http://localhost:11434/v1", model="qwen2.5:32b",
+        "compression",
+        provider="custom",
+        base_url="http://localhost:11434/v1",
+        model="qwen2.5:32b",
     )
 
     cfg = load_config()
@@ -174,6 +185,7 @@ def test_save_aux_choice_does_not_touch_main_model(tmp_path, monkeypatch):
 def test_save_aux_choice_creates_missing_task_entry(tmp_path, monkeypatch):
     """Saving a task that was wiped from config.yaml should recreate it."""
     from pathlib import Path
+
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     (tmp_path / ".hermes").mkdir(exist_ok=True)
@@ -196,6 +208,7 @@ def test_save_aux_choice_creates_missing_task_entry(tmp_path, monkeypatch):
 
 def test_reset_aux_to_auto_clears_routing_preserves_timeouts(tmp_path, monkeypatch):
     from pathlib import Path
+
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     (tmp_path / ".hermes").mkdir(exist_ok=True)
@@ -228,6 +241,7 @@ def test_reset_aux_to_auto_clears_routing_preserves_timeouts(tmp_path, monkeypat
 def test_reset_aux_to_auto_idempotent(tmp_path, monkeypatch):
     """Second reset on already-auto config returns 0 without errors."""
     from pathlib import Path
+
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     (tmp_path / ".hermes").mkdir(exist_ok=True)
@@ -244,6 +258,7 @@ def test_reset_aux_to_auto_idempotent(tmp_path, monkeypatch):
 def test_select_provider_and_model_dispatches_to_aux_menu(tmp_path, monkeypatch):
     """Picking 'Configure auxiliary models...' in the provider list calls _aux_config_menu."""
     from pathlib import Path
+
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     (tmp_path / ".hermes").mkdir(exist_ok=True)
@@ -260,10 +275,17 @@ def test_select_provider_and_model_dispatches_to_aux_menu(tmp_path, monkeypatch)
         raise AssertionError("aux entry not in provider list")
 
     monkeypatch.setattr(main_mod, "_prompt_provider_choice", fake_prompt)
-    monkeypatch.setattr(main_mod, "_aux_config_menu", lambda: called.__setitem__("aux", called["aux"] + 1))
+    monkeypatch.setattr(
+        main_mod,
+        "_aux_config_menu",
+        lambda: called.__setitem__("aux", called["aux"] + 1),
+    )
     # Guard against any main flow accidentally running
-    monkeypatch.setattr(main_mod, "_model_flow_openrouter",
-                        lambda *a, **kw: called.__setitem__("flow", called["flow"] + 1))
+    monkeypatch.setattr(
+        main_mod,
+        "_model_flow_openrouter",
+        lambda *a, **kw: called.__setitem__("flow", called["flow"] + 1),
+    )
 
     main_mod.select_provider_and_model()
 
@@ -274,6 +296,7 @@ def test_select_provider_and_model_dispatches_to_aux_menu(tmp_path, monkeypatch)
 def test_leave_unchanged_replaces_cancel_label(tmp_path, monkeypatch):
     """The bottom cancel entry now reads 'Leave unchanged' (UX polish)."""
     from pathlib import Path
+
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / ".hermes"))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     (tmp_path / ".hermes").mkdir(exist_ok=True)

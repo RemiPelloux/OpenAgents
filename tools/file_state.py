@@ -30,6 +30,7 @@ This module is intentionally separate from ``_read_tracker`` in
 ``file_tools.py`` — that tracker is per-task and handles consecutive-read
 loop detection, which is a different concern.
 """
+
 from __future__ import annotations
 
 import os
@@ -292,7 +293,9 @@ def _cap_dict(d: dict, limit: int) -> None:
 
 
 # ── Convenience wrappers (short names used at call sites) ────────────
-def record_read(task_id: str, resolved_or_path: str | Path, *, partial: bool = False) -> None:
+def record_read(
+    task_id: str, resolved_or_path: str | Path, *, partial: bool = False
+) -> None:
     _registry.record_read(task_id, str(resolved_or_path), partial=partial)
 
 

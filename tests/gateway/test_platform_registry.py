@@ -79,12 +79,16 @@ class TestPlatformEnumDynamic:
 class TestPlatformRegistry:
     """Test the PlatformRegistry itself."""
 
-    def _make_entry(self, name="test", check_ok=True, validate_ok=True, factory_ok=True):
+    def _make_entry(
+        self, name="test", check_ok=True, validate_ok=True, factory_ok=True
+    ):
         adapter_mock = MagicMock()
         return PlatformEntry(
             name=name,
             label=name.title(),
-            adapter_factory=lambda cfg, _m=adapter_mock: _m if factory_ok else (_ for _ in ()).throw(RuntimeError("factory error")),
+            adapter_factory=lambda cfg, _m=adapter_mock: _m
+            if factory_ok
+            else (_ for _ in ()).throw(RuntimeError("factory error")),
             check_fn=lambda: check_ok,
             validate_config=lambda cfg: validate_ok,
             required_env=[],
@@ -353,6 +357,7 @@ class TestPlatformsMerge:
 
     def test_get_all_platforms_includes_builtins(self):
         from openagents_cli.platforms import get_all_platforms, PLATFORMS
+
         merged = get_all_platforms()
         for key in PLATFORMS:
             assert key in merged
@@ -361,14 +366,16 @@ class TestPlatformsMerge:
         from openagents_cli.platforms import get_all_platforms
         from gateway.platform_registry import platform_registry as _reg
 
-        _reg.register(PlatformEntry(
-            name="testmerge",
-            label="TestMerge",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            source="plugin",
-            emoji="🧪",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="testmerge",
+                label="TestMerge",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                source="plugin",
+                emoji="🧪",
+            )
+        )
         try:
             merged = get_all_platforms()
             assert "testmerge" in merged
@@ -380,14 +387,16 @@ class TestPlatformsMerge:
         from openagents_cli.platforms import platform_label
         from gateway.platform_registry import platform_registry as _reg
 
-        _reg.register(PlatformEntry(
-            name="labeltest",
-            label="LabelTest",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            source="plugin",
-            emoji="🏷️",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="labeltest",
+                label="LabelTest",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                source="plugin",
+                emoji="🏷️",
+            )
+        )
         try:
             label = platform_label("labeltest")
             assert "LabelTest" in label
@@ -467,11 +476,13 @@ class TestApplyYamlConfigFnDispatch:
         reg = self._register_hook("myhookplat", _hook)
         try:
             home = self._write_config(
-                tmp_path, "myhookplat:\n  flag: true\n",
+                tmp_path,
+                "myhookplat:\n  flag: true\n",
             )
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config
+
             load_gateway_config()
 
             assert os.environ.get(env_var) == "true"
@@ -488,11 +499,13 @@ class TestApplyYamlConfigFnDispatch:
         reg = self._register_hook("myextraplat", _hook)
         try:
             home = self._write_config(
-                tmp_path, "myextraplat:\n  flag: yes\n",
+                tmp_path,
+                "myextraplat:\n  flag: yes\n",
             )
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config
+
             cfg = load_gateway_config()
 
             plat = Platform("myextraplat")
@@ -504,9 +517,7 @@ class TestApplyYamlConfigFnDispatch:
         finally:
             reg.unregister("myextraplat")
 
-    def test_hook_receives_full_yaml_and_platform_subdict(
-        self, tmp_path, monkeypatch
-    ):
+    def test_hook_receives_full_yaml_and_platform_subdict(self, tmp_path, monkeypatch):
         """Hook receives both the full yaml_cfg and its own platform sub-dict."""
         captured: dict = {}
 
@@ -519,13 +530,12 @@ class TestApplyYamlConfigFnDispatch:
         try:
             home = self._write_config(
                 tmp_path,
-                "top_level_key: 1\n"
-                "mycaptureplat:\n"
-                "  inner_key: deep\n",
+                "top_level_key: 1\nmycaptureplat:\n  inner_key: deep\n",
             )
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config
+
             load_gateway_config()
 
             assert captured["yaml_cfg"].get("top_level_key") == 1
@@ -548,32 +558,37 @@ class TestApplyYamlConfigFnDispatch:
             return None
 
         from gateway.platform_registry import platform_registry as _reg
-        _reg.register(PlatformEntry(
-            name="mybadplat",
-            label="MyBad",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            source="plugin",
-            apply_yaml_config_fn=_bad_hook,
-        ))
-        _reg.register(PlatformEntry(
-            name="mygoodplat",
-            label="MyGood",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            source="plugin",
-            apply_yaml_config_fn=_good_hook,
-        ))
+
+        _reg.register(
+            PlatformEntry(
+                name="mybadplat",
+                label="MyBad",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                source="plugin",
+                apply_yaml_config_fn=_bad_hook,
+            )
+        )
+        _reg.register(
+            PlatformEntry(
+                name="mygoodplat",
+                label="MyGood",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                source="plugin",
+                apply_yaml_config_fn=_good_hook,
+            )
+        )
         try:
             home = self._write_config(
                 tmp_path,
-                "mybadplat:\n  k: v\n"
-                "mygoodplat:\n  k: v\n",
+                "mybadplat:\n  k: v\nmygoodplat:\n  k: v\n",
             )
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             # Must not raise.
             from gateway.config import load_gateway_config
+
             load_gateway_config()
 
             assert good_called["count"] == 1
@@ -581,9 +596,7 @@ class TestApplyYamlConfigFnDispatch:
             _reg.unregister("mybadplat")
             _reg.unregister("mygoodplat")
 
-    def test_hook_skipped_when_platform_section_missing(
-        self, tmp_path, monkeypatch
-    ):
+    def test_hook_skipped_when_platform_section_missing(self, tmp_path, monkeypatch):
         """Hook is NOT called when the platform's YAML section is absent."""
         called = {"count": 0}
 
@@ -597,15 +610,14 @@ class TestApplyYamlConfigFnDispatch:
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config
+
             load_gateway_config()
 
             assert called["count"] == 0
         finally:
             reg.unregister("myabsentplat")
 
-    def test_hook_skipped_when_platform_section_not_dict(
-        self, tmp_path, monkeypatch
-    ):
+    def test_hook_skipped_when_platform_section_not_dict(self, tmp_path, monkeypatch):
         """Hook is NOT called when the platform's YAML section isn't a dict."""
         called = {"count": 0}
 
@@ -616,11 +628,13 @@ class TestApplyYamlConfigFnDispatch:
         reg = self._register_hook("mybadshapeplat", _hook)
         try:
             home = self._write_config(
-                tmp_path, "mybadshapeplat: just-a-string\n",
+                tmp_path,
+                "mybadshapeplat: just-a-string\n",
             )
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config
+
             load_gateway_config()
 
             assert called["count"] == 0
@@ -642,11 +656,13 @@ class TestApplyYamlConfigFnDispatch:
         reg = self._register_hook("myprecplat", _hook)
         try:
             home = self._write_config(
-                tmp_path, "myprecplat:\n  flag: yaml-value\n",
+                tmp_path,
+                "myprecplat:\n  flag: yaml-value\n",
             )
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config
+
             load_gateway_config()
 
             # Pre-existing env var was NOT clobbered by the hook.
@@ -677,25 +693,28 @@ class TestPluginPlatformSharedKeyBridge:
         ``PlatformConfig.extra`` without the plugin needing its own bridge."""
         from gateway.platform_registry import platform_registry as _reg
 
-        _reg.register(PlatformEntry(
-            name="mysharedplat",
-            label="MySharedPlat",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            source="plugin",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="mysharedplat",
+                label="MySharedPlat",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                source="plugin",
+            )
+        )
         try:
             home = self._write_config(
                 tmp_path,
                 "mysharedplat:\n"
                 "  require_mention: true\n"
                 "  dm_policy: allow\n"
-                "  reply_prefix: \"→ \"\n"
-                "  allow_from: [\"alice\", \"bob\"]\n",
+                '  reply_prefix: "→ "\n'
+                '  allow_from: ["alice", "bob"]\n',
             )
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config, Platform
+
             cfg = load_gateway_config()
 
             plat = Platform("mysharedplat")
@@ -727,9 +746,7 @@ class TestPluginEnablementGate:
         (hermes_home / "config.yaml").write_text(content, encoding="utf-8")
         return hermes_home
 
-    def test_plugin_with_is_connected_false_is_NOT_enabled(
-        self, tmp_path, monkeypatch
-    ):
+    def test_plugin_with_is_connected_false_is_NOT_enabled(self, tmp_path, monkeypatch):
         """check_fn=True + is_connected=False must NOT enable the platform.
 
         Reproduces #31116: Discord plugin loads, its check_fn lazy-installs
@@ -739,19 +756,22 @@ class TestPluginEnablementGate:
         """
         from gateway.platform_registry import platform_registry as _reg
 
-        _reg.register(PlatformEntry(
-            name="myunconfiguredplat",
-            label="MyUnconfigured",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,             # SDK available
-            is_connected=lambda cfg: False,    # but user hasn't set credentials
-            source="plugin",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="myunconfiguredplat",
+                label="MyUnconfigured",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,  # SDK available
+                is_connected=lambda cfg: False,  # but user hasn't set credentials
+                source="plugin",
+            )
+        )
         try:
             home = self._write_config(tmp_path)
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config, Platform
+
             cfg = load_gateway_config()
 
             plat = Platform("myunconfiguredplat")
@@ -763,25 +783,26 @@ class TestPluginEnablementGate:
         finally:
             _reg.unregister("myunconfiguredplat")
 
-    def test_plugin_with_is_connected_true_is_enabled(
-        self, tmp_path, monkeypatch
-    ):
+    def test_plugin_with_is_connected_true_is_enabled(self, tmp_path, monkeypatch):
         """check_fn=True + is_connected=True still enables the platform."""
         from gateway.platform_registry import platform_registry as _reg
 
-        _reg.register(PlatformEntry(
-            name="myconfiguredplat",
-            label="MyConfigured",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            is_connected=lambda cfg: True,
-            source="plugin",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="myconfiguredplat",
+                label="MyConfigured",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                is_connected=lambda cfg: True,
+                source="plugin",
+            )
+        )
         try:
             home = self._write_config(tmp_path)
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config, Platform
+
             cfg = load_gateway_config()
 
             plat = Platform("myconfiguredplat")
@@ -801,19 +822,22 @@ class TestPluginEnablementGate:
         """
         from gateway.platform_registry import platform_registry as _reg
 
-        _reg.register(PlatformEntry(
-            name="mylegacyplat",
-            label="MyLegacy",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            # is_connected intentionally omitted (None)
-            source="plugin",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="mylegacyplat",
+                label="MyLegacy",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                # is_connected intentionally omitted (None)
+                source="plugin",
+            )
+        )
         try:
             home = self._write_config(tmp_path)
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config, Platform
+
             cfg = load_gateway_config()
 
             plat = Platform("mylegacyplat")
@@ -834,19 +858,22 @@ class TestPluginEnablementGate:
         def _bad_probe(cfg):
             raise RuntimeError("plugin bug")
 
-        _reg.register(PlatformEntry(
-            name="mybadprobeplat",
-            label="MyBadProbe",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            is_connected=_bad_probe,
-            source="plugin",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="mybadprobeplat",
+                label="MyBadProbe",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                is_connected=_bad_probe,
+                source="plugin",
+            )
+        )
         try:
             home = self._write_config(tmp_path)
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config, Platform
+
             cfg = load_gateway_config()
 
             plat = Platform("mybadprobeplat")
@@ -866,24 +893,25 @@ class TestPluginEnablementGate:
         """
         from gateway.platform_registry import platform_registry as _reg
 
-        _reg.register(PlatformEntry(
-            name="myexplicitplat",
-            label="MyExplicit",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            is_connected=lambda cfg: False,
-            source="plugin",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="myexplicitplat",
+                label="MyExplicit",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                is_connected=lambda cfg: False,
+                source="plugin",
+            )
+        )
         try:
             home = self._write_config(
                 tmp_path,
-                "platforms:\n"
-                "  myexplicitplat:\n"
-                "    enabled: true\n",
+                "platforms:\n  myexplicitplat:\n    enabled: true\n",
             )
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config, Platform
+
             cfg = load_gateway_config()
 
             plat = Platform("myexplicitplat")
@@ -919,20 +947,23 @@ class TestPluginEnablementGate:
         def _env_enablement():
             return {"project_id": "p", "subscription_name": "s"}
 
-        _reg.register(PlatformEntry(
-            name="myextrasplat",
-            label="MyExtras",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            is_connected=_is_connected,
-            env_enablement_fn=_env_enablement,
-            source="plugin",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="myextrasplat",
+                label="MyExtras",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                is_connected=_is_connected,
+                env_enablement_fn=_env_enablement,
+                source="plugin",
+            )
+        )
         try:
             home = self._write_config(tmp_path)
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config, Platform
+
             cfg = load_gateway_config()
 
             plat = Platform("myextrasplat")
@@ -949,37 +980,37 @@ class TestPluginEnablementGate:
         finally:
             _reg.unregister("myextrasplat")
 
-    def test_is_connected_failed_gate_does_not_leak_extras(
-        self, tmp_path, monkeypatch
-    ):
+    def test_is_connected_failed_gate_does_not_leak_extras(self, tmp_path, monkeypatch):
         """When the gate rejects, env-seeded extras must NOT leak onto
         ``config.platforms``.  A rejected plugin should be invisible, not
         present-but-partially-populated.
         """
         from gateway.platform_registry import platform_registry as _reg
 
-        _reg.register(PlatformEntry(
-            name="myrejectedplat",
-            label="MyRejected",
-            adapter_factory=lambda cfg: None,
-            check_fn=lambda: True,
-            is_connected=lambda cfg: False,
-            env_enablement_fn=lambda: {"some_key": "should-not-leak"},
-            source="plugin",
-        ))
+        _reg.register(
+            PlatformEntry(
+                name="myrejectedplat",
+                label="MyRejected",
+                adapter_factory=lambda cfg: None,
+                check_fn=lambda: True,
+                is_connected=lambda cfg: False,
+                env_enablement_fn=lambda: {"some_key": "should-not-leak"},
+                source="plugin",
+            )
+        )
         try:
             home = self._write_config(tmp_path)
             monkeypatch.setenv("OPENAGENTS_HOME", str(home))
 
             from gateway.config import load_gateway_config, Platform
+
             cfg = load_gateway_config()
 
             plat = Platform("myrejectedplat")
             if plat in cfg.platforms:
                 assert cfg.platforms[plat].enabled is False
                 assert "some_key" not in cfg.platforms[plat].extra, (
-                    "Rejected plugin's env-seeded extras leaked onto "
-                    "config.platforms"
+                    "Rejected plugin's env-seeded extras leaked onto config.platforms"
                 )
         finally:
             _reg.unregister("myrejectedplat")

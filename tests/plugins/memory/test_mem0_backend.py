@@ -32,7 +32,6 @@ class FakePlatformClient:
 
 
 class TestPlatformBackend:
-
     def _make(self):
         client = FakePlatformClient()
         backend = PlatformBackend.__new__(PlatformBackend)
@@ -138,7 +137,6 @@ class FakeOSSMemory:
 
 
 class TestOSSBackend:
-
     def _make(self):
         memory = FakeOSSMemory()
         backend = OSSBackend.__new__(OSSBackend)

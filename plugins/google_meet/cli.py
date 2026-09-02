@@ -31,6 +31,7 @@ def _auth_state_path() -> Path:
 # argparse wiring
 # ---------------------------------------------------------------------------
 
+
 def register_cli(subparser: argparse.ArgumentParser) -> None:
     """Build the ``hermes meet`` argparse tree.
 
@@ -45,11 +46,14 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
         help="Install prerequisites (pip deps, Chromium, platform audio tools)",
     )
     inst_p.add_argument(
-        "--realtime", action="store_true",
+        "--realtime",
+        action="store_true",
         help="Also install realtime audio tools (pulseaudio-utils on Linux, BlackHole+ffmpeg on macOS). Uses sudo/brew, prompts before invoking either.",
     )
     inst_p.add_argument(
-        "--yes", "-y", action="store_true",
+        "--yes",
+        "-y",
+        action="store_true",
         help="Answer yes to all prompts (use with care; will run sudo apt-get or brew without asking).",
     )
 
@@ -61,12 +65,15 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     join_p.add_argument("--duration", default=None, help="e.g. 30m, 2h, 90s")
     join_p.add_argument("--headed", action="store_true", help="show browser")
     join_p.add_argument(
-        "--mode", choices=("transcribe", "realtime"), default="transcribe",
-        help="transcribe (default, listen-only) or realtime (speak via OpenAI Realtime)"
+        "--mode",
+        choices=("transcribe", "realtime"),
+        default="transcribe",
+        help="transcribe (default, listen-only) or realtime (speak via OpenAI Realtime)",
     )
     join_p.add_argument(
-        "--node", default=None,
-        help="remote node name, or 'auto' to use the sole registered node"
+        "--node",
+        default=None,
+        help="remote node name, or 'auto' to use the sole registered node",
     )
 
     subs.add_parser("status", help="Print current Meet bot state")
@@ -87,6 +94,7 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     )
     try:
         from plugins.google_meet.node.cli import register_cli as _register_node_cli
+
         _register_node_cli(node_p)
     except Exception as e:  # pragma: no cover — defensive
         # If the node module fails to import for any reason (optional dep
@@ -95,6 +103,7 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
         def _node_unavailable(args):
             print(f"hermes meet node: module unavailable ({e})")
             return 1
+
         node_p.set_defaults(func=_node_unavailable)
 
     subparser.set_defaults(func=meet_command)
@@ -103,6 +112,7 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
 # ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
+
 
 def meet_command(args: argparse.Namespace) -> int:
     sub = getattr(args, "meet_command", None)
@@ -151,6 +161,7 @@ def meet_command(args: argparse.Namespace) -> int:
 # Subcommand handlers
 # ---------------------------------------------------------------------------
 
+
 def _cmd_setup() -> int:
     import platform as _p
 
@@ -163,6 +174,7 @@ def _cmd_setup() -> int:
 
     try:
         import playwright  # noqa: F401
+
         pw_ok = True
         pw_msg = "installed"
     except ImportError:
@@ -175,6 +187,7 @@ def _cmd_setup() -> int:
     if pw_ok:
         try:
             from playwright.sync_api import sync_playwright
+
             with sync_playwright() as p:
                 try:
                     exe = p.chromium.executable_path
@@ -183,8 +196,7 @@ def _cmd_setup() -> int:
                         chromium_msg = f"ok ({exe})"
                     else:
                         chromium_msg = (
-                            "not installed — run: "
-                            "python -m playwright install chromium"
+                            "not installed — run: python -m playwright install chromium"
                         )
                 except Exception as e:
                     chromium_msg = f"probe failed: {e}"
@@ -290,11 +302,15 @@ def _cmd_install(*, realtime: bool, assume_yes: bool) -> int:
                     print(f"  $ {' '.join(cmd)}")
                     res = _sp.run(cmd, check=False)
                     if res.returncode != 0:
-                        print("  apt install failed — install pulseaudio-utils manually")
+                        print(
+                            "  apt install failed — install pulseaudio-utils manually"
+                        )
         elif system == "Darwin":
             have_bh = False
             try:
-                out = _sp.check_output(["system_profiler", "SPAudioDataType"], text=True)
+                out = _sp.check_output(
+                    ["system_profiler", "SPAudioDataType"], text=True
+                )
                 have_bh = "BlackHole" in out
             except Exception:
                 pass
@@ -396,8 +412,11 @@ def _cmd_join(
         client = NodeClient(url=entry["url"], token=entry["token"])
         try:
             res = client.start_bot(
-                url=url, guest_name=guest_name, duration=duration,
-                headed=headed, mode=mode,
+                url=url,
+                guest_name=guest_name,
+                duration=duration,
+                headed=headed,
+                mode=mode,
             )
         except Exception as e:
             print(f"remote start_bot failed: {e}")

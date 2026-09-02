@@ -17,9 +17,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 
-
 def _run_apply_profile_override(
-    tmp_path, monkeypatch, *, hermes_home: str | None, active_profile: str | None,
+    tmp_path,
+    monkeypatch,
+    *,
+    hermes_home: str | None,
+    active_profile: str | None,
     argv: list[str] | None = None,
 ):
     """Run _apply_profile_override in isolation.
@@ -45,6 +48,7 @@ def _run_apply_profile_override(
     monkeypatch.setattr(sys, "argv", argv or ["openagents", "gateway", "start"])
 
     from openagents_cli.main import _apply_profile_override
+
     _apply_profile_override()
 
     return os.environ.get("OPENAGENTS_HOME")
@@ -105,6 +109,7 @@ class TestApplyProfileOverrideHermesHomeGuard:
         monkeypatch.setattr(sys, "argv", ["openagents", "gateway", "start"])
 
         from openagents_cli.main import _apply_profile_override
+
         _apply_profile_override()
 
         assert os.environ.get("OPENAGENTS_HOME") == str(profile_dir), (
@@ -125,7 +130,9 @@ class TestApplyProfileOverrideHermesHomeGuard:
         assert result is not None
         assert "coder" in result
 
-    def test_sudo_explicit_profile_resolves_invoking_users_profile(self, tmp_path, monkeypatch):
+    def test_sudo_explicit_profile_resolves_invoking_users_profile(
+        self, tmp_path, monkeypatch
+    ):
         """sudo elias ... should resolve `-p elias` under SUDO_USER, not root."""
         root_home = tmp_path / "root"
         user_home = tmp_path / "home" / "openagents"
@@ -137,13 +144,18 @@ class TestApplyProfileOverrideHermesHomeGuard:
         monkeypatch.setenv("SUDO_USER", "openagents")
         monkeypatch.delenv("OPENAGENTS_HOME", raising=False)
         monkeypatch.setattr(os, "geteuid", lambda: 0, raising=False)
-        monkeypatch.setattr(sys, "argv", ["openagents", "-p", "elias", "gateway", "install", "--system"])
+        monkeypatch.setattr(
+            sys, "argv", ["openagents", "-p", "elias", "gateway", "install", "--system"]
+        )
 
         import pwd
 
-        monkeypatch.setattr(pwd, "getpwnam", lambda name: SimpleNamespace(pw_dir=str(user_home)))
+        monkeypatch.setattr(
+            pwd, "getpwnam", lambda name: SimpleNamespace(pw_dir=str(user_home))
+        )
 
         from openagents_cli.main import _apply_profile_override
+
         _apply_profile_override()
 
         assert os.environ.get("OPENAGENTS_HOME") == str(profile_dir)
@@ -160,6 +172,7 @@ class TestApplyProfileOverrideHermesHomeGuard:
         (hermes_root / "active_profile").write_text("default")
 
         from openagents_cli.main import _apply_profile_override
+
         _apply_profile_override()
 
         assert os.environ.get("OPENAGENTS_HOME") is None
@@ -194,12 +207,15 @@ class TestApplyProfileOverrideHermesHomeGuard:
         monkeypatch.setattr(sys, "argv", list(argv))
 
         from openagents_cli.main import _apply_profile_override
+
         _apply_profile_override()
 
         assert os.environ.get("OPENAGENTS_HOME") is None
         assert sys.argv == argv
 
-    def test_profile_after_chat_subcommand_is_still_consumed(self, tmp_path, monkeypatch):
+    def test_profile_after_chat_subcommand_is_still_consumed(
+        self, tmp_path, monkeypatch
+    ):
         """Profile flags historically work after normal OpenAgents subcommands."""
         result = _run_apply_profile_override(
             tmp_path,
@@ -213,7 +229,9 @@ class TestApplyProfileOverrideHermesHomeGuard:
         assert result.endswith("coder")
         assert sys.argv == ["openagents", "chat", "-q", "hello"]
 
-    def test_top_level_profile_after_value_flag_is_consumed(self, tmp_path, monkeypatch):
+    def test_top_level_profile_after_value_flag_is_consumed(
+        self, tmp_path, monkeypatch
+    ):
         """Top-level --profile still works after other top-level value flags."""
         result = _run_apply_profile_override(
             tmp_path,
@@ -227,7 +245,9 @@ class TestApplyProfileOverrideHermesHomeGuard:
         assert result.endswith("coder")
         assert sys.argv == ["openagents", "-m", "gpt-5", "chat"]
 
-    def test_top_level_profile_after_continue_flag_is_consumed(self, tmp_path, monkeypatch):
+    def test_top_level_profile_after_continue_flag_is_consumed(
+        self, tmp_path, monkeypatch
+    ):
         """--continue has an optional value, so a following --profile is a flag."""
         result = _run_apply_profile_override(
             tmp_path,
@@ -278,6 +298,7 @@ class TestSupervisedChildIgnoresStickyProfile:
         monkeypatch.setattr(sys, "argv", ["openagents", "gateway", "run"])
 
         from openagents_cli.main import _apply_profile_override
+
         _apply_profile_override()
 
         assert os.environ.get("OPENAGENTS_HOME") == str(hermes_root), (
@@ -314,12 +335,14 @@ class TestSupervisedChildIgnoresStickyProfile:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.delenv("OPENAGENTS_HOME", raising=False)
         monkeypatch.setenv("HERMES_S6_SUPERVISED_CHILD", "1")
-        monkeypatch.setattr(sys, "argv", ["openagents", "-p", "coder", "gateway", "run"])
+        monkeypatch.setattr(
+            sys, "argv", ["openagents", "-p", "coder", "gateway", "run"]
+        )
 
         from openagents_cli.main import _apply_profile_override
+
         _apply_profile_override()
 
         result = os.environ.get("OPENAGENTS_HOME")
         assert result is not None
         assert result.endswith("coder")
-

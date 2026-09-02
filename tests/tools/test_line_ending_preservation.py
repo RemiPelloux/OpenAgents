@@ -32,7 +32,12 @@ def hermes_home(monkeypatch, tmp_path):
     # returns the stale cwd from this test's ops and breaks tests like
     # test_resolve_path that rely on TERMINAL_CWD env var.
     try:
-        from tools.file_tools import clear_file_ops_cache, _read_tracker_lock, _read_tracker
+        from tools.file_tools import (
+            clear_file_ops_cache,
+            _read_tracker_lock,
+            _read_tracker,
+        )
+
         clear_file_ops_cache()
         with _read_tracker_lock:
             _read_tracker.clear()
@@ -40,6 +45,7 @@ def hermes_home(monkeypatch, tmp_path):
         pass
     try:
         from tools.terminal_tool import _active_environments, _env_lock
+
         with _env_lock:
             _active_environments.clear()
     except Exception:
@@ -76,9 +82,7 @@ class TestPatchCRLFPreservation:
         assert not d.get("error"), d
 
         raw = target.read_bytes()
-        assert _bare_lf_count(raw) == 0, (
-            f"Mixed line endings after patch: {raw!r}"
-        )
+        assert _bare_lf_count(raw) == 0, f"Mixed line endings after patch: {raw!r}"
         # Same number of line breaks as before; just the value swapped.
         assert _crlf_count(raw) == 5
         assert b"key=99\r\n" in raw
@@ -103,9 +107,7 @@ class TestPatchCRLFPreservation:
         assert not d.get("error"), d
 
         raw = target.read_bytes()
-        assert _crlf_count(raw) == 0, (
-            f"Spurious CRLF added to LF file: {raw!r}"
-        )
+        assert _crlf_count(raw) == 0, f"Spurious CRLF added to LF file: {raw!r}"
 
     def test_patch_multiline_replacement_on_crlf(self, hermes_home, tmp_path):
         """Multi-line new_string with bare LFs should be CRLF-converted
@@ -157,9 +159,7 @@ class TestWriteFileCRLFPreservation:
         assert "error" not in d, d
 
         raw = target.read_bytes()
-        assert _bare_lf_count(raw) == 0, (
-            f"CRLF file got normalized to LF: {raw!r}"
-        )
+        assert _bare_lf_count(raw) == 0, f"CRLF file got normalized to LF: {raw!r}"
         assert _crlf_count(raw) == 3
 
     def test_new_file_written_as_is(self, hermes_home, tmp_path):

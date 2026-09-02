@@ -10,7 +10,9 @@ from openagentui.schema import WorkflowExecution, WorkflowNode
 
 def _ctx(data: dict, variables: dict | None = None) -> NodeContext:
     node = WorkflowNode(id="n1", type="http", data=data)
-    execution = WorkflowExecution(id="exec1", workflow_id="wf1", variables=dict(variables or {}))
+    execution = WorkflowExecution(
+        id="exec1", workflow_id="wf1", variables=dict(variables or {})
+    )
     return NodeContext(node=node, execution=execution)
 
 
@@ -44,7 +46,11 @@ def test_http_success_returns_json_body(monkeypatch):
         return httpx.Response(200, json={"ok": True}, request=request)
 
     monkeypatch.setattr(http_node.httpx, "Client", _mock_client(handler))
-    ctx = _ctx({"url": "https://example.com/api", "method": "GET", "outputField": "resp"})
+    ctx = _ctx({
+        "url": "https://example.com/api",
+        "method": "GET",
+        "outputField": "resp",
+    })
     result = http_node.execute(ctx)
     assert result.status == "completed"
     assert result.output["status"] == 200
@@ -63,7 +69,11 @@ def test_http_renders_templated_url_and_body(monkeypatch):
 
     monkeypatch.setattr(http_node.httpx, "Client", _mock_client(handler))
     ctx = _ctx(
-        {"url": "https://example.com/{{ path }}", "method": "POST", "body": {"name": "{{ user }}"}},
+        {
+            "url": "https://example.com/{{ path }}",
+            "method": "POST",
+            "body": {"name": "{{ user }}"},
+        },
         {"path": "users", "user": "bob"},
     )
     result = http_node.execute(ctx)

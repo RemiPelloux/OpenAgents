@@ -43,15 +43,7 @@ def test_code_block_with_box_chars_gets_wrapped(gen_module):
     """A code fence containing Unicode box-drawing chars must be wrapped in
     ascii-guard-ignore comments so the docs-site-checks lint can't fail on
     a skill's own diagram (issue #15305)."""
-    body = (
-        "Some text.\n\n"
-        "```\n"
-        "┌─────────┐\n"
-        "│ diagram │\n"
-        "└─────────┘\n"
-        "```\n\n"
-        "More text."
-    )
+    body = "Some text.\n\n```\n┌─────────┐\n│ diagram │\n└─────────┘\n```\n\nMore text."
     result = gen_module.mdx_escape_body(body)
     assert "<!-- ascii-guard-ignore -->" in result
     assert "<!-- ascii-guard-ignore-end -->" in result

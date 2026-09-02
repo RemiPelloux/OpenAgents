@@ -82,9 +82,7 @@ def test_non_compression_parent_is_root_not_continuation(db):
 def test_no_false_rotation_when_head_unchanged(db):
     _mk(db, "s")
     # previous == current → no rotation reason emitted.
-    prov = build_session_provenance(
-        db, "acp-1", "s", previous_hermes_session_id="s"
-    )
+    prov = build_session_provenance(db, "acp-1", "s", previous_hermes_session_id="s")
     assert "reason" not in prov
     assert "creatorKind" not in prov
     assert prov["previousHermesSessionId"] == "s"

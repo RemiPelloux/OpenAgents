@@ -66,6 +66,7 @@ def check_packages():
     # discord.py
     try:
         import discord
+
         _discord_available = True
         check("discord.py", True, f"v{discord.__version__}")
     except ImportError:
@@ -75,9 +76,11 @@ def check_packages():
     # PyNaCl
     try:
         import nacl
+
         ver = getattr(nacl, "__version__", "unknown")
         try:
             import nacl.secret
+
             nacl.secret.Aead(bytes(32))
             check("PyNaCl", True, f"v{ver}")
         except (AttributeError, Exception):
@@ -90,6 +93,7 @@ def check_packages():
     # davey (DAVE E2EE)
     try:
         import davey
+
         check("davey (DAVE E2EE)", True, f"v{getattr(davey, '__version__', '?')}")
     except ImportError:
         check("davey (DAVE E2EE)", False, "pip install davey")
@@ -98,6 +102,7 @@ def check_packages():
     # Optional: local STT
     try:
         import faster_whisper
+
         check("faster-whisper (local STT)", True)
     except ImportError:
         warn("faster-whisper (local STT)", "not installed — local STT unavailable")
@@ -105,12 +110,14 @@ def check_packages():
     # Optional: TTS providers
     try:
         import edge_tts
+
         check("edge-tts", True)
     except ImportError:
         warn("edge-tts", "not installed — edge TTS unavailable")
 
     try:
         import elevenlabs
+
         check("elevenlabs SDK", True)
     except ImportError:
         warn("elevenlabs SDK", "not installed — premium TTS unavailable")
@@ -127,19 +134,21 @@ def check_system_tools():
     if _discord_available:
         try:
             import discord
+
             opus_loaded = discord.opus.is_loaded()
             if not opus_loaded:
                 import ctypes.util
+
                 opus_path = ctypes.util.find_library("opus")
                 if not opus_path:
                     # Platform-specific fallback paths
                     candidates = [
-                        "/opt/homebrew/lib/libopus.dylib",   # macOS Apple Silicon
-                        "/usr/local/lib/libopus.dylib",      # macOS Intel
+                        "/opt/homebrew/lib/libopus.dylib",  # macOS Apple Silicon
+                        "/usr/local/lib/libopus.dylib",  # macOS Intel
                         "/usr/lib/x86_64-linux-gnu/libopus.so.0",  # Debian/Ubuntu x86
-                        "/usr/lib/aarch64-linux-gnu/libopus.so.0", # Debian/Ubuntu ARM
-                        "/usr/lib/libopus.so",               # Arch Linux
-                        "/usr/lib64/libopus.so",             # RHEL/Fedora
+                        "/usr/lib/aarch64-linux-gnu/libopus.so.0",  # Debian/Ubuntu ARM
+                        "/usr/lib/libopus.so",  # Arch Linux
+                        "/usr/lib64/libopus.so",  # RHEL/Fedora
                     ]
                     for p in candidates:
                         if os.path.isfile(p):
@@ -204,6 +213,7 @@ def check_env_vars():
             if token and uid.isdigit():
                 try:
                     import requests
+
                     r = requests.get(
                         f"https://discord.com/api/v10/users/{uid}",
                         headers={"Authorization": f"Bot {token}"},
@@ -214,7 +224,11 @@ def check_env_vars():
                 except Exception:
                     pass
             user_labels.append(label)
-        check("DISCORD_ALLOWED_USERS", True, f"{len(users)} user(s): {', '.join(user_labels)}")
+        check(
+            "DISCORD_ALLOWED_USERS",
+            True,
+            f"{len(users)} user(s): {', '.join(user_labels)}",
+        )
     else:
         warn("DISCORD_ALLOWED_USERS", "not set — all users can use voice")
 
@@ -242,6 +256,7 @@ def check_config(groq_key, eleven_key):
     if config_path.exists():
         try:
             import yaml
+
             with open(config_path, encoding="utf-8") as f:
                 cfg = yaml.safe_load(f) or {}
 
@@ -268,10 +283,15 @@ def check_config(groq_key, eleven_key):
     if voice_mode_path.exists():
         try:
             import json
+
             modes = json.loads(voice_mode_path.read_text(encoding="utf-8"))
             off_count = sum(1 for v in modes.values() if v == "off")
             all_count = sum(1 for v in modes.values() if v == "all")
-            check("Voice mode state", True, f"{all_count} on, {off_count} off, {len(modes)} total")
+            check(
+                "Voice mode state",
+                True,
+                f"{all_count} on, {off_count} off, {len(modes)} total",
+            )
         except Exception:
             warn("Voice mode state", "parse error")
     else:
@@ -293,27 +313,29 @@ def check_bot_permissions(token):
         return True
 
     VOICE_PERMS = {
-        "Priority Speaker":      8,
-        "Stream":                9,
-        "View Channel":         10,
-        "Send Messages":        11,
-        "Embed Links":          14,
-        "Attach Files":         15,
+        "Priority Speaker": 8,
+        "Stream": 9,
+        "View Channel": 10,
+        "Send Messages": 11,
+        "Embed Links": 14,
+        "Attach Files": 15,
         "Read Message History": 16,
-        "Connect":              20,
-        "Speak":                21,
-        "Mute Members":         22,
-        "Deafen Members":       23,
-        "Move Members":         24,
-        "Use VAD":              25,
-        "Send Voice Messages":  46,
+        "Connect": 20,
+        "Speak": 21,
+        "Mute Members": 22,
+        "Deafen Members": 23,
+        "Move Members": 24,
+        "Use VAD": 25,
+        "Send Voice Messages": 46,
     }
     REQUIRED_PERMS = {"Connect", "Speak", "View Channel", "Send Messages"}
     ok = True
 
     try:
         headers = {"Authorization": f"Bot {token}"}
-        r = requests.get("https://discord.com/api/v10/users/@me", headers=headers, timeout=5)
+        r = requests.get(
+            "https://discord.com/api/v10/users/@me", headers=headers, timeout=5
+        )
 
         if r.status_code == 401:
             check("Bot login", False, "invalid token (401)")
@@ -327,7 +349,9 @@ def check_bot_permissions(token):
         check("Bot login", True, f"{bot_name[:3]}{'*' * (len(bot_name) - 3)}")
 
         # Check guilds
-        r2 = requests.get("https://discord.com/api/v10/users/@me/guilds", headers=headers, timeout=5)
+        r2 = requests.get(
+            "https://discord.com/api/v10/users/@me/guilds", headers=headers, timeout=5
+        )
         if r2.status_code != 200:
             warn("Guilds", f"HTTP {r2.status_code}")
             return ok

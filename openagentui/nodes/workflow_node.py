@@ -31,7 +31,9 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
     try:
         from openagentui import engine
 
-        child = engine.run_workflow(sub, inputs=inputs if isinstance(inputs, dict) else {})
+        child = engine.run_workflow(
+            sub, inputs=inputs if isinstance(inputs, dict) else {}
+        )
     except Exception as exc:
         return failed(ctx.node.id, f"sub-workflow run failed: {exc}")
 

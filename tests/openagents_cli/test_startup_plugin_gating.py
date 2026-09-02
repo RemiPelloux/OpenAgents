@@ -91,8 +91,8 @@ def _live_subcommand_names() -> set[str]:
         (["openagents", "-m", "gpt5", "--provider", "openai", "chat"], "chat"),
         (["openagents", "-z", "hello world"], None),
         (["openagents", "-z", "hello", "chat"], "chat"),
-        (["openagents", "--model=gpt5", "chat"], "chat"),     # inline form
-        (["openagents", "--", "chat"], "chat"),               # -- terminator
+        (["openagents", "--model=gpt5", "chat"], "chat"),  # inline form
+        (["openagents", "--", "chat"], "chat"),  # -- terminator
         (["openagents", "-w", "--"], None),
         # Unknown positional after skipped flags → plugin-cmd candidate.
         (["openagents", "some-plugin-cmd"], "some-plugin-cmd"),
@@ -110,17 +110,17 @@ def test_first_positional_argv(argv, expected):
 @pytest.mark.parametrize(
     "argv",
     [
-        ["openagents"],                          # bare → chat
-        ["openagents", "--help"],                # top-level help
+        ["openagents"],  # bare → chat
+        ["openagents", "--help"],  # top-level help
         ["openagents", "-h"],
-        ["openagents", "version"],               # known built-in
+        ["openagents", "version"],  # known built-in
         ["openagents", "logs"],
         ["openagents", "gateway", "run"],
         ["openagents", "--tui"],
         ["openagents", "-w", "--tui"],
         ["openagents", "chat", "hi"],
-        ["openagents", "help"],                  # accepted built-in-ish
-        ["openagents", "-m", "gpt5", "chat"],    # flag-value-skipping
+        ["openagents", "help"],  # accepted built-in-ish
+        ["openagents", "-m", "gpt5", "chat"],  # flag-value-skipping
     ],
 )
 def test_discovery_skipped_for_builtins(argv):
@@ -131,8 +131,8 @@ def test_discovery_skipped_for_builtins(argv):
 @pytest.mark.parametrize(
     "argv",
     [
-        ["openagents", "meet", "join"],          # potential google_meet plugin
-        ["openagents", "honcho", "status"],      # potential memory plugin
+        ["openagents", "meet", "join"],  # potential google_meet plugin
+        ["openagents", "honcho", "status"],  # potential memory plugin
         ["openagents", "unknown-subcmd"],
     ],
 )

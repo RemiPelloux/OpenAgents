@@ -55,13 +55,16 @@ class TestUserConfigMerge:
         # Force a fresh reimport of config.py so the OPENAGENTS_HOME is honored.
         import importlib
         import openagents_cli.config as cfg_mod
+
         importlib.reload(cfg_mod)
 
         cfg = cfg_mod.load_config()
         assert cfg["approvals"]["mcp_reload_confirm"] is True
 
     def test_existing_user_config_with_false_key_survives_merge(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """A user who has clicked "Always Approve" (key=false) must keep
         that setting across reloads — the default_true value must not win.
@@ -84,6 +87,7 @@ class TestUserConfigMerge:
         monkeypatch.setenv("OPENAGENTS_HOME", str(home))
         import importlib
         import openagents_cli.config as cfg_mod
+
         importlib.reload(cfg_mod)
 
         cfg = cfg_mod.load_config()

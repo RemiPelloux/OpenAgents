@@ -55,13 +55,12 @@ class TestDeepSeekAnthropicPreservesThinking:
             },
             {"role": "tool", "tool_call_id": "call_1", "content": "ok"},
         ]
-        _system, converted = convert_messages_to_anthropic(
-            messages, base_url=base_url
-        )
+        _system, converted = convert_messages_to_anthropic(messages, base_url=base_url)
 
         assistant_msg = next(m for m in converted if m["role"] == "assistant")
         thinking_blocks = [
-            b for b in assistant_msg["content"]
+            b
+            for b in assistant_msg["content"]
             if isinstance(b, dict) and b.get("type") == "thinking"
         ]
         assert len(thinking_blocks) == 1, (
@@ -113,7 +112,8 @@ class TestDeepSeekAnthropicPreservesThinking:
         assert len(assistants) == 2
         for assistant, expected in zip(assistants, ("r1", "r2")):
             thinking = [
-                b for b in assistant["content"]
+                b
+                for b in assistant["content"]
                 if isinstance(b, dict) and b.get("type") == "thinking"
             ]
             assert len(thinking) == 1
@@ -148,7 +148,8 @@ class TestDeepSeekAnthropicPreservesThinking:
 
         assistant_msg = next(m for m in converted if m["role"] == "assistant")
         thinking_blocks = [
-            b for b in assistant_msg["content"]
+            b
+            for b in assistant_msg["content"]
             if isinstance(b, dict) and b.get("type") == "thinking"
         ]
         assert thinking_blocks == [], (
@@ -191,7 +192,10 @@ class TestDeepSeekAnthropicPreservesThinking:
             if not isinstance(m.get("content"), list):
                 continue
             for b in m["content"]:
-                if isinstance(b, dict) and b.get("type") in {"thinking", "redacted_thinking"}:
+                if isinstance(b, dict) and b.get("type") in {
+                    "thinking",
+                    "redacted_thinking",
+                }:
                     assert "cache_control" not in b
 
     def test_openai_compat_deepseek_base_is_not_matched(self) -> None:
@@ -204,8 +208,14 @@ class TestDeepSeekAnthropicPreservesThinking:
 
         assert _is_deepseek_anthropic_endpoint("https://api.deepseek.com") is False
         assert _is_deepseek_anthropic_endpoint("https://api.deepseek.com/v1") is False
-        assert _is_deepseek_anthropic_endpoint("https://api.deepseek.com/anthropic") is True
-        assert _is_deepseek_anthropic_endpoint("https://api.deepseek.com/anthropic/v1") is True
+        assert (
+            _is_deepseek_anthropic_endpoint("https://api.deepseek.com/anthropic")
+            is True
+        )
+        assert (
+            _is_deepseek_anthropic_endpoint("https://api.deepseek.com/anthropic/v1")
+            is True
+        )
 
     def test_non_deepseek_third_party_still_strips_all_thinking(self) -> None:
         """MiniMax and other third-party Anthropic endpoints must keep the
@@ -233,7 +243,8 @@ class TestDeepSeekAnthropicPreservesThinking:
         )
         assistant_msg = next(m for m in converted if m["role"] == "assistant")
         thinking_blocks = [
-            b for b in assistant_msg["content"]
+            b
+            for b in assistant_msg["content"]
             if isinstance(b, dict) and b.get("type") == "thinking"
         ]
         assert thinking_blocks == [], (

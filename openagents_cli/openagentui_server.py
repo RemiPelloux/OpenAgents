@@ -48,7 +48,9 @@ def _template_index() -> Dict[str, Dict[str, Any]]:
     """Load bundled templates once per directory mtime (avoids N+1 reads)."""
     global _TEMPLATE_INDEX, _TEMPLATE_INDEX_MTIME
     try:
-        mtime = max((p.stat().st_mtime for p in _TEMPLATES_DIR.glob("*.json")), default=0.0)
+        mtime = max(
+            (p.stat().st_mtime for p in _TEMPLATES_DIR.glob("*.json")), default=0.0
+        )
     except OSError:
         mtime = 0.0
     if _TEMPLATE_INDEX is not None and mtime == _TEMPLATE_INDEX_MTIME:
@@ -69,7 +71,9 @@ def _template_index() -> Dict[str, Dict[str, Any]]:
 
 
 def _template_cards() -> List[Dict[str, Any]]:
-    return [Workflow.template_card_from_raw(data) for data in _template_index().values()]
+    return [
+        Workflow.template_card_from_raw(data) for data in _template_index().values()
+    ]
 
 
 @router.get("/workflows")
@@ -176,7 +180,9 @@ def create_workflow_from_yaml_route(body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.put("/workflows/{workflow_id}/from-yaml")
-def upsert_workflow_from_yaml_route(workflow_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+def upsert_workflow_from_yaml_route(
+    workflow_id: str, body: Dict[str, Any]
+) -> Dict[str, Any]:
     yaml_text = str(body.get("yaml") or body.get("content") or "").strip()
     if not yaml_text:
         raise HTTPException(status_code=400, detail="'yaml' text is required")
@@ -186,6 +192,7 @@ def upsert_workflow_from_yaml_route(workflow_id: str, body: Dict[str, Any]) -> D
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     saved = store.save_workflow(workflow)
     return saved.to_dict()
+
 
 # ---------------------------------------------------------------------------
 # Templates (bundled + user-saved-as-template)
@@ -225,7 +232,9 @@ def catalog_route() -> Dict[str, Any]:
 
 
 @router.post("/workflows/{workflow_id}/run")
-def run_workflow_route(workflow_id: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def run_workflow_route(
+    workflow_id: str, body: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     workflow = store.get_workflow(workflow_id)
     if workflow is None:
         raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
@@ -239,7 +248,9 @@ def run_workflow_route(workflow_id: str, body: Optional[Dict[str, Any]] = None) 
 
 
 @router.post("/workflows/{workflow_id}/execute-stream")
-def execute_stream_route(workflow_id: str, body: Optional[Dict[str, Any]] = None) -> StreamingResponse:
+def execute_stream_route(
+    workflow_id: str, body: Optional[Dict[str, Any]] = None
+) -> StreamingResponse:
     """Server-Sent Events stream: one ``event: node`` per completed node, then ``event: done``."""
     workflow = store.get_workflow(workflow_id)
     if workflow is None:
@@ -290,7 +301,9 @@ def prune_executions_route(body: Optional[Dict[str, Any]] = None) -> Dict[str, A
 def get_execution_route(execution_id: str) -> Dict[str, Any]:
     execution = store.get_execution(execution_id)
     if execution is None:
-        raise HTTPException(status_code=404, detail=f"unknown execution: {execution_id}")
+        raise HTTPException(
+            status_code=404, detail=f"unknown execution: {execution_id}"
+        )
     return execution.to_dict()
 
 

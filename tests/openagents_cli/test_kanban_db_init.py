@@ -32,11 +32,21 @@ def _make_legacy_db(path: Path) -> None:
             PRIMARY KEY (task_id, platform, chat_id, thread_id));
         """
     )
-    conn.execute("INSERT INTO tasks (id, title, status, created_at) VALUES ('task-1', 'T', 'done', 1000)")
-    conn.execute("INSERT INTO task_comments VALUES ('c-1', 'task-1', 'agent', 'hi', 1500)")
-    conn.execute("INSERT INTO task_events VALUES ('e-1', 'task-1', 'completed', NULL, 2000)")
-    conn.execute("INSERT INTO task_events VALUES ('e-2', 'task-1', 'blocked', NULL, 2100)")
-    conn.execute("INSERT INTO task_runs VALUES ('r-1', 'task-1', 'default', 'done', 1000)")
+    conn.execute(
+        "INSERT INTO tasks (id, title, status, created_at) VALUES ('task-1', 'T', 'done', 1000)"
+    )
+    conn.execute(
+        "INSERT INTO task_comments VALUES ('c-1', 'task-1', 'agent', 'hi', 1500)"
+    )
+    conn.execute(
+        "INSERT INTO task_events VALUES ('e-1', 'task-1', 'completed', NULL, 2000)"
+    )
+    conn.execute(
+        "INSERT INTO task_events VALUES ('e-2', 'task-1', 'blocked', NULL, 2100)"
+    )
+    conn.execute(
+        "INSERT INTO task_runs VALUES ('r-1', 'task-1', 'default', 'done', 1000)"
+    )
     conn.execute(
         "INSERT INTO kanban_notify_subs (task_id, platform, chat_id, created_at, last_event_id) "
         "VALUES ('task-1', 'telegram', '123', 1000, 'e-1')"
@@ -110,10 +120,14 @@ def test_legacy_text_pk_tables_rebuilt_to_integer_autoincrement(tmp_path, monkey
 
     with kb.connect(db_path) as conn:
         for table in ("task_events", "task_comments", "task_runs"):
-            id_col = {r["name"]: r for r in conn.execute(f"PRAGMA table_info({table})")}["id"]
+            id_col = {
+                r["name"]: r for r in conn.execute(f"PRAGMA table_info({table})")
+            }["id"]
             assert id_col["type"].upper() == "INTEGER" and id_col["pk"] == 1
 
-        lei = {r["name"]: r for r in conn.execute("PRAGMA table_info(kanban_notify_subs)")}
+        lei = {
+            r["name"]: r for r in conn.execute("PRAGMA table_info(kanban_notify_subs)")
+        }
         assert lei["last_event_id"]["type"].upper() == "INTEGER"
 
         # Data preserved across the rebuild.
@@ -121,17 +135,35 @@ def test_legacy_text_pk_tables_rebuilt_to_integer_autoincrement(tmp_path, monkey
         assert conn.execute("SELECT body FROM task_comments").fetchone()["body"] == "hi"
         assert len(conn.execute("SELECT * FROM task_runs").fetchall()) == 1
         # Non-numeric legacy cursor ("e-1") casts to 0.
-        assert conn.execute("SELECT last_event_id FROM kanban_notify_subs").fetchone()["last_event_id"] == 0
+        assert (
+            conn.execute("SELECT last_event_id FROM kanban_notify_subs").fetchone()[
+                "last_event_id"
+            ]
+            == 0
+        )
 
         # Indexes restored, including idx_events_run (added by the additive pass).
-        indexes = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")}
-        for name in ("idx_events_task", "idx_events_run", "idx_comments_task",
-                     "idx_runs_task", "idx_runs_status", "idx_notify_task"):
+        indexes = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")
+        }
+        for name in (
+            "idx_events_task",
+            "idx_events_run",
+            "idx_comments_task",
+            "idx_runs_task",
+            "idx_runs_status",
+            "idx_notify_task",
+        ):
             assert name in indexes
 
         # AUTOINCREMENT actually works after the rebuild.
-        conn.execute("INSERT INTO task_events (task_id, kind, created_at) VALUES ('task-1', 'completed', 3000)")
-        new_id = conn.execute("SELECT id FROM task_events ORDER BY id DESC LIMIT 1").fetchone()["id"]
+        conn.execute(
+            "INSERT INTO task_events (task_id, kind, created_at) VALUES ('task-1', 'completed', 3000)"
+        )
+        new_id = conn.execute(
+            "SELECT id FROM task_events ORDER BY id DESC LIMIT 1"
+        ).fetchone()["id"]
         assert isinstance(new_id, int) and new_id >= 1
 
 
@@ -145,7 +177,12 @@ def test_rebuilt_schema_matches_fresh_db(tmp_path, monkeypatch):
     kb._INITIALIZED_PATHS.discard(str(fresh_path.resolve()))
 
     with kb.connect(legacy_path) as migrated, kb.connect(fresh_path) as fresh:
-        for table in ("task_events", "task_comments", "task_runs", "kanban_notify_subs"):
+        for table in (
+            "task_events",
+            "task_comments",
+            "task_runs",
+            "kanban_notify_subs",
+        ):
             assert _table_struct(migrated, table) == _table_struct(fresh, table)
 
 
@@ -158,7 +195,9 @@ def test_migration_is_idempotent(tmp_path, monkeypatch):
         pass
     kb._INITIALIZED_PATHS.discard(str(db_path.resolve()))
     with kb.connect(db_path) as conn:
-        id_col = {r["name"]: r for r in conn.execute("PRAGMA table_info(task_events)")}["id"]
+        id_col = {r["name"]: r for r in conn.execute("PRAGMA table_info(task_events)")}[
+            "id"
+        ]
         assert id_col["type"].upper() == "INTEGER"
         assert len(conn.execute("SELECT * FROM task_events").fetchall()) == 2
 

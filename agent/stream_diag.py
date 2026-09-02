@@ -55,7 +55,9 @@ def stream_diag_init() -> Dict[str, Any]:
     }
 
 
-def stream_diag_capture_response(agent: Any, diag: Dict[str, Any], http_response: Any) -> None:
+def stream_diag_capture_response(
+    agent: Any, diag: Dict[str, Any], http_response: Any
+) -> None:
     """Snapshot interesting headers + HTTP status from the live stream.
 
     Called once at stream open (before iterating chunks) so the metadata
@@ -102,9 +104,7 @@ def flatten_exception_chain(error: BaseException) -> str:
         if link in seen:
             break
         seen.append(link)
-        nxt = getattr(link, "__cause__", None) or getattr(
-            link, "__context__", None
-        )
+        nxt = getattr(link, "__cause__", None) or getattr(link, "__context__", None)
         if nxt is None or nxt is link:
             break
         link = nxt
@@ -174,9 +174,7 @@ def log_stream_retry(
                     _ttfb = max(0.0, float(_first) - _started)
                 headers = diag.get("headers") or {}
                 if isinstance(headers, dict) and headers:
-                    _headers_repr = " ".join(
-                        f"{k}={v}" for k, v in headers.items()
-                    )
+                    _headers_repr = " ".join(f"{k}={v}" for k, v in headers.items())
                 if diag.get("http_status") is not None:
                     _http_status = str(diag.get("http_status"))
             except Exception:
@@ -263,8 +261,7 @@ def emit_stream_drop(
             f"— reconnecting, retry {attempt}/{max_attempts}"
         )
         agent._touch_activity(
-            f"stream retry {attempt}/{max_attempts} "
-            f"after {type(error).__name__}"
+            f"stream retry {attempt}/{max_attempts} after {type(error).__name__}"
         )
     except Exception:
         pass

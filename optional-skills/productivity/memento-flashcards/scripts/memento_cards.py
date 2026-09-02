@@ -74,6 +74,7 @@ def _out(obj: object) -> None:
 
 # ── Subcommands ──────────────────────────────────────────────────────────────
 
+
 def cmd_add(args: argparse.Namespace) -> None:
     data = _load()
     now = _now()
@@ -108,7 +109,13 @@ def cmd_add_quiz(args: argparse.Namespace) -> None:
     existing_ids = {c["video_id"] for c in data["cards"] if c.get("video_id")}
     if args.video_id in existing_ids:
         existing = [c for c in data["cards"] if c.get("video_id") == args.video_id]
-        _out({"ok": True, "skipped": True, "reason": "duplicate_video_id", "existing_count": len(existing), "cards": existing})
+        _out({
+            "ok": True,
+            "skipped": True,
+            "reason": "duplicate_video_id",
+            "existing_count": len(existing),
+            "cards": existing,
+        })
         return
 
     created = []
@@ -247,7 +254,11 @@ def cmd_import(args: argparse.Namespace) -> None:
                 continue
             question = row[0].strip()
             answer = row[1].strip()
-            collection = row[2].strip() if len(row) >= 3 and row[2].strip() else (args.collection or "Imported")
+            collection = (
+                row[2].strip()
+                if len(row) >= 3 and row[2].strip()
+                else (args.collection or "Imported")
+            )
             if not question or not answer:
                 continue
             card = {
@@ -292,6 +303,7 @@ def cmd_delete_collection(args: argparse.Namespace) -> None:
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Memento flashcard manager")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -303,7 +315,9 @@ def main() -> None:
 
     p_quiz = sub.add_parser("add-quiz", help="Batch-add quiz cards")
     p_quiz.add_argument("--video-id", required=True)
-    p_quiz.add_argument("--questions", required=True, help="JSON array of {question, answer}")
+    p_quiz.add_argument(
+        "--questions", required=True, help="JSON array of {question, answer}"
+    )
     p_quiz.add_argument("--collection", default="Quiz")
 
     p_due = sub.add_parser("due", help="List due cards")
@@ -311,7 +325,9 @@ def main() -> None:
 
     p_rate = sub.add_parser("rate", help="Rate a card")
     p_rate.add_argument("--id", required=True)
-    p_rate.add_argument("--rating", required=True, choices=["easy", "good", "hard", "retire"])
+    p_rate.add_argument(
+        "--rating", required=True, choices=["easy", "good", "hard", "retire"]
+    )
     p_rate.add_argument("--user-answer", default=None)
 
     p_list = sub.add_parser("list", help="List cards")
@@ -330,7 +346,9 @@ def main() -> None:
     p_del = sub.add_parser("delete", help="Delete one card")
     p_del.add_argument("--id", required=True)
 
-    p_delcol = sub.add_parser("delete-collection", help="Delete all cards in a collection")
+    p_delcol = sub.add_parser(
+        "delete-collection", help="Delete all cards in a collection"
+    )
     p_delcol.add_argument("--collection", required=True)
 
     args = parser.parse_args()

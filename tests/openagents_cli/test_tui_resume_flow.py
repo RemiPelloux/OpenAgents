@@ -129,15 +129,13 @@ def test_cmd_chat_tui_passes_model_and_provider(monkeypatch, main_mod):
         toolsets=None,
         **kwargs,
     ):
-        captured.update(
-            {
-                "model": model,
-                "provider": provider,
-                "resume": resume_session_id,
-                "toolsets": toolsets,
-                "tui_dev": tui_dev,
-            }
-        )
+        captured.update({
+            "model": model,
+            "provider": provider,
+            "resume": resume_session_id,
+            "toolsets": toolsets,
+            "tui_dev": tui_dev,
+        })
         raise SystemExit(0)
 
     monkeypatch.setattr(main_mod, "_launch_tui", fake_launch)
@@ -221,7 +219,9 @@ def test_main_top_level_tui_accepts_toolsets(monkeypatch, main_mod):
 
     import openagents_cli.config as config_mod
 
-    monkeypatch.setattr(sys, "argv", ["openagents", "--tui", "--toolsets", "web,terminal"])
+    monkeypatch.setattr(
+        sys, "argv", ["openagents", "--tui", "--toolsets", "web,terminal"]
+    )
     monkeypatch.setitem(
         sys.modules,
         "openagents_cli.plugins",
@@ -299,9 +299,11 @@ def test_termux_fast_cli_launch_chat_uses_light_parser(monkeypatch, main_mod):
     monkeypatch.setattr(
         main_mod,
         "cmd_chat",
-        lambda args: captured.update(
-            {"query": args.query, "toolsets": args.toolsets, "command": args.command}
-        ),
+        lambda args: captured.update({
+            "query": args.query,
+            "toolsets": args.toolsets,
+            "command": args.command,
+        }),
     )
 
     assert main_mod._try_termux_fast_cli_launch() is True
@@ -328,13 +330,11 @@ def test_termux_fast_cli_launch_bare_defers_agent_startup(monkeypatch, main_mod)
     monkeypatch.setattr(
         main_mod,
         "cmd_chat",
-        lambda args: captured.update(
-            {
-                "query": args.query,
-                "command": args.command,
-                "compact": getattr(args, "compact", False),
-            }
-        ),
+        lambda args: captured.update({
+            "query": args.query,
+            "command": args.command,
+            "compact": getattr(args, "compact", False),
+        }),
     )
 
     assert main_mod._try_termux_fast_cli_launch() is True
@@ -362,9 +362,10 @@ def test_termux_fast_cli_launch_oneshot_uses_light_parser(monkeypatch, main_mod)
         sys.modules,
         "openagents_cli.oneshot",
         types.SimpleNamespace(
-            run_oneshot=lambda prompt, **kwargs: captured.update(
-                {"prompt": prompt, **kwargs}
-            )
+            run_oneshot=lambda prompt, **kwargs: captured.update({
+                "prompt": prompt,
+                **kwargs,
+            })
             or 17
         ),
     )
@@ -389,7 +390,9 @@ def test_termux_fast_cli_launch_version_skips_update_check(monkeypatch, main_mod
     monkeypatch.delenv("HERMES_TUI", raising=False)
     monkeypatch.setattr(sys, "argv", ["openagents", "version"])
     monkeypatch.setattr(
-        main_mod, "_print_version_info", lambda *, check_updates: captured.append(check_updates)
+        main_mod,
+        "_print_version_info",
+        lambda *, check_updates: captured.append(check_updates),
     )
 
     assert main_mod._try_termux_fast_cli_launch() is True
@@ -454,7 +457,9 @@ def test_termux_bundled_skills_stamp_controls_sync(monkeypatch, tmp_path, main_m
     assert main_mod._termux_bundled_skills_sync_needed() is True
 
 
-def test_termux_skips_bundled_skill_sync_when_stamp_fresh(monkeypatch, tmp_path, main_mod):
+def test_termux_skips_bundled_skill_sync_when_stamp_fresh(
+    monkeypatch, tmp_path, main_mod
+):
     calls = []
 
     monkeypatch.setenv("TERMUX_VERSION", "1")
@@ -601,9 +606,10 @@ def test_main_top_level_oneshot_accepts_toolsets(monkeypatch, main_mod):
         sys.modules,
         "openagents_cli.oneshot",
         types.SimpleNamespace(
-            run_oneshot=lambda prompt, **kwargs: captured.update(
-                {"prompt": prompt, **kwargs}
-            )
+            run_oneshot=lambda prompt, **kwargs: captured.update({
+                "prompt": prompt,
+                **kwargs,
+            })
             or 0
         ),
     )
@@ -654,7 +660,9 @@ def test_oneshot_prints_nonempty_final_response(monkeypatch, capsys):
     _stub_plugin_discovery(monkeypatch)
     import openagents_cli.oneshot as oneshot_mod
 
-    monkeypatch.setattr(oneshot_mod, "_run_agent", lambda *_args, **_kwargs: ("done", {}))
+    monkeypatch.setattr(
+        oneshot_mod, "_run_agent", lambda *_args, **_kwargs: ("done", {})
+    )
 
     assert oneshot_mod.run_oneshot("hello") == 0
     captured = capsys.readouterr()
@@ -845,7 +853,11 @@ def test_oneshot_wires_session_db_for_recall(monkeypatch):
         return module
 
     monkeypatch.setitem(sys.modules, "run_agent", mod("run_agent", AIAgent=FakeAgent))
-    monkeypatch.setitem(sys.modules, "openagents_state", mod("openagents_state", SessionDB=FakeSessionDB))
+    monkeypatch.setitem(
+        sys.modules,
+        "openagents_state",
+        mod("openagents_state", SessionDB=FakeSessionDB),
+    )
     monkeypatch.setitem(
         sys.modules,
         "openagents_cli.config",
@@ -854,7 +866,10 @@ def test_oneshot_wires_session_db_for_recall(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "openagents_cli.models",
-        mod("openagents_cli.models", detect_provider_for_model=lambda *_args, **_kwargs: None),
+        mod(
+            "openagents_cli.models",
+            detect_provider_for_model=lambda *_args, **_kwargs: None,
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
@@ -873,7 +888,10 @@ def test_oneshot_wires_session_db_for_recall(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "openagents_cli.tools_config",
-        mod("openagents_cli.tools_config", _get_platform_tools=lambda *_args, **_kwargs: {"session_search"}),
+        mod(
+            "openagents_cli.tools_config",
+            _get_platform_tools=lambda *_args, **_kwargs: {"session_search"},
+        ),
     )
 
     text, result = _run_agent("recall this")
@@ -928,15 +946,13 @@ def test_launch_tui_applies_terminal_backend_config(
     captured = {}
     config_path = Path(os.environ["OPENAGENTS_HOME"]) / "config.yaml"
     config_path.write_text(
-        "\n".join(
-            [
-                "terminal:",
-                "  backend: docker",
-                "  docker_image: example/hermes-tools:latest",
-                "  docker_extra_args:",
-                "    - --network=host",
-            ]
-        ),
+        "\n".join([
+            "terminal:",
+            "  backend: docker",
+            "  docker_image: example/hermes-tools:latest",
+            "  docker_extra_args:",
+            "    - --network=host",
+        ]),
         encoding="utf-8",
     )
     monkeypatch.delenv("TERMINAL_ENV", raising=False)
@@ -1033,7 +1049,9 @@ def test_make_tui_argv_dev_prebuilds_hermes_ink(monkeypatch, main_mod, tmp_path)
     monkeypatch.setattr(main_mod, "_ensure_tui_node", lambda: None)
     monkeypatch.setattr(main_mod, "_tui_need_npm_install", lambda _tui_dir: False)
     monkeypatch.delenv("HERMES_TUI_DIR", raising=False)
-    monkeypatch.setattr(main_mod.shutil, "which", lambda bin_name: f"/usr/bin/{bin_name}")
+    monkeypatch.setattr(
+        main_mod.shutil, "which", lambda bin_name: f"/usr/bin/{bin_name}"
+    )
 
     calls = []
 
@@ -1072,7 +1090,9 @@ def test_print_tui_exit_summary_includes_resume_and_token_totals(monkeypatch, ca
             return None
 
     monkeypatch.setitem(
-        sys.modules, "openagents_state", types.SimpleNamespace(SessionDB=lambda: _FakeDB())
+        sys.modules,
+        "openagents_state",
+        types.SimpleNamespace(SessionDB=lambda: _FakeDB()),
     )
 
     main_mod._print_tui_exit_summary("20260409_000001_abc123")
@@ -1112,7 +1132,9 @@ def test_print_tui_exit_summary_prefers_actual_active_session_file(
     active = tmp_path / "active.json"
     active.write_text('{"session_id":"actual_session"}', encoding="utf-8")
     monkeypatch.setitem(
-        sys.modules, "openagents_state", types.SimpleNamespace(SessionDB=lambda: _FakeDB())
+        sys.modules,
+        "openagents_state",
+        types.SimpleNamespace(SessionDB=lambda: _FakeDB()),
     )
 
     main_mod._print_tui_exit_summary("startup_resume", str(active))

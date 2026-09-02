@@ -109,9 +109,7 @@ ADVISORIES: tuple[Advisory, ...] = (
             "the compromised 2.4.6 is still installed."
         ),
         url="https://socket.dev/blog/mini-shai-hulud-worm-pypi",
-        compromised=(
-            ("mistralai", frozenset({"2.4.6"})),
-        ),
+        compromised=(("mistralai", frozenset({"2.4.6"})),),
         remediation=(
             "Run: pip uninstall -y mistralai  (or: uv pip uninstall mistralai)",
             "Rotate API keys in ~/.openagents/.env (OpenRouter, Anthropic, OpenAI, "
@@ -180,11 +178,13 @@ def detect_compromised(
             if installed is None:
                 continue
             if not bad_versions or installed in bad_versions:
-                hits.append(AdvisoryHit(
-                    advisory=advisory,
-                    package=pkg_name,
-                    installed_version=installed,
-                ))
+                hits.append(
+                    AdvisoryHit(
+                        advisory=advisory,
+                        package=pkg_name,
+                        installed_version=installed,
+                    )
+                )
     return hits
 
 
@@ -208,6 +208,7 @@ def get_acked_ids() -> set[str]:
     """
     try:
         from openagents_cli.config import load_config
+
         cfg = load_config()
     except Exception:
         logger.debug("Could not load config for advisory acks", exc_info=True)
@@ -284,8 +285,11 @@ def short_banner_lines(hits: list[AdvisoryHit]) -> list[str]:
         "  Run 'hermes doctor' for remediation steps.",
     ]
     if len(hits) > 1:
-        lines.insert(1, f"  ({len(hits) - 1} additional advisor"
-                       f"{'ies' if len(hits) > 2 else 'y'} also active.)")
+        lines.insert(
+            1,
+            f"  ({len(hits) - 1} additional advisor"
+            f"{'ies' if len(hits) > 2 else 'y'} also active.)",
+        )
     return lines
 
 
@@ -327,6 +331,7 @@ _BANNER_REPEAT_HOURS = 24
 def _banner_cache_path() -> Optional[Path]:
     try:
         from openagents_constants import get_openagents_home
+
         cache_dir = Path(get_openagents_home()) / "cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir / _BANNER_CACHE_FILE
@@ -445,9 +450,13 @@ def gateway_log_message(hits: list[AdvisoryHit]) -> Optional[str]:
         return None
     if len(fresh) == 1:
         h = fresh[0]
-        return (f"Security advisory [{h.advisory.id}] active: "
-                f"{h.package}=={h.installed_version} matches {h.advisory.title}. "
-                f"See {h.advisory.url}")
-    return (f"{len(fresh)} security advisories active "
-            f"(IDs: {', '.join(h.advisory.id for h in fresh)}). "
-            f"Run `hermes doctor` on the gateway host for details.")
+        return (
+            f"Security advisory [{h.advisory.id}] active: "
+            f"{h.package}=={h.installed_version} matches {h.advisory.title}. "
+            f"See {h.advisory.url}"
+        )
+    return (
+        f"{len(fresh)} security advisories active "
+        f"(IDs: {', '.join(h.advisory.id for h in fresh)}). "
+        f"Run `hermes doctor` on the gateway host for details."
+    )

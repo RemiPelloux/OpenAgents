@@ -33,6 +33,7 @@ from gateway.session_context import (
 # Capability helper
 # ---------------------------------------------------------------------------
 
+
 class TestAsyncDeliverySupported:
     def test_default_unbound_is_supported(self):
         """CLI / cron / unaware paths never bind the var -> supported."""
@@ -90,6 +91,7 @@ class TestAsyncDeliverySupported:
 # Adapter capability flag
 # ---------------------------------------------------------------------------
 
+
 class TestAdapterCapabilityFlag:
     def test_base_default_true(self):
         from gateway.platforms.base import BasePlatformAdapter
@@ -145,6 +147,7 @@ class TestAdapterCapabilityFlag:
 # ---------------------------------------------------------------------------
 # terminal_tool: refuses to register a watcher on unsupported sessions
 # ---------------------------------------------------------------------------
+
 
 class TestTerminalNotifyGate:
     @pytest.fixture(autouse=True)

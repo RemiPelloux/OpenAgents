@@ -44,7 +44,6 @@ from openagents_cli.psutil_android import (
 )
 
 
-
 def _resolve_install_cmd(pip_arg: str | None, prefer_uv: bool) -> list[str]:
     if pip_arg:
         return pip_arg.split()

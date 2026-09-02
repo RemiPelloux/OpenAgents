@@ -47,11 +47,13 @@ def cron_env(tmp_path, monkeypatch):
     # uses. Without this, the tool resolves against the real
     # `~/.openagents/skills/` and our planted skills are invisible.
     import tools.skills_tool as _skills_tool
+
     monkeypatch.setattr(_skills_tool, "SKILLS_DIR", skills_dir)
     monkeypatch.setattr(_skills_tool, "OPENAGENTS_HOME", hermes_home)
 
     # Reset bundle cache and make bundle discovery hit this test home.
     import agent.skill_bundles as _skill_bundles
+
     _skill_bundles._bundles_cache = {}
     _skill_bundles._bundles_cache_mtime = None
 
@@ -59,6 +61,7 @@ def cron_env(tmp_path, monkeypatch):
     # CURRENT module object (post any reload that happened in fixtures of
     # previously-executed tests in the same worker).
     import cron.scheduler as _scheduler
+
     return hermes_home, _scheduler
 
 
@@ -72,7 +75,9 @@ def _plant_skill(hermes_home: Path, name: str, body: str) -> None:
     )
 
 
-def _plant_bundle(hermes_home: Path, name: str, skills: list[str], instruction: str = "") -> None:
+def _plant_bundle(
+    hermes_home: Path, name: str, skills: list[str], instruction: str = ""
+) -> None:
     """Drop a bundle YAML into ~/.openagents/skill-bundles/ and refresh cache."""
     bundles_dir = hermes_home / "skill-bundles"
     bundles_dir.mkdir(parents=True, exist_ok=True)
@@ -83,6 +88,7 @@ def _plant_bundle(hermes_home: Path, name: str, skills: list[str], instruction: 
         lines.extend(f"  {line}" for line in instruction.splitlines())
     (bundles_dir / f"{name}.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
     import agent.skill_bundles as _skill_bundles
+
     _skill_bundles.scan_bundles()
 
 
@@ -135,7 +141,9 @@ class TestScanAssembledCronPrompt:
 class TestBuildJobPromptScansSkillContent:
     def test_clean_skill_builds_normally(self, cron_env):
         hermes_home, scheduler = cron_env
-        _plant_skill(hermes_home, "news-digest", "Fetch the top 5 headlines and summarize.")
+        _plant_skill(
+            hermes_home, "news-digest", "Fetch the top 5 headlines and summarize."
+        )
 
         job = {
             "id": "job-1",
@@ -304,7 +312,9 @@ class TestBuildJobPromptScansSkillContent:
 
     def test_bundle_name_shadows_skill_name_for_cron_jobs(self, cron_env):
         hermes_home, scheduler = cron_env
-        _plant_skill(hermes_home, "article-pipeline", "Standalone skill should not win.")
+        _plant_skill(
+            hermes_home, "article-pipeline", "Standalone skill should not win."
+        )
         _plant_skill(hermes_home, "bundle-member", "Bundle member should win.")
         _plant_bundle(hermes_home, "article-pipeline", ["bundle-member"])
 
@@ -416,10 +426,13 @@ class TestScriptOutputNotStrictScanned:
         assert "\u200b" not in prompt
         assert "item oneitem two" in prompt
 
-    def test_command_shapes_in_context_from_output_not_blocked(self, cron_env, monkeypatch):
+    def test_command_shapes_in_context_from_output_not_blocked(
+        self, cron_env, monkeypatch
+    ):
         """context_from injects a prior job's output — also runtime data."""
         hermes_home, scheduler = cron_env
         import cron.jobs as cron_jobs
+
         output_root = hermes_home / "cron" / "output"
         monkeypatch.setattr(cron_jobs, "OUTPUT_DIR", output_root)
         upstream_dir = output_root / "abcdef123456"

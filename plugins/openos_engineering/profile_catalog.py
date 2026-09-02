@@ -29,7 +29,12 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "brain_researcher": {
         "description": "Brain researcher \u2014 RAG, missions, docs",
         "toolsets": ["mcp"],
-        "skills": ["open-brain", "open-brain-orchestrator", "open-generic", "open-ecosystem-hub"],
+        "skills": [
+            "open-brain",
+            "open-brain-orchestrator",
+            "open-generic",
+            "open-ecosystem-hub",
+        ],
         "mcp_servers": ["openorchestrator"],
         "soul": (
             "You query OpenBrain for validated context. Cite domain:openos for mesh specs."
@@ -47,7 +52,12 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "contract_officer": {
         "description": "Contract officer \u2014 CC-* registry and envelopes",
         "toolsets": ["mcp"],
-        "skills": ["open-contract", "open-mesh-wiring", "open-ecosystem-hub", "open-generic"],
+        "skills": [
+            "open-contract",
+            "open-mesh-wiring",
+            "open-ecosystem-hub",
+            "open-generic",
+        ],
         "mcp_servers": ["openorchestrator"],
         "soul": (
             "You own OpenContract step 0. No hop ships without CC-* and verified envelope."
@@ -74,7 +84,14 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "developer": {
         "description": "Developer \u2014 implements tickets via OpenCode",
         "toolsets": ["skills", "openos_engineering"],
-        "skills": ["open-code", "open-ticket", "open-dev-workflow", "open-mesh-wiring", "openprotocol-coder", "open-generic"],
+        "skills": [
+            "open-code",
+            "open-ticket",
+            "open-dev-workflow",
+            "open-mesh-wiring",
+            "openprotocol-coder",
+            "open-generic",
+        ],
         "mcp_servers": [],
         "soul": (
             "You are the Developer. Load openprotocol-coder, create the correlated OpenTicket record, then invoke_opencode for all repository inspection, edits, tests, and commits. Never use terminal, execute_code, or direct file tools for engineering work. Return the ticket ID, OpenCode session, test evidence, agent branch, and commit SHA."
@@ -92,7 +109,13 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "mesh_engineer": {
         "description": "Mesh engineer \u2014 CC-*, wiring, MCP scaffold",
         "toolsets": ["delegation", "terminal", "mcp", "openos_engineering"],
-        "skills": ["open-mesh-wiring", "open-contract", "open-mcp-scaffold", "open-rec", "open-generic"],
+        "skills": [
+            "open-mesh-wiring",
+            "open-contract",
+            "open-mcp-scaffold",
+            "open-rec",
+            "open-generic",
+        ],
         "mcp_servers": ["openorchestrator", "openticket"],
         "soul": (
             "You wire mesh hops: register CC-* first, envelope on every hop, MCP+REST parity."
@@ -101,7 +124,13 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "mobile_engineer": {
         "description": "Mobile engineer \u2014 OpenPro Flutter",
         "toolsets": ["delegation", "terminal", "openos_engineering"],
-        "skills": ["open-pro", "open-code", "open-dev-workflow", "openprotocol-coder", "open-generic"],
+        "skills": [
+            "open-pro",
+            "open-code",
+            "open-dev-workflow",
+            "openprotocol-coder",
+            "open-generic",
+        ],
         "mcp_servers": ["openticket"],
         "soul": (
             "You implement OpenPro mobile changes via invoke_opencode on agent branches."
@@ -110,7 +139,12 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "planner": {
         "description": "Planner \u2014 decomposes objectives into orchestrated steps",
         "toolsets": ["delegation", "mcp", "openos_engineering"],
-        "skills": ["open-orchestrator-plan", "open-orchestrator-ops", "open-ecosystem-hub", "open-ticket-optimize"],
+        "skills": [
+            "open-orchestrator-plan",
+            "open-orchestrator-ops",
+            "open-ecosystem-hub",
+            "open-ticket-optimize",
+        ],
         "mcp_servers": ["openorchestrator", "openticket"],
         "soul": (
             "You are the OpenOrchestrator planner. Decompose with open-orchestrator-ops gates. Before any create_ticket, load open-ticket-optimize (Ticket Prompt Optimizer). Return JSON only when decomposing."
@@ -119,7 +153,13 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "product_owner": {
         "description": "Product Owner \u2014 tickets and acceptance criteria",
         "toolsets": ["delegation", "mcp", "openos_engineering"],
-        "skills": ["open-ticket", "open-ticket-optimize", "open-dev-workflow", "open-contract", "open-ecosystem-hub"],
+        "skills": [
+            "open-ticket",
+            "open-ticket-optimize",
+            "open-dev-workflow",
+            "open-contract",
+            "open-ecosystem-hub",
+        ],
         "mcp_servers": ["openticket", "openorchestrator"],
         "soul": (
             "You are the Product Owner. Always load open-ticket-optimize (Ticket Prompt Optimizer) before create_ticket \u2014 rewrite rough asks into structured Task/Context/Complexity/Outcome/Keywords/Verification stories with testable AC. Do not write code \u2014 delegate to the right assignee profile."
@@ -128,7 +168,14 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "qa": {
         "description": "QA integrator \u2014 verify and squash merge",
         "toolsets": ["skills", "openos_engineering"],
-        "skills": ["open-code", "open-ticket", "open-dev-workflow", "open-qa", "openprotocol-integrator", "open-generic"],
+        "skills": [
+            "open-code",
+            "open-ticket",
+            "open-dev-workflow",
+            "open-qa",
+            "openprotocol-integrator",
+            "open-generic",
+        ],
         "mcp_servers": ["openticket"],
         "soul": (
             "You are QA. Load open-qa for AC sign-off, then invoke_opencode with the correlated ticket in review mode for all repository inspection and tests. Never inspect or test the source checkout directly. Only set the ticket to done after OpenCode returns passing evidence; merge only when the task explicitly requests integration."
@@ -146,7 +193,12 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "sales": {
         "description": "Sales \u2014 CRM follow-up and outreach",
         "toolsets": ["delegation", "mcp"],
-        "skills": ["opencrm-sales-followup", "open-creative", "open-generic", "open-ecosystem-hub"],
+        "skills": [
+            "opencrm-sales-followup",
+            "open-creative",
+            "open-generic",
+            "open-ecosystem-hub",
+        ],
         "mcp_servers": ["opencrm"],
         "soul": (
             "You run staged CRM updates and outreach drafts. External sends need approval."
@@ -155,7 +207,13 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "security": {
         "description": "Security analyst \u2014 findings to tickets",
         "toolsets": ["delegation", "mcp"],
-        "skills": ["open-sec", "open-ticket", "open-contract", "open-ecosystem-hub", "open-generic"],
+        "skills": [
+            "open-sec",
+            "open-ticket",
+            "open-contract",
+            "open-ecosystem-hub",
+            "open-generic",
+        ],
         "mcp_servers": ["openticket"],
         "soul": (
             "You triage OpenSec findings into OpenTicket with correlation IDs. No prod deploys."
@@ -164,7 +222,13 @@ PROFILE_SPECS: Dict[str, Dict[str, Any]] = {
     "skill_author": {
         "description": "Skill Author \u2014 org skill patches on mesh gaps",
         "toolsets": ["skills", "web", "mcp"],
-        "skills": ["open-orchestrator-plan", "open-orchestrator-ops", "open-mesh-wiring", "open-mcp-scaffold", "open-brain"],
+        "skills": [
+            "open-orchestrator-plan",
+            "open-orchestrator-ops",
+            "open-mesh-wiring",
+            "open-mcp-scaffold",
+            "open-brain",
+        ],
         "mcp_servers": ["openorchestrator"],
         "soul": (
             "You author org-scoped skills only after an approved gap. Research with real web_search and web_extract tools, cite at least two independent authoritative HTTPS sources, return the requested strict JSON, and never modify bundled OpenOS skills or claim activation."

@@ -10,11 +10,19 @@ The first test characterizes the sequence as driven through `tick()` (proving
 the extraction didn't change `tick`'s behavior); the rest unit-test the
 extracted helper directly.
 """
+
 import cron.scheduler as s
 
 
-def _patch_pipeline(monkeypatch, *, success=True, output="out", final="final response",
-                    error=None, silent_marker_in=None):
+def _patch_pipeline(
+    monkeypatch,
+    *,
+    success=True,
+    output="out",
+    final="final response",
+    error=None,
+    silent_marker_in=None,
+):
     """Patch the job pipeline primitives and record the call order."""
     calls = []
 
@@ -103,13 +111,15 @@ def test_run_one_job_failed_job_delivers_error(monkeypatch):
 def test_run_one_job_exception_marks_failure(monkeypatch):
     """If run_job raises, the helper marks the run failed and returns False
     rather than propagating."""
+
     def boom(job):
         raise RuntimeError("kaboom")
 
     monkeypatch.setattr(s, "run_job", boom)
     marks = []
     monkeypatch.setattr(
-        s, "mark_job_run",
+        s,
+        "mark_job_run",
         lambda jid, ok, err=None, delivery_error=None: marks.append((jid, ok)),
     )
 

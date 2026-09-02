@@ -19,6 +19,7 @@ The fix:
 
 These tests pin the corrected behavior.
 """
+
 import asyncio
 import time
 from datetime import datetime, timezone
@@ -77,15 +78,19 @@ def test_minimax_login_does_not_launch_anthropic_flow():
         "interval": 2000,
         "state": "stub-state",
     }
-    with patch(
-        "openagents_cli.auth._minimax_request_user_code",
-        return_value=fake_user_code_resp,
-    ), patch(
-        "openagents_cli.auth._minimax_pkce_pair",
-        return_value=("verifier-stub", "challenge-stub", "stub-state"),
-    ), patch(
-        "openagents_cli.web_server._minimax_poller",
-        return_value=None,
+    with (
+        patch(
+            "openagents_cli.auth._minimax_request_user_code",
+            return_value=fake_user_code_resp,
+        ),
+        patch(
+            "openagents_cli.auth._minimax_pkce_pair",
+            return_value=("verifier-stub", "challenge-stub", "stub-state"),
+        ),
+        patch(
+            "openagents_cli.web_server._minimax_poller",
+            return_value=None,
+        ),
     ):
         resp = client.post(
             "/api/providers/oauth/minimax-oauth/start",
@@ -145,14 +150,16 @@ def test_oauth_provider_status_uses_profile_query(tmp_path, monkeypatch):
         observed_homes.append(get_openagents_home())
         return {"logged_in": False, "source": None}
 
-    fake_catalog = ({
-        "id": "fake-oauth",
-        "name": "Fake OAuth",
-        "flow": "pkce",
-        "cli_command": "hermes auth add fake-oauth",
-        "docs_url": "https://example.com",
-        "status_fn": fake_status,
-    },)
+    fake_catalog = (
+        {
+            "id": "fake-oauth",
+            "name": "Fake OAuth",
+            "flow": "pkce",
+            "cli_command": "hermes auth add fake-oauth",
+            "docs_url": "https://example.com",
+            "status_fn": fake_status,
+        },
+    )
     monkeypatch.setattr(ws, "_OAUTH_PROVIDER_CATALOG", fake_catalog)
 
     resp = client.get("/api/providers/oauth?profile=coder", headers=HEADERS)
@@ -172,15 +179,19 @@ def test_oauth_start_stores_profile_for_background_completion(tmp_path, monkeypa
         "interval": 2000,
         "state": "stub-state",
     }
-    with patch(
-        "openagents_cli.auth._minimax_request_user_code",
-        return_value=fake_user_code_resp,
-    ), patch(
-        "openagents_cli.auth._minimax_pkce_pair",
-        return_value=("verifier-stub", "challenge-stub", "stub-state"),
-    ), patch(
-        "openagents_cli.web_server._minimax_poller",
-        return_value=None,
+    with (
+        patch(
+            "openagents_cli.auth._minimax_request_user_code",
+            return_value=fake_user_code_resp,
+        ),
+        patch(
+            "openagents_cli.auth._minimax_pkce_pair",
+            return_value=("verifier-stub", "challenge-stub", "stub-state"),
+        ),
+        patch(
+            "openagents_cli.web_server._minimax_poller",
+            return_value=None,
+        ),
     ):
         resp = client.post(
             "/api/providers/oauth/minimax-oauth/start?profile=coder",
@@ -195,7 +206,9 @@ def test_oauth_start_stores_profile_for_background_completion(tmp_path, monkeypa
         ws._oauth_sessions.pop(session_id, None)
 
 
-def test_nous_dashboard_device_flow_does_not_retry_legacy_scope_on_invoke_refusal(monkeypatch):
+def test_nous_dashboard_device_flow_does_not_retry_legacy_scope_on_invoke_refusal(
+    monkeypatch,
+):
     from openagents_cli import auth as auth_mod
     from openagents_cli import web_server as ws
 
@@ -241,20 +254,29 @@ def test_codex_dashboard_worker_persists_runtime_provider(tmp_path, monkeypatch)
 
         def post(self, url, **kwargs):
             if url.endswith("/deviceauth/usercode"):
-                return _Resp(200, {
-                    "device_auth_id": "device-auth-id",
-                    "interval": 3,
-                    "user_code": "CODEX-1234",
-                })
+                return _Resp(
+                    200,
+                    {
+                        "device_auth_id": "device-auth-id",
+                        "interval": 3,
+                        "user_code": "CODEX-1234",
+                    },
+                )
             if url.endswith("/deviceauth/token"):
-                return _Resp(200, {
-                    "authorization_code": "authorization-code",
-                    "code_verifier": "code-verifier",
-                })
-            return _Resp(200, {
-                "access_token": access_token,
-                "refresh_token": "codex-refresh",
-            })
+                return _Resp(
+                    200,
+                    {
+                        "authorization_code": "authorization-code",
+                        "code_verifier": "code-verifier",
+                    },
+                )
+            return _Resp(
+                200,
+                {
+                    "access_token": access_token,
+                    "refresh_token": "codex-refresh",
+                },
+            )
 
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
     monkeypatch.setattr(httpx, "Client", _Client)
@@ -302,20 +324,29 @@ def test_codex_dashboard_worker_persists_inside_session_profile(tmp_path, monkey
 
         def post(self, url, **kwargs):
             if url.endswith("/deviceauth/usercode"):
-                return _Resp(200, {
-                    "device_auth_id": "device-auth-id",
-                    "interval": 3,
-                    "user_code": "CODEX-1234",
-                })
+                return _Resp(
+                    200,
+                    {
+                        "device_auth_id": "device-auth-id",
+                        "interval": 3,
+                        "user_code": "CODEX-1234",
+                    },
+                )
             if url.endswith("/deviceauth/token"):
-                return _Resp(200, {
-                    "authorization_code": "authorization-code",
-                    "code_verifier": "code-verifier",
-                })
-            return _Resp(200, {
-                "access_token": "codex-access",
-                "refresh_token": "codex-refresh",
-            })
+                return _Resp(
+                    200,
+                    {
+                        "authorization_code": "authorization-code",
+                        "code_verifier": "code-verifier",
+                    },
+                )
+            return _Resp(
+                200,
+                {
+                    "access_token": "codex-access",
+                    "refresh_token": "codex-refresh",
+                },
+            )
 
     saved_homes = []
     monkeypatch.setattr(httpx, "Client", _Client)
@@ -340,7 +371,9 @@ def test_codex_dashboard_worker_persists_inside_session_profile(tmp_path, monkey
         ws._oauth_sessions.pop(sid, None)
 
 
-def test_nous_dashboard_poller_preserves_effective_scope_when_token_omits_scope(monkeypatch):
+def test_nous_dashboard_poller_preserves_effective_scope_when_token_omits_scope(
+    monkeypatch,
+):
     from openagents_cli import auth as auth_mod
     from openagents_cli import web_server as ws
 
@@ -415,18 +448,21 @@ def test_minimax_dashboard_poller_accepts_absolute_ms_expired_in():
     captured_state = {}
 
     try:
-        with patch(
-            "openagents_cli.auth._minimax_poll_token",
-            return_value={
-                "status": "success",
-                "access_token": "access",
-                "refresh_token": "refresh",
-                "expired_in": abs_ms,
-                "token_type": "Bearer",
-            },
-        ), patch(
-            "openagents_cli.auth._minimax_save_auth_state",
-            side_effect=lambda state: captured_state.update(state),
+        with (
+            patch(
+                "openagents_cli.auth._minimax_poll_token",
+                return_value={
+                    "status": "success",
+                    "access_token": "access",
+                    "refresh_token": "refresh",
+                    "expired_in": abs_ms,
+                    "token_type": "Bearer",
+                },
+            ),
+            patch(
+                "openagents_cli.auth._minimax_save_auth_state",
+                side_effect=lambda state: captured_state.update(state),
+            ),
         ):
             ws._minimax_poller(session_id)
     finally:
@@ -550,7 +586,10 @@ def test_env_sourced_oauth_status_is_not_disconnectable(monkeypatch):
 
     assert providers["anthropic"]["status"]["source"] == "env_var"
     assert providers["anthropic"]["disconnectable"] is False
-    assert providers["anthropic"]["disconnect_hint"] == "Remove the API key from Settings → Keys instead."
+    assert (
+        providers["anthropic"]["disconnect_hint"]
+        == "Remove the API key from Settings → Keys instead."
+    )
 
     delete_resp = client.delete("/api/providers/oauth/anthropic", headers=HEADERS)
     assert delete_resp.status_code == 400, delete_resp.text
@@ -589,7 +628,12 @@ def test_xai_loopback_start_returns_authorize_url(monkeypatch):
     monkeypatch.setattr(
         auth_mod,
         "_xai_start_callback_server",
-        lambda *a, **k: (_FakeServer(), _FakeThread(), {"code": None, "error": None}, redirect_uri),
+        lambda *a, **k: (
+            _FakeServer(),
+            _FakeThread(),
+            {"code": None, "error": None},
+            redirect_uri,
+        ),
     )
     # Don't let the background worker run a real callback wait/exchange.
     monkeypatch.setattr(ws, "_xai_loopback_worker", lambda sid: None)
@@ -864,7 +908,10 @@ def test_status_falls_through_to_generic_dispatcher_for_catalog_only_provider():
     assert out["source"] == "some-future-oauth"
     assert out["source_label"] == "Future OAuth Provider"
     # Token is previewed, never returned whole.
-    assert out["token_preview"] and "sk-future-secret-token-xyz" not in out["token_preview"]
+    assert (
+        out["token_preview"]
+        and "sk-future-secret-token-xyz" not in out["token_preview"]
+    )
     assert out["expires_at"] == "2026-12-01T00:00:00Z"
     assert out["has_refresh_token"] is True
 
@@ -886,6 +933,8 @@ def test_status_unknown_provider_degrades_to_logged_out():
     """A provider the generic dispatcher can't resolve stays logged-out cleanly."""
     import openagents_cli.web_server as ws
 
-    with patch("openagents_cli.auth.get_auth_status", return_value={"logged_in": False}):
+    with patch(
+        "openagents_cli.auth.get_auth_status", return_value={"logged_in": False}
+    ):
         out = ws._resolve_provider_status("totally-unknown", None)
     assert out["logged_in"] is False

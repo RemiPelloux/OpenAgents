@@ -5,12 +5,16 @@ from __future__ import annotations
 import os
 import io
 import json
+import sys
+from contextlib import nullcontext
 from unittest.mock import patch
 
 import pytest
 
 from plugins.openos_engineering import rec_outbox_common as common
 from plugins.openos_engineering import rec_outbox as facade
+from plugins.openos_engineering import rec_client
+from plugins.openos_engineering import rec_pg_outbox
 from openagentui import rec_outbox as ui_outbox
 
 
@@ -38,6 +42,60 @@ def test_enqueue_uses_dev_file_when_flag_set(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(facade, "enqueue_file_outbox", fake_enqueue)
     facade.enqueue_rec_event({"event_type": "test.event", "correlation_id": "c1"})
     assert len(called) == 1
+
+
+def test_rec_event_is_enqueued_while_openrec_is_unavailable(monkeypatch) -> None:
+    monkeypatch.delenv("OPENREC_URL", raising=False)
+    enqueued: list[dict] = []
+    monkeypatch.setattr(rec_client, "enqueue_rec_event", enqueued.append)
+    monkeypatch.setattr(rec_client, "drain_rec_outbox", lambda max_items: 0)
+
+    rec_client.emit_rec_event(
+        "run.completed",
+        {"status": "completed"},
+        correlation_id="corr-1",
+        agent_run_id="run-1",
+    )
+
+    assert len(enqueued) == 1
+    assert enqueued[0]["type"] == "run.completed"
+    assert enqueued[0]["agent_run_id"] == "run-1"
+
+
+def test_pg_outbox_recovers_stale_claims_before_claiming(monkeypatch) -> None:
+    statements: list[str] = []
+
+    class Cursor:
+        def execute(self, statement, _params=()) -> None:
+            statements.append(" ".join(statement.split()))
+
+        def fetchall(self) -> list:
+            return []
+
+    class Connection:
+        autocommit = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def cursor(self):
+            return nullcontext(Cursor())
+
+        def commit(self) -> None:
+            return None
+
+    fake_psycopg = type("FakePsycopg", (), {"connect": staticmethod(lambda _url: Connection())})
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+    monkeypatch.setenv("OPENAGENTS_OUTBOX_DATABASE_URL", "postgres://outbox")
+    monkeypatch.setenv("OPENREC_URL", "http://openrec:3030")
+
+    assert rec_pg_outbox.drain_pg_outbox() == 0
+    assert "status = CASE WHEN attempts >= max_attempts THEN 'dead_letter'" in statements[0]
+    assert "AND status = 'pending'" in statements[1]
+    assert "OR (status = 'processing'" not in statements[1]
 
 
 def test_openrec_oauth_token_is_bound_to_audience_scope_and_org() -> None:

@@ -16,6 +16,7 @@ import os
 # OLLAMA_API_KEY credential resolution
 # ---------------------------------------------------------------------------
 
+
 class TestOllamaCloudCredentials:
     """runtime_provider should use OLLAMA_API_KEY for ollama.com endpoints."""
 
@@ -39,6 +40,7 @@ class TestOllamaCloudCredentials:
         )
 
         from openagents_cli.runtime_provider import resolve_runtime_provider
+
         runtime = resolve_runtime_provider(requested="custom")
 
         assert runtime["base_url"] == "https://ollama.com/v1"
@@ -63,6 +65,7 @@ class TestOllamaCloudCredentials:
         )
 
         from openagents_cli.runtime_provider import resolve_runtime_provider
+
         runtime = resolve_runtime_provider(requested="custom")
 
         # Should fall through to no-key-required for local endpoints
@@ -72,6 +75,7 @@ class TestOllamaCloudCredentials:
 # ---------------------------------------------------------------------------
 # Direct alias resolution
 # ---------------------------------------------------------------------------
+
 
 class TestDirectAliases:
     """model_switch direct aliases from config.yaml model_aliases."""
@@ -93,6 +97,7 @@ class TestDirectAliases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
 
         assert "mymodel" in aliases
@@ -154,6 +159,7 @@ class TestDirectAliases:
 # /model command persistence
 # ---------------------------------------------------------------------------
 
+
 class TestModelSwitchPersistence:
     """CLI /model command should update requested_provider for session persistence."""
 
@@ -182,6 +188,7 @@ class TestModelSwitchPersistence:
 # Fallback base_url passthrough
 # ---------------------------------------------------------------------------
 
+
 class TestFallbackBaseUrlPassthrough:
     """_try_activate_fallback should pass base_url from fallback config."""
 
@@ -208,7 +215,11 @@ class TestFallbackBaseUrlPassthrough:
         fb_base_url_hint = (fb.get("base_url") or "").strip() or None
         fb_api_key_hint = (fb.get("api_key") or "").strip() or None
 
-        if fb_base_url_hint and "ollama.com" in fb_base_url_hint.lower() and not fb_api_key_hint:
+        if (
+            fb_base_url_hint
+            and "ollama.com" in fb_base_url_hint.lower()
+            and not fb_api_key_hint
+        ):
             fb_api_key_hint = os.getenv("OLLAMA_API_KEY") or None
 
         assert fb_api_key_hint == "fb-ollama-key"
@@ -218,6 +229,7 @@ class TestFallbackBaseUrlPassthrough:
 # ---------------------------------------------------------------------------
 # Edge cases: _load_direct_aliases
 # ---------------------------------------------------------------------------
+
 
 class TestLoadDirectAliasesEdgeCases:
     """Edge cases for _load_direct_aliases parsing."""
@@ -231,6 +243,7 @@ class TestLoadDirectAliasesEdgeCases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
         assert isinstance(aliases, dict)
 
@@ -243,6 +256,7 @@ class TestLoadDirectAliasesEdgeCases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
         assert isinstance(aliases, dict)
 
@@ -255,6 +269,7 @@ class TestLoadDirectAliasesEdgeCases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
         assert isinstance(aliases, dict)
 
@@ -278,6 +293,7 @@ class TestLoadDirectAliasesEdgeCases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
         assert "bad_entry" not in aliases
         assert "good_entry" in aliases
@@ -298,6 +314,7 @@ class TestLoadDirectAliasesEdgeCases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
         assert "string_entry" not in aliases
         assert "none_entry" not in aliases
@@ -312,6 +329,7 @@ class TestLoadDirectAliasesEdgeCases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
         assert isinstance(aliases, dict)
 
@@ -331,6 +349,7 @@ class TestLoadDirectAliasesEdgeCases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
         assert "mymodel" in aliases
         assert "  MyModel  " not in aliases
@@ -349,6 +368,7 @@ class TestLoadDirectAliasesEdgeCases:
         )
 
         from openagents_cli.model_switch import _load_direct_aliases
+
         aliases = _load_direct_aliases()
         assert "empty" not in aliases
         assert "good" in aliases
@@ -357,6 +377,7 @@ class TestLoadDirectAliasesEdgeCases:
 # ---------------------------------------------------------------------------
 # _ensure_direct_aliases idempotency
 # ---------------------------------------------------------------------------
+
 
 class TestEnsureDirectAliases:
     """_ensure_direct_aliases lazy-loading behavior."""
@@ -388,9 +409,11 @@ class TestEnsureDirectAliases:
 
         call_count = [0]
         original_load = ms._load_direct_aliases
+
         def counting_load():
             call_count[0] += 1
             return original_load()
+
         monkeypatch.setattr(ms, "_load_direct_aliases", counting_load)
 
         ms._ensure_direct_aliases()
@@ -402,12 +425,14 @@ class TestEnsureDirectAliases:
 # resolve_alias: fallthrough and edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestResolveAliasEdgeCases:
     """Edge cases for resolve_alias."""
 
     def test_unknown_alias_returns_none(self, monkeypatch):
         """Unknown alias not in direct or catalog returns None."""
         import openagents_cli.model_switch as ms
+
         monkeypatch.setattr(ms, "DIRECT_ALIASES", {})
 
         result = ms.resolve_alias("nonexistent_model_xyz", "openrouter")
@@ -432,6 +457,7 @@ class TestResolveAliasEdgeCases:
 # switch_model: direct alias base_url override
 # ---------------------------------------------------------------------------
 
+
 class TestSwitchModelDirectAliasOverride:
     """switch_model should use base_url from direct alias."""
 
@@ -445,18 +471,33 @@ class TestSwitchModelDirectAliasOverride:
         }
         monkeypatch.setattr(ms, "DIRECT_ALIASES", test_aliases)
 
-        monkeypatch.setattr(ms, "resolve_alias",
-            lambda raw, prov: ("custom", "qwen3.5:397b", "qwen"))
+        monkeypatch.setattr(
+            ms, "resolve_alias", lambda raw, prov: ("custom", "qwen3.5:397b", "qwen")
+        )
 
         monkeypatch.setattr(
             "openagents_cli.runtime_provider.resolve_runtime_provider",
-            lambda **kwargs: {"api_key": "", "base_url": "", "api_mode": "openai_compat", "provider": "custom"},
+            lambda **kwargs: {
+                "api_key": "",
+                "base_url": "",
+                "api_mode": "openai_compat",
+                "provider": "custom",
+            },
         )
 
-        monkeypatch.setattr("openagents_cli.models.validate_requested_model",
-            lambda *a, **kw: {"accepted": True, "persist": True, "recognized": True, "message": None})
-        monkeypatch.setattr("openagents_cli.models.opencode_model_api_mode",
-            lambda *a, **kw: "openai_compat")
+        monkeypatch.setattr(
+            "openagents_cli.models.validate_requested_model",
+            lambda *a, **kw: {
+                "accepted": True,
+                "persist": True,
+                "recognized": True,
+                "message": None,
+            },
+        )
+        monkeypatch.setattr(
+            "openagents_cli.models.opencode_model_api_mode",
+            lambda *a, **kw: "openai_compat",
+        )
 
         result = ms.switch_model("qwen", "openrouter", "old-model")
         assert result.success
@@ -472,16 +513,31 @@ class TestSwitchModelDirectAliasOverride:
             "local": DirectAlias("local-model", "custom", "http://localhost:11434/v1"),
         }
         monkeypatch.setattr(ms, "DIRECT_ALIASES", test_aliases)
-        monkeypatch.setattr(ms, "resolve_alias",
-            lambda raw, prov: ("custom", "local-model", "local"))
+        monkeypatch.setattr(
+            ms, "resolve_alias", lambda raw, prov: ("custom", "local-model", "local")
+        )
         monkeypatch.setattr(
             "openagents_cli.runtime_provider.resolve_runtime_provider",
-            lambda **kwargs: {"api_key": "", "base_url": "", "api_mode": "openai_compat", "provider": "custom"},
+            lambda **kwargs: {
+                "api_key": "",
+                "base_url": "",
+                "api_mode": "openai_compat",
+                "provider": "custom",
+            },
         )
-        monkeypatch.setattr("openagents_cli.models.validate_requested_model",
-            lambda *a, **kw: {"accepted": True, "persist": True, "recognized": True, "message": None})
-        monkeypatch.setattr("openagents_cli.models.opencode_model_api_mode",
-            lambda *a, **kw: "openai_compat")
+        monkeypatch.setattr(
+            "openagents_cli.models.validate_requested_model",
+            lambda *a, **kw: {
+                "accepted": True,
+                "persist": True,
+                "recognized": True,
+                "message": None,
+            },
+        )
+        monkeypatch.setattr(
+            "openagents_cli.models.opencode_model_api_mode",
+            lambda *a, **kw: "openai_compat",
+        )
 
         result = ms.switch_model("local", "openrouter", "old-model")
         assert result.success
@@ -492,6 +548,7 @@ class TestSwitchModelDirectAliasOverride:
 # ---------------------------------------------------------------------------
 # CLI state update: requested_provider persistence
 # ---------------------------------------------------------------------------
+
 
 class TestCLIStateUpdate:
     """CLI /model handler should update requested_provider and explicit fields."""
@@ -533,6 +590,7 @@ class TestCLIStateUpdate:
 # Fallback: OLLAMA_API_KEY edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestFallbackEdgeCases:
     """Edge cases for fallback OLLAMA_API_KEY logic."""
 
@@ -549,7 +607,11 @@ class TestFallbackEdgeCases:
         fb_base_url_hint = (fb.get("base_url") or "").strip() or None
         fb_api_key_hint = (fb.get("api_key") or "").strip() or None
 
-        if fb_base_url_hint and "ollama.com" in fb_base_url_hint.lower() and not fb_api_key_hint:
+        if (
+            fb_base_url_hint
+            and "ollama.com" in fb_base_url_hint.lower()
+            and not fb_api_key_hint
+        ):
             fb_api_key_hint = os.getenv("OLLAMA_API_KEY") or None
 
         assert fb_api_key_hint is None
@@ -568,7 +630,11 @@ class TestFallbackEdgeCases:
         fb_base_url_hint = (fb.get("base_url") or "").strip() or None
         fb_api_key_hint = (fb.get("api_key") or "").strip() or None
 
-        if fb_base_url_hint and "ollama.com" in fb_base_url_hint.lower() and not fb_api_key_hint:
+        if (
+            fb_base_url_hint
+            and "ollama.com" in fb_base_url_hint.lower()
+            and not fb_api_key_hint
+        ):
             fb_api_key_hint = os.getenv("OLLAMA_API_KEY") or None
 
         assert fb_api_key_hint == "explicit-key"
@@ -582,7 +648,11 @@ class TestFallbackEdgeCases:
         fb_base_url_hint = (fb.get("base_url") or "").strip() or None
         fb_api_key_hint = (fb.get("api_key") or "").strip() or None
 
-        if fb_base_url_hint and "ollama.com" in fb_base_url_hint.lower() and not fb_api_key_hint:
+        if (
+            fb_base_url_hint
+            and "ollama.com" in fb_base_url_hint.lower()
+            and not fb_api_key_hint
+        ):
             fb_api_key_hint = os.getenv("OLLAMA_API_KEY") or None
 
         assert fb_base_url_hint is None

@@ -46,8 +46,11 @@ def test_stream_diag_init_returns_well_formed_dict():
 
 
 class _FakeHeaders:
-    def __init__(self, d): self._d = {k.lower(): v for k, v in d.items()}
-    def get(self, k, default=None): return self._d.get(k.lower(), default)
+    def __init__(self, d):
+        self._d = {k.lower(): v for k, v in d.items()}
+
+    def get(self, k, default=None):
+        return self._d.get(k.lower(), default)
 
 
 class _FakeResponse:
@@ -145,7 +148,8 @@ def test_log_stream_retry_includes_diagnostic_fields(caplog):
         )
 
     msg = next(
-        r.getMessage() for r in caplog.records
+        r.getMessage()
+        for r in caplog.records
         if "Stream drop mid tool-call" in r.getMessage()
     )
 
@@ -185,7 +189,9 @@ def test_log_stream_retry_works_without_diag(caplog):
             mid_tool_call=False,
         )
 
-    msg = next(r.getMessage() for r in caplog.records if "Stream drop" in r.getMessage())
+    msg = next(
+        r.getMessage() for r in caplog.records if "Stream drop" in r.getMessage()
+    )
     # Without diag, the structured fields show "-" placeholders.
     assert "http_status=-" in msg
     assert "upstream=[-]" in msg
@@ -240,6 +246,12 @@ def test_emit_stream_drop_ui_omits_suffix_without_diag():
 def test_quiet_mode_does_not_clobber_runagent_logger_level():
     """Regression guard for the parent fix — must persist across this PR."""
     _ = _make_agent()
-    for name in ("run_agent", "tools", "trajectory_compressor", "cron", "openagents_cli"):
+    for name in (
+        "run_agent",
+        "tools",
+        "trajectory_compressor",
+        "cron",
+        "openagents_cli",
+    ):
         logger = logging.getLogger(name)
         assert logger.getEffectiveLevel() <= logging.WARNING

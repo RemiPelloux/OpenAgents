@@ -86,12 +86,16 @@ def _skin_palette() -> tuple[str, str, str]:
         return "#007aff", "#f1eeee", "#9a9898"
 
 
-def _render_frame(lines: Iterable[str], *, accent: str, text: str, dim: str, verb: str) -> str:
+def _render_frame(
+    lines: Iterable[str], *, accent: str, text: str, dim: str, verb: str
+) -> str:
     body = "\n".join(f"[{text}]{line}[/]" for line in lines)
     return f"{body}\n[dim {dim}]  › little monster {verb}…[/]"
 
 
-def play_startup_animation(*, enabled: bool = True, frame_interval: float = 0.11) -> None:
+def play_startup_animation(
+    *, enabled: bool = True, frame_interval: float = 0.11
+) -> None:
     """Play a short mascot animation. Never raises."""
     if not enabled or _should_skip_animation():
         return
@@ -109,7 +113,9 @@ def play_startup_animation(*, enabled: bool = True, frame_interval: float = 0.11
 
         def _frame_markup(idx: int) -> str:
             verb = verbs[min(idx // 2, len(verbs) - 1)]
-            return _render_frame(frames[idx % len(frames)], accent=accent, text=text, dim=dim, verb=verb)
+            return _render_frame(
+                frames[idx % len(frames)], accent=accent, text=text, dim=dim, verb=verb
+            )
 
         with Live(console=console, refresh_per_second=12, transient=True) as live:
             for idx in range(len(frames) + 2):

@@ -25,10 +25,13 @@ def curator_env(tmp_path, monkeypatch):
 
     import importlib
     import openagents_constants
+
     importlib.reload(openagents_constants)
     from agent import curator
+
     importlib.reload(curator)
     from tools import skill_usage
+
     importlib.reload(skill_usage)
     yield {"home": home, "curator": curator, "skill_usage": skill_usage}
 
@@ -117,10 +120,20 @@ def test_run_json_has_expected_shape(curator_env):
 
     # top-level shape
     for k in (
-        "started_at", "duration_seconds", "model", "provider",
-        "auto_transitions", "counts", "tool_call_counts",
-        "archived", "added", "state_transitions",
-        "llm_final", "llm_summary", "llm_error", "tool_calls",
+        "started_at",
+        "duration_seconds",
+        "model",
+        "provider",
+        "auto_transitions",
+        "counts",
+        "tool_call_counts",
+        "archived",
+        "added",
+        "state_transitions",
+        "llm_final",
+        "llm_summary",
+        "llm_error",
+        "tool_calls",
     ):
         assert k in payload, f"missing key: {k}"
 
@@ -293,6 +306,7 @@ def curator_env_with_cron(curator_env, monkeypatch):
 
     import importlib
     import cron.jobs as jobs_mod
+
     importlib.reload(jobs_mod)
     monkeypatch.setattr(jobs_mod, "HERMES_DIR", home)
     monkeypatch.setattr(jobs_mod, "CRON_DIR", home / "cron")

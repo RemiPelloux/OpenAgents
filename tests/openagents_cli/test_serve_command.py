@@ -51,7 +51,15 @@ def test_serve_accepts_the_legacy_no_open_flag_as_a_noop():
 
 
 def test_serve_takes_the_same_runtime_flags_as_dashboard():
-    argv = ["--host", "0.0.0.0", "--port", "0", "--insecure", "--skip-build", "--isolated"]
+    argv = [
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "0",
+        "--insecure",
+        "--skip-build",
+        "--isolated",
+    ]
     serve = _parser().parse_args(["serve", *argv])
     dash = _parser().parse_args(["dashboard", *argv])
     for field in ("host", "port", "insecure", "skip_build", "isolated"):

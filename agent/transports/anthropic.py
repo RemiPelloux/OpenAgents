@@ -144,9 +144,10 @@ class AnthropicTransport(ProviderTransport):
                     # is actually registered; never rewrite a name the LLM used
                     # that already resolves natively. GH-25255.
                     from tools.registry import registry as _tool_registry
+
                     if not _tool_registry.get_entry(name):
-                        bare = name[len(_MCP_PREFIX):]            # read_file
-                        single = "mcp_" + bare                    # mcp_read_file / mcp_linear_get_issue
+                        bare = name[len(_MCP_PREFIX) :]  # read_file
+                        single = "mcp_" + bare  # mcp_read_file / mcp_linear_get_issue
                         if _tool_registry.get_entry(single):
                             name = single
                         elif _tool_registry.get_entry(bare):
@@ -176,8 +177,7 @@ class AnthropicTransport(ProviderTransport):
             for b in ordered_blocks
         )
         _has_tool_use = any(
-            isinstance(b, dict) and b.get("type") == "tool_use"
-            for b in ordered_blocks
+            isinstance(b, dict) and b.get("type") == "tool_use" for b in ordered_blocks
         )
         if _has_signed_thinking and _has_tool_use:
             provider_data["anthropic_content_blocks"] = ordered_blocks

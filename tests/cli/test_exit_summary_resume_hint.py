@@ -28,7 +28,9 @@ class TestExitSummaryResumeHint:
 
     def test_resume_hint_no_profile_flag_on_default(self, capsys):
         cli_obj = _make_cli()
-        with patch("openagents_cli.profiles.get_active_profile_name", return_value="default"):
+        with patch(
+            "openagents_cli.profiles.get_active_profile_name", return_value="default"
+        ):
             cli_obj._print_exit_summary()
         out = capsys.readouterr().out
         # No `-p` for the default profile.
@@ -37,7 +39,9 @@ class TestExitSummaryResumeHint:
 
     def test_resume_hint_no_profile_flag_on_custom(self, capsys):
         cli_obj = _make_cli()
-        with patch("openagents_cli.profiles.get_active_profile_name", return_value="custom"):
+        with patch(
+            "openagents_cli.profiles.get_active_profile_name", return_value="custom"
+        ):
             cli_obj._print_exit_summary()
         out = capsys.readouterr().out
         # "custom" is the standard OPENAGENTS_HOME indicator — no -p needed.
@@ -46,12 +50,16 @@ class TestExitSummaryResumeHint:
 
     def test_resume_hint_includes_profile_flag_for_named_profile(self, capsys):
         cli_obj = _make_cli()
-        with patch("openagents_cli.profiles.get_active_profile_name", return_value="dev"):
+        with patch(
+            "openagents_cli.profiles.get_active_profile_name", return_value="dev"
+        ):
             cli_obj._print_exit_summary()
         out = capsys.readouterr().out
         assert "hermes --resume 20260524_000001_abc123 -p dev" in out
 
-    def test_resume_hint_includes_profile_flag_on_title_hint_too(self, capsys, tmp_path):
+    def test_resume_hint_includes_profile_flag_on_title_hint_too(
+        self, capsys, tmp_path
+    ):
         """When a session title is available, the `hermes -c "title"` hint
         must also include the `-p` flag for non-default profiles.
         """
@@ -60,7 +68,9 @@ class TestExitSummaryResumeHint:
         fake_db.get_session_title.return_value = "My Cool Session"
         cli_obj._session_db = fake_db
 
-        with patch("openagents_cli.profiles.get_active_profile_name", return_value="dev"):
+        with patch(
+            "openagents_cli.profiles.get_active_profile_name", return_value="dev"
+        ):
             cli_obj._print_exit_summary()
         out = capsys.readouterr().out
         assert 'hermes -c "My Cool Session" -p dev' in out

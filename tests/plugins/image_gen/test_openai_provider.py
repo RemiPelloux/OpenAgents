@@ -21,6 +21,7 @@ _PNG_HEX = (
 
 def _b64_png() -> str:
     import base64
+
     return base64.b64encode(bytes.fromhex(_PNG_HEX)).decode()
 
 
@@ -103,6 +104,7 @@ class TestModelResolution:
 
     def test_config_openai_model(self, tmp_path):
         import yaml
+
         (tmp_path / "config.yaml").write_text(
             yaml.safe_dump({"image_gen": {"openai": {"model": "gpt-image-2-low"}}})
         )
@@ -113,6 +115,7 @@ class TestModelResolution:
     def test_config_top_level_model(self, tmp_path):
         """``image_gen.model: gpt-image-2-high`` also works (top-level)."""
         import yaml
+
         (tmp_path / "config.yaml").write_text(
             yaml.safe_dump({"image_gen": {"model": "gpt-image-2-high"}})
         )
@@ -163,11 +166,14 @@ class TestGenerate:
         # gpt-image-2 rejects response_format — we must NOT send it.
         assert "response_format" not in call_kwargs
 
-    @pytest.mark.parametrize("tier,expected_quality", [
-        ("gpt-image-2-low", "low"),
-        ("gpt-image-2-medium", "medium"),
-        ("gpt-image-2-high", "high"),
-    ])
+    @pytest.mark.parametrize(
+        "tier,expected_quality",
+        [
+            ("gpt-image-2-low", "low"),
+            ("gpt-image-2-medium", "medium"),
+            ("gpt-image-2-high", "high"),
+        ],
+    )
     def test_tier_maps_to_quality(self, provider, monkeypatch, tier, expected_quality):
         monkeypatch.setenv("OPENAI_IMAGE_MODEL", tier)
         fake_client = MagicMock()
@@ -178,15 +184,20 @@ class TestGenerate:
 
         assert result["model"] == tier
         assert result["quality"] == expected_quality
-        assert fake_client.images.generate.call_args.kwargs["quality"] == expected_quality
+        assert (
+            fake_client.images.generate.call_args.kwargs["quality"] == expected_quality
+        )
         # Always the same underlying API model regardless of tier.
         assert fake_client.images.generate.call_args.kwargs["model"] == "gpt-image-2"
 
-    @pytest.mark.parametrize("aspect,expected_size", [
-        ("landscape", "1536x1024"),
-        ("square", "1024x1024"),
-        ("portrait", "1024x1536"),
-    ])
+    @pytest.mark.parametrize(
+        "aspect,expected_size",
+        [
+            ("landscape", "1536x1024"),
+            ("square", "1024x1024"),
+            ("portrait", "1024x1536"),
+        ],
+    )
     def test_aspect_ratio_mapping(self, provider, aspect, expected_size):
         fake_client = MagicMock()
         fake_client.images.generate.return_value = _fake_response(b64=_b64_png())
@@ -199,7 +210,8 @@ class TestGenerate:
     def test_revised_prompt_passed_through(self, provider):
         fake_client = MagicMock()
         fake_client.images.generate.return_value = _fake_response(
-            b64=_b64_png(), revised_prompt="A photo of a cat",
+            b64=_b64_png(),
+            revised_prompt="A photo of a cat",
         )
 
         with _patched_openai(fake_client):
@@ -238,13 +250,19 @@ class TestGenerate:
         """
         fake_client = MagicMock()
         fake_client.images.generate.return_value = _fake_response(
-            b64=None, url="https://example.com/img.png",
+            b64=None,
+            url="https://example.com/img.png",
         )
 
-        with _patched_openai(fake_client), patch(
-            "plugins.image_gen.openai.save_url_image",
-            return_value=Path("/tmp/openai_gpt-image-2_20260524_000000_deadbeef.png"),
-        ) as mock_save_url:
+        with (
+            _patched_openai(fake_client),
+            patch(
+                "plugins.image_gen.openai.save_url_image",
+                return_value=Path(
+                    "/tmp/openai_gpt-image-2_20260524_000000_deadbeef.png"
+                ),
+            ) as mock_save_url,
+        ):
             result = provider.generate("a cat")
 
         assert result["success"] is True
@@ -258,12 +276,16 @@ class TestGenerate:
 
         fake_client = MagicMock()
         fake_client.images.generate.return_value = _fake_response(
-            b64=None, url="https://example.com/img.png",
+            b64=None,
+            url="https://example.com/img.png",
         )
 
-        with _patched_openai(fake_client), patch(
-            "plugins.image_gen.openai.save_url_image",
-            side_effect=req_lib.HTTPError("404 from CDN"),
+        with (
+            _patched_openai(fake_client),
+            patch(
+                "plugins.image_gen.openai.save_url_image",
+                side_effect=req_lib.HTTPError("404 from CDN"),
+            ),
         ):
             result = provider.generate("a cat")
 

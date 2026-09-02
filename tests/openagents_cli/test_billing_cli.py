@@ -29,15 +29,21 @@ def _boom_modal(*a, **kw):
 
 
 def test_billing_logged_out(cli, monkeypatch, capsys):
-    monkeypatch.setattr(bv, "build_billing_state", lambda *a, **kw: BillingState(logged_in=False))
+    monkeypatch.setattr(
+        bv, "build_billing_state", lambda *a, **kw: BillingState(logged_in=False)
+    )
     cli._show_billing("/billing")
     out = capsys.readouterr().out
     assert "Not logged into Nous Portal" in out
     assert "hermes portal" in out
 
 
-def test_billing_overview_non_interactive_renders_text_not_modal(cli, monkeypatch, capsys):
-    monkeypatch.setattr(HermesCLI, "_prompt_text_input_modal", _boom_modal, raising=False)
+def test_billing_overview_non_interactive_renders_text_not_modal(
+    cli, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        HermesCLI, "_prompt_text_input_modal", _boom_modal, raising=False
+    )
     state = BillingState(
         logged_in=True,
         org_name="Acme",
@@ -45,8 +51,11 @@ def test_billing_overview_non_interactive_renders_text_not_modal(cli, monkeypatc
         balance_usd=Decimal("142.5"),
         cli_billing_enabled=True,
         charge_presets=(Decimal("100"),),
-        monthly_cap=MonthlyCap(limit_usd=Decimal("1000"), spent_this_month_usd=Decimal("180"),
-                               is_default_ceiling=True),
+        monthly_cap=MonthlyCap(
+            limit_usd=Decimal("1000"),
+            spent_this_month_usd=Decimal("180"),
+            is_default_ceiling=True,
+        ),
         portal_url="https://portal/billing?topup=open",
     )
     monkeypatch.setattr(bv, "build_billing_state", lambda *a, **kw: state)
@@ -66,8 +75,11 @@ def test_billing_overview_non_interactive_renders_text_not_modal(cli, monkeypatc
 
 def test_billing_member_cannot_charge(cli, monkeypatch, capsys):
     state = BillingState(
-        logged_in=True, role="MEMBER", balance_usd=Decimal("10"),
-        cli_billing_enabled=True, portal_url="https://portal/billing",
+        logged_in=True,
+        role="MEMBER",
+        balance_usd=Decimal("10"),
+        cli_billing_enabled=True,
+        portal_url="https://portal/billing",
     )
     monkeypatch.setattr(bv, "build_billing_state", lambda *a, **kw: state)
     cli._show_billing("/billing")
@@ -77,8 +89,11 @@ def test_billing_member_cannot_charge(cli, monkeypatch, capsys):
 
 def test_billing_killswitch_off_blocks(cli, monkeypatch, capsys):
     state = BillingState(
-        logged_in=True, role="OWNER", balance_usd=Decimal("10"),
-        cli_billing_enabled=False, portal_url="https://portal/billing",
+        logged_in=True,
+        role="OWNER",
+        balance_usd=Decimal("10"),
+        cli_billing_enabled=False,
+        portal_url="https://portal/billing",
     )
     monkeypatch.setattr(bv, "build_billing_state", lambda *a, **kw: state)
     cli._show_billing("/billing")
@@ -88,9 +103,14 @@ def test_billing_killswitch_off_blocks(cli, monkeypatch, capsys):
 
 def test_billing_limit_screen_readonly(cli, monkeypatch, capsys):
     state = BillingState(
-        logged_in=True, role="OWNER", cli_billing_enabled=True,
-        monthly_cap=MonthlyCap(limit_usd=Decimal("1000"), spent_this_month_usd=Decimal("250"),
-                               is_default_ceiling=True),
+        logged_in=True,
+        role="OWNER",
+        cli_billing_enabled=True,
+        monthly_cap=MonthlyCap(
+            limit_usd=Decimal("1000"),
+            spent_this_month_usd=Decimal("250"),
+            is_default_ceiling=True,
+        ),
         portal_url="https://portal/billing",
     )
     monkeypatch.setattr(bv, "build_billing_state", lambda *a, **kw: state)
@@ -106,10 +126,15 @@ def test_billing_limit_screen_readonly(cli, monkeypatch, capsys):
 def test_billing_sub_arg_ignored_opens_overview(cli, monkeypatch, capsys):
     # A stray sub-arg must NOT error and must NOT dispatch to a sub-screen —
     # it just opens the overview (spec §0.4: zero sub-commands).
-    monkeypatch.setattr(HermesCLI, "_prompt_text_input_modal", _boom_modal, raising=False)
+    monkeypatch.setattr(
+        HermesCLI, "_prompt_text_input_modal", _boom_modal, raising=False
+    )
     state = BillingState(
-        logged_in=True, role="OWNER", balance_usd=Decimal("142.5"),
-        cli_billing_enabled=True, charge_presets=(Decimal("25"),),
+        logged_in=True,
+        role="OWNER",
+        balance_usd=Decimal("142.5"),
+        cli_billing_enabled=True,
+        charge_presets=(Decimal("25"),),
         portal_url="https://portal/billing",
     )
     monkeypatch.setattr(bv, "build_billing_state", lambda *a, **kw: state)
@@ -120,9 +145,13 @@ def test_billing_sub_arg_ignored_opens_overview(cli, monkeypatch, capsys):
 
 
 def test_billing_buy_non_interactive_defers_to_portal(cli, monkeypatch, capsys):
-    monkeypatch.setattr(HermesCLI, "_prompt_text_input_modal", _boom_modal, raising=False)
+    monkeypatch.setattr(
+        HermesCLI, "_prompt_text_input_modal", _boom_modal, raising=False
+    )
     state = BillingState(
-        logged_in=True, role="OWNER", cli_billing_enabled=True,
+        logged_in=True,
+        role="OWNER",
+        cli_billing_enabled=True,
         charge_presets=(Decimal("25"), Decimal("50"), Decimal("100")),
         card=CardInfo(brand="visa", last4="4242"),
         portal_url="https://portal/billing",

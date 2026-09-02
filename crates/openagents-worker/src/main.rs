@@ -14,7 +14,7 @@ use std::{
 };
 
 use anyhow::Context;
-use contract_core::{IdentityRegistry, WorkerJob};
+use contract_core::{IdentityRegistry, WorkerArtifact, WorkerJob, WorkerResult};
 use reqwest::Client;
 use tokio::{sync::Semaphore, time::interval};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -23,7 +23,9 @@ use uuid::Uuid;
 
 use crate::{
     config::Config,
-    control_plane::{classify_failure, ControlPlaneClient, ControlPlaneFailure},
+    control_plane::{
+        classify_execution_failure, classify_failure, ControlPlaneClient, ControlPlaneFailure,
+    },
     model::{RunRecord, RunStatus, RunStore},
 };
 
@@ -47,11 +49,20 @@ async fn main() -> anyhow::Result<()> {
     let identities = IdentityRegistry::load_dir(&config.identity_registry)?;
     let http = Client::builder().timeout(config.request_timeout).build()?;
     let client = ControlPlaneClient::new(http, &config, identities);
-    let healthy = Arc::new(AtomicBool::new(worker_healthy(&config).await));
+    let runs = RunStore::connect(
+        &config.database_url,
+        config.organization_id,
+        &config.worker_id,
+    )
+    .await
+    .context("initialize OpenAgents PostgreSQL run store")?;
+    let healthy = Arc::new(AtomicBool::new(
+        worker_healthy(&config).await && runs.healthy().await,
+    ));
     let state = AppState {
         config: config.clone(),
         client,
-        runs: RunStore::new(),
+        runs,
         healthy,
         capacity: Arc::new(Semaphore::new(config.capacity as usize)),
     };
@@ -75,7 +86,7 @@ fn spawn_poller(state: AppState) {
         let mut registration_tick = 0u32;
         loop {
             tick.tick().await;
-            let healthy = worker_healthy(&state.config).await;
+            let healthy = worker_healthy(&state.config).await && state.runs.healthy().await;
             state.healthy.store(healthy, Ordering::Relaxed);
             if registration_tick == 0 {
                 if let Err(error) = state.client.register(healthy, state.config.capacity).await {
@@ -96,9 +107,11 @@ fn spawn_poller(state: AppState) {
                         let run_id = Uuid::new_v4();
                         state
                             .runs
-                            .insert(RunRecord::new(
+                            .insert(RunRecord::with_attempt(
+                                state.config.organization_id,
                                 run_id,
                                 job.job_id,
+                                job.attempt,
                                 job.ticket_id,
                                 job.correlation_id,
                                 job.idempotency_key.clone(),
@@ -122,6 +135,7 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
         let adapter = match job.job_type.as_str() {
             "agent.skill_author" => "skill_author",
             "engineering.delivery" => "trusted_delivery",
+            "engineering.inspect" => "inspect_repository",
             _ => "invoke_opencode",
         };
         state.runs.update(run_id, RunStatus::Running, "run.started", serde_json::json!({"job_id":job.job_id,"ticket_id":job.ticket_id,"adapter":adapter})).await;
@@ -153,38 +167,42 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
         };
         if let Some(execution) = execution {
             match execution {
-                Ok(result) => match complete_job(&state.client, &job, &result).await {
-                    Ok(_) => {
-                        let value = serde_json::to_value(&result).unwrap_or_default();
-                        state
-                            .runs
-                            .update(
+                Ok(mut result) => {
+                    attach_run_timeline(&state.runs, run_id, &mut result).await;
+                    match complete_job(&state.client, &job, &result).await {
+                        Ok(_) => {
+                            let value = serde_json::to_value(&result).unwrap_or_default();
+                            state
+                                .runs
+                                .update(
+                                    run_id,
+                                    RunStatus::Completed,
+                                    "run.completed",
+                                    serde_json::json!({"evidence_validated_by":"OpenOrchestrator"}),
+                                )
+                                .await;
+                            state
+                                .runs
+                                .terminal(run_id, RunStatus::Completed, Some(value), None)
+                                .await;
+                        }
+                        Err(error) => {
+                            terminal_failure(
+                                &state,
                                 run_id,
-                                RunStatus::Completed,
-                                "run.completed",
-                                serde_json::json!({"evidence_validated_by":"OpenOrchestrator"}),
+                                format!("completion callback failed: {error}"),
                             )
-                            .await;
-                        state
-                            .runs
-                            .terminal(run_id, RunStatus::Completed, Some(value), None)
-                            .await;
+                            .await
+                        }
                     }
-                    Err(error) => {
-                        terminal_failure(
-                            &state,
-                            run_id,
-                            format!("completion callback failed: {error}"),
-                        )
-                        .await
-                    }
-                },
+                }
                 Err(error) => {
                     let reason = error.to_string();
                     if !state.runs.is_cancelled(run_id).await {
+                        let failure = classify_execution_failure(&error);
                         let _ = state
                             .client
-                            .fail(&job, run_id, &reason, job.attempt < job.max_attempts)
+                            .fail(&job, run_id, failure.code, &reason, failure.retryable)
                             .await;
                         terminal_failure(&state, run_id, reason).await;
                     }
@@ -193,6 +211,24 @@ pub fn spawn_job(state: AppState, job: WorkerJob, run_id: Uuid) {
         }
         heartbeat.abort();
         drop(permit);
+    });
+}
+
+async fn attach_run_timeline(store: &RunStore, run_id: Uuid, result: &mut WorkerResult) {
+    let Some(record) = store.get(run_id).await else {
+        return;
+    };
+    result.artifacts.push(WorkerArtifact {
+        kind: "run_timeline".into(),
+        name: "Persisted OpenAgents execution timeline".into(),
+        uri: format!("openagents://runs/{run_id}/events"),
+        sha256: None,
+        metadata: serde_json::json!({
+            "schema":"openos.openagents-run-timeline/v1",
+            "run_id":run_id,
+            "correlation_id":record.correlation_id,
+            "events":record.events,
+        }),
     });
 }
 

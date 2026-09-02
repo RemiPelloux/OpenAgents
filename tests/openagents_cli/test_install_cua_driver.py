@@ -28,29 +28,40 @@ class TestInstallCuaDriverUpgrade:
     def test_upgrade_on_unsupported_platform_is_silent_noop(self):
         from openagents_cli import tools_config
 
-        with patch.object(tools_config, "_print_warning") as warn, \
-             patch("platform.system", return_value="FreeBSD"):
+        with (
+            patch.object(tools_config, "_print_warning") as warn,
+            patch("platform.system", return_value="FreeBSD"),
+        ):
             assert tools_config.install_cua_driver(upgrade=True) is False
             warn.assert_not_called()
 
     def test_non_upgrade_on_unsupported_platform_warns(self):
         from openagents_cli import tools_config
 
-        with patch.object(tools_config, "_print_warning") as warn, \
-             patch("platform.system", return_value="FreeBSD"):
+        with (
+            patch.object(tools_config, "_print_warning") as warn,
+            patch("platform.system", return_value="FreeBSD"),
+        ):
             assert tools_config.install_cua_driver(upgrade=False) is False
             warn.assert_called()
 
     def test_upgrade_on_macos_with_binary_runs_installer(self):
         from openagents_cli import tools_config
 
-        with patch("platform.system", return_value="Darwin"), \
-             patch.object(tools_config.shutil, "which",
-                          side_effect=lambda n: "/usr/local/bin/" + n
-                                                 if n in {"cua-driver", "curl"} else None), \
-             patch.object(tools_config, "_run_cua_driver_installer",
-                          return_value=True) as runner, \
-             patch("subprocess.run"):
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch.object(
+                tools_config.shutil,
+                "which",
+                side_effect=lambda n: "/usr/local/bin/" + n
+                if n in {"cua-driver", "curl"}
+                else None,
+            ),
+            patch.object(
+                tools_config, "_run_cua_driver_installer", return_value=True
+            ) as runner,
+            patch("subprocess.run"),
+        ):
             assert tools_config.install_cua_driver(upgrade=True) is True
             runner.assert_called_once()
             kwargs = runner.call_args.kwargs
@@ -59,34 +70,52 @@ class TestInstallCuaDriverUpgrade:
     def test_upgrade_on_macos_without_binary_runs_installer(self):
         from openagents_cli import tools_config
 
-        with patch("platform.system", return_value="Darwin"), \
-             patch.object(tools_config.shutil, "which",
-                          side_effect=lambda n: "/usr/bin/curl" if n == "curl" else None), \
-             patch.object(tools_config, "_run_cua_driver_installer",
-                          return_value=True) as runner:
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch.object(
+                tools_config.shutil,
+                "which",
+                side_effect=lambda n: "/usr/bin/curl" if n == "curl" else None,
+            ),
+            patch.object(
+                tools_config, "_run_cua_driver_installer", return_value=True
+            ) as runner,
+        ):
             assert tools_config.install_cua_driver(upgrade=True) is True
             runner.assert_called_once()
 
     def test_non_upgrade_on_macos_with_binary_skips_install(self):
         from openagents_cli import tools_config
 
-        with patch("platform.system", return_value="Darwin"), \
-             patch.object(tools_config.shutil, "which",
-                          side_effect=lambda n: "/usr/local/bin/" + n
-                                                 if n in {"cua-driver", "curl"} else None), \
-             patch.object(tools_config, "_run_cua_driver_installer") as runner, \
-             patch("subprocess.run"):
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch.object(
+                tools_config.shutil,
+                "which",
+                side_effect=lambda n: "/usr/local/bin/" + n
+                if n in {"cua-driver", "curl"}
+                else None,
+            ),
+            patch.object(tools_config, "_run_cua_driver_installer") as runner,
+            patch("subprocess.run"),
+        ):
             assert tools_config.install_cua_driver(upgrade=False) is True
             runner.assert_not_called()
 
     def test_non_upgrade_on_macos_without_binary_runs_installer(self):
         from openagents_cli import tools_config
 
-        with patch("platform.system", return_value="Darwin"), \
-             patch.object(tools_config.shutil, "which",
-                          side_effect=lambda n: "/usr/bin/curl" if n == "curl" else None), \
-             patch.object(tools_config, "_run_cua_driver_installer",
-                          return_value=True) as runner:
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch.object(
+                tools_config.shutil,
+                "which",
+                side_effect=lambda n: "/usr/bin/curl" if n == "curl" else None,
+            ),
+            patch.object(
+                tools_config, "_run_cua_driver_installer", return_value=True
+            ) as runner,
+        ):
             assert tools_config.install_cua_driver(upgrade=False) is True
             runner.assert_called_once()
 
@@ -114,6 +143,7 @@ class TestArchProbeRemoval:
 
     def test_probe_function_is_gone(self):
         from openagents_cli import tools_config
+
         assert not hasattr(tools_config, "_check_cua_driver_asset_for_arch")
         assert not hasattr(tools_config, "_latest_cua_driver_rs_release")
 
@@ -125,12 +155,18 @@ class TestArchProbeRemoval:
         """
         from openagents_cli import tools_config
 
-        with patch("platform.system", return_value="Darwin"), \
-             patch.object(tools_config.shutil, "which",
-                          side_effect=lambda n: "/usr/bin/curl" if n == "curl" else None), \
-             patch("urllib.request.urlopen") as urlopen, \
-             patch.object(tools_config, "_run_cua_driver_installer",
-                          return_value=True) as runner:
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch.object(
+                tools_config.shutil,
+                "which",
+                side_effect=lambda n: "/usr/bin/curl" if n == "curl" else None,
+            ),
+            patch("urllib.request.urlopen") as urlopen,
+            patch.object(
+                tools_config, "_run_cua_driver_installer", return_value=True
+            ) as runner,
+        ):
             assert tools_config.install_cua_driver(upgrade=False) is True
             runner.assert_called_once()
             urlopen.assert_not_called()
@@ -145,14 +181,21 @@ class TestArchProbeRemoval:
         """
         from openagents_cli import tools_config
 
-        with patch("platform.system", return_value="Darwin"), \
-             patch.object(tools_config.shutil, "which",
-                          side_effect=lambda n: "/usr/local/bin/" + n
-                                                 if n in ("cua-driver", "curl") else None), \
-             patch("urllib.request.urlopen") as urlopen, \
-             patch("subprocess.run"), \
-             patch.object(tools_config, "_run_cua_driver_installer",
-                          return_value=True) as runner:
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch.object(
+                tools_config.shutil,
+                "which",
+                side_effect=lambda n: "/usr/local/bin/" + n
+                if n in ("cua-driver", "curl")
+                else None,
+            ),
+            patch("urllib.request.urlopen") as urlopen,
+            patch("subprocess.run"),
+            patch.object(
+                tools_config, "_run_cua_driver_installer", return_value=True
+            ) as runner,
+        ):
             assert tools_config.install_cua_driver(upgrade=True) is True
             runner.assert_called_once()
             # Probe deleted — no direct GitHub API call from Python.

@@ -8,46 +8,47 @@ from openagentui.schema import Workflow
 
 
 def _save_linear_workflow(id_="wf_cfg") -> Workflow:
-    workflow = Workflow.from_dict(
-        {
-            "id": id_,
-            "name": "Greeting Flow",
-            "description": "Says hi",
-            "nodes": [
-                {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
-                {
-                    "id": "set1",
-                    "type": "set-state",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"stateKey": "greeting", "stateValue": "hi {{ name }}"},
-                },
-                {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
-            ],
-            "edges": [
-                {"id": "e1", "source": "start", "target": "set1"},
-                {"id": "e2", "source": "set1", "target": "end"},
-            ],
-        }
-    )
+    workflow = Workflow.from_dict({
+        "id": id_,
+        "name": "Greeting Flow",
+        "description": "Says hi",
+        "nodes": [
+            {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
+            {
+                "id": "set1",
+                "type": "set-state",
+                "position": {"x": 0, "y": 0},
+                "data": {"stateKey": "greeting", "stateValue": "hi {{ name }}"},
+            },
+            {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
+        ],
+        "edges": [
+            {"id": "e1", "source": "start", "target": "set1"},
+            {"id": "e2", "source": "set1", "target": "end"},
+        ],
+    })
     return store.save_workflow(workflow)
 
 
 def _save_approval_workflow(id_="wf_approval_cfg") -> Workflow:
-    workflow = Workflow.from_dict(
-        {
-            "id": id_,
-            "name": "Approval Flow",
-            "nodes": [
-                {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
-                {"id": "gate", "type": "user-approval", "position": {"x": 0, "y": 0}, "data": {}},
-                {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
-            ],
-            "edges": [
-                {"id": "e1", "source": "start", "target": "gate"},
-                {"id": "e2", "source": "gate", "target": "end", "sourceHandle": "approved"},
-            ],
-        }
-    )
+    workflow = Workflow.from_dict({
+        "id": id_,
+        "name": "Approval Flow",
+        "nodes": [
+            {"id": "start", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
+            {
+                "id": "gate",
+                "type": "user-approval",
+                "position": {"x": 0, "y": 0},
+                "data": {},
+            },
+            {"id": "end", "type": "end", "position": {"x": 0, "y": 0}, "data": {}},
+        ],
+        "edges": [
+            {"id": "e1", "source": "start", "target": "gate"},
+            {"id": "e2", "source": "gate", "target": "end", "sourceHandle": "approved"},
+        ],
+    })
     return store.save_workflow(workflow)
 
 

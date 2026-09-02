@@ -65,7 +65,9 @@ def _request_headers(correlation_id: Optional[str] = None) -> Dict[str, str]:
     return headers
 
 
-def _post_json(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None) -> Dict[str, Any]:
+def _post_json(
+    path: str, body: Dict[str, Any], correlation_id: Optional[str] = None
+) -> Dict[str, Any]:
     url = f"{_api_url()}{path}"
     payload = json.dumps(body).encode()
     headers = _request_headers(correlation_id)
@@ -77,7 +79,9 @@ def _post_json(path: str, body: Dict[str, Any], correlation_id: Optional[str] = 
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()
-        raise RuntimeError(f"OpenTicket POST {path} failed ({exc.code}): {detail}") from exc
+        raise RuntimeError(
+            f"OpenTicket POST {path} failed ({exc.code}): {detail}"
+        ) from exc
 
 
 def _remember_correlation(ticket: Dict[str, Any]) -> Dict[str, Any]:
@@ -154,6 +158,7 @@ def merge_orchestrator_instructions(
     if instructions:
         return f"{instructions}\n\n{marker}\n{block}"
     return block
+
 
 def _mission_eta() -> Optional[str]:
     return os.environ.get("OPENTICKET_MISSION_ETA", "").strip() or None
@@ -263,7 +268,9 @@ def create_subtask(
             ticket = json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()
-        raise RuntimeError(f"OpenTicket create_subtask failed ({exc.code}): {detail}") from exc
+        raise RuntimeError(
+            f"OpenTicket create_subtask failed ({exc.code}): {detail}"
+        ) from exc
 
     corr = ticket.get("correlation_id")
     if corr:
@@ -291,10 +298,14 @@ def update_ticket_status(
     actor_profile: str = "developer",
     correlation_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    url = f"{_api_url()}/v1/tickets/{urllib.request.quote(ticket_id, safe='')}/transition"
-    body = json.dumps(
-        {"to_status": to_status, "reason": reason, "actor_profile": actor_profile}
-    ).encode()
+    url = (
+        f"{_api_url()}/v1/tickets/{urllib.request.quote(ticket_id, safe='')}/transition"
+    )
+    body = json.dumps({
+        "to_status": to_status,
+        "reason": reason,
+        "actor_profile": actor_profile,
+    }).encode()
     headers = _request_headers(correlation_id)
     req = urllib.request.Request(url, data=body, method="POST")
     for key, value in headers.items():
@@ -304,7 +315,9 @@ def update_ticket_status(
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()
-        raise RuntimeError(f"OpenTicket transition failed ({exc.code}): {detail}") from exc
+        raise RuntimeError(
+            f"OpenTicket transition failed ({exc.code}): {detail}"
+        ) from exc
 
 
 def build_task_prompt(ticket: Dict[str, Any], mode: str) -> str:

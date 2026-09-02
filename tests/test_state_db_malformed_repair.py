@@ -12,6 +12,7 @@ journal_mode in apply_wal_with_fallback), before _init_schema runs — so it
 cannot be handled at the FTS-rebuild layer. These tests verify the
 sqlite_master surgery path recovers the canonical data and self-heals on open.
 """
+
 import sqlite3
 import uuid
 from pathlib import Path
@@ -114,9 +115,10 @@ def test_sessiondb_auto_heals_on_open(tmp_path, monkeypatch):
     db = SessionDB(db_path=db_path)
     try:
         assert db._conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 1
-        assert db._conn.execute(
-            "SELECT id FROM sessions WHERE id=?", (sid,)
-        ).fetchone() is not None
+        assert (
+            db._conn.execute("SELECT id FROM sessions WHERE id=?", (sid,)).fetchone()
+            is not None
+        )
     finally:
         db.close()
 
@@ -151,7 +153,9 @@ def test_is_malformed_db_error_discriminates():
     assert is_malformed_db_error(
         sqlite3.DatabaseError("malformed database schema (messages_fts) - ...")
     )
-    assert is_malformed_db_error(sqlite3.DatabaseError("database disk image is malformed"))
+    assert is_malformed_db_error(
+        sqlite3.DatabaseError("database disk image is malformed")
+    )
     assert not is_malformed_db_error(sqlite3.OperationalError("database is locked"))
     assert not is_malformed_db_error(ValueError("nope"))
 
@@ -180,8 +184,7 @@ def test_strategy_b_rebuild_when_dedup_insufficient(tmp_path, monkeypatch):
         try:
             probe = sqlite3.connect(str(path))
             still_has_fts = probe.execute(
-                "SELECT COUNT(*) FROM sqlite_master "
-                "WHERE name LIKE 'messages_fts%'"
+                "SELECT COUNT(*) FROM sqlite_master WHERE name LIKE 'messages_fts%'"
             ).fetchone()[0]
             probe.close()
         except sqlite3.DatabaseError:
@@ -202,9 +205,12 @@ def test_strategy_b_rebuild_when_dedup_insufficient(tmp_path, monkeypatch):
     db = SessionDB(db_path=db_path)
     try:
         assert db._conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 10
-        assert db._conn.execute(
-            "SELECT COUNT(*) FROM messages_fts WHERE messages_fts MATCH 'pizza'"
-        ).fetchone()[0] == 5
+        assert (
+            db._conn.execute(
+                "SELECT COUNT(*) FROM messages_fts WHERE messages_fts MATCH 'pizza'"
+            ).fetchone()[0]
+            == 5
+        )
     finally:
         db.close()
 

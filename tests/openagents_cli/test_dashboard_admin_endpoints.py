@@ -79,14 +79,18 @@ class TestMcpEndpoints:
         r = self.client.put("/api/mcp/servers/tog/enabled", json={"enabled": False})
         assert r.status_code == 200 and r.json()["enabled"] is False
         srv = [
-            s for s in self.client.get("/api/mcp/servers").json()["servers"]
+            s
+            for s in self.client.get("/api/mcp/servers").json()["servers"]
             if s["name"] == "tog"
         ][0]
         assert srv["enabled"] is False
         # Toggling a missing server is a 404.
-        assert self.client.put(
-            "/api/mcp/servers/nope/enabled", json={"enabled": True}
-        ).status_code == 404
+        assert (
+            self.client.put(
+                "/api/mcp/servers/nope/enabled", json={"enabled": True}
+            ).status_code
+            == 404
+        )
 
     def test_catalog_lists_entries(self):
         r = self.client.get("/api/mcp/catalog")
@@ -121,9 +125,10 @@ class TestMcpEndpoints:
                 assert e["command"]
 
     def test_catalog_install_unknown_404(self):
-        r = self.client.post("/api/mcp/catalog/install", json={"name": "no-such-mcp-xyz"})
+        r = self.client.post(
+            "/api/mcp/catalog/install", json={"name": "no-such-mcp-xyz"}
+        )
         assert r.status_code == 404
-
 
 
 class TestCredentialPoolEndpoints:
@@ -136,7 +141,11 @@ class TestCredentialPoolEndpoints:
 
         r = self.client.post(
             "/api/credentials/pool",
-            json={"provider": "openrouter", "api_key": "sk-or-abcdef1234", "label": "p"},
+            json={
+                "provider": "openrouter",
+                "api_key": "sk-or-abcdef1234",
+                "label": "p",
+            },
         )
         assert r.status_code == 200 and r.json()["count"] == 1
 
@@ -152,8 +161,12 @@ class TestCredentialPoolEndpoints:
         raw = load_pool("openrouter").entries()
         assert raw[0].access_token == "sk-or-abcdef1234"
 
-        assert self.client.delete("/api/credentials/pool/openrouter/1").status_code == 200
-        assert self.client.delete("/api/credentials/pool/openrouter/99").status_code == 404
+        assert (
+            self.client.delete("/api/credentials/pool/openrouter/1").status_code == 200
+        )
+        assert (
+            self.client.delete("/api/credentials/pool/openrouter/99").status_code == 404
+        )
 
     def test_empty_body_rejected(self):
         r = self.client.post(
@@ -193,9 +206,10 @@ class TestMemoryEndpoints:
         assert r.status_code == 200 and "USER.md" in r.json()["deleted"]
         assert (mem / "MEMORY.md").exists()
 
-        assert self.client.post(
-            "/api/memory/reset", json={"target": "bogus"}
-        ).status_code == 400
+        assert (
+            self.client.post("/api/memory/reset", json={"target": "bogus"}).status_code
+            == 400
+        )
 
 
 class TestPairingEndpoints:
@@ -347,9 +361,12 @@ class TestOpsEndpoints:
         assert created and created[0]["allowed"] is True
 
         # Unknown event rejected.
-        assert self.client.post(
-            "/api/ops/hooks", json={"event": "no_such_event", "command": "/x"}
-        ).status_code == 400
+        assert (
+            self.client.post(
+                "/api/ops/hooks", json={"event": "no_such_event", "command": "/x"}
+            ).status_code
+            == 400
+        )
 
         # Delete it.
         r = self.client.request(
@@ -433,7 +450,9 @@ class TestSessionManagementEndpoints:
         r = self.client.get("/api/sessions/stats")
         assert r.status_code == 200
         body = r.json()
-        assert {"total", "active_store", "archived", "messages", "by_source"} <= set(body)
+        assert {"total", "active_store", "archived", "messages", "by_source"} <= set(
+            body
+        )
         assert body["total"] >= 1
 
     def test_rename(self):
@@ -448,9 +467,12 @@ class TestSessionManagementEndpoints:
     def test_prune_validation(self):
         r = self.client.post("/api/sessions/prune", json={"older_than_days": 9999})
         assert r.status_code == 200 and "removed" in r.json()
-        assert self.client.post(
-            "/api/sessions/prune", json={"older_than_days": 0}
-        ).status_code == 400
+        assert (
+            self.client.post(
+                "/api/sessions/prune", json={"older_than_days": 0}
+            ).status_code
+            == 400
+        )
 
 
 class TestSkillsHubSearchEndpoint:
@@ -531,9 +553,7 @@ class TestSkillsHubSourcesEndpoint:
             srcs.insert(1, idx)
             return srcs
 
-        monkeypatch.setattr(
-            "tools.skills_hub.create_source_router", _fake_router
-        )
+        monkeypatch.setattr("tools.skills_hub.create_source_router", _fake_router)
         r = self.client.get("/api/skills/hub/sources")
         assert r.status_code == 200
         body = r.json()
@@ -558,18 +578,14 @@ class TestSkillsHubPreviewEndpoint:
         assert r.status_code == 400
 
     def test_preview_returns_skill_md_text(self, monkeypatch):
-        monkeypatch.setattr(
-            "tools.skills_hub.create_source_router", lambda: []
-        )
+        monkeypatch.setattr("tools.skills_hub.create_source_router", lambda: [])
         bundle = _FakeBundle("github/owner/repo/x")
         meta = _FakeMeta("github/owner/repo/x")
         monkeypatch.setattr(
             "openagents_cli.skills_hub._resolve_source_meta_and_bundle",
             lambda ident, sources: (meta, bundle, None),
         )
-        r = self.client.get(
-            "/api/skills/hub/preview?identifier=github/owner/repo/x"
-        )
+        r = self.client.get("/api/skills/hub/preview?identifier=github/owner/repo/x")
         assert r.status_code == 200
         body = r.json()
         # Bytes-stored SKILL.md decodes to text.
@@ -579,9 +595,7 @@ class TestSkillsHubPreviewEndpoint:
         assert sorted(body["files"]) == ["SKILL.md", "icon.png", "notes.txt"]
 
     def test_preview_404_when_unresolved(self, monkeypatch):
-        monkeypatch.setattr(
-            "tools.skills_hub.create_source_router", lambda: []
-        )
+        monkeypatch.setattr("tools.skills_hub.create_source_router", lambda: [])
         monkeypatch.setattr(
             "openagents_cli.skills_hub._resolve_source_meta_and_bundle",
             lambda ident, sources: (None, None, None),
@@ -602,9 +616,7 @@ class TestSkillsHubScanEndpoint:
     def test_scan_returns_verdict_and_policy(self, monkeypatch):
         from tools.skills_guard import ScanResult, Finding
 
-        monkeypatch.setattr(
-            "tools.skills_hub.create_source_router", lambda: []
-        )
+        monkeypatch.setattr("tools.skills_hub.create_source_router", lambda: [])
         bundle = _FakeBundle("github/owner/repo/x", trust_level="community")
         monkeypatch.setattr(
             "openagents_cli.skills_hub._resolve_source_meta_and_bundle",
@@ -642,9 +654,7 @@ class TestSkillsHubScanEndpoint:
         # Avoid touching the filesystem during cleanup.
         monkeypatch.setattr("shutil.rmtree", lambda *a, **k: None)
 
-        r = self.client.get(
-            "/api/skills/hub/scan?identifier=github/owner/repo/x"
-        )
+        r = self.client.get("/api/skills/hub/scan?identifier=github/owner/repo/x")
         assert r.status_code == 200
         body = r.json()
         assert body["verdict"] == "caution"
@@ -656,17 +666,13 @@ class TestSkillsHubScanEndpoint:
         assert body["findings"][0]["file"] == "SKILL.md"
 
     def test_scan_404_when_no_bundle(self, monkeypatch):
-        monkeypatch.setattr(
-            "tools.skills_hub.create_source_router", lambda: []
-        )
+        monkeypatch.setattr("tools.skills_hub.create_source_router", lambda: [])
         monkeypatch.setattr(
             "openagents_cli.skills_hub._resolve_source_meta_and_bundle",
             lambda ident, sources: (None, None, None),
         )
         r = self.client.get("/api/skills/hub/scan?identifier=nope/x")
         assert r.status_code == 404
-
-
 
 
 class TestWebhookToggleEndpoint:
@@ -685,17 +691,20 @@ class TestWebhookToggleEndpoint:
 
     def test_create_toggle_disable(self):
         r = self.client.post(
-            "/api/webhooks", json={"name": "hook1", "deliver": "log", "events": ["push"]}
+            "/api/webhooks",
+            json={"name": "hook1", "deliver": "log", "events": ["push"]},
         )
         assert r.status_code == 200 and r.json()["enabled"] is True
         r = self.client.put("/api/webhooks/hook1/enabled", json={"enabled": False})
         assert r.status_code == 200 and r.json()["enabled"] is False
         subs = self.client.get("/api/webhooks").json()["subscriptions"]
         assert subs[0]["enabled"] is False
-        assert self.client.put(
-            "/api/webhooks/nope/enabled", json={"enabled": True}
-        ).status_code == 404
-
+        assert (
+            self.client.put(
+                "/api/webhooks/nope/enabled", json={"enabled": True}
+            ).status_code
+            == 404
+        )
 
 
 class TestAdminEndpointsAuthGate:
@@ -797,7 +806,9 @@ class TestUpdateCheckEndpoint:
     def test_managed_runtime_dashboard_is_not_applyable(self, monkeypatch):
         import openagents_cli.web_server as ws
 
-        monkeypatch.setattr(ws, "_dashboard_local_update_managed_externally", lambda: True)
+        monkeypatch.setattr(
+            ws, "_dashboard_local_update_managed_externally", lambda: True
+        )
         monkeypatch.setattr(
             ws,
             "detect_install_method",
@@ -1028,9 +1039,7 @@ class TestToolsConfigEndpoints:
                 break
         if not key:
             pytest.skip("no env-var-bearing web provider in this build")
-        r = self.client.put(
-            "/api/tools/toolsets/web/env", json={"env": {key: "   "}}
-        )
+        r = self.client.put("/api/tools/toolsets/web/env", json={"env": {key: "   "}})
         assert r.status_code == 200
         assert key in r.json()["skipped"]
 

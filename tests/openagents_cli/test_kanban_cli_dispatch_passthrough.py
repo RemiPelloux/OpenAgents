@@ -5,6 +5,7 @@ These two fixes are bundled because they're both small, both touch the
 kanban dispatcher's CLI surface, and they each guard against a silent
 operator footgun that only manifests in long-running setups.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,12 +25,18 @@ def isolated_kanban_home(monkeypatch):
     os.makedirs(os.path.join(test_home, "profiles", "default"), exist_ok=True)
     monkeypatch.setenv("OPENAGENTS_HOME", test_home)
     for mod in list(sys.modules.keys()):
-        if mod.startswith("openagents_cli") or mod.startswith("openagents_state") or mod == "openagents_constants":
+        if (
+            mod.startswith("openagents_cli")
+            or mod.startswith("openagents_state")
+            or mod == "openagents_constants"
+        ):
             del sys.modules[mod]
     yield test_home
 
 
-def test_cli_dispatch_passes_max_in_progress_from_config(isolated_kanban_home, monkeypatch):
+def test_cli_dispatch_passes_max_in_progress_from_config(
+    isolated_kanban_home, monkeypatch
+):
     """#33488: hermes kanban dispatch must pass kanban.max_in_progress from
     config to dispatch_once. Without this, the global concurrency cap is
     unreachable from the CLI even though it works from the gateway."""
@@ -45,9 +52,7 @@ def test_cli_dispatch_passes_max_in_progress_from_config(isolated_kanban_home, m
             "max_in_progress_per_profile": 2,
         }
     }
-    monkeypatch.setattr(
-        "openagents_cli.config.load_config", lambda: fake_config
-    )
+    monkeypatch.setattr("openagents_cli.config.load_config", lambda: fake_config)
 
     captured = {}
 
@@ -82,7 +87,8 @@ def test_cli_max_flag_overrides_config_max_spawn(isolated_kanban_home, monkeypat
 
     captured = {}
     monkeypatch.setattr(
-        kanban_db, "dispatch_once",
+        kanban_db,
+        "dispatch_once",
         lambda conn, **kw: (captured.update(kw), kanban_db.DispatchResult())[1],
     )
 
@@ -94,7 +100,9 @@ def test_cli_max_flag_overrides_config_max_spawn(isolated_kanban_home, monkeypat
     )
 
 
-def test_cli_invalid_max_in_progress_silently_disables(isolated_kanban_home, monkeypatch):
+def test_cli_invalid_max_in_progress_silently_disables(
+    isolated_kanban_home, monkeypatch
+):
     """Invalid kanban.max_in_progress values (0, negative, non-int) should
     silently fall through to None — no crash, no surprise behavior."""
     from openagents_cli import kanban as kb_cli
@@ -105,7 +113,8 @@ def test_cli_invalid_max_in_progress_silently_disables(isolated_kanban_home, mon
         monkeypatch.setattr("openagents_cli.config.load_config", lambda: fake_config)
         captured = {}
         monkeypatch.setattr(
-            kanban_db, "dispatch_once",
+            kanban_db,
+            "dispatch_once",
             lambda conn, **kw: (captured.update(kw), kanban_db.DispatchResult())[1],
         )
         args = argparse.Namespace(dry_run=True, max=None, failure_limit=2, json=False)
@@ -127,7 +136,8 @@ def test_kanban_swarm_uses_existing_humanizer_skill():
 
     swarm_path = (
         pathlib.Path(__file__).resolve().parent.parent.parent
-        / "openagents_cli" / "kanban_swarm.py"
+        / "openagents_cli"
+        / "kanban_swarm.py"
     )
     src = swarm_path.read_text()
     assert "avoid-ai-writing" not in src, (
@@ -140,9 +150,7 @@ def test_kanban_swarm_uses_existing_humanizer_skill():
     )
 
     # And the replacement skill must actually exist on disk.
-    skills_root = (
-        pathlib.Path(__file__).resolve().parent.parent.parent / "skills"
-    )
+    skills_root = pathlib.Path(__file__).resolve().parent.parent.parent / "skills"
     humanizer_path = skills_root / "creative" / "humanizer" / "SKILL.md"
     assert humanizer_path.is_file(), (
         f"humanizer skill missing at {humanizer_path}; the kanban_swarm fix "

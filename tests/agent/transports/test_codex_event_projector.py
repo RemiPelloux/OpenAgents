@@ -104,8 +104,11 @@ class TestCommandExecutionProjection:
         assert "hello" in tool["content"]
 
     def test_nonzero_exit_code_annotated_in_tool_result(self) -> None:
-        item = {**COMMAND_EXEC_COMPLETED["params"]["item"], "exitCode": 2,
-                "aggregatedOutput": "boom"}
+        item = {
+            **COMMAND_EXEC_COMPLETED["params"]["item"],
+            "exitCode": 2,
+            "aggregatedOutput": "boom",
+        }
         notif = {
             "method": "item/completed",
             "params": {**COMMAND_EXEC_COMPLETED["params"], "item": item},
@@ -131,8 +134,7 @@ class TestAgentMessageProjection:
         p = CodexEventProjector()
         r = p.project({
             "method": "item/completed",
-            "params": {"item": {"type": "agentMessage", "id": "x",
-                                "text": "hi there"}},
+            "params": {"item": {"type": "agentMessage", "id": "x", "text": "hi there"}},
         })
         assert r.final_text == "hi there"
         assert r.messages == [{"role": "assistant", "content": "hi there"}]
@@ -143,16 +145,20 @@ class TestAgentMessageProjection:
         # First a reasoning item lands
         r1 = p.project({
             "method": "item/completed",
-            "params": {"item": {"type": "reasoning", "id": "r1",
-                                "summary": ["thinking..."],
-                                "content": ["step 1", "step 2"]}},
+            "params": {
+                "item": {
+                    "type": "reasoning",
+                    "id": "r1",
+                    "summary": ["thinking..."],
+                    "content": ["step 1", "step 2"],
+                }
+            },
         })
         assert r1.messages == []  # reasoning alone produces no message
         # Then the assistant message
         r2 = p.project({
             "method": "item/completed",
-            "params": {"item": {"type": "agentMessage", "id": "a1",
-                                "text": "ok"}},
+            "params": {"item": {"type": "agentMessage", "id": "a1", "text": "ok"}},
         })
         assistant = r2.messages[0]
         assert "reasoning" in assistant
@@ -161,12 +167,25 @@ class TestAgentMessageProjection:
 
     def test_reasoning_consumed_after_attaching(self) -> None:
         p = CodexEventProjector()
-        p.project({"method": "item/completed", "params": {"item": {
-            "type": "reasoning", "id": "r1", "summary": ["once"], "content": []}}})
-        first = p.project({"method": "item/completed", "params": {"item": {
-            "type": "agentMessage", "id": "a", "text": "first"}}}).messages[0]
-        second = p.project({"method": "item/completed", "params": {"item": {
-            "type": "agentMessage", "id": "b", "text": "second"}}}).messages[0]
+        p.project({
+            "method": "item/completed",
+            "params": {
+                "item": {
+                    "type": "reasoning",
+                    "id": "r1",
+                    "summary": ["once"],
+                    "content": [],
+                }
+            },
+        })
+        first = p.project({
+            "method": "item/completed",
+            "params": {"item": {"type": "agentMessage", "id": "a", "text": "first"}},
+        }).messages[0]
+        second = p.project({
+            "method": "item/completed",
+            "params": {"item": {"type": "agentMessage", "id": "b", "text": "second"}},
+        }).messages[0]
         assert "reasoning" in first
         assert "reasoning" not in second
 
@@ -183,8 +202,10 @@ class TestFileChangeProjection:
             ],
         }
         p = CodexEventProjector()
-        msgs = p.project({"method": "item/completed",
-                          "params": {"item": item}}).messages
+        msgs = p.project({
+            "method": "item/completed",
+            "params": {"item": item},
+        }).messages
         assert len(msgs) == 2
         tc = msgs[0]["tool_calls"][0]
         assert tc["function"]["name"] == "apply_patch"
@@ -206,47 +227,62 @@ class TestMcpToolCallProjection:
             "result": {"content": [{"text": "found"}]},
             "error": None,
         }
-        msgs = CodexEventProjector().project(
-            {"method": "item/completed", "params": {"item": item}}
-        ).messages
-        assert msgs[0]["tool_calls"][0]["function"]["name"] == "mcp.obsidian.search_notes"
+        msgs = (
+            CodexEventProjector()
+            .project({"method": "item/completed", "params": {"item": item}})
+            .messages
+        )
+        assert (
+            msgs[0]["tool_calls"][0]["function"]["name"] == "mcp.obsidian.search_notes"
+        )
         assert "found" in msgs[1]["content"]
 
     def test_mcp_error_surfaced(self) -> None:
         item = {
-            "type": "mcpToolCall", "id": "m2",
-            "server": "x", "tool": "y", "status": "failed",
-            "arguments": {}, "result": None,
+            "type": "mcpToolCall",
+            "id": "m2",
+            "server": "x",
+            "tool": "y",
+            "status": "failed",
+            "arguments": {},
+            "result": None,
             "error": {"code": -1, "message": "no"},
         }
-        msgs = CodexEventProjector().project(
-            {"method": "item/completed", "params": {"item": item}}
-        ).messages
+        msgs = (
+            CodexEventProjector()
+            .project({"method": "item/completed", "params": {"item": item}})
+            .messages
+        )
         assert "error" in msgs[1]["content"]
 
 
 class TestUserAndOpaqueProjection:
     def test_user_message_text_fragments_only(self) -> None:
         item = {
-            "type": "userMessage", "id": "u1",
+            "type": "userMessage",
+            "id": "u1",
             "content": [
                 {"type": "text", "text": "hello"},
                 {"type": "image", "url": "http://x/y"},
                 {"type": "text", "text": "world"},
             ],
         }
-        msgs = CodexEventProjector().project(
-            {"method": "item/completed", "params": {"item": item}}
-        ).messages
+        msgs = (
+            CodexEventProjector()
+            .project({"method": "item/completed", "params": {"item": item}})
+            .messages
+        )
         assert msgs[0]["role"] == "user"
         assert "hello" in msgs[0]["content"]
         assert "world" in msgs[0]["content"]
 
     def test_opaque_item_recorded_without_fabricated_tool_calls(self) -> None:
         item = {"type": "plan", "id": "p1", "text": "do the thing"}
-        msgs = CodexEventProjector().project(
-            {"method": "item/completed", "params": {"item": item}}
-        ).messages
+        msgs = (
+            CodexEventProjector()
+            .project({"method": "item/completed", "params": {"item": item}})
+            .messages
+        )
         assert len(msgs) == 1
         assert msgs[0]["role"] == "assistant"
         assert "plan" in msgs[0]["content"].lower()
@@ -255,8 +291,12 @@ class TestUserAndOpaqueProjection:
 
 class TestHelpers:
     def test_deterministic_call_id_stable(self) -> None:
-        assert _deterministic_call_id("exec", "abc") == _deterministic_call_id("exec", "abc")
-        assert _deterministic_call_id("exec", "abc") != _deterministic_call_id("exec", "xyz")
+        assert _deterministic_call_id("exec", "abc") == _deterministic_call_id(
+            "exec", "abc"
+        )
+        assert _deterministic_call_id("exec", "abc") != _deterministic_call_id(
+            "exec", "xyz"
+        )
 
     def test_deterministic_call_id_handles_missing_id(self) -> None:
         # Should not raise, should be stable for same item type
@@ -279,23 +319,44 @@ class TestRoleAlternationInvariant:
     @pytest.mark.parametrize(
         "item",
         [
-            {"type": "commandExecution", "id": "c1", "command": "x",
-             "cwd": "/", "status": "completed", "aggregatedOutput": "",
-             "exitCode": 0, "commandActions": []},
-            {"type": "fileChange", "id": "f1", "status": "applied",
-             "changes": []},
-            {"type": "mcpToolCall", "id": "m1", "server": "s", "tool": "t",
-             "status": "completed", "arguments": {}, "result": None,
-             "error": None},
-            {"type": "dynamicToolCall", "id": "d1", "tool": "x",
-             "arguments": {}, "status": "completed",
-             "contentItems": [], "success": True},
+            {
+                "type": "commandExecution",
+                "id": "c1",
+                "command": "x",
+                "cwd": "/",
+                "status": "completed",
+                "aggregatedOutput": "",
+                "exitCode": 0,
+                "commandActions": [],
+            },
+            {"type": "fileChange", "id": "f1", "status": "applied", "changes": []},
+            {
+                "type": "mcpToolCall",
+                "id": "m1",
+                "server": "s",
+                "tool": "t",
+                "status": "completed",
+                "arguments": {},
+                "result": None,
+                "error": None,
+            },
+            {
+                "type": "dynamicToolCall",
+                "id": "d1",
+                "tool": "x",
+                "arguments": {},
+                "status": "completed",
+                "contentItems": [],
+                "success": True,
+            },
         ],
     )
     def test_tool_items_emit_assistant_then_tool(self, item) -> None:
-        msgs = CodexEventProjector().project(
-            {"method": "item/completed", "params": {"item": item}}
-        ).messages
+        msgs = (
+            CodexEventProjector()
+            .project({"method": "item/completed", "params": {"item": item}})
+            .messages
+        )
         assert len(msgs) == 2
         assert msgs[0]["role"] == "assistant"
         assert msgs[1]["role"] == "tool"

@@ -15,6 +15,7 @@ internals (tier math, secret-state handling, catalog invariants). These
 tests live at the openagents level and focus on the integration
 contract: the plugin scans ALL of your sessions, not the first 200.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -85,7 +86,9 @@ class _FakeSessionDB:
         self.last_include_children = include_children
         self.list_calls += 1
         # SQLite semantics: LIMIT -1 = unlimited. Honor that here.
-        effective = self.session_count if limit == -1 else min(self.session_count, limit)
+        effective = (
+            self.session_count if limit == -1 else min(self.session_count, limit)
+        )
         now = int(time.time())
         return [
             {
@@ -235,7 +238,12 @@ def test_evaluate_all_stale_cache_serves_stale_and_refreshes_in_background(plugi
         "achievements": [],
         "sessions": [],
         "aggregate": {},
-        "scan_meta": {"mode": "full", "sessions_total": 1, "sessions_rescanned": 1, "sessions_reused": 0},
+        "scan_meta": {
+            "mode": "full",
+            "sessions_total": 1,
+            "sessions_rescanned": 1,
+            "sessions_reused": 0,
+        },
         "error": None,
         "unlocked_count": 0,
         "discovered_count": 0,
@@ -361,7 +369,9 @@ def test_partial_snapshots_do_not_persist_unlock_timestamps(plugin_api):
     # Seed empty state, then invoke partial compute directly.
     plugin_api.save_state({"unlocks": {}})
     partial_scan = {
-        "sessions": [{"session_id": "x", "tool_call_count": 99999, "tool_names": set()}],
+        "sessions": [
+            {"session_id": "x", "tool_call_count": 99999, "tool_names": set()}
+        ],
         "aggregate": {"max_tool_calls_in_session": 99999, "total_tool_calls": 99999},
         "scan_meta": {"mode": "in_progress"},
     }

@@ -31,13 +31,12 @@ def test_matrix_extra_not_in_all():
     """
     optional_dependencies = _load_optional_dependencies()
 
-    assert "matrix" in optional_dependencies, "[matrix] extra must still exist for explicit `pip install openagents[matrix]`"
+    assert "matrix" in optional_dependencies, (
+        "[matrix] extra must still exist for explicit `pip install openagents[matrix]`"
+    )
     # Must NOT appear in [all] in any form — neither unconditional nor
     # platform-gated. Lazy-install handles it.
-    matrix_in_all = [
-        dep for dep in optional_dependencies["all"]
-        if "matrix" in dep
-    ]
+    matrix_in_all = [dep for dep in optional_dependencies["all"] if "matrix" in dep]
     assert not matrix_in_all, (
         "matrix must not appear in [all] — it's lazy-installed via "
         "tools/lazy_deps.py LAZY_DEPS['platform.matrix']. Found: "
@@ -65,23 +64,31 @@ def test_lazy_installable_extras_excluded_from_all():
     # someone adds a new lazy-install backend, they have to update
     # this list AND verify [all] doesn't contain it.
     lazy_covered_extras = {
-        "anthropic", "bedrock",
-        "exa", "firecrawl", "parallel-web",
+        "anthropic",
+        "bedrock",
+        "exa",
+        "firecrawl",
+        "parallel-web",
         "fal",
-        "edge-tts", "tts-premium",
+        "edge-tts",
+        "tts-premium",
         "voice",  # faster-whisper / sounddevice / numpy
-        "modal", "daytona",
-        "messaging", "slack", "matrix", "dingtalk", "feishu",
-        "honcho", "hindsight",
-        "supermemory", "mem0",
+        "modal",
+        "daytona",
+        "messaging",
+        "slack",
+        "matrix",
+        "dingtalk",
+        "feishu",
+        "honcho",
+        "hindsight",
+        "supermemory",
+        "mem0",
         "mistral",  # mistralai — Voxtral STT/TTS, lazy-installed (stt.mistral / tts.mistral)
     }
     all_extra_specs = optional_dependencies["all"]
     for extra in lazy_covered_extras:
-        offending = [
-            spec for spec in all_extra_specs
-            if f"openagents[{extra}]" in spec
-        ]
+        offending = [spec for spec in all_extra_specs if f"openagents[{extra}]" in spec]
         assert not offending, (
             f"[{extra}] is in [all] but also in LAZY_DEPS. "
             f"Remove it from [all] in pyproject.toml — it lazy-installs "
@@ -121,7 +128,9 @@ def test_pyproject_aiohttp_pins_match_lazy_slack_pin():
         if "aiohttp" in (pins := _exact_pins(specs))
     }
 
-    assert pyproject_aiohttp_pins, "expected at least one pyproject extra to pin aiohttp"
+    assert pyproject_aiohttp_pins, (
+        "expected at least one pyproject extra to pin aiohttp"
+    )
     mismatches = {
         extra: pin
         for extra, pin in pyproject_aiohttp_pins.items()
@@ -168,7 +177,9 @@ def test_pyproject_pins_match_lazy_deps_pins():
             lazy_pins.setdefault(package, set()).add(version)
 
     shared = sorted(set(pyproject_pins) & set(lazy_pins))
-    assert shared, "expected at least one package pinned in both pyproject and LAZY_DEPS"
+    assert shared, (
+        "expected at least one package pinned in both pyproject and LAZY_DEPS"
+    )
 
     drift = {
         package: {
@@ -191,10 +202,7 @@ def test_dev_extra_excluded_from_all():
     optional_dependencies = _load_optional_dependencies()
 
     assert "dev" in optional_dependencies
-    assert not any(
-        spec == "openagents[dev]"
-        for spec in optional_dependencies["all"]
-    )
+    assert not any(spec == "openagents[dev]" for spec in optional_dependencies["all"])
 
 
 def test_messaging_extra_includes_qrcode_for_weixin_setup():
@@ -227,8 +235,7 @@ def test_nemo_relay_extra_uses_official_0_3_distribution():
 
     assert optional_dependencies["nemo-relay"] == ["nemo-relay==0.3"]
     assert not any(
-        spec == "openagents[nemo-relay]"
-        for spec in optional_dependencies["all"]
+        spec == "openagents[nemo-relay]" for spec in optional_dependencies["all"]
     )
 
 

@@ -60,15 +60,14 @@ def _make_silent_wav(path: Path, seconds: float = 0.1) -> Path:
     return path
 
 
-def _python_emit_command(transcript_text: str, output_placeholder: str = "{output_path}") -> str:
+def _python_emit_command(
+    transcript_text: str, output_placeholder: str = "{output_path}"
+) -> str:
     """Return a portable shell command that writes ``transcript_text`` to {output_path}."""
     interpreter = sys.executable
     # Use repr() to embed the literal string safely; outer single quotes
     # avoid shell expansion of $ / ` / etc.
-    payload = (
-        "import sys; "
-        f"open(sys.argv[1], 'w').write({transcript_text!r})"
-    )
+    payload = f"import sys; open(sys.argv[1], 'w').write({transcript_text!r})"
     return f'"{interpreter}" -c "{payload}" {output_placeholder}'
 
 
@@ -196,12 +195,18 @@ class TestSTTCommandHelpers:
         assert _get_command_stt_timeout({"timeout": 2.5}) == 2.5
 
     def test_timeout_falls_back_when_invalid(self):
-        assert _get_command_stt_timeout({"timeout": "not-a-number"}) == \
-            DEFAULT_COMMAND_STT_TIMEOUT_SECONDS
-        assert _get_command_stt_timeout({"timeout": -5}) == \
-            DEFAULT_COMMAND_STT_TIMEOUT_SECONDS
-        assert _get_command_stt_timeout({"timeout": 0}) == \
-            DEFAULT_COMMAND_STT_TIMEOUT_SECONDS
+        assert (
+            _get_command_stt_timeout({"timeout": "not-a-number"})
+            == DEFAULT_COMMAND_STT_TIMEOUT_SECONDS
+        )
+        assert (
+            _get_command_stt_timeout({"timeout": -5})
+            == DEFAULT_COMMAND_STT_TIMEOUT_SECONDS
+        )
+        assert (
+            _get_command_stt_timeout({"timeout": 0})
+            == DEFAULT_COMMAND_STT_TIMEOUT_SECONDS
+        )
 
     def test_timeout_legacy_key(self):
         assert _get_command_stt_timeout({"timeout_seconds": 7}) == 7.0
@@ -215,10 +220,14 @@ class TestSTTCommandHelpers:
             assert _get_command_stt_output_format({"format": fmt}) == fmt
 
     def test_output_format_rejects_unknown(self):
-        assert _get_command_stt_output_format({"format": "exe"}) == \
-            DEFAULT_COMMAND_STT_OUTPUT_FORMAT
-        assert _get_command_stt_output_format({"format": "../etc/passwd"}) == \
-            DEFAULT_COMMAND_STT_OUTPUT_FORMAT
+        assert (
+            _get_command_stt_output_format({"format": "exe"})
+            == DEFAULT_COMMAND_STT_OUTPUT_FORMAT
+        )
+        assert (
+            _get_command_stt_output_format({"format": "../etc/passwd"})
+            == DEFAULT_COMMAND_STT_OUTPUT_FORMAT
+        )
 
     def test_output_format_strips_leading_dot(self):
         assert _get_command_stt_output_format({"format": ".json"}) == "json"
@@ -289,7 +298,7 @@ class TestRenderCommandSTTTemplate:
         )
         # Doubled braces collapse to single braces — JSON snippets survive.
         assert rendered.startswith('echo {"foo":')
-        assert rendered.endswith('}')
+        assert rendered.endswith("}")
         assert "audio.wav" in rendered
 
     def test_shell_quote_outside_quotes_uses_shlex(self):
@@ -362,7 +371,10 @@ class TestTranscribeCommandSTT:
     def test_missing_audio_returns_error(self, tmp_path):
         cfg = {"command": _python_emit_command("x")}
         result = _transcribe_command_stt(
-            str(tmp_path / "does-not-exist.wav"), "fake-cli", cfg, {},
+            str(tmp_path / "does-not-exist.wav"),
+            "fake-cli",
+            cfg,
+            {},
         )
         assert result["success"] is False
         assert "Audio file not found" in result["error"]
@@ -402,7 +414,11 @@ class TestTranscribeCommandSTT:
             "model": "config-model",
         }
         result = _transcribe_command_stt(
-            str(audio), "fake-cli", cfg, {}, model_override="override-model",
+            str(audio),
+            "fake-cli",
+            cfg,
+            {},
+            model_override="override-model",
         )
         assert result["success"] is True
         assert result["transcript"] == "override-model"
@@ -428,7 +444,10 @@ class TestTranscribeCommandSTT:
         }
         # stt.language is "es" but provider config says "fr" — provider wins.
         result = _transcribe_command_stt(
-            str(audio), "fake-cli", cfg, {"language": "es"},
+            str(audio),
+            "fake-cli",
+            cfg,
+            {"language": "es"},
         )
         assert result["transcript"] == "fr"
 
@@ -440,7 +459,10 @@ class TestTranscribeCommandSTT:
             "command": f'"{interpreter}" -c "{payload}" {{language}} {{output_path}}',
         }
         result = _transcribe_command_stt(
-            str(audio), "fake-cli", cfg, {"language": "ja"},
+            str(audio),
+            "fake-cli",
+            cfg,
+            {"language": "ja"},
         )
         assert result["transcript"] == "ja"
 
@@ -494,7 +516,10 @@ class TestTranscribeAudioDispatchToCommandProvider:
         cfg = {
             "provider": "openai",
             "providers": {
-                "openai": {"type": "command", "command": _python_emit_command("HIJACK")},
+                "openai": {
+                    "type": "command",
+                    "command": _python_emit_command("HIJACK"),
+                },
             },
         }
         with patch("tools.transcription_tools._load_stt_config", return_value=cfg):

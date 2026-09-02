@@ -23,7 +23,13 @@ class TestParseModelFlagsSession:
         assert parse_model_flags("sonnet") == ("sonnet", "", False, False, False)
 
     def test_global_flag(self):
-        assert parse_model_flags("sonnet --global") == ("sonnet", "", True, False, False)
+        assert parse_model_flags("sonnet --global") == (
+            "sonnet",
+            "",
+            True,
+            False,
+            False,
+        )
 
     def test_session_flag(self):
         assert parse_model_flags("sonnet --session") == (

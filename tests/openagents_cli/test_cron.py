@@ -151,7 +151,9 @@ class TestGatewayNotRunningWarning:
         assert "Created job" in out
         assert "Gateway is not running" in out
 
-    def test_create_silent_when_gateway_running(self, tmp_cron_dir, capsys, monkeypatch):
+    def test_create_silent_when_gateway_running(
+        self, tmp_cron_dir, capsys, monkeypatch
+    ):
         monkeypatch.setattr("openagents_cli.gateway.find_gateway_pids", lambda: [4242])
         cron_command(
             Namespace(

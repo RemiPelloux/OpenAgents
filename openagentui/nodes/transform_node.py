@@ -32,24 +32,40 @@ def execute(ctx: NodeContext) -> NodeExecutionResult:
 
     try:
         from tools.code_execution_tool import execute_code
-    except Exception as exc:  # pragma: no cover - sandbox unavailable in this environment
-        return failed(ctx.node.id, f"code sandbox unavailable: {exc}", input_value=input_value)
+    except (
+        Exception
+    ) as exc:  # pragma: no cover - sandbox unavailable in this environment
+        return failed(
+            ctx.node.id, f"code sandbox unavailable: {exc}", input_value=input_value
+        )
 
     try:
-        raw_result = execute_code(full_script, task_id=f"openagentui-{ctx.execution.id}-{ctx.node.id}")
+        raw_result = execute_code(
+            full_script, task_id=f"openagentui-{ctx.execution.id}-{ctx.node.id}"
+        )
     except Exception as exc:
         logger.exception("openagentui: transform node %s failed", ctx.node.id)
-        return failed(ctx.node.id, f"transform execution failed: {exc}", input_value=input_value)
+        return failed(
+            ctx.node.id, f"transform execution failed: {exc}", input_value=input_value
+        )
 
     try:
         parsed = json.loads(raw_result)
     except (json.JSONDecodeError, TypeError):
-        return failed(ctx.node.id, f"malformed sandbox response: {raw_result[:500]}", input_value=input_value)
+        return failed(
+            ctx.node.id,
+            f"malformed sandbox response: {raw_result[:500]}",
+            input_value=input_value,
+        )
 
     if parsed.get("error"):
         return failed(ctx.node.id, str(parsed["error"]), input_value=input_value)
     if parsed.get("status") not in (None, "success", "completed"):
-        return failed(ctx.node.id, f"transform script {parsed.get('status')}: {parsed.get('output', '')}", input_value=input_value)
+        return failed(
+            ctx.node.id,
+            f"transform script {parsed.get('status')}: {parsed.get('output', '')}",
+            input_value=input_value,
+        )
 
     stdout_text = (parsed.get("output") or "").strip()
     output = stdout_text

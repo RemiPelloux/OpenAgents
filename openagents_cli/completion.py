@@ -52,6 +52,7 @@ def _clean(text: str, maxlen: int = 60) -> str:
 # Bash
 # ---------------------------------------------------------------------------
 
+
 def generate_bash(parser: argparse.ArgumentParser) -> str:
     tree = _walk(parser)
     top_cmds = " ".join(sorted(tree["subcommands"]))
@@ -66,13 +67,13 @@ def generate_bash(parser: argparse.ArgumentParser) -> str:
             profile_actions = "use delete show alias rename export"
             cases.append(
                 f"        profile)\n"
-                f"            case \"$prev\" in\n"
+                f'            case "$prev" in\n'
                 f"                profile)\n"
-                f"                    COMPREPLY=($(compgen -W \"{subcmds}\" -- \"$cur\"))\n"
+                f'                    COMPREPLY=($(compgen -W "{subcmds}" -- "$cur"))\n'
                 f"                    return\n"
                 f"                    ;;\n"
                 f"                {profile_actions.replace(' ', '|')})\n"
-                f"                    COMPREPLY=($(compgen -W \"$(_hermes_profiles)\" -- \"$cur\"))\n"
+                f'                    COMPREPLY=($(compgen -W "$(_hermes_profiles)" -- "$cur"))\n'
                 f"                    return\n"
                 f"                    ;;\n"
                 f"            esac\n"
@@ -82,7 +83,7 @@ def generate_bash(parser: argparse.ArgumentParser) -> str:
             subcmds = " ".join(sorted(info["subcommands"]))
             cases.append(
                 f"        {cmd})\n"
-                f"            COMPREPLY=($(compgen -W \"{subcmds}\" -- \"$cur\"))\n"
+                f'            COMPREPLY=($(compgen -W "{subcmds}" -- "$cur"))\n'
                 f"            return\n"
                 f"            ;;"
             )
@@ -90,7 +91,7 @@ def generate_bash(parser: argparse.ArgumentParser) -> str:
             flags = " ".join(info["flags"])
             cases.append(
                 f"        {cmd})\n"
-                f"            COMPREPLY=($(compgen -W \"{flags}\" -- \"$cur\"))\n"
+                f'            COMPREPLY=($(compgen -W "{flags}" -- "$cur"))\n'
                 f"            return\n"
                 f"            ;;"
             )
@@ -142,6 +143,7 @@ complete -F _hermes_completion hermes
 # ---------------------------------------------------------------------------
 # Zsh
 # ---------------------------------------------------------------------------
+
 
 def generate_zsh(parser: argparse.ArgumentParser) -> str:
     tree = _walk(parser)
@@ -247,6 +249,7 @@ compdef _hermes hermes
 # ---------------------------------------------------------------------------
 # Fish
 # ---------------------------------------------------------------------------
+
 
 def generate_fish(parser: argparse.ArgumentParser) -> str:
     tree = _walk(parser)

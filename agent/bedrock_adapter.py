@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 try:
     from tools.lazy_deps import ensure
+
     ensure("provider.bedrock", prompt=False)
 except Exception:
     pass  # lazy_deps unavailable or install failed — let downstream imports surface the real error
@@ -96,7 +97,8 @@ def _get_bedrock_runtime_client(region: str):
     if region not in _bedrock_runtime_client_cache:
         boto3 = _require_boto3()
         _bedrock_runtime_client_cache[region] = boto3.client(
-            "bedrock-runtime", region_name=region,
+            "bedrock-runtime",
+            region_name=region,
         )
     return _bedrock_runtime_client_cache[region]
 
@@ -106,7 +108,8 @@ def _get_bedrock_control_client(region: str):
     if region not in _bedrock_control_client_cache:
         boto3 = _require_boto3()
         _bedrock_control_client_cache[region] = boto3.client(
-            "bedrock", region_name=region,
+            "bedrock",
+            region_name=region,
         )
     return _bedrock_control_client_cache[region]
 
@@ -197,6 +200,7 @@ def is_stale_connection_error(exc: BaseException) -> bool:
             ConnectionError as BotoConnectionError,
             HTTPClientError,
         )
+
         botocore_errors: tuple = (BotoConnectionError, HTTPClientError)
     except ImportError:  # pragma: no cover — botocore always present with boto3
         botocore_errors = ()
@@ -210,6 +214,7 @@ def is_stale_connection_error(exc: BaseException) -> bool:
             NewConnectionError,
             ConnectionError as Urllib3ConnectionError,
         )
+
         urllib3_errors = (ProtocolError, NewConnectionError, Urllib3ConnectionError)
     except ImportError:  # pragma: no cover
         urllib3_errors = ()
@@ -295,8 +300,10 @@ def resolve_aws_auth_env_var(env: Optional[Dict[str, str]] = None) -> Optional[s
     if env.get("AWS_BEARER_TOKEN_BEDROCK", "").strip():
         return "AWS_BEARER_TOKEN_BEDROCK"
     # Explicit access key pair
-    if (env.get("AWS_ACCESS_KEY_ID", "").strip()
-            and env.get("AWS_SECRET_ACCESS_KEY", "").strip()):
+    if (
+        env.get("AWS_ACCESS_KEY_ID", "").strip()
+        and env.get("AWS_SECRET_ACCESS_KEY", "").strip()
+    ):
         return "AWS_ACCESS_KEY_ID"
     # Named profile (SSO, assume-role, etc.)
     if env.get("AWS_PROFILE", "").strip():
@@ -311,6 +318,7 @@ def resolve_aws_auth_env_var(env: Optional[Dict[str, str]] = None) -> Optional[s
     # implicit sources (EC2 instance role, ECS task role, Lambda, etc.)
     try:
         import botocore.session
+
         session = botocore.session.get_session()
         credentials = session.get_credentials()
         if credentials is not None:
@@ -342,6 +350,7 @@ def has_aws_credentials(env: Optional[Dict[str, str]] = None) -> bool:
     # that don't set environment variables.
     try:
         import botocore.session
+
         session = botocore.session.get_session()
         credentials = session.get_credentials()
         if credentials is not None:
@@ -369,13 +378,13 @@ def resolve_bedrock_region(env: Optional[Dict[str, str]] = None) -> str:
     """
     env = env if env is not None else os.environ
     explicit = (
-        env.get("AWS_REGION", "").strip()
-        or env.get("AWS_DEFAULT_REGION", "").strip()
+        env.get("AWS_REGION", "").strip() or env.get("AWS_DEFAULT_REGION", "").strip()
     )
     if explicit:
         return explicit
     try:
         import botocore.session
+
         region = botocore.session.get_session().get_config_variable("region")
         if region:
             return region
@@ -415,11 +424,11 @@ def bedrock_model_ids_or_none() -> Optional[List[str]]:
 # If a model fails with a tool-related ValidationException, add it here.
 
 _NON_TOOL_CALLING_PATTERNS = [
-    "deepseek.r1",          # DeepSeek R1 — reasoning only, no tool support
-    "deepseek-r1",          # Alternate ID format
-    "stability.",           # Image generation models
-    "cohere.embed",         # Embedding models
-    "amazon.titan-embed",   # Embedding models
+    "deepseek.r1",  # DeepSeek R1 — reasoning only, no tool support
+    "deepseek-r1",  # Alternate ID format
+    "stability.",  # Image generation models
+    "cohere.embed",  # Embedding models
+    "amazon.titan-embed",  # Embedding models
 ]
 
 
@@ -450,7 +459,7 @@ def is_anthropic_bedrock_model(model_id: str) -> bool:
     # Strip regional prefix if present
     for prefix in ("us.", "global.", "eu.", "ap.", "jp."):
         if model_lower.startswith(prefix):
-            model_lower = model_lower[len(prefix):]
+            model_lower = model_lower[len(prefix) :]
             break
     return model_lower.startswith("anthropic.claude")
 
@@ -458,6 +467,7 @@ def is_anthropic_bedrock_model(model_id: str) -> bool:
 # ---------------------------------------------------------------------------
 # Message format conversion: OpenAI → Bedrock Converse
 # ---------------------------------------------------------------------------
+
 
 def convert_tools_to_converse(tools: List[Dict]) -> List[Dict]:
     """Convert OpenAI-format tool definitions to Bedrock Converse ``toolConfig``.
@@ -530,7 +540,9 @@ def _convert_content_to_converse(content) -> List[Dict]:
                             media_type = mime_part
                     blocks.append({
                         "image": {
-                            "format": media_type.split("/")[-1] if "/" in media_type else "jpeg",
+                            "format": media_type.split("/")[-1]
+                            if "/" in media_type
+                            else "jpeg",
                             "source": {"bytes": data},
                         }
                     })
@@ -583,7 +595,9 @@ def convert_messages_to_converse(
         if role == "tool":
             # Tool result messages → merge into the preceding user turn
             tool_call_id = msg.get("tool_call_id", "")
-            result_content = content if isinstance(content, str) else json.dumps(content)
+            result_content = (
+                content if isinstance(content, str) else json.dumps(content)
+            )
             tool_result_block = {
                 "toolResult": {
                     "toolUseId": tool_call_id,
@@ -610,11 +624,13 @@ def convert_messages_to_converse(
 
             # Convert tool calls
             tool_calls = msg.get("tool_calls", [])
-            for tc in (tool_calls or []):
+            for tc in tool_calls or []:
                 fn = tc.get("function", {})
                 args_str = fn.get("arguments", "{}")
                 try:
-                    args_dict = json.loads(args_str) if isinstance(args_str, str) else args_str
+                    args_dict = (
+                        json.loads(args_str) if isinstance(args_str, str) else args_str
+                    )
                 except (json.JSONDecodeError, TypeError):
                     args_dict = {}
                 content_blocks.append({
@@ -665,6 +681,7 @@ def convert_messages_to_converse(
 # Response format conversion: Bedrock Converse → OpenAI
 # ---------------------------------------------------------------------------
 
+
 def _converse_stop_reason_to_openai(stop_reason: str) -> str:
     """Map Bedrock Converse stop reasons to OpenAI finish_reason values."""
     mapping = {
@@ -710,14 +727,16 @@ def normalize_converse_response(response: Dict) -> SimpleNamespace:
                     reasoning_parts.append(str(thinking_text))
         elif "toolUse" in block:
             tu = block["toolUse"]
-            tool_calls.append(SimpleNamespace(
-                id=tu.get("toolUseId", ""),
-                type="function",
-                function=SimpleNamespace(
-                    name=tu.get("name", ""),
-                    arguments=json.dumps(tu.get("input", {})),
-                ),
-            ))
+            tool_calls.append(
+                SimpleNamespace(
+                    id=tu.get("toolUseId", ""),
+                    type="function",
+                    function=SimpleNamespace(
+                        name=tu.get("name", ""),
+                        arguments=json.dumps(tu.get("input", {})),
+                    ),
+                )
+            )
 
     # Build the message object
     msg = SimpleNamespace(
@@ -757,6 +776,7 @@ def normalize_converse_response(response: Dict) -> SimpleNamespace:
 # ---------------------------------------------------------------------------
 # Streaming response conversion
 # ---------------------------------------------------------------------------
+
 
 def normalize_converse_stream_events(event_stream) -> SimpleNamespace:
     """Consume a Bedrock ConverseStream event stream and build an OpenAI-compatible response.
@@ -859,17 +879,23 @@ def stream_converse_with_callbacks(
         elif "contentBlockStop" in event:
             if current_tool is not None:
                 try:
-                    input_dict = json.loads(current_tool["input_json"]) if current_tool["input_json"] else {}
+                    input_dict = (
+                        json.loads(current_tool["input_json"])
+                        if current_tool["input_json"]
+                        else {}
+                    )
                 except (json.JSONDecodeError, TypeError):
                     input_dict = {}
-                tool_calls.append(SimpleNamespace(
-                    id=current_tool["toolUseId"],
-                    type="function",
-                    function=SimpleNamespace(
-                        name=current_tool["name"],
-                        arguments=json.dumps(input_dict),
-                    ),
-                ))
+                tool_calls.append(
+                    SimpleNamespace(
+                        id=current_tool["toolUseId"],
+                        type="function",
+                        function=SimpleNamespace(
+                            name=current_tool["name"],
+                            arguments=json.dumps(input_dict),
+                        ),
+                    )
+                )
                 current_tool = None
             elif current_text_buffer:
                 text_parts.append("".join(current_text_buffer))
@@ -925,6 +951,7 @@ def stream_converse_with_callbacks(
 # High-level API: call Bedrock Converse
 # ---------------------------------------------------------------------------
 
+
 def build_converse_kwargs(
     model: str,
     messages: List[Dict],
@@ -977,7 +1004,8 @@ def build_converse_kwargs(
             else:
                 logger.warning(
                     "Model %s does not support tool calling — tools stripped. "
-                    "The agent will operate in text-only mode.", model
+                    "The agent will operate in text-only mode.",
+                    model,
                 )
 
     if guardrail_config:
@@ -1020,7 +1048,9 @@ def call_converse(
             logger.warning(
                 "bedrock: stale-connection error on converse(region=%s, model=%s): "
                 "%s — evicting cached client so the next call reconnects.",
-                region, model, type(exc).__name__,
+                region,
+                model,
+                type(exc).__name__,
             )
             invalidate_runtime_client(region)
         raise
@@ -1065,14 +1095,17 @@ def call_converse_stream(
             logger.info(
                 "bedrock: converse_stream denied by IAM on (region=%s, model=%s) — "
                 "falling back to non-streaming converse().",
-                region, model,
+                region,
+                model,
             )
             return normalize_converse_response(client.converse(**kwargs))
         if is_stale_connection_error(exc):
             logger.warning(
                 "bedrock: stale-connection error on converse_stream(region=%s, "
                 "model=%s): %s — evicting cached client so the next call reconnects.",
-                region, model, type(exc).__name__,
+                region,
+                model,
+                type(exc).__name__,
             )
             invalidate_runtime_client(region)
         raise
@@ -1193,7 +1226,8 @@ def discover_bedrock_models(
             if filter_set:
                 profile_models = profile.get("models", [])
                 matches = any(
-                    _extract_provider_from_arn(m.get("modelArn", "")).lower() in filter_set
+                    _extract_provider_from_arn(m.get("modelArn", "")).lower()
+                    in filter_set
                     for m in profile_models
                 )
                 if not matches:
@@ -1212,10 +1246,12 @@ def discover_bedrock_models(
         logger.debug("Skipping inference profile discovery: %s", e)
 
     # Sort: global cross-region profiles first (recommended), then alphabetical
-    models.sort(key=lambda m: (
-        0 if m["id"].startswith("global.") else 1,
-        m["name"].lower(),
-    ))
+    models.sort(
+        key=lambda m: (
+            0 if m["id"].startswith("global.") else 1,
+            m["name"].lower(),
+        )
+    )
 
     _discovery_cache[cache_key] = {
         "timestamp": time.time(),
@@ -1232,6 +1268,8 @@ def _extract_provider_from_arn(arn: str) -> str:
     """
     match = re.search(r"foundation-model/([^.]+)", arn)
     return match.group(1) if match else ""
+
+
 # ---------------------------------------------------------------------------
 # Error classification — Bedrock-specific exceptions
 # ---------------------------------------------------------------------------
@@ -1241,9 +1279,18 @@ def _extract_provider_from_arn(arn: str) -> str:
 # Patterns that indicate the input context exceeded the model's token limit.
 # Used by run_agent.py to trigger context compression instead of retrying.
 CONTEXT_OVERFLOW_PATTERNS = [
-    re.compile(r"ValidationException.*(?:input is too long|max input token|input token.*exceed)", re.IGNORECASE),
-    re.compile(r"ValidationException.*(?:exceeds? the (?:maximum|max) (?:number of )?(?:input )?tokens)", re.IGNORECASE),
-    re.compile(r"ModelStreamErrorException.*(?:Input is too long|too many input tokens)", re.IGNORECASE),
+    re.compile(
+        r"ValidationException.*(?:input is too long|max input token|input token.*exceed)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"ValidationException.*(?:exceeds? the (?:maximum|max) (?:number of )?(?:input )?tokens)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"ModelStreamErrorException.*(?:Input is too long|too many input tokens)",
+        re.IGNORECASE,
+    ),
 ]
 
 # Patterns for throttling / rate limit errors — should trigger backoff + retry.
@@ -1297,29 +1344,29 @@ def classify_bedrock_error(error_message: str) -> str:
 
 BEDROCK_CONTEXT_LENGTHS: Dict[str, int] = {
     # Anthropic Claude models on Bedrock
-    "anthropic.claude-opus-4-6":     200_000,
-    "anthropic.claude-sonnet-4-6":   200_000,
-    "anthropic.claude-sonnet-4-5":   200_000,
-    "anthropic.claude-haiku-4-5":    200_000,
-    "anthropic.claude-opus-4":       200_000,
-    "anthropic.claude-sonnet-4":     200_000,
-    "anthropic.claude-3-5-sonnet":   200_000,
-    "anthropic.claude-3-5-haiku":    200_000,
-    "anthropic.claude-3-opus":       200_000,
-    "anthropic.claude-3-sonnet":     200_000,
-    "anthropic.claude-3-haiku":      200_000,
+    "anthropic.claude-opus-4-6": 200_000,
+    "anthropic.claude-sonnet-4-6": 200_000,
+    "anthropic.claude-sonnet-4-5": 200_000,
+    "anthropic.claude-haiku-4-5": 200_000,
+    "anthropic.claude-opus-4": 200_000,
+    "anthropic.claude-sonnet-4": 200_000,
+    "anthropic.claude-3-5-sonnet": 200_000,
+    "anthropic.claude-3-5-haiku": 200_000,
+    "anthropic.claude-3-opus": 200_000,
+    "anthropic.claude-3-sonnet": 200_000,
+    "anthropic.claude-3-haiku": 200_000,
     # Amazon Nova
-    "amazon.nova-pro":               300_000,
-    "amazon.nova-lite":              300_000,
-    "amazon.nova-micro":             128_000,
+    "amazon.nova-pro": 300_000,
+    "amazon.nova-lite": 300_000,
+    "amazon.nova-micro": 128_000,
     # Meta Llama
-    "meta.llama4-maverick":          128_000,
-    "meta.llama4-scout":             128_000,
-    "meta.llama3-3-70b-instruct":    128_000,
+    "meta.llama4-maverick": 128_000,
+    "meta.llama4-scout": 128_000,
+    "meta.llama3-3-70b-instruct": 128_000,
     # Mistral
-    "mistral.mistral-large":         128_000,
+    "mistral.mistral-large": 128_000,
     # DeepSeek
-    "deepseek.v3":                   128_000,
+    "deepseek.v3": 128_000,
 }
 
 # Default for unknown Bedrock models

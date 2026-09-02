@@ -58,7 +58,9 @@ def _run_terminal(
     return result, mock_env
 
 
-def test_terminal_output_unchanged_when_transform_hook_not_registered(monkeypatch, tmp_path):
+def test_terminal_output_unchanged_when_transform_hook_not_registered(
+    monkeypatch, tmp_path
+):
     result, _mock_env = _run_terminal(monkeypatch, tmp_path, output="plain output")
 
     assert result["output"] == "plain output"
@@ -93,13 +95,20 @@ def test_terminal_output_uses_first_valid_string_from_hooks(monkeypatch, tmp_pat
         monkeypatch,
         tmp_path,
         output="plain output",
-        invoke_hook=lambda hook_name, **kwargs: [None, {"bad": True}, "first", "second"],
+        invoke_hook=lambda hook_name, **kwargs: [
+            None,
+            {"bad": True},
+            "first",
+            "second",
+        ],
     )
 
     assert result["output"] == "first"
 
 
-def test_terminal_output_transform_still_truncates_long_replacement(monkeypatch, tmp_path):
+def test_terminal_output_transform_still_truncates_long_replacement(
+    monkeypatch, tmp_path
+):
     transformed_output = "PLUGIN-HEAD\n" + ("A" * 60000) + "\nPLUGIN-TAIL"
     result, _mock_env = _run_terminal(
         monkeypatch,
@@ -124,7 +133,9 @@ def test_terminal_output_transform_still_runs_strip_and_redact(monkeypatch, tmp_
         monkeypatch,
         tmp_path,
         output="plain output",
-        invoke_hook=lambda hook_name, **kwargs: [f" \x1b[31mOPENAI_API_KEY={secret}\x1b[0m "],
+        invoke_hook=lambda hook_name, **kwargs: [
+            f" \x1b[31mOPENAI_API_KEY={secret}\x1b[0m "
+        ],
     )
 
     assert "\x1b" not in result["output"]
@@ -154,7 +165,9 @@ def test_terminal_output_transform_hook_exception_falls_back(monkeypatch, tmp_pa
     assert result["error"] is None
 
 
-def test_terminal_output_transform_does_not_change_approval_or_exit_code_meaning(monkeypatch, tmp_path):
+def test_terminal_output_transform_does_not_change_approval_or_exit_code_meaning(
+    monkeypatch, tmp_path
+):
     approval = {
         "approved": True,
         "user_approved": True,
@@ -184,7 +197,9 @@ def test_terminal_output_transform_integration_with_real_plugin(monkeypatch, tmp
     plugins_dir = hermes_home / "plugins"
     plugin_dir = plugins_dir / "terminal_transform"
     plugin_dir.mkdir(parents=True)
-    (plugin_dir / "plugin.yaml").write_text("name: terminal_transform\n", encoding="utf-8")
+    (plugin_dir / "plugin.yaml").write_text(
+        "name: terminal_transform\n", encoding="utf-8"
+    )
     (plugin_dir / "__init__.py").write_text(
         "def register(ctx):\n"
         '    ctx.register_hook("transform_terminal_output", '

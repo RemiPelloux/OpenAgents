@@ -116,8 +116,13 @@ def test_maybe_reap_passes_current_profile_as_filter(monkeypatch):
         captured_args.update(kwargs)
         return 0
 
-    with patch("tools.environments.docker.reap_orphan_containers", _fake_reap), \
-         patch("tools.environments.docker._get_active_profile_name", return_value="research-bot"):
+    with (
+        patch("tools.environments.docker.reap_orphan_containers", _fake_reap),
+        patch(
+            "tools.environments.docker._get_active_profile_name",
+            return_value="research-bot",
+        ),
+    ):
         terminal_tool._maybe_reap_docker_orphans({"docker_orphan_reaper": True})
 
     assert captured_args.get("profile_filter") == "research-bot", (

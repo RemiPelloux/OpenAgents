@@ -126,10 +126,12 @@ def test_existing_pairing_skip_branch_enables_whatsapp(isolated_home, monkeypatc
     # Path.exists wholesale to True for node_modules; the creds.json check
     # in the same function still works because we wrote it ourselves.
     _orig_exists = Path.exists
+
     def _stub_exists(self):
         if self.name == "node_modules":
             return True
         return _orig_exists(self)
+
     monkeypatch.setattr(Path, "exists", _stub_exists)
 
     buf = io.StringIO()

@@ -69,10 +69,15 @@ async def _connect(adapter: DiscordAdapter, monkeypatch, bot_factory):
         "gateway.status.acquire_scoped_lock",
         lambda scope, identity, metadata=None: (True, None),
     )
-    monkeypatch.setattr("gateway.status.release_scoped_lock", lambda scope, identity: None)
+    monkeypatch.setattr(
+        "gateway.status.release_scoped_lock", lambda scope, identity: None
+    )
     intents = SimpleNamespace(
-        message_content=False, dm_messages=False, guild_messages=False,
-        members=False, voice_states=False,
+        message_content=False,
+        dm_messages=False,
+        guild_messages=False,
+        members=False,
+        voice_states=False,
     )
     monkeypatch.setattr(discord_platform.Intents, "default", lambda: intents)
     monkeypatch.setattr(discord_platform.commands, "Bot", bot_factory)
@@ -88,7 +93,9 @@ async def test_liveness_probe_disabled_when_interval_zero(monkeypatch):
     bot_holder: dict = {}
 
     def factory(**kwargs):
-        bot = _LiveBot(intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions"))
+        bot = _LiveBot(
+            intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions")
+        )
         bot.fetch_user = AsyncMock()
         bot_holder["bot"] = bot
         return bot
@@ -106,7 +113,9 @@ async def test_liveness_probe_disabled_when_threshold_zero(monkeypatch):
     adapter = _make_adapter(monkeypatch, interval=0.01, threshold=0)
 
     def factory(**kwargs):
-        bot = _LiveBot(intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions"))
+        bot = _LiveBot(
+            intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions")
+        )
         bot.fetch_user = AsyncMock()
         return bot
 
@@ -121,7 +130,9 @@ async def test_liveness_probe_pings_rest_while_healthy(monkeypatch):
     adapter = _make_adapter(monkeypatch, interval=0.01, threshold=3)
 
     def factory(**kwargs):
-        bot = _LiveBot(intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions"))
+        bot = _LiveBot(
+            intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions")
+        )
         bot.fetch_user = AsyncMock(return_value=SimpleNamespace(id=999))
         return bot
 
@@ -141,7 +152,9 @@ async def test_liveness_probe_forces_reconnect_after_threshold(monkeypatch):
     adapter = _make_adapter(monkeypatch, interval=0.005, threshold=2)
 
     def factory(**kwargs):
-        bot = _LiveBot(intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions"))
+        bot = _LiveBot(
+            intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions")
+        )
         bot.fetch_user = AsyncMock(side_effect=TimeoutError("dead proxy"))
         return bot
 
@@ -175,7 +188,9 @@ async def test_disconnect_cancels_liveness_task(monkeypatch):
     adapter = _make_adapter(monkeypatch, interval=60, threshold=3)
 
     def factory(**kwargs):
-        bot = _LiveBot(intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions"))
+        bot = _LiveBot(
+            intents=kwargs["intents"], allowed_mentions=kwargs.get("allowed_mentions")
+        )
         bot.fetch_user = AsyncMock()
         return bot
 

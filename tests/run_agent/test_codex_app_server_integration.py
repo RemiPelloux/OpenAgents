@@ -29,10 +29,17 @@ def fake_session(monkeypatch):
         return TurnResult(
             final_text=f"echo: {user_input}",
             projected_messages=[
-                {"role": "assistant", "content": None,
-                 "tool_calls": [{"id": "exec_1", "type": "function",
-                                 "function": {"name": "exec_command",
-                                              "arguments": "{}"}}]},
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "exec_1",
+                            "type": "function",
+                            "function": {"name": "exec_command", "arguments": "{}"},
+                        }
+                    ],
+                },
                 {"role": "tool", "tool_call_id": "exec_1", "content": "ok"},
                 {"role": "assistant", "content": f"echo: {user_input}"},
             ],
@@ -144,8 +151,11 @@ class TestRunConversationCodexPath:
         assert msgs[0]["role"] == "user"
         assert msgs[0]["content"] == "hello"
         # Last assistant message has the final text
-        final = [m for m in msgs if m.get("role") == "assistant"
-                 and m.get("content") == "echo: hello"]
+        final = [
+            m
+            for m in msgs
+            if m.get("role") == "assistant" and m.get("content") == "echo: hello"
+        ]
         assert final, f"expected final assistant message in {msgs}"
 
     def test_projected_messages_are_synced_to_external_memory(self, fake_session):
@@ -157,7 +167,10 @@ class TestRunConversationCodexPath:
             result = agent.run_conversation("hello")
 
         agent._memory_manager.sync_all.assert_called_once()
-        assert agent._memory_manager.sync_all.call_args.kwargs["messages"] == result["messages"]
+        assert (
+            agent._memory_manager.sync_all.call_args.kwargs["messages"]
+            == result["messages"]
+        )
 
     def test_nudge_counters_tick(self, fake_session):
         """The skill nudge counter must accumulate tool_iterations across
@@ -186,10 +199,13 @@ class TestRunConversationCodexPath:
         with patch.object(agent, "_spawn_background_review", return_value=None):
             result = agent.run_conversation("ping unique 12345")
         user_count = sum(
-            1 for m in result["messages"]
+            1
+            for m in result["messages"]
             if m.get("role") == "user" and m.get("content") == "ping unique 12345"
         )
-        assert user_count == 1, f"user message appeared {user_count}× in {result['messages']}"
+        assert user_count == 1, (
+            f"user message appeared {user_count}× in {result['messages']}"
+        )
 
     def test_background_review_NOT_invoked_below_threshold(self, fake_session):
         """A single turn shouldn't trigger background review — counters
@@ -198,23 +214,24 @@ class TestRunConversationCodexPath:
         agent._memory_nudge_interval = 10
         agent._skill_nudge_interval = 10
         agent._iters_since_skill = 0
-        with patch.object(agent, "_spawn_background_review",
-                          return_value=None) as spawn:
+        with patch.object(
+            agent, "_spawn_background_review", return_value=None
+        ) as spawn:
             agent.run_conversation("ping")
         # Below threshold → review should NOT fire (was a real bug:
         # the helper was calling _spawn_background_review() with no
         # args after every turn, which would crash with TypeError).
         assert not spawn.called
 
-    def test_background_review_skill_trigger_fires_above_threshold(
-        self, monkeypatch
-    ):
+    def test_background_review_skill_trigger_fires_above_threshold(self, monkeypatch):
         """When tool iterations cross the skill nudge interval, the
         background review fires with review_skills=True and the right
         messages_snapshot signature."""
         from agent.transports.codex_app_server_session import (
-            CodexAppServerSession, TurnResult,
+            CodexAppServerSession,
+            TurnResult,
         )
+
         # Make the fake session report 10 tool iterations in one turn
         # (matching the default skill threshold).
         def fake_run_turn(self, user_input: str, **kwargs):
@@ -224,12 +241,12 @@ class TestRunConversationCodexPath:
                     {"role": "assistant", "content": f"echo: {user_input}"},
                 ],
                 tool_iterations=10,
-                turn_id="t1", thread_id="th1",
+                turn_id="t1",
+                thread_id="th1",
             )
+
         monkeypatch.setattr(CodexAppServerSession, "run_turn", fake_run_turn)
-        monkeypatch.setattr(
-            CodexAppServerSession, "ensure_started", lambda self: "th1"
-        )
+        monkeypatch.setattr(CodexAppServerSession, "ensure_started", lambda self: "th1")
 
         agent = _make_codex_agent()
         agent._skill_nudge_interval = 10
@@ -238,8 +255,9 @@ class TestRunConversationCodexPath:
         agent.valid_tool_names = set(getattr(agent, "valid_tool_names", set()))
         agent.valid_tool_names.add("skill_manage")
 
-        with patch.object(agent, "_spawn_background_review",
-                          return_value=None) as spawn:
+        with patch.object(
+            agent, "_spawn_background_review", return_value=None
+        ) as spawn:
             agent.run_conversation("do tool work")
 
         assert spawn.called, "skill threshold tripped but review didn't fire"
@@ -265,8 +283,9 @@ class TestRunConversationCodexPath:
         agent.valid_tool_names = set(getattr(agent, "valid_tool_names", set()))
         agent.valid_tool_names.add("skill_manage")
 
-        with patch.object(agent, "_spawn_background_review",
-                          return_value=None) as spawn:
+        with patch.object(
+            agent, "_spawn_background_review", return_value=None
+        ) as spawn:
             agent.run_conversation("first")
         # The fake session reports tool_iterations=1, which trips
         # _skill_nudge_interval=1. So review should fire.
@@ -287,8 +306,9 @@ class TestRunConversationCodexPath:
         agent = _make_codex_agent()
         # The chat_completions loop calls self.client.chat.completions.create(...)
         # If our early-return works, that path is dead.
-        with patch.object(agent, "client") as client_mock, patch.object(
-            agent, "_spawn_background_review", return_value=None
+        with (
+            patch.object(agent, "client") as client_mock,
+            patch.object(agent, "_spawn_background_review", return_value=None),
         ):
             agent.run_conversation("hi")
         assert not client_mock.chat.completions.create.called
@@ -298,7 +318,8 @@ class TestRunConversationCodexPath:
         Codex app-server must still start in that configured workspace instead
         of falling back to the OpenAgents daemon process cwd."""
         from agent.transports.codex_app_server_session import (
-            CodexAppServerSession, TurnResult,
+            CodexAppServerSession,
+            TurnResult,
         )
 
         captured: dict[str, str] = {}
@@ -338,6 +359,7 @@ class TestReviewForkApiModeDowngrade:
         verify the review_agent gets api_mode=codex_responses when the
         parent is codex_app_server."""
         from unittest.mock import MagicMock, patch as _patch
+
         agent = _make_codex_agent()
         # Pretend memory + skills are configured so the review fork
         # reaches the AIAgent constructor.
@@ -373,10 +395,12 @@ class TestReviewForkApiModeDowngrade:
 
             def _no_op_run_conv(*a, **kw):
                 return {"final_response": "", "messages": []}
+
             self.run_conversation = _no_op_run_conv
 
             def _no_op_close(*a, **kw):
                 return None
+
             self.close = _no_op_close
 
         with _patch("run_agent.AIAgent.__init__", _capture_init):
@@ -387,6 +411,7 @@ class TestReviewForkApiModeDowngrade:
             )
             # Wait for the spawned thread to actually execute
             import time
+
             for _ in range(30):
                 if "api_mode" in captured:
                     break
@@ -403,8 +428,7 @@ class TestErrorHandling:
         def boom_run_turn(self, user_input, **kwargs):
             raise RuntimeError("subprocess died")
 
-        monkeypatch.setattr(CodexAppServerSession, "ensure_started",
-                            lambda self: "t1")
+        monkeypatch.setattr(CodexAppServerSession, "ensure_started", lambda self: "t1")
         monkeypatch.setattr(CodexAppServerSession, "run_turn", boom_run_turn)
 
         agent = _make_codex_agent()
@@ -426,8 +450,8 @@ class TestErrorHandling:
                 turn_id="t",
                 thread_id="th",
             )
-        monkeypatch.setattr(CodexAppServerSession, "ensure_started",
-                            lambda self: "th")
+
+        monkeypatch.setattr(CodexAppServerSession, "ensure_started", lambda self: "th")
         monkeypatch.setattr(CodexAppServerSession, "run_turn", interrupted_turn)
 
         agent = _make_codex_agent()
@@ -460,8 +484,7 @@ class TestSessionRetirementOnRunAgent:
         def fake_close(self):
             closes["count"] += 1
 
-        monkeypatch.setattr(CodexAppServerSession, "ensure_started",
-                            lambda self: "th1")
+        monkeypatch.setattr(CodexAppServerSession, "ensure_started", lambda self: "th1")
         monkeypatch.setattr(CodexAppServerSession, "run_turn", fake_run_turn)
         monkeypatch.setattr(CodexAppServerSession, "close", fake_close)
 
@@ -497,8 +520,7 @@ class TestSessionRetirementOnRunAgent:
         def fake_close(self):
             closes["count"] += 1
 
-        monkeypatch.setattr(CodexAppServerSession, "ensure_started",
-                            lambda self: "th1")
+        monkeypatch.setattr(CodexAppServerSession, "ensure_started", lambda self: "th1")
         monkeypatch.setattr(CodexAppServerSession, "run_turn", boom_run_turn)
         monkeypatch.setattr(CodexAppServerSession, "close", fake_close)
 
@@ -518,8 +540,13 @@ class TestCodexToolProgressBridge:
 
     def test_mapper_command_execution(self):
         from agent.codex_runtime import _codex_note_to_tool_progress
-        note = {"method": "item/started", "params": {"item": {
-            "type": "commandExecution", "command": "ls -la", "cwd": "/tmp"}}}
+
+        note = {
+            "method": "item/started",
+            "params": {
+                "item": {"type": "commandExecution", "command": "ls -la", "cwd": "/tmp"}
+            },
+        }
         name, preview, args = _codex_note_to_tool_progress(note)
         assert name == "exec_command"
         assert preview == "ls -la"
@@ -527,33 +554,67 @@ class TestCodexToolProgressBridge:
 
     def test_mapper_file_change(self):
         from agent.codex_runtime import _codex_note_to_tool_progress
-        note = {"method": "item/started", "params": {"item": {
-            "type": "fileChange",
-            "changes": [{"path": "a.py"}, {"path": "b.py"}]}}}
+
+        note = {
+            "method": "item/started",
+            "params": {
+                "item": {
+                    "type": "fileChange",
+                    "changes": [{"path": "a.py"}, {"path": "b.py"}],
+                }
+            },
+        }
         name, preview, args = _codex_note_to_tool_progress(note)
         assert name == "apply_patch"
         assert preview == "a.py, b.py"
 
     def test_mapper_mcp_and_dynamic_tool_calls(self):
         from agent.codex_runtime import _codex_note_to_tool_progress
-        mcp = {"method": "item/started", "params": {"item": {
-            "type": "mcpToolCall", "server": "fs", "tool": "read", "arguments": {"p": 1}}}}
+
+        mcp = {
+            "method": "item/started",
+            "params": {
+                "item": {
+                    "type": "mcpToolCall",
+                    "server": "fs",
+                    "tool": "read",
+                    "arguments": {"p": 1},
+                }
+            },
+        }
         name, preview, args = _codex_note_to_tool_progress(mcp)
         assert name == "mcp.fs.read"
         assert preview == "read"
         assert args == {"p": 1}
 
-        dyn = {"method": "item/started", "params": {"item": {
-            "type": "dynamicToolCall", "tool": "web_search", "arguments": {"q": "x"}}}}
+        dyn = {
+            "method": "item/started",
+            "params": {
+                "item": {
+                    "type": "dynamicToolCall",
+                    "tool": "web_search",
+                    "arguments": {"q": "x"},
+                }
+            },
+        }
         assert _codex_note_to_tool_progress(dyn)[0] == "web_search"
 
     def test_mapper_ignores_non_tool_items_and_other_methods(self):
         from agent.codex_runtime import _codex_note_to_tool_progress
+
         # agentMessage / reasoning items are not tool-shaped
-        assert _codex_note_to_tool_progress({"method": "item/started", "params": {
-            "item": {"type": "agentMessage", "text": "hi"}}}) is None
+        assert (
+            _codex_note_to_tool_progress({
+                "method": "item/started",
+                "params": {"item": {"type": "agentMessage", "text": "hi"}},
+            })
+            is None
+        )
         # non-item/started methods
-        assert _codex_note_to_tool_progress({"method": "item/completed", "params": {}}) is None
+        assert (
+            _codex_note_to_tool_progress({"method": "item/completed", "params": {}})
+            is None
+        )
         assert _codex_note_to_tool_progress({}) is None
 
     def test_session_wired_with_on_event_that_fires_tool_progress(self, monkeypatch):
@@ -571,21 +632,35 @@ class TestCodexToolProgressBridge:
             # Exercise the wired on_event hook with a real item/started note.
             on_event = captured_init.get("on_event")
             if on_event:
-                on_event({"method": "item/started", "params": {"item": {
-                    "type": "commandExecution", "command": "pytest", "cwd": "/repo"}}})
-            return TurnResult(final_text="done", projected_messages=[
-                {"role": "assistant", "content": "done"}], turn_id="t1", thread_id="th1")
+                on_event({
+                    "method": "item/started",
+                    "params": {
+                        "item": {
+                            "type": "commandExecution",
+                            "command": "pytest",
+                            "cwd": "/repo",
+                        }
+                    },
+                })
+            return TurnResult(
+                final_text="done",
+                projected_messages=[{"role": "assistant", "content": "done"}],
+                turn_id="t1",
+                thread_id="th1",
+            )
 
         monkeypatch.setattr(CodexAppServerSession, "__init__", fake_init)
         monkeypatch.setattr(CodexAppServerSession, "ensure_started", lambda self: "th1")
         monkeypatch.setattr(CodexAppServerSession, "run_turn", fake_run_turn)
 
         agent = _make_codex_agent()
-        agent.tool_progress_callback = lambda kind, name, preview, args: events.append(
-            (kind, name, preview))
+        agent.tool_progress_callback = lambda kind, name, preview, args: events.append((
+            kind,
+            name,
+            preview,
+        ))
         with patch.object(agent, "_spawn_background_review", return_value=None):
             agent.run_conversation("run the tests")
 
         assert "on_event" in captured_init and captured_init["on_event"] is not None
         assert ("tool.started", "exec_command", "pytest") in events
-

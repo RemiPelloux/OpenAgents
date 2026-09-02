@@ -5,6 +5,7 @@ provider class in its own unit test. This module tests the abstract base
 itself: dataclass fields, ABC rejection of partial impls, and the
 protocol-compliance helper.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -77,9 +78,14 @@ class _CompliantProvider(DashboardAuthProvider):
 
     def complete_login(self, *, code, state, code_verifier, redirect_uri) -> Session:
         return Session(
-            user_id="u", email="x", display_name="x", org_id="o",
-            provider=self.name, expires_at=0,
-            access_token="a", refresh_token="r",
+            user_id="u",
+            email="x",
+            display_name="x",
+            org_id="o",
+            provider=self.name,
+            expires_at=0,
+            access_token="a",
+            refresh_token="r",
         )
 
     def verify_session(self, *, access_token: str):
@@ -87,9 +93,14 @@ class _CompliantProvider(DashboardAuthProvider):
 
     def refresh_session(self, *, refresh_token: str) -> Session:
         return Session(
-            user_id="u", email="x", display_name="x", org_id="o",
-            provider=self.name, expires_at=0,
-            access_token="a", refresh_token="r",
+            user_id="u",
+            email="x",
+            display_name="x",
+            org_id="o",
+            provider=self.name,
+            expires_at=0,
+            access_token="a",
+            refresh_token="r",
         )
 
     def revoke_session(self, *, refresh_token: str) -> None:

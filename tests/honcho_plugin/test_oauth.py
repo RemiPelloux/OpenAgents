@@ -69,7 +69,8 @@ class TestEnsureFreshToken:
         path = tmp_path / "honcho.json"
         _write(path, {"hosts": {"openagents": _host_block(expires_at=10_000)}})
         monkeypatch.setattr(
-            oauth, "_http_post_form",
+            oauth,
+            "_http_post_form",
             lambda *a, **k: pytest.fail("refresh must not be called when fresh"),
         )
         token, refreshed = oauth.ensure_fresh_token(path, "openagents", now=0)
@@ -83,7 +84,8 @@ class TestEnsureFreshToken:
         oauth.ensure_fresh_token(path, "openagents", now=0)
         # Second call must not touch disk while the token is well clear of expiry.
         monkeypatch.setattr(
-            oauth, "_read_config",
+            oauth,
+            "_read_config",
             lambda *a, **k: pytest.fail("disk must not be read while token is fresh"),
         )
         token, refreshed = oauth.ensure_fresh_token(path, "openagents", now=100)
@@ -126,20 +128,35 @@ class TestEnsureFreshToken:
         token, refreshed = oauth.ensure_fresh_token(path, "openagents", now=1000)
         # Stale token returned, no crash, file untouched.
         assert token == "hch-at-old" and refreshed is False
-        assert json.loads(path.read_text())["hosts"]["openagents"]["apiKey"] == "hch-at-old"
+        assert (
+            json.loads(path.read_text())["hosts"]["openagents"]["apiKey"]
+            == "hch-at-old"
+        )
 
     def test_double_check_uses_disk_when_already_rotated(self, tmp_path, monkeypatch):
         # Simulates a concurrent thread that rotated the token on disk after our
         # stale in-memory snapshot: the locked re-read must skip the HTTP call.
         path = tmp_path / "honcho.json"
-        _write(path, {"hosts": {"openagents": _host_block(refresh="hch-rt-fresh", expires_at=10_000)}})
-        stale_raw = {"hosts": {"openagents": _host_block(refresh="hch-rt-old", expires_at=100)}}
+        _write(
+            path,
+            {
+                "hosts": {
+                    "openagents": _host_block(refresh="hch-rt-fresh", expires_at=10_000)
+                }
+            },
+        )
+        stale_raw = {
+            "hosts": {"openagents": _host_block(refresh="hch-rt-old", expires_at=100)}
+        }
         stale_raw["hosts"]["openagents"]["apiKey"] = "hch-at-stale"
         monkeypatch.setattr(
-            oauth, "_http_post_form",
+            oauth,
+            "_http_post_form",
             lambda *a, **k: pytest.fail("must not refresh; disk token is fresh"),
         )
-        token, refreshed = oauth.ensure_fresh_token(path, "openagents", stale_raw, now=1000)
+        token, refreshed = oauth.ensure_fresh_token(
+            path, "openagents", stale_raw, now=1000
+        )
         assert token == "hch-at-old"  # the on-disk fresh credential's access token
 
     def test_refresh_holds_cross_process_lock(self, tmp_path, monkeypatch):
@@ -158,8 +175,13 @@ class TestEnsureFreshToken:
                     seen["held"] = False
                 except OSError:
                     seen["held"] = True
-            return {"access_token": "hch-at-new", "refresh_token": "hch-rt-new",
-                    "expires_in": 3600, "scope": "write", "token_type": "Bearer"}
+            return {
+                "access_token": "hch-at-new",
+                "refresh_token": "hch-rt-new",
+                "expires_in": 3600,
+                "scope": "write",
+                "token_type": "Bearer",
+            }
 
         monkeypatch.setattr(oauth, "_http_post_form", fake_post)
         token, refreshed = oauth.ensure_fresh_token(path, "openagents", now=1000)
@@ -181,9 +203,15 @@ class TestEnsureFreshToken:
 
         monkeypatch.setattr(fcntl, "flock", no_flock)
         monkeypatch.setattr(
-            oauth, "_http_post_form",
-            lambda *a, **k: {"access_token": "hch-at-new", "refresh_token": "hch-rt-new",
-                             "expires_in": 3600, "scope": "write", "token_type": "Bearer"},
+            oauth,
+            "_http_post_form",
+            lambda *a, **k: {
+                "access_token": "hch-at-new",
+                "refresh_token": "hch-rt-new",
+                "expires_in": 3600,
+                "scope": "write",
+                "token_type": "Bearer",
+            },
         )
         token, refreshed = oauth.ensure_fresh_token(path, "openagents", now=1000)
         assert token == "hch-at-new" and refreshed is True
@@ -192,13 +220,16 @@ class TestEnsureFreshToken:
 class TestInstallGrant:
     def test_deep_merges_config_and_preserves_other_hosts(self, tmp_path):
         path = tmp_path / "honcho.json"
-        _write(path, {
-            "apiKey": "hch-v3-root",  # root static key preserved
-            "hosts": {
-                "obsidian": {"workspace": "obsidian"},
-                "openagents": {"workspace": "openagents", "saveMessages": False},
+        _write(
+            path,
+            {
+                "apiKey": "hch-v3-root",  # root static key preserved
+                "hosts": {
+                    "obsidian": {"workspace": "obsidian"},
+                    "openagents": {"workspace": "openagents", "saveMessages": False},
+                },
             },
-        })
+        )
         grant = {
             "access_token": "hch-at-fresh",
             "refresh_token": "hch-rt-fresh",
@@ -210,7 +241,9 @@ class TestInstallGrant:
             },
         }
         cred = oauth.install_grant(
-            path, "openagents", grant,
+            path,
+            "openagents",
+            grant,
             client_id="hermes-desktop",
             token_endpoint="http://localhost:8000/oauth/token",
             now=1000,
@@ -233,8 +266,11 @@ class TestInstallGrant:
         _write(path, {})
         with pytest.raises(ValueError):
             oauth.install_grant(
-                path, "openagents", {"access_token": "hch-at-x"},  # no refresh_token
-                client_id="c", token_endpoint="e",
+                path,
+                "openagents",
+                {"access_token": "hch-at-x"},  # no refresh_token
+                client_id="c",
+                token_endpoint="e",
             )
 
 

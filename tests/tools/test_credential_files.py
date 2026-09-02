@@ -23,6 +23,7 @@ from tools.credential_files import (
 def _clean_state():
     """Reset module state between tests."""
     import tools.credential_files as _cred_mod
+
     clear_credential_files()
     _cred_mod._config_files = None
     yield
@@ -181,7 +182,9 @@ class TestIterSkillsFiles:
         (skills_dir / "cat" / "myskill").mkdir(parents=True)
         (skills_dir / "cat" / "myskill" / "SKILL.md").write_text("# skill")
         (skills_dir / "cat" / "myskill" / "scripts").mkdir()
-        (skills_dir / "cat" / "myskill" / "scripts" / "run.sh").write_text("#!/bin/bash")
+        (skills_dir / "cat" / "myskill" / "scripts" / "run.sh").write_text(
+            "#!/bin/bash"
+        )
         # Add a symlink that should be filtered
         secret = tmp_path / "secret"
         secret.write_text("nope")
@@ -202,6 +205,7 @@ class TestIterSkillsFiles:
 
         with patch.dict(os.environ, {"OPENAGENTS_HOME": str(hermes_home)}):
             assert iter_skills_files() == []
+
 
 class TestPathTraversalSecurity:
     """Path traversal and absolute path rejection.
@@ -315,13 +319,17 @@ class TestPathTraversalSecurity:
 # Config-based credential files — same containment checks
 # ---------------------------------------------------------------------------
 
+
 class TestConfigPathTraversal:
     """terminal.credential_files in config.yaml must also reject traversal."""
 
     def _write_config(self, hermes_home: Path, cred_files: list):
         import yaml
+
         config_path = hermes_home / "config.yaml"
-        config_path.write_text(yaml.dump({"terminal": {"credential_files": cred_files}}))
+        config_path.write_text(
+            yaml.dump({"terminal": {"credential_files": cred_files}})
+        )
 
     def test_config_traversal_rejected(self, tmp_path, monkeypatch):
         """'../secret' in config.yaml must not escape OPENAGENTS_HOME."""
@@ -368,6 +376,7 @@ class TestConfigPathTraversal:
 # ---------------------------------------------------------------------------
 # Cache directory mounts
 # ---------------------------------------------------------------------------
+
 
 class TestCacheDirectoryMounts:
     """Tests for get_cache_directory_mounts() and iter_cache_files()."""
@@ -475,7 +484,10 @@ class TestMapCachePathToContainer:
         hermes_home.mkdir()
         monkeypatch.setenv("OPENAGENTS_HOME", str(hermes_home))
 
-        assert map_cache_path_to_container(str(hermes_home / "cache" / "images" / "x.png")) is None
+        assert (
+            map_cache_path_to_container(str(hermes_home / "cache" / "images" / "x.png"))
+            is None
+        )
 
 
 class TestIterCacheFiles:
@@ -521,7 +533,10 @@ class TestIterCacheFiles:
 
         entries = iter_cache_files()
         assert len(entries) == 1
-        assert entries[0]["container_path"] == "/root/.hermes/cache/screenshots/session_abc/screen1.png"
+        assert (
+            entries[0]["container_path"]
+            == "/root/.hermes/cache/screenshots/session_abc/screen1.png"
+        )
 
     def test_empty_cache(self, tmp_path, monkeypatch):
         """No cache dirs → empty list."""

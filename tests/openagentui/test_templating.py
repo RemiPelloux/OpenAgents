@@ -10,7 +10,10 @@ def test_render_non_string_passthrough():
 
 
 def test_render_simple_variable():
-    assert render("hello {{ name }}!", variables={"name": "world"}, node_results={}) == "hello world!"
+    assert (
+        render("hello {{ name }}!", variables={"name": "world"}, node_results={})
+        == "hello world!"
+    )
 
 
 def test_render_missing_variable_left_as_placeholder():
@@ -25,12 +28,24 @@ def test_render_dict_variable_stringified_as_json():
 
 def test_render_nested_variable_path():
     variables = {"user": {"profile": {"email": "a@b.com"}}}
-    assert render("{{ user.profile.email }}", variables=variables, node_results={}) == "a@b.com"
+    assert (
+        render("{{ user.profile.email }}", variables=variables, node_results={})
+        == "a@b.com"
+    )
 
 
 def test_render_node_output_reference():
-    node_results = {"step1": NodeExecutionResult(node_id="step1", status="completed", output={"brief": "hi"})}
-    assert render("{{ nodes.step1.output.brief }}", variables={}, node_results=node_results) == "hi"
+    node_results = {
+        "step1": NodeExecutionResult(
+            node_id="step1", status="completed", output={"brief": "hi"}
+        )
+    }
+    assert (
+        render(
+            "{{ nodes.step1.output.brief }}", variables={}, node_results=node_results
+        )
+        == "hi"
+    )
 
 
 def test_render_node_output_missing_node():

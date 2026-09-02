@@ -11,6 +11,7 @@ Detection is restricted to properties of the running interpreter
 (``sys.prefix`` / ``sys.executable``) so a pip/venv install on a machine
 that also has ``uv tool install openagents`` does not get misclassified.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -45,9 +46,14 @@ def _patch_managed_uv(request):
     def _fake_update_managed_uv():
         return None  # never actually self-update in tests
 
-    with patch("openagents_cli.managed_uv.resolve_uv", side_effect=_fake_resolve_uv), \
-         patch("openagents_cli.managed_uv.ensure_uv", side_effect=_fake_ensure_uv), \
-         patch("openagents_cli.managed_uv.update_managed_uv", side_effect=_fake_update_managed_uv):
+    with (
+        patch("openagents_cli.managed_uv.resolve_uv", side_effect=_fake_resolve_uv),
+        patch("openagents_cli.managed_uv.ensure_uv", side_effect=_fake_ensure_uv),
+        patch(
+            "openagents_cli.managed_uv.update_managed_uv",
+            side_effect=_fake_update_managed_uv,
+        ),
+    ):
         yield
 
 
@@ -60,26 +66,32 @@ class TestIsUvToolInstall:
     def test_returns_true_when_sys_prefix_matches_uv_tool_layout(self):
         from openagents_cli import config
 
-        with patch.object(config.sys, "prefix", "/home/user/.local/share/uv/tools/openagents"):
+        with patch.object(
+            config.sys, "prefix", "/home/user/.local/share/uv/tools/openagents"
+        ):
             assert config.is_uv_tool_install() is True
 
     def test_returns_true_when_sys_executable_matches_uv_tool_layout(self):
         """Some uv-tool layouts surface the marker on ``sys.executable`` (bin/python)."""
         from openagents_cli import config
 
-        with patch.object(config.sys, "prefix", "/some/unrelated/venv"), \
-             patch.object(
-                 config.sys,
-                 "executable",
-                 "/home/user/.local/share/uv/tools/openagents/bin/python",
-             ):
+        with (
+            patch.object(config.sys, "prefix", "/some/unrelated/venv"),
+            patch.object(
+                config.sys,
+                "executable",
+                "/home/user/.local/share/uv/tools/openagents/bin/python",
+            ),
+        ):
             assert config.is_uv_tool_install() is True
 
     def test_returns_false_when_neither_prefix_nor_executable_matches(self):
         from openagents_cli import config
 
-        with patch.object(config.sys, "prefix", "/some/unrelated/venv"), \
-             patch.object(config.sys, "executable", "/usr/bin/python3"):
+        with (
+            patch.object(config.sys, "prefix", "/some/unrelated/venv"),
+            patch.object(config.sys, "executable", "/usr/bin/python3"),
+        ):
             assert config.is_uv_tool_install() is False
 
     def test_does_not_consult_uv_tool_list(self):
@@ -90,9 +102,11 @@ class TestIsUvToolInstall:
         from the detection path."""
         from openagents_cli import config
 
-        with patch.object(config.sys, "prefix", "/some/unrelated/venv"), \
-             patch.object(config.sys, "executable", "/usr/bin/python3"), \
-             patch("subprocess.run") as mock_run:
+        with (
+            patch.object(config.sys, "prefix", "/some/unrelated/venv"),
+            patch.object(config.sys, "executable", "/usr/bin/python3"),
+            patch("subprocess.run") as mock_run,
+        ):
             assert config.is_uv_tool_install() is False
             mock_run.assert_not_called()
 
@@ -111,8 +125,10 @@ class TestIsUvToolInstall:
     def test_handles_empty_executable(self):
         from openagents_cli import config
 
-        with patch.object(config.sys, "prefix", "/some/unrelated/venv"), \
-             patch.object(config.sys, "executable", ""):
+        with (
+            patch.object(config.sys, "prefix", "/some/unrelated/venv"),
+            patch.object(config.sys, "executable", ""),
+        ):
             assert config.is_uv_tool_install() is False
 
 
@@ -125,8 +141,10 @@ class TestRecommendedUpdateCommandForUvTool:
     def test_uv_tool_install_recommends_uv_tool_upgrade(self):
         from openagents_cli import config
 
-        with patch("shutil.which", return_value="/usr/local/bin/uv"), \
-             patch.object(config, "is_uv_tool_install", return_value=True):
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/uv"),
+            patch.object(config, "is_uv_tool_install", return_value=True),
+        ):
             cmd = config.recommended_update_command_for_method("pip")
             assert cmd == "uv tool upgrade openagents"
 
@@ -135,8 +153,10 @@ class TestRecommendedUpdateCommandForUvTool:
         currently on PATH — the user needs to know the right command to run."""
         from openagents_cli import config
 
-        with patch("shutil.which", return_value=None), \
-             patch.object(config, "is_uv_tool_install", return_value=True):
+        with (
+            patch("shutil.which", return_value=None),
+            patch.object(config, "is_uv_tool_install", return_value=True),
+        ):
             cmd = config.recommended_update_command_for_method("pip")
             assert cmd == "uv tool upgrade openagents"
 
@@ -144,16 +164,20 @@ class TestRecommendedUpdateCommandForUvTool:
         """Existing behavior: uv is on PATH but OpenAgents is a regular pip install."""
         from openagents_cli import config
 
-        with patch("shutil.which", return_value="/usr/local/bin/uv"), \
-             patch.object(config, "is_uv_tool_install", return_value=False):
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/uv"),
+            patch.object(config, "is_uv_tool_install", return_value=False),
+        ):
             cmd = config.recommended_update_command_for_method("pip")
             assert cmd == "uv pip install --upgrade openagents"
 
     def test_no_uv_falls_back_to_plain_pip(self):
         from openagents_cli import config
 
-        with patch("shutil.which", return_value=None), \
-             patch.object(config, "is_uv_tool_install", return_value=False):
+        with (
+            patch("shutil.which", return_value=None),
+            patch.object(config, "is_uv_tool_install", return_value=False),
+        ):
             cmd = config.recommended_update_command_for_method("pip")
             assert cmd == "pip install --upgrade openagents"
 
@@ -164,10 +188,12 @@ class TestRecommendedUpdateCommandForUvTool:
         purely a display string."""
         from openagents_cli import config
 
-        with patch.object(config.sys, "prefix", "/some/unrelated/venv"), \
-             patch.object(config.sys, "executable", "/usr/bin/python3"), \
-             patch("shutil.which", return_value="/usr/local/bin/uv"), \
-             patch("subprocess.run") as mock_run:
+        with (
+            patch.object(config.sys, "prefix", "/some/unrelated/venv"),
+            patch.object(config.sys, "executable", "/usr/bin/python3"),
+            patch("shutil.which", return_value="/usr/local/bin/uv"),
+            patch("subprocess.run") as mock_run,
+        ):
             cmd = config.recommended_update_command_for_method("pip")
             mock_run.assert_not_called()
             assert cmd == "uv pip install --upgrade openagents"
@@ -184,21 +210,34 @@ class TestCmdUpdatePipUsesUvTool:
         """The actual subprocess invocation must switch to ``uv tool upgrade``."""
         from openagents_cli.main import _cmd_update_pip
 
-        mock_run.return_value = subprocess.CompletedProcess(["uv"], 0, stdout="", stderr="")
-        with patch("shutil.which", return_value="/usr/local/bin/uv"), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=True):
+        mock_run.return_value = subprocess.CompletedProcess(
+            ["uv"], 0, stdout="", stderr=""
+        )
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/uv"),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=True),
+        ):
             _cmd_update_pip(SimpleNamespace())
 
-        assert mock_run.call_args[0][0] == ["/usr/local/bin/uv", "tool", "upgrade", "openagents"]
+        assert mock_run.call_args[0][0] == [
+            "/usr/local/bin/uv",
+            "tool",
+            "upgrade",
+            "openagents",
+        ]
 
     @patch("subprocess.run")
     def test_runs_uv_pip_install_when_not_uv_tool(self, mock_run):
         """Existing behavior preserved when uv is present but OpenAgents isn't a tool install."""
         from openagents_cli.main import _cmd_update_pip
 
-        mock_run.return_value = subprocess.CompletedProcess(["uv"], 0, stdout="", stderr="")
-        with patch("shutil.which", return_value="/usr/local/bin/uv"), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=False):
+        mock_run.return_value = subprocess.CompletedProcess(
+            ["uv"], 0, stdout="", stderr=""
+        )
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/uv"),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=False),
+        ):
             _cmd_update_pip(SimpleNamespace())
 
         assert mock_run.call_args[0][0] == [
@@ -213,9 +252,13 @@ class TestCmdUpdatePipUsesUvTool:
     def test_falls_back_to_pip_when_no_uv(self, mock_run):
         from openagents_cli.main import _cmd_update_pip
 
-        mock_run.return_value = subprocess.CompletedProcess(["pip"], 0, stdout="", stderr="")
-        with patch("shutil.which", return_value=None), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=False):
+        mock_run.return_value = subprocess.CompletedProcess(
+            ["pip"], 0, stdout="", stderr=""
+        )
+        with (
+            patch("shutil.which", return_value=None),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=False),
+        ):
             _cmd_update_pip(SimpleNamespace())
 
         cmd = mock_run.call_args[0][0]
@@ -225,9 +268,13 @@ class TestCmdUpdatePipUsesUvTool:
     def test_exits_nonzero_on_subprocess_failure(self, mock_run):
         from openagents_cli.main import _cmd_update_pip
 
-        mock_run.return_value = subprocess.CompletedProcess(["uv"], 1, stdout="", stderr="")
-        with patch("shutil.which", return_value="/usr/local/bin/uv"), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=True):
+        mock_run.return_value = subprocess.CompletedProcess(
+            ["uv"], 1, stdout="", stderr=""
+        )
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/uv"),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=True),
+        ):
             with pytest.raises(SystemExit) as exc_info:
                 _cmd_update_pip(SimpleNamespace())
         assert exc_info.value.code == 1
@@ -240,8 +287,10 @@ class TestCmdUpdatePipUsesUvTool:
         or upgrade the wrong copy."""
         from openagents_cli.main import _cmd_update_pip
 
-        with patch("shutil.which", return_value=None), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=True):
+        with (
+            patch("shutil.which", return_value=None),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=True),
+        ):
             with pytest.raises(SystemExit) as exc_info:
                 _cmd_update_pip(SimpleNamespace())
         assert exc_info.value.code == 1
@@ -273,8 +322,10 @@ class TestCmdUpdatePipInstallLayouts:
         def _which(name):
             return {"uv": "/usr/bin/uv", "pipx": "/usr/bin/pipx"}.get(name)
 
-        with patch("shutil.which", side_effect=_which), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=False):
+        with (
+            patch("shutil.which", side_effect=_which),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=False),
+        ):
             hm._cmd_update_pip(SimpleNamespace())
 
         assert mock_run.call_args[0][0] == ["/usr/bin/pipx", "upgrade", "openagents"]
@@ -295,13 +346,19 @@ class TestCmdUpdatePipInstallLayouts:
         def _which(name):
             return "/usr/bin/uv" if name == "uv" else None
 
-        with patch("shutil.which", side_effect=_which), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=False):
+        with (
+            patch("shutil.which", side_effect=_which),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=False),
+        ):
             hm._cmd_update_pip(SimpleNamespace())
 
         # prefix != base_prefix, so this is treated as a venv -> overlay, no --system.
         assert mock_run.call_args[0][0] == [
-            "/usr/bin/uv", "pip", "install", "--upgrade", "openagents",
+            "/usr/bin/uv",
+            "pip",
+            "install",
+            "--upgrade",
+            "openagents",
         ]
         assert mock_run.call_args.kwargs["env"]["VIRTUAL_ENV"].endswith("openagents")
 
@@ -314,12 +371,19 @@ class TestCmdUpdatePipInstallLayouts:
         monkeypatch.setattr(hm.sys, "prefix", "/usr")
         monkeypatch.setattr(hm.sys, "base_prefix", "/usr")
 
-        with patch("shutil.which", return_value="/usr/bin/uv"), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=False):
+        with (
+            patch("shutil.which", return_value="/usr/bin/uv"),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=False),
+        ):
             hm._cmd_update_pip(SimpleNamespace())
 
         assert mock_run.call_args[0][0] == [
-            "/usr/bin/uv", "pip", "install", "--system", "--upgrade", "openagents",
+            "/usr/bin/uv",
+            "pip",
+            "install",
+            "--system",
+            "--upgrade",
+            "openagents",
         ]
         assert "env" not in mock_run.call_args.kwargs
 
@@ -332,11 +396,16 @@ class TestCmdUpdatePipInstallLayouts:
         monkeypatch.setattr(hm.sys, "prefix", "/home/u/.hermes/openagents/venv")
         monkeypatch.setattr(hm.sys, "base_prefix", "/usr")
 
-        with patch("shutil.which", return_value="/usr/bin/uv"), \
-             patch("openagents_cli.config.is_uv_tool_install", return_value=False):
+        with (
+            patch("shutil.which", return_value="/usr/bin/uv"),
+            patch("openagents_cli.config.is_uv_tool_install", return_value=False),
+        ):
             hm._cmd_update_pip(SimpleNamespace())
 
         cmd = mock_run.call_args[0][0]
         assert "--system" not in cmd
         assert cmd == ["/usr/bin/uv", "pip", "install", "--upgrade", "openagents"]
-        assert mock_run.call_args.kwargs["env"]["VIRTUAL_ENV"] == "/home/u/.hermes/openagents/venv"
+        assert (
+            mock_run.call_args.kwargs["env"]["VIRTUAL_ENV"]
+            == "/home/u/.hermes/openagents/venv"
+        )

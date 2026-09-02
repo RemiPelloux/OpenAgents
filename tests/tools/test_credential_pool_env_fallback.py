@@ -21,6 +21,7 @@ def _make_pconfig(provider_id="deepseek", env_vars=None):
     in PROVIDER_REGISTRY (needed for _seed_from_env's generic path).
     """
     from openagents_cli.auth import ProviderConfig
+
     return ProviderConfig(
         id=provider_id,
         name=provider_id.title(),
@@ -42,9 +43,14 @@ def isolated_hermes_home(tmp_path, monkeypatch):
 
     # Clear all known API key env vars so get_env_value falls through to .env
     for key in [
-        "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
-        "ZAI_API_KEY", "DEEPSEEK_API_KEY", "ANTHROPIC_TOKEN",
-        "CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_BASE_URL",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "OPENROUTER_API_KEY",
+        "ZAI_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "ANTHROPIC_TOKEN",
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "OPENAI_BASE_URL",
     ]:
         monkeypatch.delenv(key, raising=False)
 
@@ -71,6 +77,7 @@ class TestCredentialPoolSeedsFromDotEnv:
         assert "DEEPSEEK_API_KEY" not in os.environ
 
         from agent.credential_pool import _seed_from_env
+
         entries = []
         changed, active_sources = _seed_from_env("deepseek", entries)
 
@@ -80,7 +87,9 @@ class TestCredentialPoolSeedsFromDotEnv:
             e.access_token == "sk-dotenv-only-12345"
             and e.source == "env:DEEPSEEK_API_KEY"
             for e in entries
-        ), f"Expected seeded entry with dotenv key, got: {[(e.source, e.access_token) for e in entries]}"
+        ), (
+            f"Expected seeded entry with dotenv key, got: {[(e.source, e.access_token) for e in entries]}"
+        )
 
     def test_openrouter_key_from_dotenv_only(self, isolated_hermes_home):
         """OpenRouter path has its own branch — verify it also reads .env."""
@@ -88,24 +97,23 @@ class TestCredentialPoolSeedsFromDotEnv:
         assert "OPENROUTER_API_KEY" not in os.environ
 
         from agent.credential_pool import _seed_from_env
+
         entries = []
         changed, active_sources = _seed_from_env("openrouter", entries)
 
         assert changed is True
         assert "env:OPENROUTER_API_KEY" in active_sources
-        assert any(
-            e.access_token == "sk-or-dotenv-abc" for e in entries
-        )
+        assert any(e.access_token == "sk-or-dotenv-abc" for e in entries)
 
     def test_empty_dotenv_no_entries(self, isolated_hermes_home):
         """No .env file, no env vars → no entries seeded (and no crash)."""
         from agent.credential_pool import _seed_from_env
+
         entries = []
         changed, active_sources = _seed_from_env("deepseek", entries)
         assert changed is False
         assert active_sources == set()
         assert entries == []
-
 
 
 class TestAuthResolvesFromDotEnv:
@@ -117,6 +125,7 @@ class TestAuthResolvesFromDotEnv:
         assert "DEEPSEEK_API_KEY" not in os.environ
 
         from openagents_cli.auth import _resolve_api_key_provider_secret
+
         key, source = _resolve_api_key_provider_secret(
             provider_id="deepseek",
             pconfig=_make_pconfig(),
@@ -139,6 +148,7 @@ class TestAuthCredentialPoolFallback:
         mock_pool.peek.return_value = mock_entry
 
         from openagents_cli.auth import _resolve_api_key_provider_secret
+
         with patch("agent.credential_pool.load_pool", return_value=mock_pool):
             key, source = _resolve_api_key_provider_secret(
                 provider_id="deepseek",
@@ -153,6 +163,7 @@ class TestAuthCredentialPoolFallback:
         mock_pool.has_credentials.return_value = False
 
         from openagents_cli.auth import _resolve_api_key_provider_secret
+
         with patch("agent.credential_pool.load_pool", return_value=mock_pool):
             key, source = _resolve_api_key_provider_secret(
                 provider_id="deepseek",
@@ -168,6 +179,7 @@ class TestAuthCredentialPoolFallback:
         mock_pool.has_credentials.return_value = True
 
         from openagents_cli.auth import _resolve_api_key_provider_secret
+
         with patch("agent.credential_pool.load_pool", return_value=mock_pool) as mp:
             key, source = _resolve_api_key_provider_secret(
                 provider_id="deepseek",
@@ -187,6 +199,7 @@ class TestAuthCredentialPoolFallback:
         mock_pool.has_credentials.return_value = True
 
         from openagents_cli.auth import _resolve_api_key_provider_secret
+
         with patch("agent.credential_pool.load_pool", return_value=mock_pool) as mp:
             key, source = _resolve_api_key_provider_secret(
                 provider_id="deepseek",

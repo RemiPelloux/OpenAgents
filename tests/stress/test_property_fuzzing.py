@@ -35,9 +35,18 @@ OPS_PER_SEQUENCE = 100
 TASK_POOL = 10
 
 OPS = [
-    "create", "create_child", "claim", "complete", "block", "unblock",
-    "archive", "heartbeat", "release_stale", "detect_crashed",
-    "recompute_ready", "reassign",
+    "create",
+    "create_child",
+    "claim",
+    "complete",
+    "block",
+    "unblock",
+    "archive",
+    "heartbeat",
+    "release_stale",
+    "detect_crashed",
+    "recompute_ready",
+    "reassign",
 ]
 
 
@@ -71,14 +80,18 @@ def assert_invariants(conn, kb, ops_log):
           AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.current_run_id = r.id)
     """).fetchall()
     for row in orphans:
-        failures.append(f"I2: open run {row['id']} on task {row['task_id']} has no pointer")
+        failures.append(
+            f"I2: open run {row['id']} on task {row['task_id']} has no pointer"
+        )
 
     # I3: valid statuses
     valid = {"triage", "todo", "ready", "running", "blocked", "done", "archived"}
     bad_status = conn.execute("SELECT id, status FROM tasks").fetchall()
     for row in bad_status:
         if row["status"] not in valid:
-            failures.append(f"I3: task {row['id']} has invalid status {row['status']!r}")
+            failures.append(
+                f"I3: task {row['id']} has invalid status {row['status']!r}"
+            )
 
     # I4: claim_lock set only when running
     bad_lock = conn.execute("""
@@ -106,7 +119,9 @@ def assert_invariants(conn, kb, ops_log):
         WHERE outcome IS NOT NULL AND ended_at IS NULL
     """).fetchall()
     for row in bad_outcome:
-        failures.append(f"I6: run {row['id']} outcome={row['outcome']} but ended_at NULL")
+        failures.append(
+            f"I6: run {row['id']} outcome={row['outcome']} but ended_at NULL"
+        )
 
     # I7: events monotonic in id (always true for autoincrement)
     # Skip — autoincrement guarantees it.
@@ -166,7 +181,8 @@ def random_op(rng, conn, kb, task_pool):
     if op == "create_child" and task_pool:
         parent = rng.choice(task_pool)
         tid = kb.create_task(
-            conn, title=f"child of {parent}",
+            conn,
+            title=f"child of {parent}",
             assignee=rng.choice(["w1", "w2", "w3", None]),
             parents=[parent],
         )
@@ -264,7 +280,9 @@ def main():
             conn.close()
 
         if seq_idx % 10 == 0:
-            print(f"  seq {seq_idx:3d}: {total_ops} ops so far, {total_violations} violations")
+            print(
+                f"  seq {seq_idx:3d}: {total_ops} ops so far, {total_violations} violations"
+            )
 
     print()
     print("=" * 60)

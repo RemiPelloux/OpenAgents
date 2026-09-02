@@ -66,12 +66,14 @@ def register_provider(provider: WebSearchProvider) -> None:
     if existing is not None:
         logger.debug(
             "Web provider '%s' re-registered (was %r)",
-            name, type(existing).__name__,
+            name,
+            type(existing).__name__,
         )
     else:
         logger.debug(
             "Registered web provider '%s' (%s)",
-            name, type(provider).__name__,
+            name,
+            type(provider).__name__,
         )
 
 
@@ -130,7 +132,9 @@ _LEGACY_PREFERENCE = (
 )
 
 
-def _resolve(configured: Optional[str], *, capability: str) -> Optional[WebSearchProvider]:
+def _resolve(
+    configured: Optional[str], *, capability: str
+) -> Optional[WebSearchProvider]:
     """Resolve the active provider for a capability ("search" | "extract").
 
     Resolution rules (in order):
@@ -193,27 +197,21 @@ def _resolve(configured: Optional[str], *, capability: str) -> Optional[WebSearc
         else:
             logger.debug(
                 "web backend '%s' configured but does not support '%s'; falling back",
-                configured, capability,
+                configured,
+                capability,
             )
 
     # 2. + 3. Fallback path — filter by availability so we don't surface
     #    a provider the user has no credentials for. Without this filter,
     #    a registered-but-unconfigured provider could end up "active" on
     #    a fresh install with no API keys at all.
-    eligible = [
-        p for p in snapshot.values()
-        if _capable(p) and _is_available_safe(p)
-    ]
+    eligible = [p for p in snapshot.values() if _capable(p) and _is_available_safe(p)]
     if len(eligible) == 1:
         return eligible[0]
 
     for legacy in _LEGACY_PREFERENCE:
         provider = snapshot.get(legacy)
-        if (
-            provider is not None
-            and _capable(provider)
-            and _is_available_safe(provider)
-        ):
+        if provider is not None and _capable(provider) and _is_available_safe(provider):
             return provider
 
     return None
@@ -225,7 +223,9 @@ def get_active_search_provider() -> Optional[WebSearchProvider]:
     Reads ``web.search_backend`` (preferred) or ``web.backend`` (shared
     fallback) from config.yaml; falls back per the module docstring.
     """
-    explicit = _read_config_key("web", "search_backend") or _read_config_key("web", "backend")
+    explicit = _read_config_key("web", "search_backend") or _read_config_key(
+        "web", "backend"
+    )
     return _resolve(explicit, capability="search")
 
 
@@ -235,7 +235,9 @@ def get_active_extract_provider() -> Optional[WebSearchProvider]:
     Reads ``web.extract_backend`` (preferred) or ``web.backend`` (shared
     fallback) from config.yaml; falls back per the module docstring.
     """
-    explicit = _read_config_key("web", "extract_backend") or _read_config_key("web", "backend")
+    explicit = _read_config_key("web", "extract_backend") or _read_config_key(
+        "web", "backend"
+    )
     return _resolve(explicit, capability="extract")
 
 

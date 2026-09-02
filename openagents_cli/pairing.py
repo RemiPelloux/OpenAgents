@@ -8,6 +8,7 @@ Usage:
     hermes pairing clear-pending     # Clear all expired/pending codes
 """
 
+
 def pairing_command(args):
     """Handle hermes pairing subcommands."""
     from gateway.pairing import PairingStore
@@ -54,7 +55,9 @@ def _cmd_list(store):
         print(f"  {'Platform':<12} {'User ID':<20} {'Name':<20}")
         print(f"  {'--------':<12} {'-------':<20} {'----':<20}")
         for a in approved:
-            print(f"  {a['platform']:<12} {a['user_id']:<20} {(a.get('user_name') or ''):<20}")
+            print(
+                f"  {a['platform']:<12} {a['user_id']:<20} {(a.get('user_name') or ''):<20}"
+            )
     else:
         print("\n  No approved users.")
 
@@ -78,6 +81,7 @@ def _cmd_approve(store, platform: str, code: str):
         # and lockout. Tell the operator it's lockout so they don't chase
         # a "wrong code" rabbit hole (#10195).
         import time as _time
+
         limits = store._load_json(store._rate_limit_path())
         lockout_until = limits.get(f"_lockout:{platform}", 0)
         remaining = max(0, int(lockout_until - _time.time()))

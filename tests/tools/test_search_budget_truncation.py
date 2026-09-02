@@ -2,7 +2,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tools.file_operations import ExecuteResult, ShellFileOperations, _search_stdout_and_limit
+from tools.file_operations import (
+    ExecuteResult,
+    ShellFileOperations,
+    _search_stdout_and_limit,
+)
 
 
 TIMEOUT = "[Command timed out after 60s]"
@@ -36,19 +40,42 @@ def assert_timed_out(result):
 
 
 def test_timeout_helper_strips_only_trailing_marker():
-    assert _search_stdout_and_limit(ExecuteResult(timeout_output("a.py"), 124)) == ("a.py", "search_timeout")
-    assert _search_stdout_and_limit(ExecuteResult("a.py\nnot a marker", 0)) == ("a.py\nnot a marker", None)
+    assert _search_stdout_and_limit(ExecuteResult(timeout_output("a.py"), 124)) == (
+        "a.py",
+        "search_timeout",
+    )
+    assert _search_stdout_and_limit(ExecuteResult("a.py\nnot a marker", 0)) == (
+        "a.py\nnot a marker",
+        None,
+    )
 
 
 @pytest.mark.parametrize(
     ("target", "output_mode", "raw", "expected"),
     [
-        ("files", "content", timeout_output("src/a.py", "src/b.py"), ["src/a.py", "src/b.py"]),
-        ("content", "files_only", timeout_output("src/a.py", "src/b.py"), ["src/a.py", "src/b.py"]),
-        ("content", "content", timeout_output("src/a.py:10:foo", "src/b.py:20:foo"), ["src/a.py", "src/b.py"]),
+        (
+            "files",
+            "content",
+            timeout_output("src/a.py", "src/b.py"),
+            ["src/a.py", "src/b.py"],
+        ),
+        (
+            "content",
+            "files_only",
+            timeout_output("src/a.py", "src/b.py"),
+            ["src/a.py", "src/b.py"],
+        ),
+        (
+            "content",
+            "content",
+            timeout_output("src/a.py:10:foo", "src/b.py:20:foo"),
+            ["src/a.py", "src/b.py"],
+        ),
     ],
 )
-def test_rg_timeout_returns_partial_results_without_marker(ops, monkeypatch, target, output_mode, raw, expected):
+def test_rg_timeout_returns_partial_results_without_marker(
+    ops, monkeypatch, target, output_mode, raw, expected
+):
     ops.env.execute.side_effect = path_exists_or(raw)
     monkeypatch.setattr(ops, "_has_command", lambda cmd: cmd == "rg")
 
@@ -64,7 +91,9 @@ def test_rg_timeout_returns_partial_results_without_marker(ops, monkeypatch, tar
 
 
 def test_rg_count_timeout_returns_partial_counts(ops, monkeypatch):
-    ops.env.execute.side_effect = path_exists_or(timeout_output("src/a.py:3", "src/b.py:5"))
+    ops.env.execute.side_effect = path_exists_or(
+        timeout_output("src/a.py:3", "src/b.py:5")
+    )
     monkeypatch.setattr(ops, "_has_command", lambda cmd: cmd == "rg")
 
     result = ops.search("foo", path="/big", target="content", output_mode="count")

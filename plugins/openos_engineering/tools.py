@@ -6,7 +6,10 @@ import os
 import json
 from typing import Any, Dict
 
-from plugins.openos_engineering.opencode_runner import run_opencode_headless, verify_opencode_binary
+from plugins.openos_engineering.opencode_runner import (
+    run_opencode_headless,
+    verify_opencode_binary,
+)
 from openagentui.codex_runner import run_codex_headless, verify_codex_binary
 from plugins.openos_engineering.brain_client import emit_agent_run_observation
 from plugins.openos_engineering.rec_client import emit_rec_event
@@ -244,19 +247,22 @@ def handle_invoke_opencode(args: Dict[str, Any], **_: Any) -> str:
         files_note = f"\nFiles edited: {', '.join(result['files_edited'][:10])}"
 
     key = result.get("ticket_key") or result["ticket_id"]
-    evidence = json.dumps({
-        "ticket_id": result.get("ticket_id"),
-        "ticket_key": result.get("ticket_key"),
-        "session_id": result.get("session_id"),
-        "workdir": result.get("workdir"),
-        "branch": result.get("branch"),
-        "commit_sha": result.get("commit_sha"),
-        "git_clean": result.get("git_clean"),
-        "files_edited": result.get("files_edited") or [],
-        "exit_code": result.get("exit_code"),
-        "stderr": result.get("stderr") or "",
-        "summary": result.get("summary") or "",
-    }, sort_keys=True)
+    evidence = json.dumps(
+        {
+            "ticket_id": result.get("ticket_id"),
+            "ticket_key": result.get("ticket_key"),
+            "session_id": result.get("session_id"),
+            "workdir": result.get("workdir"),
+            "branch": result.get("branch"),
+            "commit_sha": result.get("commit_sha"),
+            "git_clean": result.get("git_clean"),
+            "files_edited": result.get("files_edited") or [],
+            "exit_code": result.get("exit_code"),
+            "stderr": result.get("stderr") or "",
+            "summary": result.get("summary") or "",
+        },
+        sort_keys=True,
+    )
     return (
         f"OpenCode completed for ticket {key}.\n"
         f"Ticket in_review transition is handled by OpenCode session-complete webhook.\n\n"
@@ -340,8 +346,14 @@ SUBMIT_TICKET_RESULT_SCHEMA: Dict[str, Any] = {
                     "required": ["kind", "summary"],
                 },
             },
-            "comment": {"type": "string", "description": "Summary comment for reviewers"},
-            "agent_run_id": {"type": "string", "description": "OpenAgents run id for provenance"},
+            "comment": {
+                "type": "string",
+                "description": "Summary comment for reviewers",
+            },
+            "agent_run_id": {
+                "type": "string",
+                "description": "OpenAgents run id for provenance",
+            },
             "move_to_in_review": {
                 "type": "boolean",
                 "description": "Transition ticket to in_review after submit (default true)",
@@ -364,19 +376,27 @@ def handle_submit_ticket_result(args: Dict[str, Any], **_: Any) -> str:
     ticket = get_ticket(ticket_id)
     tid = str(ticket.get("id") or ticket_id)
     correlation_id = str(ticket.get("correlation_id") or "") or None
-    actor = os.environ.get("OPENTICKET_ACTOR_PROFILE", "researcher").strip() or "researcher"
+    actor = (
+        os.environ.get("OPENTICKET_ACTOR_PROFILE", "researcher").strip() or "researcher"
+    )
 
     patch_fields: Dict[str, Any] = {"deliverables": deliverables}
     run_id = args.get("agent_run_id")
     if run_id:
         existing = ticket.get("linked_agent_run_ids") or []
-        patch_fields["linked_agent_run_ids"] = list(dict.fromkeys([*existing, str(run_id)]))
+        patch_fields["linked_agent_run_ids"] = list(
+            dict.fromkeys([*existing, str(run_id)])
+        )
 
-    updated = patch_ticket(tid, patch_fields, correlation_id=correlation_id, actor_profile=actor)
+    updated = patch_ticket(
+        tid, patch_fields, correlation_id=correlation_id, actor_profile=actor
+    )
 
     comment = str(args.get("comment") or "").strip()
     if comment:
-        add_ticket_comment(tid, comment, correlation_id=correlation_id, actor_profile=actor)
+        add_ticket_comment(
+            tid, comment, correlation_id=correlation_id, actor_profile=actor
+        )
 
     move = args.get("move_to_in_review", True)
     if move and updated.get("status") == "in_progress":
@@ -401,18 +421,27 @@ CREATE_SUBTASK_SCHEMA: Dict[str, Any] = {
     "parameters": {
         "type": "object",
         "properties": {
-            "parent_ticket_id": {"type": "string", "description": "Parent ticket UUID or key"},
+            "parent_ticket_id": {
+                "type": "string",
+                "description": "Parent ticket UUID or key",
+            },
             "title": {"type": "string", "description": "Subtask title"},
             "description": {"type": "string"},
             "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
-            "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+            "priority": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"],
+            },
             "assignee_agent_profile": {"type": "string"},
             "execution_mode": {
                 "type": "string",
                 "enum": ["code", "research", "ops", "security"],
             },
             "labels": {"type": "array", "items": {"type": "string"}},
-            "eta": {"type": "string", "description": "ISO deadline; auto-default by priority if omitted"},
+            "eta": {
+                "type": "string",
+                "description": "ISO deadline; auto-default by priority if omitted",
+            },
         },
         "required": ["parent_ticket_id", "title"],
     },
@@ -442,7 +471,9 @@ def handle_create_subtask(args: Dict[str, Any], **_: Any) -> str:
     key = subtask.get("ticket_key") or subtask.get("id")
     eta_line = subtask.get("eta") or (subtask.get("metadata") or {}).get("eta")
     eta_note = f" eta={eta_line}" if eta_line else ""
-    return f"Created subtask {key} under {parent.get('ticket_key', parent_id)}.{eta_note}"
+    return (
+        f"Created subtask {key} under {parent.get('ticket_key', parent_id)}.{eta_note}"
+    )
 
 
 CREATE_TICKET_SCHEMA: Dict[str, Any] = {
@@ -462,7 +493,10 @@ CREATE_TICKET_SCHEMA: Dict[str, Any] = {
             "title": {"type": "string"},
             "description": {"type": "string"},
             "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
-            "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+            "priority": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"],
+            },
             "assignee_agent_profile": {"type": "string"},
             "execution_mode": {
                 "type": "string",
@@ -470,8 +504,14 @@ CREATE_TICKET_SCHEMA: Dict[str, Any] = {
             },
             "labels": {"type": "array", "items": {"type": "string"}},
             "components": {"type": "array", "items": {"type": "string"}},
-            "correlation_id": {"type": "string", "description": "Optional mesh correlation id"},
-            "eta": {"type": "string", "description": "ISO deadline; uses mission eta or auto-default"},
+            "correlation_id": {
+                "type": "string",
+                "description": "Optional mesh correlation id",
+            },
+            "eta": {
+                "type": "string",
+                "description": "ISO deadline; uses mission eta or auto-default",
+            },
         },
         "required": ["project_id", "type", "title"],
     },

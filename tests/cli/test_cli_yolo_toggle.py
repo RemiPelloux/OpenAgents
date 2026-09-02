@@ -166,7 +166,8 @@ class TestToggleYoloEndToEnd:
                 HermesCLI._toggle_yolo(stand_in)  # YOLO ON
 
             result = approval_module.check_all_command_guards(
-                "rm -rf /tmp/scratch-xyzzy", "local",
+                "rm -rf /tmp/scratch-xyzzy",
+                "local",
             )
             assert result["approved"] is True, (
                 f"YOLO toggle should auto-approve dangerous commands, got: {result}"
@@ -186,6 +187,7 @@ class TestIsSessionYoloActiveAttrSafety:
     def test_helper_survives_missing_session_id_attr(self):
         # SimpleNamespace WITHOUT session_id mimics __new__-built fixtures.
         from types import SimpleNamespace
+
         no_attr = SimpleNamespace()
         # Must return False, not raise.
         assert HermesCLI._is_session_yolo_active(no_attr) is False

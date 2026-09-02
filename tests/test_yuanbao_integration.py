@@ -41,6 +41,7 @@ def make_config(**kwargs):
 # 1. Adapter 初始化
 # ===========================================================
 
+
 class TestYuanbaoAdapterInit:
     def test_create_adapter(self):
         config = make_config()
@@ -59,6 +60,7 @@ class TestYuanbaoAdapterInit:
 # ===========================================================
 # 2. Config / Platform 枚举
 # ===========================================================
+
 
 class TestYuanbaoConfig:
     def test_platform_enum(self):
@@ -98,6 +100,7 @@ class TestYuanbaoConfig:
 # ===========================================================
 # 3. GatewayRunner 注册
 # ===========================================================
+
 
 class TestGatewayRunnerRegistration:
     def test_yuanbao_in_platform_enum(self):
@@ -140,6 +143,7 @@ class TestGatewayRunnerRegistration:
     def test_runner_creates_yuanbao_adapter(self):
         """GatewayRunner._create_adapter 能为 YUANBAO 返回 YuanbaoAdapter 实例"""
         from gateway.config import GatewayConfig
+
         config = make_config(enabled=True)
         gw_config = GatewayConfig(platforms={Platform.YUANBAO: config})
 
@@ -157,6 +161,7 @@ class TestGatewayRunnerRegistration:
     def test_runner_adapter_platform_attr(self):
         """创建的 adapter.PLATFORM 为 Platform.YUANBAO"""
         from gateway.config import GatewayConfig
+
         config = make_config(enabled=True)
         gw_config = GatewayConfig(platforms={Platform.YUANBAO: config})
 
@@ -175,11 +180,13 @@ class TestGatewayRunnerRegistration:
 # 4. Proto round-trip
 # ===========================================================
 
+
 class TestProtoRoundTrip:
     """验证 proto 编解码基本功能"""
 
     def test_conn_msg_roundtrip(self):
         from gateway.platforms.yuanbao_proto import encode_conn_msg, decode_conn_msg
+
         encoded = encode_conn_msg(msg_type=1, seq_no=42, data=b"hello")
         decoded = decode_conn_msg(encoded)
         assert decoded["seq_no"] == 42
@@ -187,6 +194,7 @@ class TestProtoRoundTrip:
 
     def test_text_elem_encoding(self):
         from gateway.platforms.yuanbao_proto import encode_send_c2c_message
+
         msg = encode_send_c2c_message(
             to_account="user123",
             msg_body=[{"msg_type": "TIMTextElem", "msg_content": {"text": "hello"}}],
@@ -200,9 +208,11 @@ class TestProtoRoundTrip:
 # 5. Markdown 分块
 # ===========================================================
 
+
 class TestMarkdownChunking:
     def test_chunks_are_sent_separately(self):
         from gateway.platforms.yuanbao import MarkdownProcessor
+
         long_text = "paragraph\n\n" * 100
         chunks = MarkdownProcessor.chunk_markdown_text(long_text, 200)
         assert len(chunks) > 1
@@ -213,6 +223,7 @@ class TestMarkdownChunking:
 
     def test_chunk_short_text_no_split(self):
         from gateway.platforms.yuanbao import MarkdownProcessor
+
         text = "hello world"
         chunks = MarkdownProcessor.chunk_markdown_text(text, 3000)
         assert chunks == [text]
@@ -222,9 +233,11 @@ class TestMarkdownChunking:
 # 6. Sign Token 模块
 # ===========================================================
 
+
 class TestSignToken:
     def test_import_ok(self):
         from gateway.platforms.yuanbao import SignManager
+
         assert callable(SignManager.get_token)
         assert callable(SignManager.force_refresh)
 
@@ -233,36 +246,48 @@ class TestSignToken:
 # 6b. ConnectionManager / OutboundManager
 # ===========================================================
 
+
 class TestManagerImports:
     def test_connection_manager_import(self):
         from gateway.platforms.yuanbao import ConnectionManager
+
         assert ConnectionManager is not None
 
     def test_outbound_manager_import(self):
         from gateway.platforms.yuanbao import OutboundManager
+
         assert OutboundManager is not None
 
     def test_message_sender_import(self):
         from gateway.platforms.yuanbao import MessageSender
+
         assert MessageSender is not None
 
     def test_heartbeat_manager_import(self):
         from gateway.platforms.yuanbao import HeartbeatManager
+
         assert HeartbeatManager is not None
 
     def test_slow_response_notifier_import(self):
         from gateway.platforms.yuanbao import SlowResponseNotifier
+
         assert SlowResponseNotifier is not None
 
     def test_adapter_has_outbound_manager(self):
         adapter = YuanbaoAdapter(make_config())
         from gateway.platforms.yuanbao import ConnectionManager, OutboundManager
+
         assert isinstance(adapter._connection, ConnectionManager)
         assert isinstance(adapter._outbound, OutboundManager)
 
     def test_outbound_composes_sub_managers(self):
         adapter = YuanbaoAdapter(make_config())
-        from gateway.platforms.yuanbao import MessageSender, HeartbeatManager, SlowResponseNotifier
+        from gateway.platforms.yuanbao import (
+            MessageSender,
+            HeartbeatManager,
+            SlowResponseNotifier,
+        )
+
         assert isinstance(adapter._outbound.sender, MessageSender)
         assert isinstance(adapter._outbound.heartbeat, HeartbeatManager)
         assert isinstance(adapter._outbound.slow_notifier, SlowResponseNotifier)
@@ -272,9 +297,11 @@ class TestManagerImports:
 # 7. Media 模块
 # ===========================================================
 
+
 class TestMediaModule:
     def test_import_ok(self):
         from gateway.platforms.yuanbao_media import upload_to_cos, download_url
+
         assert callable(upload_to_cos)
         assert callable(download_url)
 
@@ -283,10 +310,12 @@ class TestMediaModule:
 # 8. Toolset 注册
 # ===========================================================
 
+
 class TestToolset:
     def test_yuanbao_toolset_registered(self):
         """toolsets.py 中存在 hermes-yuanbao 键"""
         import importlib
+
         ts = importlib.import_module("toolsets")
         assert hasattr(ts, "TOOLSETS") or hasattr(ts, "toolsets")
         toolsets_dict = getattr(ts, "TOOLSETS", getattr(ts, "toolsets", {}))
@@ -298,21 +327,27 @@ class TestToolset:
             query_group_members,
             send_dm,
         )
-        assert all(callable(f) for f in [
-            get_group_info,
-            query_group_members,
-            send_dm,
-        ])
+
+        assert all(
+            callable(f)
+            for f in [
+                get_group_info,
+                query_group_members,
+                send_dm,
+            ]
+        )
 
 
 # ===========================================================
 # 9. platforms/__init__.py 导出
 # ===========================================================
 
+
 class TestPlatformInit:
     def test_yuanbao_adapter_exported(self):
         """gateway.platforms.__init__.py 应导出 YuanbaoAdapter"""
         from gateway.platforms import YuanbaoAdapter as _YuanbaoAdapter
+
         assert _YuanbaoAdapter is YuanbaoAdapter
 
 
@@ -329,7 +364,7 @@ class TestP0ReconnectGuard:
 
     def test_reconnecting_flag_initialized(self):
         adapter = YuanbaoAdapter(make_config())
-        assert hasattr(adapter._connection, '_reconnecting')
+        assert hasattr(adapter._connection, "_reconnecting")
         assert adapter._connection._reconnecting is False
 
     def test_schedule_reconnect_skips_when_not_running(self):
@@ -352,7 +387,7 @@ class TestP0InboundTaskTracking:
 
     def test_inbound_tasks_initialized(self):
         adapter = YuanbaoAdapter(make_config())
-        assert hasattr(adapter, '_inbound_tasks')
+        assert hasattr(adapter, "_inbound_tasks")
         assert isinstance(adapter._inbound_tasks, set)
         assert len(adapter._inbound_tasks) == 0
 
@@ -405,8 +440,8 @@ class TestP0PlatformScopedLock:
 
     def test_adapter_has_platform_lock_methods(self):
         adapter = YuanbaoAdapter(make_config())
-        assert hasattr(adapter, '_acquire_platform_lock')
-        assert hasattr(adapter, '_release_platform_lock')
+        assert hasattr(adapter, "_acquire_platform_lock")
+        assert hasattr(adapter, "_release_platform_lock")
 
 
 if __name__ == "__main__":

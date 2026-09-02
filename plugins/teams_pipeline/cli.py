@@ -20,18 +20,26 @@ from plugins.teams_pipeline.meetings import (
 )
 from plugins.teams_pipeline.models import GraphSubscription
 from plugins.teams_pipeline.pipeline import TeamsMeetingPipeline
-from plugins.teams_pipeline.store import TeamsPipelineStore, resolve_teams_pipeline_store_path
+from plugins.teams_pipeline.store import (
+    TeamsPipelineStore,
+    resolve_teams_pipeline_store_path,
+)
 from plugins.teams_pipeline.subscriptions import (
     build_graph_client,
     maintain_graph_subscriptions,
 )
-from tools.microsoft_graph_auth import MicrosoftGraphConfigError, MicrosoftGraphTokenProvider
+from tools.microsoft_graph_auth import (
+    MicrosoftGraphConfigError,
+    MicrosoftGraphTokenProvider,
+)
 
 
 def register_cli(subparser: argparse.ArgumentParser) -> None:
     subs = subparser.add_subparsers(dest="teams_pipeline_action")
 
-    list_p = subs.add_parser("list", aliases=["ls"], help="List recent Teams pipeline jobs")
+    list_p = subs.add_parser(
+        "list", aliases=["ls"], help="List recent Teams pipeline jobs"
+    )
     list_p.add_argument("--limit", type=int, default=20)
     list_p.add_argument("--status", default="")
     list_p.add_argument("--store-path", default="")
@@ -40,17 +48,23 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     show_p.add_argument("job_id")
     show_p.add_argument("--store-path", default="")
 
-    run_p = subs.add_parser("run", aliases=["replay"], help="Replay a stored Teams pipeline job")
+    run_p = subs.add_parser(
+        "run", aliases=["replay"], help="Replay a stored Teams pipeline job"
+    )
     run_p.add_argument("job_id")
     run_p.add_argument("--store-path", default="")
 
-    fetch_p = subs.add_parser("fetch", aliases=["test"], help="Dry-run meeting artifact resolution")
+    fetch_p = subs.add_parser(
+        "fetch", aliases=["test"], help="Dry-run meeting artifact resolution"
+    )
     fetch_p.add_argument("--meeting-id", default="")
     fetch_p.add_argument("--join-web-url", default="")
     fetch_p.add_argument("--tenant-id", default="")
     fetch_p.add_argument("--call-record-id", default="")
 
-    subs_p = subs.add_parser("subscriptions", aliases=["subs"], help="List Graph subscriptions")
+    subs_p = subs.add_parser(
+        "subscriptions", aliases=["subs"], help="List Graph subscriptions"
+    )
     subs_p.add_argument("--store-path", default="")
 
     sub_p = subs.add_parser("subscribe", help="Create a Microsoft Graph subscription")
@@ -63,26 +77,36 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     sub_p.add_argument("--latest-supported-tls-version", default="v1_2")
     sub_p.add_argument("--store-path", default="")
 
-    renew_p = subs.add_parser("renew-subscription", help="Renew a Microsoft Graph subscription")
+    renew_p = subs.add_parser(
+        "renew-subscription", help="Renew a Microsoft Graph subscription"
+    )
     renew_p.add_argument("subscription_id")
     renew_p.add_argument("--expiration", required=True)
     renew_p.add_argument("--store-path", default="")
 
-    delete_p = subs.add_parser("delete-subscription", help="Delete a Microsoft Graph subscription")
+    delete_p = subs.add_parser(
+        "delete-subscription", help="Delete a Microsoft Graph subscription"
+    )
     delete_p.add_argument("subscription_id")
     delete_p.add_argument("--store-path", default="")
 
-    maintain_p = subs.add_parser("maintain-subscriptions", help="Renew near-expiry managed subscriptions")
+    maintain_p = subs.add_parser(
+        "maintain-subscriptions", help="Renew near-expiry managed subscriptions"
+    )
     maintain_p.add_argument("--renew-within-hours", type=int, default=24)
     maintain_p.add_argument("--extend-hours", type=int, default=24)
     maintain_p.add_argument("--dry-run", action="store_true")
     maintain_p.add_argument("--store-path", default="")
     maintain_p.add_argument("--client-state", default="")
 
-    token_p = subs.add_parser("token-health", aliases=["token"], help="Inspect Graph token health")
+    token_p = subs.add_parser(
+        "token-health", aliases=["token"], help="Inspect Graph token health"
+    )
     token_p.add_argument("--force-refresh", action="store_true")
 
-    validate_p = subs.add_parser("validate", help="Validate Teams pipeline configuration snapshot")
+    validate_p = subs.add_parser(
+        "validate", help="Validate Teams pipeline configuration snapshot"
+    )
     validate_p.add_argument("--store-path", default="")
 
     subparser.set_defaults(func=teams_pipeline_command)
@@ -150,9 +174,12 @@ def _graph_setup_hint() -> str:
 
 
 def _iso_utc_timestamp(hours_from_now: int) -> str:
-    return (datetime.now(timezone.utc) + timedelta(hours=hours_from_now)).replace(
-        microsecond=0
-    ).isoformat().replace("+00:00", "Z")
+    return (
+        (datetime.now(timezone.utc) + timedelta(hours=hours_from_now))
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def _default_change_type_for_resource(resource: str) -> str:
@@ -216,11 +243,14 @@ def _validate_configuration_snapshot(store: TeamsPipelineStore) -> dict[str, Any
         warnings.append("Teams outbound delivery is disabled.")
     elif teams_mode == "incoming_webhook":
         if not teams_extra.get("incoming_webhook_url"):
-            issues.append("TEAMS_INCOMING_WEBHOOK_URL is required for incoming_webhook mode.")
+            issues.append(
+                "TEAMS_INCOMING_WEBHOOK_URL is required for incoming_webhook mode."
+            )
     elif teams_mode == "graph":
         missing: list[str] = []
         has_graph_delivery_token = bool(
-            (teams_config.token if teams_config else "") or teams_extra.get("access_token")
+            (teams_config.token if teams_config else "")
+            or teams_extra.get("access_token")
         )
         has_graph_app_credentials = all(graph.values())
         if not has_graph_delivery_token and not has_graph_app_credentials:
@@ -266,7 +296,7 @@ def _cmd_list(args) -> None:
 
     print(f"\n{len(jobs)} Teams pipeline job(s):\n")
     for job in jobs:
-        meeting_id = ((job.get("meeting_ref") or {}).get("meeting_id") or "unknown")
+        meeting_id = (job.get("meeting_ref") or {}).get("meeting_id") or "unknown"
         print(f"  ◆ {job.get('job_id')}")
         print(f"    status: {job.get('status')}")
         print(f"    meeting: {meeting_id}")
@@ -298,7 +328,9 @@ def _cmd_run(args) -> None:
         print("job_id is required")
         return
     store = TeamsPipelineStore(_store_path(getattr(args, "store_path", None)))
-    pipeline = TeamsMeetingPipeline(graph_client=build_graph_client(), store=store, config={})
+    pipeline = TeamsMeetingPipeline(
+        graph_client=build_graph_client(), store=store, config={}
+    )
     result = _run_async(pipeline.run_job(job_id))
     print(json.dumps(_compact_job(result.to_dict()), indent=2, sort_keys=True))
 
@@ -321,17 +353,23 @@ def _cmd_fetch(args) -> None:
             tenant_id=tenant_id,
         )
     )
-    transcript_artifact, transcript_text = _run_async(fetch_preferred_transcript_text(client, meeting_ref))
+    transcript_artifact, transcript_text = _run_async(
+        fetch_preferred_transcript_text(client, meeting_ref)
+    )
     recordings = _run_async(list_recording_artifacts(client, meeting_ref))
     call_record = _run_async(
-        enrich_meeting_with_call_record(client, meeting_ref, call_record_id=call_record_id)
+        enrich_meeting_with_call_record(
+            client, meeting_ref, call_record_id=call_record_id
+        )
     )
     print(
         json.dumps(
             {
                 "meeting_ref": meeting_ref.to_dict(),
                 "transcript_available": bool(transcript_artifact and transcript_text),
-                "transcript_artifact": transcript_artifact.to_dict() if transcript_artifact else None,
+                "transcript_artifact": transcript_artifact.to_dict()
+                if transcript_artifact
+                else None,
                 "transcript_preview": (transcript_text or "")[:240] or None,
                 "recording_count": len(recordings),
                 "recordings": [recording.to_dict() for recording in recordings[:5]],
@@ -372,11 +410,17 @@ def _cmd_subscribe(args) -> None:
     store = TeamsPipelineStore(_store_path(getattr(args, "store_path", None)))
     resource = str(getattr(args, "resource", "") or "").strip()
     notification_url = str(getattr(args, "notification_url", "") or "").strip()
-    change_type = str(getattr(args, "change_type", "") or "").strip() or _default_change_type_for_resource(resource)
-    expiration = str(getattr(args, "expiration", "") or "").strip() or _iso_utc_timestamp(1)
+    change_type = str(
+        getattr(args, "change_type", "") or ""
+    ).strip() or _default_change_type_for_resource(resource)
+    expiration = str(
+        getattr(args, "expiration", "") or ""
+    ).strip() or _iso_utc_timestamp(1)
     client_state = str(getattr(args, "client_state", "") or "").strip()
     lifecycle_url = str(getattr(args, "lifecycle_notification_url", "") or "").strip()
-    tls_version = str(getattr(args, "latest_supported_tls_version", "") or "").strip() or "v1_2"
+    tls_version = (
+        str(getattr(args, "latest_supported_tls_version", "") or "").strip() or "v1_2"
+    )
 
     payload = {
         "changeType": change_type,
@@ -390,7 +434,9 @@ def _cmd_subscribe(args) -> None:
     if lifecycle_url:
         payload["lifecycleNotificationUrl"] = lifecycle_url
 
-    result = _run_async(build_graph_client().post_json("/subscriptions", json_body=payload))
+    result = _run_async(
+        build_graph_client().post_json("/subscriptions", json_body=payload)
+    )
     _sync_subscription_record(store, result, status="active")
     print(json.dumps(result, indent=2, sort_keys=True))
 
@@ -420,9 +466,17 @@ def _cmd_delete_subscription(args) -> None:
         print("subscription_id is required")
         return
     store = TeamsPipelineStore(_store_path(getattr(args, "store_path", None)))
-    result = _run_async(build_graph_client().delete(f"/subscriptions/{subscription_id}"))
+    result = _run_async(
+        build_graph_client().delete(f"/subscriptions/{subscription_id}")
+    )
     store.delete_subscription(subscription_id)
-    print(json.dumps({"subscription_id": subscription_id, "result": result}, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {"subscription_id": subscription_id, "result": result},
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 def _cmd_maintain_subscriptions(args) -> None:

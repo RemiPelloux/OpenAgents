@@ -14,6 +14,7 @@ The middleware is a no-op when ``auth_required`` is False (loopback
 mode); the legacy ``_SESSION_TOKEN`` ``auth_middleware`` handles those
 binds.
 """
+
 from __future__ import annotations
 
 import logging
@@ -66,8 +67,7 @@ def _path_is_public(path: str) -> bool:
     if path in PUBLIC_API_PATHS:
         return True
     return any(
-        path == prefix or path.startswith(prefix)
-        for prefix in _GATE_PUBLIC_PREFIXES
+        path == prefix or path.startswith(prefix) for prefix in _GATE_PUBLIC_PREFIXES
     )
 
 
@@ -105,10 +105,7 @@ def _unauth_response(request: Request, *, reason: str) -> Response:
     path = request.url.path
     next_param = _safe_next_target(request)
     prefix = prefix_from_request(request)
-    login_url = (
-        f"{prefix}/login?next={next_param}" if next_param
-        else f"{prefix}/login"
-    )
+    login_url = f"{prefix}/login?next={next_param}" if next_param else f"{prefix}/login"
 
     if path.startswith("/api/"):
         # API routes never get redirects: the browser fetch() API would
@@ -146,10 +143,7 @@ def _safe_next_target(request: Request) -> str:
     if not path or not path.startswith("/") or path.startswith("//"):
         return ""
     # Don't redirect back to the auth routes themselves — that loops.
-    if any(
-        path == p or path.startswith(p)
-        for p in ("/login", "/auth/", "/api/auth/")
-    ):
+    if any(path == p or path.startswith(p) for p in ("/login", "/auth/", "/api/auth/")):
         return ""
     # Reject ALL ``/api/*`` paths. The 401-envelope code path fires for
     # any unauthenticated SPA fetch (e.g. ``GET /api/analytics/models``
@@ -166,6 +160,7 @@ def _safe_next_target(request: Request) -> str:
     target = f"{path}?{query}" if query else path
     # urlencode the whole thing as a single value.
     from urllib.parse import quote
+
     return quote(target, safe="")
 
 
@@ -236,7 +231,8 @@ async def gated_auth_middleware(
             except ProviderError as e:
                 _log.warning(
                     "dashboard-auth: provider %r unreachable during verify: %s",
-                    provider.name, e,
+                    provider.name,
+                    e,
                 )
                 audit_log(
                     AuditEvent.SESSION_VERIFY_FAILURE,
@@ -310,6 +306,7 @@ async def gated_auth_middleware(
         # the browser ignores it).
         from openagents_cli.dashboard_auth.cookies import clear_session_cookies
         from openagents_cli.dashboard_auth.prefix import prefix_from_request
+
         clear_session_cookies(response, prefix=prefix_from_request(request))
         return response
 
@@ -360,7 +357,8 @@ def _attempt_refresh(request: Request, *, refresh_token):
         except ProviderError as e:
             _log.warning(
                 "dashboard-auth: provider %r unreachable during refresh: %s",
-                provider.name, e,
+                provider.name,
+                e,
             )
             audit_log(
                 AuditEvent.REFRESH_FAILURE,
@@ -372,4 +370,3 @@ def _attempt_refresh(request: Request, *, refresh_token):
         if new_session is not None:
             return new_session, provider.name
     return None
-

@@ -166,6 +166,7 @@ def _build_server() -> Any:
                 except Exception as exc:
                     logger.exception("tool %s raised", tool_name)
                     return json.dumps({"error": str(exc), "tool": tool_name})
+
             _dispatch.__name__ = tool_name
             _dispatch.__doc__ = description
             return _dispatch

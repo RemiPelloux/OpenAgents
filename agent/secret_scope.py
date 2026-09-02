@@ -20,6 +20,7 @@ This module provides a fail-closed, context-local secret scope:
 
 Design rationale lives in ``docs/design/multiplexing-gateway.md`` (Workstream A).
 """
+
 from __future__ import annotations
 
 import os
@@ -96,20 +97,37 @@ def current_secret_scope() -> Optional[Mapping[str, str]]:
 # list tight: when in doubt a value is a profile secret, not a global.
 _GLOBAL_ENV_EXACT = frozenset({
     # OpenAgents runtime / deployment
-    "OPENAGENTS_HOME", "HERMES_PROFILE", "HERMES_GATEWAY_LOCK_DIR",
-    "HERMES_MAX_ITERATIONS", "HERMES_MAX_TOKENS", "HERMES_API_TIMEOUT",
-    "HERMES_REDACT_SECRETS", "HERMES_NOUS_TIMEOUT_SECONDS",
+    "OPENAGENTS_HOME",
+    "HERMES_PROFILE",
+    "HERMES_GATEWAY_LOCK_DIR",
+    "HERMES_MAX_ITERATIONS",
+    "HERMES_MAX_TOKENS",
+    "HERMES_API_TIMEOUT",
+    "HERMES_REDACT_SECRETS",
+    "HERMES_NOUS_TIMEOUT_SECONDS",
     "_HERMES_GATEWAY",
     # OS / interpreter
-    "PATH", "HOME", "USER", "LANG", "LC_ALL", "TZ", "PWD", "SHELL", "TMPDIR",
-    "VIRTUAL_ENV", "PYTHONPATH", "SSL_CERT_FILE",
+    "PATH",
+    "HOME",
+    "USER",
+    "LANG",
+    "LC_ALL",
+    "TZ",
+    "PWD",
+    "SHELL",
+    "TMPDIR",
+    "VIRTUAL_ENV",
+    "PYTHONPATH",
+    "SSL_CERT_FILE",
     # Kanban paths (per-board, not per-profile-secret)
-    "HERMES_KANBAN_DB", "HERMES_KANBAN_WORKSPACES_ROOT", "HERMES_KANBAN_BOARD",
+    "HERMES_KANBAN_DB",
+    "HERMES_KANBAN_WORKSPACES_ROOT",
+    "HERMES_KANBAN_BOARD",
 })
 _GLOBAL_ENV_PREFIXES = (
     "HERMES_KANBAN_",
-    "HERMES_TELEGRAM_",   # tuning knobs (batch delays, fallback toggles) — NOT the token
-    "TERMINAL_",          # terminal/sandbox backend settings
+    "HERMES_TELEGRAM_",  # tuning knobs (batch delays, fallback toggles) — NOT the token
+    "TERMINAL_",  # terminal/sandbox backend settings
 )
 
 
@@ -179,7 +197,7 @@ def load_env_file(env_path: Path) -> Dict[str, str]:
         if not line or line.startswith("#"):
             continue
         if line.startswith("export "):
-            line = line[len("export "):].lstrip()
+            line = line[len("export ") :].lstrip()
         if "=" not in line:
             continue
         key, _, value = line.partition("=")
@@ -202,4 +220,3 @@ def build_profile_secret_scope(hermes_home: Path) -> Dict[str, str]:
     from ``os.environ`` directly, so the scope holds only profile secrets.
     """
     return load_env_file(Path(hermes_home) / ".env")
-

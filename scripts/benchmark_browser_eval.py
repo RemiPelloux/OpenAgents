@@ -6,6 +6,7 @@ Not a pytest — a script you run manually for the PR description.
 Usage:
     .venv/bin/python scripts/benchmark_browser_eval.py [--iterations N]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,7 +47,9 @@ def _start_chrome(port: int):
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=1) as r:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/json/version", timeout=1
+            ) as r:
                 info = json.loads(r.read().decode())
                 return proc, profile, info["webSocketDebuggerUrl"]
         except Exception:
@@ -95,6 +98,7 @@ def main():
             sub_times = []
         else:
             from tools.browser_tool import _run_browser_command, _last_session_key
+
             task_id = _last_session_key("bench-eval")
             sub_times = []
             for _ in range(args.iterations):

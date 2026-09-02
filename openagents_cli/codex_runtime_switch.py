@@ -199,12 +199,11 @@ def apply(
         # Failures are non-fatal — the runtime change still proceeds.
         try:
             from openagents_cli.codex_runtime_plugin_migration import migrate
+
             mig_report = migrate(config)
             # Tools/MCP servers (excluding the hermes-tools callback,
             # which is internal plumbing — surface separately).
-            user_servers = [
-                s for s in mig_report.migrated if s != "hermes-tools"
-            ]
+            user_servers = [s for s in mig_report.migrated if s != "hermes-tools"]
             if user_servers:
                 msg_lines.append(
                     f"Migrated {len(user_servers)} MCP server(s): "
@@ -218,8 +217,7 @@ def apply(
                 )
             elif mig_report.plugin_query_error:
                 msg_lines.append(
-                    f"Codex plugin discovery skipped: "
-                    f"{mig_report.plugin_query_error}"
+                    f"Codex plugin discovery skipped: {mig_report.plugin_query_error}"
                 )
             # Permissions + OpenAgents tool callback are always-on production
             # bits the user benefits from knowing about.

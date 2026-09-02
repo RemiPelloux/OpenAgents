@@ -62,7 +62,9 @@ def test_session_list_surfaces_all_user_facing_sources(monkeypatch):
     assert "tui-1" in ids
     assert "cli-1" in ids
     assert "acp-1" in ids, "acp sessions were being hidden by the old allow-list"
-    assert "webhook-1" in ids, "webhook sessions were being hidden by the old allow-list"
+    assert "webhook-1" in ids, (
+        "webhook sessions were being hidden by the old allow-list"
+    )
     assert "custom-1" in ids, "custom HERMES_SESSION_SOURCE values were being hidden"
 
     # Only internal sub-agent runs stay hidden.

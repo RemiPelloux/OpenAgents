@@ -41,7 +41,9 @@ def test_list_openagentui_workflows_empty():
 
 
 def test_create_and_export_yaml_roundtrip():
-    created = _parse_result(handle_create_openagentui_workflow_from_yaml({"yaml": SAMPLE_YAML}))
+    created = _parse_result(
+        handle_create_openagentui_workflow_from_yaml({"yaml": SAMPLE_YAML})
+    )
     assert created["created"] is True
     assert created["workflow"]["id"] == "wf_tool_test"
 
@@ -53,27 +55,29 @@ def test_create_and_export_yaml_roundtrip():
 
 
 def test_ensure_creates_once():
-    first = _parse_result(handle_ensure_openagentui_workflow({"name": "Ensure Me", "yaml": SAMPLE_YAML}))
+    first = _parse_result(
+        handle_ensure_openagentui_workflow({"name": "Ensure Me", "yaml": SAMPLE_YAML})
+    )
     assert first["created"] is True
 
-    second = _parse_result(handle_ensure_openagentui_workflow({"name": "Ensure Me", "yaml": SAMPLE_YAML}))
+    second = _parse_result(
+        handle_ensure_openagentui_workflow({"name": "Ensure Me", "yaml": SAMPLE_YAML})
+    )
     assert second["created"] is False
     assert second["workflow"]["id"] == "wf_tool_test"
 
 
 def test_run_openagentui_workflow_completes():
     store.save_workflow(
-        Workflow.from_dict(
-            {
-                "id": "wf_run_tool",
-                "name": "Runnable",
-                "nodes": [
-                    {"id": "start", "type": "start", "data": {}},
-                    {"id": "end", "type": "end", "data": {}},
-                ],
-                "edges": [{"id": "e1", "source": "start", "target": "end"}],
-            }
-        )
+        Workflow.from_dict({
+            "id": "wf_run_tool",
+            "name": "Runnable",
+            "nodes": [
+                {"id": "start", "type": "start", "data": {}},
+                {"id": "end", "type": "end", "data": {}},
+            ],
+            "edges": [{"id": "e1", "source": "start", "target": "end"}],
+        })
     )
     result = _parse_result(handle_run_openagentui_workflow({"workflow": "Runnable"}))
     assert result["status"] == "completed"

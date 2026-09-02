@@ -27,7 +27,8 @@ def _run_handle_function_call(
     from tools.registry import registry
 
     monkeypatch.setattr(
-        registry, "dispatch",
+        registry,
+        "dispatch",
         lambda name, args, **kw: dispatch_result,
     )
     # Skip unrelated side effects (read-loop tracker).
@@ -122,6 +123,7 @@ def test_hook_exception_falls_back_to_original(monkeypatch):
 
 def test_post_tool_call_remains_observational(monkeypatch):
     """post_tool_call return values must NOT replace the result."""
+
     def _hook(hook_name, **kw):
         if hook_name == "post_tool_call":
             # Observers returning a string must be ignored.
@@ -169,7 +171,9 @@ def test_transform_tool_result_integration_with_real_plugin(monkeypatch, tmp_pat
     plugins_dir = hermes_home / "plugins"
     plugin_dir = plugins_dir / "transform_result_canon"
     plugin_dir.mkdir(parents=True)
-    (plugin_dir / "plugin.yaml").write_text("name: transform_result_canon\n", encoding="utf-8")
+    (plugin_dir / "plugin.yaml").write_text(
+        "name: transform_result_canon\n", encoding="utf-8"
+    )
     (plugin_dir / "__init__.py").write_text(
         "def register(ctx):\n"
         '    ctx.register_hook("transform_tool_result", '

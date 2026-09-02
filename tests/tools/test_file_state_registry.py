@@ -220,6 +220,7 @@ class FileToolsIntegrationTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         shutil.rmtree(self._tmpdir, ignore_errors=True)
         file_state.get_registry().clear()
 

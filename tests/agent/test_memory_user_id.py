@@ -163,12 +163,15 @@ class TestMem0UserIdScoping:
 
         provider = Mem0MemoryProvider()
         # Mock _load_config to return a config with default user_id
-        with patch("plugins.memory.mem0._load_config", return_value={
-            "api_key": "test-key",
-            "user_id": "hermes-user",
-            "agent_id": "openagents",
-            "rerank": True,
-        }):
+        with patch(
+            "plugins.memory.mem0._load_config",
+            return_value={
+                "api_key": "test-key",
+                "user_id": "hermes-user",
+                "agent_id": "openagents",
+                "rerank": True,
+            },
+        ):
             provider.initialize(session_id="test-sess", user_id="tg_user_99")
 
         assert provider._user_id == "tg_user_99"
@@ -178,12 +181,15 @@ class TestMem0UserIdScoping:
         from plugins.memory.mem0 import Mem0MemoryProvider
 
         provider = Mem0MemoryProvider()
-        with patch("plugins.memory.mem0._load_config", return_value={
-            "api_key": "test-key",
-            "user_id": "custom-default",
-            "agent_id": "openagents",
-            "rerank": True,
-        }):
+        with patch(
+            "plugins.memory.mem0._load_config",
+            return_value={
+                "api_key": "test-key",
+                "user_id": "custom-default",
+                "agent_id": "openagents",
+                "rerank": True,
+            },
+        ):
             provider.initialize(session_id="test-sess")
 
         assert provider._user_id == "custom-default"
@@ -193,11 +199,14 @@ class TestMem0UserIdScoping:
         from plugins.memory.mem0 import Mem0MemoryProvider
 
         provider = Mem0MemoryProvider()
-        with patch("plugins.memory.mem0._load_config", return_value={
-            "api_key": "test-key",
-            "agent_id": "openagents",
-            "rerank": True,
-        }):
+        with patch(
+            "plugins.memory.mem0._load_config",
+            return_value={
+                "api_key": "test-key",
+                "agent_id": "openagents",
+                "rerank": True,
+            },
+        ):
             provider.initialize(session_id="test-sess")
 
         assert provider._user_id == "hermes-user"
@@ -209,12 +218,15 @@ class TestMem0UserIdScoping:
         p1 = Mem0MemoryProvider()
         p2 = Mem0MemoryProvider()
 
-        with patch("plugins.memory.mem0._load_config", return_value={
-            "api_key": "test-key",
-            "user_id": "hermes-user",
-            "agent_id": "openagents",
-            "rerank": True,
-        }):
+        with patch(
+            "plugins.memory.mem0._load_config",
+            return_value={
+                "api_key": "test-key",
+                "user_id": "hermes-user",
+                "agent_id": "openagents",
+                "rerank": True,
+            },
+        ):
             p1.initialize(session_id="sess-1", user_id="alice_123")
             p2.initialize(session_id="sess-2", user_id="bob_456")
 
@@ -252,15 +264,19 @@ class TestHonchoUserIdScoping:
         mock_cfg.resolve_session_name.return_value = "test-sess"
         mock_cfg.session_strategy = "shared"
 
-        with patch(
-            "plugins.memory.honcho.client.HonchoClientConfig.from_global_config",
-            return_value=mock_cfg,
-        ), patch(
-            "plugins.memory.honcho.client.get_honcho_client",
-            return_value=MagicMock(),
-        ), patch(
-            "plugins.memory.honcho.session.HonchoSessionManager",
-        ) as mock_manager_cls:
+        with (
+            patch(
+                "plugins.memory.honcho.client.HonchoClientConfig.from_global_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "plugins.memory.honcho.client.get_honcho_client",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "plugins.memory.honcho.session.HonchoSessionManager",
+            ) as mock_manager_cls,
+        ):
             mock_manager = MagicMock()
             mock_manager.get_or_create.return_value = MagicMock(messages=[])
             mock_manager_cls.return_value = mock_manager
@@ -271,7 +287,10 @@ class TestHonchoUserIdScoping:
             )
 
         assert mock_cfg.peer_name == "static-user"
-        assert mock_manager_cls.call_args.kwargs["runtime_user_peer_name"] == "discord_user_789"
+        assert (
+            mock_manager_cls.call_args.kwargs["runtime_user_peer_name"]
+            == "discord_user_789"
+        )
 
     def test_session_manager_prefers_runtime_user_id_over_config_peer_name(self):
         """Session manager should isolate gateway users even when config peer_name is static."""
@@ -296,10 +315,13 @@ class TestHonchoUserIdScoping:
             runtime_user_peer_name="discord_user_789",
         )
 
-        with patch.object(manager, "_get_or_create_peer", return_value=MagicMock()), patch.object(
-            manager,
-            "_get_or_create_honcho_session",
-            return_value=(MagicMock(), []),
+        with (
+            patch.object(manager, "_get_or_create_peer", return_value=MagicMock()),
+            patch.object(
+                manager,
+                "_get_or_create_honcho_session",
+                return_value=(MagicMock(), []),
+            ),
         ):
             session = manager.get_or_create("discord:channel-1")
 
@@ -343,6 +365,7 @@ class TestAIAgentUserIdPropagation:
         """AIAgent should store user_id as instance attribute."""
         with patch.dict(os.environ, {"OPENAGENTS_HOME": "/tmp/test_hermes"}):
             from run_agent import AIAgent
+
             agent = object.__new__(AIAgent)
             # Manually set the attribute as __init__ does
             agent._user_id = "test_user_42"
@@ -352,7 +375,7 @@ class TestAIAgentUserIdPropagation:
         """AIAgent should have None user_id when not provided (CLI mode)."""
         with patch.dict(os.environ, {"OPENAGENTS_HOME": "/tmp/test_hermes"}):
             from run_agent import AIAgent
+
             agent = object.__new__(AIAgent)
             agent._user_id = None
             assert agent._user_id is None
-

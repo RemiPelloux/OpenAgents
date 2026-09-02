@@ -27,13 +27,21 @@ class TestStartupAnimation:
 
         monkeypatch.delenv("HERMES_NO_STARTUP_ANIMATION", raising=False)
         monkeypatch.delenv("HERMES_FAST_STARTUP_BANNER", raising=False)
-        with patch("openagents_cli.startup_animation._is_interactive_tty", return_value=True), \
-             patch("openagents_cli.startup_animation.time.sleep") as sleep, \
-             patch("openagents_cli.startup_animation.Live", create=True):
+        with (
+            patch(
+                "openagents_cli.startup_animation._is_interactive_tty",
+                return_value=True,
+            ),
+            patch("openagents_cli.startup_animation.time.sleep") as sleep,
+            patch("openagents_cli.startup_animation.Live", create=True),
+        ):
             try:
                 from rich.live import Live  # noqa: F401
+
                 with patch("openagents_cli.startup_animation.Live") as live_cls:
-                    live_cls.return_value.__enter__.return_value = SimpleNamespace(update=lambda *_: None)
+                    live_cls.return_value.__enter__.return_value = SimpleNamespace(
+                        update=lambda *_: None
+                    )
                     play_startup_animation(enabled=True)
             except Exception:
                 play_startup_animation(enabled=True)
@@ -53,7 +61,10 @@ class TestSessionOnLaunch:
 
         args = SimpleNamespace(resume=None, continue_last=None, query=None, quiet=False)
         with patch("openagents_cli.session_launch.load_config", create=True):
-            with patch("openagents_cli.config.load_config", return_value={"display": {"session_on_launch": "new"}}):
+            with patch(
+                "openagents_cli.config.load_config",
+                return_value={"display": {"session_on_launch": "new"}},
+            ):
                 apply_session_on_launch(args, use_tui=False)
         assert args.resume is None
 
@@ -66,16 +77,24 @@ class TestSessionOnLaunch:
             "openagents_cli.main._resolve_last_session",
             lambda source="cli": "sess-123",
         )
-        with patch("openagents_cli.config.load_config", return_value={"display": {"session_on_launch": "last"}}):
+        with patch(
+            "openagents_cli.config.load_config",
+            return_value={"display": {"session_on_launch": "last"}},
+        ):
             apply_session_on_launch(args, use_tui=False)
         assert args.resume == "sess-123"
 
     def test_explicit_resume_not_overridden(self, monkeypatch):
         from openagents_cli.session_launch import apply_session_on_launch
 
-        args = SimpleNamespace(resume="keep-me", continue_last=None, query=None, quiet=False)
+        args = SimpleNamespace(
+            resume="keep-me", continue_last=None, query=None, quiet=False
+        )
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
-        with patch("openagents_cli.config.load_config", return_value={"display": {"session_on_launch": "last"}}):
+        with patch(
+            "openagents_cli.config.load_config",
+            return_value={"display": {"session_on_launch": "last"}},
+        ):
             apply_session_on_launch(args, use_tui=False)
         assert args.resume == "keep-me"
 
@@ -93,6 +112,9 @@ class TestSessionOnLaunch:
             "openagents_cli.main._session_browse_picker",
             lambda items: "abc",
         )
-        with patch("openagents_cli.config.load_config", return_value={"display": {"session_on_launch": "prompt"}}):
+        with patch(
+            "openagents_cli.config.load_config",
+            return_value={"display": {"session_on_launch": "prompt"}},
+        ):
             apply_session_on_launch(args, use_tui=False)
         assert args.resume == "abc"

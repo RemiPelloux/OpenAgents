@@ -85,9 +85,18 @@ GIT_MV_MAP = [
     ("tests/test_hermes_state.py", "tests/test_openagents_state.py"),
     ("tests/test_hermes_logging.py", "tests/test_openagents_logging.py"),
     ("tests/test_hermes_bootstrap.py", "tests/test_openagents_bootstrap.py"),
-    ("tests/test_hermes_state_wal_fallback.py", "tests/test_openagents_state_wal_fallback.py"),
-    ("tests/test_hermes_state_compression_locks.py", "tests/test_openagents_state_compression_locks.py"),
-    ("tests/test_hermes_home_profile_warning.py", "tests/test_openagents_home_profile_warning.py"),
+    (
+        "tests/test_hermes_state_wal_fallback.py",
+        "tests/test_openagents_state_wal_fallback.py",
+    ),
+    (
+        "tests/test_hermes_state_compression_locks.py",
+        "tests/test_openagents_state_compression_locks.py",
+    ),
+    (
+        "tests/test_hermes_home_profile_warning.py",
+        "tests/test_openagents_home_profile_warning.py",
+    ),
     ("environments/hermes_base_env.py", "environments/openagents_base_env.py"),
     ("environments/hermes_swe_env", "environments/openagents_swe_env"),
     ("setup-hermes.sh", "setup-openagents.sh"),
@@ -187,7 +196,7 @@ PROTECTED_LITERALS = [
     "Nous Hermes",
 ]
 
-COMPAT_BLOCK = '''
+COMPAT_BLOCK = """
 
 # ---------------------------------------------------------------------------
 # Backward compatibility (Hermes → OpenAgents migration)
@@ -200,7 +209,7 @@ get_hermes_dir = get_openagents_dir
 set_hermes_home_override = set_openagents_home_override
 reset_hermes_home_override = reset_openagents_home_override
 get_hermes_home_override = get_openagents_home_override
-'''
+"""
 
 
 def should_skip(path: Path) -> bool:
@@ -253,8 +262,13 @@ def patch_pyproject(content: str) -> str:
         'hermes = "hermes_cli.main:main"',
         'openagents = "openagents_cli.main:main"\nhermes = "openagents_cli.main:main"  # deprecated alias',
     )
-    content = content.replace('hermes-run = "run_agent:main"', 'openagents-run = "run_agent:main"')
-    content = content.replace('hermes-acp = "acp_adapter.entry:main"', 'openagents-acp = "acp_adapter.entry:main"')
+    content = content.replace(
+        'hermes-run = "run_agent:main"', 'openagents-run = "run_agent:main"'
+    )
+    content = content.replace(
+        'hermes-acp = "acp_adapter.entry:main"',
+        'openagents-acp = "acp_adapter.entry:main"',
+    )
     content = content.replace('"hermes_cli"', '"openagents_cli"')
     content = content.replace('"hermes_cli.*"', '"openagents_cli.*"')
     content = content.replace("hermes_constants", "openagents_constants")

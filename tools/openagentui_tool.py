@@ -35,7 +35,12 @@ def handle_list_openagentui_workflows(args: Dict[str, Any], **_kwargs) -> str:
     from openagentui.store import list_workflows
 
     workflows = [
-        {"id": w.id, "name": w.name, "description": w.description, "isTemplate": w.is_template}
+        {
+            "id": w.id,
+            "name": w.name,
+            "description": w.description,
+            "isTemplate": w.is_template,
+        }
         for w in list_workflows()
     ]
     return tool_result({"workflows": workflows})
@@ -80,7 +85,9 @@ def handle_resolve_openagentui_approval(args: Dict[str, Any], **_kwargs) -> str:
     execution_id = str(args.get("execution_id") or "").strip()
     decision = str(args.get("decision") or "").strip().lower()
     if not execution_id or decision not in {"approved", "rejected"}:
-        return tool_error("'execution_id' and decision ('approved'|'rejected') are required")
+        return tool_error(
+            "'execution_id' and decision ('approved'|'rejected') are required"
+        )
 
     from openagentui.approvals import resolve_approval
 
@@ -89,12 +96,17 @@ def handle_resolve_openagentui_approval(args: Dict[str, Any], **_kwargs) -> str:
     except ValueError as exc:
         return tool_error(str(exc))
 
-    return tool_result(
-        {"executionId": execution.id, "status": execution.status, "variables": execution.variables, "error": execution.error}
-    )
+    return tool_result({
+        "executionId": execution.id,
+        "status": execution.status,
+        "variables": execution.variables,
+        "error": execution.error,
+    })
 
 
-def handle_create_openagentui_workflow_from_yaml(args: Dict[str, Any], **_kwargs) -> str:
+def handle_create_openagentui_workflow_from_yaml(
+    args: Dict[str, Any], **_kwargs
+) -> str:
     yaml_text = str(args.get("yaml") or args.get("content") or "").strip()
     if not yaml_text:
         return tool_error("'yaml' text is required")
@@ -123,7 +135,11 @@ def handle_export_openagentui_workflow_yaml(args: Dict[str, Any], **_kwargs) -> 
 
     from openagentui.yaml_io import workflow_to_yaml_text
 
-    return tool_result({"id": workflow.id, "name": workflow.name, "yaml": workflow_to_yaml_text(workflow)})
+    return tool_result({
+        "id": workflow.id,
+        "name": workflow.name,
+        "yaml": workflow_to_yaml_text(workflow),
+    })
 
 
 def handle_ensure_openagentui_workflow(args: Dict[str, Any], **_kwargs) -> str:
@@ -166,8 +182,14 @@ RUN_SCHEMA: Dict[str, Any] = {
     "parameters": {
         "type": "object",
         "properties": {
-            "workflow": {"type": "string", "description": "Workflow name or id (see list_openagentui_workflows)."},
-            "inputs": {"type": "object", "description": "Variable name -> value seeding the workflow's start node."},
+            "workflow": {
+                "type": "string",
+                "description": "Workflow name or id (see list_openagentui_workflows).",
+            },
+            "inputs": {
+                "type": "object",
+                "description": "Variable name -> value seeding the workflow's start node.",
+            },
         },
         "required": ["workflow"],
     },
@@ -221,7 +243,10 @@ ENSURE_WORKFLOW_SCHEMA: Dict[str, Any] = {
         "type": "object",
         "properties": {
             "name": {"type": "string", "description": "Human-readable workflow name"},
-            "yaml": {"type": "string", "description": "YAML to create when the workflow is absent"},
+            "yaml": {
+                "type": "string",
+                "description": "YAML to create when the workflow is absent",
+            },
         },
         "required": ["name", "yaml"],
     },

@@ -25,6 +25,7 @@ from our own Codex call paths, so the specific iteration crash inside
 test class additionally pins the SDK's ``_make_tools(None)`` contract so
 we notice if upstream ever changes it.
 """
+
 from __future__ import annotations
 
 import sys
@@ -95,7 +96,9 @@ def test_build_kwargs_omits_tools_key_when_no_tools(transport, codex_messages):
     )
 
 
-def test_build_kwargs_omits_tool_choice_and_parallel_when_no_tools(transport, codex_messages):
+def test_build_kwargs_omits_tool_choice_and_parallel_when_no_tools(
+    transport, codex_messages
+):
     """``tool_choice`` / ``parallel_tool_calls`` are meaningless without
     tools — and some backends 400 on them.  Confirm we never set them."""
     kwargs = _build_kwargs_no_tools(transport, codex_messages)
@@ -104,7 +107,9 @@ def test_build_kwargs_omits_tool_choice_and_parallel_when_no_tools(transport, co
     assert "parallel_tool_calls" not in kwargs
 
 
-def test_build_kwargs_keeps_required_codex_fields_without_tools(transport, codex_messages):
+def test_build_kwargs_keeps_required_codex_fields_without_tools(
+    transport, codex_messages
+):
     """The toolless build must still emit the non-negotiable Codex fields
     (model / instructions / input / store) — otherwise we'd just be moving
     the bug from the SDK to preflight."""
@@ -139,7 +144,9 @@ def test_build_kwargs_emits_tools_when_tools_present(transport, codex_messages):
         is_codex_backend=True,
     )
 
-    assert "tools" in kwargs and kwargs["tools"], "tools must be present when registered"
+    assert "tools" in kwargs and kwargs["tools"], (
+        "tools must be present when registered"
+    )
     assert kwargs["tools"][0]["name"] == "terminal"
     assert kwargs["tool_choice"] == "auto"
     assert kwargs["parallel_tool_calls"] is True

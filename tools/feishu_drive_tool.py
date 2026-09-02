@@ -31,6 +31,7 @@ def _check_feishu():
     # See ``tools/feishu_doc_tool.py::_check_feishu`` — ``find_spec`` keeps
     # CLI startup fast (the SDK itself takes ~5s to import eagerly).
     import importlib.util
+
     try:
         return importlib.util.find_spec("lark_oapi") is not None
     except (ImportError, ValueError):
@@ -155,7 +156,9 @@ def _handle_list_comments(args: dict, **kwargs) -> str:
         queries.append(("page_token", page_token))
 
     code, msg, data = _do_request(
-        client, "GET", _LIST_COMMENTS_URI,
+        client,
+        "GET",
+        _LIST_COMMENTS_URI,
         paths={"file_token": file_token},
         queries=queries,
     )
@@ -228,7 +231,9 @@ def _handle_list_replies(args: dict, **kwargs) -> str:
         queries.append(("page_token", page_token))
 
     code, msg, data = _do_request(
-        client, "GET", _LIST_REPLIES_URI,
+        client,
+        "GET",
+        _LIST_REPLIES_URI,
         paths={"file_token": file_token, "comment_id": comment_id},
         queries=queries,
     )
@@ -242,7 +247,9 @@ def _handle_list_replies(args: dict, **kwargs) -> str:
 # feishu_drive_reply_comment
 # ---------------------------------------------------------------------------
 
-_REPLY_COMMENT_URI = "/open-apis/drive/v1/files/:file_token/comments/:comment_id/replies"
+_REPLY_COMMENT_URI = (
+    "/open-apis/drive/v1/files/:file_token/comments/:comment_id/replies"
+)
 
 FEISHU_DRIVE_REPLY_SCHEMA = {
     "name": "feishu_drive_reply_comment",
@@ -302,7 +309,9 @@ def _handle_reply_comment(args: dict, **kwargs) -> str:
     }
 
     code, msg, data = _do_request(
-        client, "POST", _REPLY_COMMENT_URI,
+        client,
+        "POST",
+        _REPLY_COMMENT_URI,
         paths={"file_token": file_token, "comment_id": comment_id},
         queries=[("file_type", file_type)],
         body=body,
@@ -368,7 +377,9 @@ def _handle_add_comment(args: dict, **kwargs) -> str:
     }
 
     code, msg, data = _do_request(
-        client, "POST", _ADD_COMMENT_URI,
+        client,
+        "POST",
+        _ADD_COMMENT_URI,
         paths={"file_token": file_token},
         body=body,
     )

@@ -94,14 +94,21 @@ class TestDynamicSchemaBuilder:
     def test_does_not_mention_edit_or_extend(self, cfg_home):
         """The simplified surface only does text→video and image→video.
         The description must not mention edit/extend anywhere."""
-        from tools.video_generation_tool import _build_dynamic_video_schema, _GENERIC_DESCRIPTION
+        from tools.video_generation_tool import (
+            _build_dynamic_video_schema,
+            _GENERIC_DESCRIPTION,
+        )
 
         desc = _build_dynamic_video_schema()["description"]
         # Block words that would suggest functionality we removed
-        assert "edit" not in desc.lower() or "audio" in desc.lower()  # 'audio' contains 'audi' not 'edit'
+        assert (
+            "edit" not in desc.lower() or "audio" in desc.lower()
+        )  # 'audio' contains 'audi' not 'edit'
         # Stronger: no occurrence of the words "edit" or "extend" as standalone
         for forbidden in (" edit ", " edits ", " extend ", " extends "):
-            assert forbidden not in desc.lower(), f"description leaks '{forbidden.strip()}'"
+            assert forbidden not in desc.lower(), (
+                f"description leaks '{forbidden.strip()}'"
+            )
         # Sanity: the generic blurb itself is also clean
         for forbidden in ("edit", "extend"):
             assert forbidden not in _GENERIC_DESCRIPTION.lower()
@@ -113,6 +120,7 @@ class TestDynamicSchemaBuilder:
         video_gen_registry.register_provider(_BothModalitiesProvider())
 
         import openagents_cli.plugins as plugins_module
+
         saved = plugins_module._ensure_plugins_discovered
         plugins_module._ensure_plugins_discovered = lambda *a, **k: None
         try:
@@ -133,6 +141,7 @@ class TestDynamicSchemaBuilder:
         video_gen_registry.register_provider(_ImageOnlyProvider())
 
         import openagents_cli.plugins as plugins_module
+
         saved = plugins_module._ensure_plugins_discovered
         plugins_module._ensure_plugins_discovered = lambda *a, **k: None
         try:

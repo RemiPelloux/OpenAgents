@@ -65,14 +65,19 @@ async fn capabilities(State(state): State<AppState>) -> Json<Value> {
                 "mutates":true,"requires_confirmation":true,"operation":{"method":"POST","path":"/v1/runs"}
             },
             {
+                "name":"openagents_inspect_repository","description":"Run a read-only OpenCode inspection in an isolated managed Git worktree and return immutable Git probes and a terminal report.",
+                "input_schema":{"type":"object","required":["job"],"properties":{"job":{"type":"object"}},"additionalProperties":false},
+                "mutates":false,"requires_confirmation":false,"operation":{"method":"POST","path":"/v1/runs"}
+            },
+            {
                 "name":"openagents_get_run","description":"Read the real status and artifacts for an OpenAgents worker run.",
                 "input_schema":{"type":"object","required":["run_id"],"properties":{"run_id":{"type":"string","format":"uuid"}},"additionalProperties":false},
                 "mutates":false,"requires_confirmation":false,"operation":{"method":"GET","path":"/v1/runs/{run_id}"}
             }
         ]) } else { json!([]) },
         "profiles": if coding { json!({"catalog":["skill_author"],"available":["skill_author"]}) } else { json!({"catalog":["skill_author"],"available":[]}) },
-        "capabilities": if coding { json!(["invoke_opencode","git_worktree","test_execution","skill_author","web_search","web_extract"]) } else if delivery { json!(["engineering.delivery","trusted_delivery"]) } else { json!([]) },
-        "job_types": if coding { json!(["engineering.opencode","agent.skill_author"]) } else if delivery { json!(["engineering.delivery"]) } else { json!([]) },
+        "capabilities": if coding { json!(["invoke_opencode","inspect_repository","git_worktree","test_execution","skill_author","web_search","web_extract"]) } else if delivery { json!(["engineering.delivery","trusted_delivery"]) } else { json!([]) },
+        "job_types": if coding { json!(["engineering.opencode","engineering.inspect","agent.skill_author"]) } else if delivery { json!(["engineering.delivery"]) } else { json!([]) },
         "runs":{"start":"/v1/runs","status":"/v1/runs/{run_id}","events":"/v1/runs/{run_id}/events","stop":"/v1/runs/{run_id}/stop","approval":"/v1/runs/{run_id}/approval"}
     }))
 }
@@ -100,9 +105,11 @@ async fn start_run(
     let run_id = Uuid::new_v4();
     let (record, inserted) = state
         .runs
-        .insert_idempotent(RunRecord::new(
+        .insert_idempotent(RunRecord::with_attempt(
+            state.config.organization_id,
             run_id,
             body.job.job_id,
+            body.job.attempt,
             body.job.ticket_id,
             body.job.correlation_id,
             body.job.idempotency_key.clone(),
@@ -150,12 +157,26 @@ async fn run_events(
     if let Err(response) = require_internal_service(&state, &headers) {
         return response;
     }
-    let Some(record) = state.runs.get(id).await else {
+    let last_event_id = match headers.get("last-event-id").map(|value| {
+        value
+            .to_str()
+            .ok()
+            .and_then(|value| value.parse::<u64>().ok())
+    }) {
+        Some(Some(value)) => value,
+        Some(None) => return error(StatusCode::BAD_REQUEST, "INVALID_LAST_EVENT_ID"),
+        None => 0,
+    };
+    let receiver = state.runs.subscribe();
+    let Some(historical_events) = state.runs.events_after(id, last_event_id).await else {
         return error(StatusCode::NOT_FOUND, "RUN_NOT_FOUND");
     };
-    let historical = tokio_stream::iter(record.events.into_iter().map(Ok::<_, Infallible>));
-    let live = BroadcastStream::new(state.runs.subscribe()).filter_map(move |item| match item {
-        Ok(event) if event.run_id == id => Some(Ok(event)),
+    let replay_ceiling = historical_events
+        .last()
+        .map_or(last_event_id, |event| event.sequence);
+    let historical = tokio_stream::iter(historical_events.into_iter().map(Ok::<_, Infallible>));
+    let live = BroadcastStream::new(receiver).filter_map(move |item| match item {
+        Ok(event) if event.run_id == id && event.sequence > replay_ceiling => Some(Ok(event)),
         _ => None,
     });
     let stream = historical.chain(live).map(|item| {
@@ -186,7 +207,7 @@ async fn stop_run(
     };
     if matches!(
         record.status,
-        RunStatus::Completed | RunStatus::Failed | RunStatus::Cancelled
+        RunStatus::Completed | RunStatus::Failed | RunStatus::Cancelled | RunStatus::Interrupted
     ) {
         return error(StatusCode::CONFLICT, "RUN_ALREADY_TERMINAL");
     }

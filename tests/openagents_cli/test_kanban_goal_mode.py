@@ -35,6 +35,7 @@ def kanban_home(tmp_path, monkeypatch):
 # DB layer
 # ---------------------------------------------------------------------------
 
+
 def test_goal_mode_defaults_off(kanban_home):
     with kb.connect() as conn:
         tid = kb.create_task(conn, title="plain task", assignee="worker")
@@ -59,9 +60,7 @@ def test_goal_mode_persists(kanban_home):
 
 def test_goal_mode_without_max_turns(kanban_home):
     with kb.connect() as conn:
-        tid = kb.create_task(
-            conn, title="t", assignee="worker", goal_mode=True
-        )
+        tid = kb.create_task(conn, title="t", assignee="worker", goal_mode=True)
         task = kb.get_task(conn, tid)
     assert task.goal_mode is True
     assert task.goal_max_turns is None
@@ -121,6 +120,7 @@ def test_legacy_db_migrates_goal_columns(tmp_path, monkeypatch):
 # Spawn env
 # ---------------------------------------------------------------------------
 
+
 def test_spawn_sets_goal_env_only_when_enabled(kanban_home, monkeypatch):
     captured = {}
 
@@ -174,6 +174,7 @@ def test_spawn_no_goal_env_for_plain_task(kanban_home, monkeypatch):
 # ---------------------------------------------------------------------------
 # Goal loop logic (callback-injected, no live model)
 # ---------------------------------------------------------------------------
+
 
 def _patch_judge(monkeypatch, verdicts):
     """Make judge_goal return a scripted sequence of verdicts."""

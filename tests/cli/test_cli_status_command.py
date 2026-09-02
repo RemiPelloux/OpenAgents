@@ -1,4 +1,5 @@
 """Tests for CLI /status command behavior."""
+
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -73,7 +74,9 @@ def test_show_session_status_prints_gateway_style_summary():
     with patch("cli.display_openagents_home", return_value="~/.openagents"):
         cli_obj._show_session_status()
 
-    printed = "\n".join(str(call.args[0]) for call in cli_obj.console.print.call_args_list)
+    printed = "\n".join(
+        str(call.args[0]) for call in cli_obj.console.print.call_args_list
+    )
     assert "OpenAgents CLI Status" in printed
     assert "Session ID: session-123" in printed
     assert "Path: ~/.openagents" in printed

@@ -22,54 +22,69 @@ from openagents_cli.cron import (
 # Defense 2: _contains_gateway_lifecycle_command pattern tests
 # ---------------------------------------------------------------------------
 
+
 class TestGatewayLifecyclePattern:
     """Verify the regex catches gateway lifecycle commands."""
 
-    @pytest.mark.parametrize("text", [
-        "hermes gateway restart",
-        "hermes gateway stop",
-        "hermes gateway start",
-        "hermes  gateway  restart",         # double spaces
-        "Hermez Gateway Restart".lower().replace("z", "s"),  # case handled
-        "HERMES GATEWAY RESTART",           # uppercase
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "hermes gateway restart",
+            "hermes gateway stop",
+            "hermes gateway start",
+            "hermes  gateway  restart",  # double spaces
+            "Hermez Gateway Restart".lower().replace("z", "s"),  # case handled
+            "HERMES GATEWAY RESTART",  # uppercase
+        ],
+    )
     def test_hermes_gateway_commands(self, text):
         assert _contains_gateway_lifecycle_command(text), f"Should match: {text!r}"
 
-    @pytest.mark.parametrize("text", [
-        "launchctl kickstart gui/501/ai.openagents.gateway",
-        "launchctl unload ~/Library/LaunchAgents/ai.openagents.gateway.plist",
-        "launchctl stop ai.openagents.gateway",
-        "systemctl restart openagents-gateway",
-        "systemctl stop openagents-gateway.service",
-        "systemctl start openagents-gateway",
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "launchctl kickstart gui/501/ai.openagents.gateway",
+            "launchctl unload ~/Library/LaunchAgents/ai.openagents.gateway.plist",
+            "launchctl stop ai.openagents.gateway",
+            "systemctl restart openagents-gateway",
+            "systemctl stop openagents-gateway.service",
+            "systemctl start openagents-gateway",
+        ],
+    )
     def test_service_manager_commands(self, text):
         assert _contains_gateway_lifecycle_command(text), f"Should match: {text!r}"
 
-    @pytest.mark.parametrize("text", [
-        "kill hermes gateway process",
-        "pkill -f hermes.*gateway",
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "kill hermes gateway process",
+            "pkill -f hermes.*gateway",
+        ],
+    )
     def test_kill_commands(self, text):
         assert _contains_gateway_lifecycle_command(text), f"Should match: {text!r}"
 
-    @pytest.mark.parametrize("text", [
-        "restart the server application",
-        "hermes cron list",
-        "hermes update",
-        "hermes config set model claude",
-        "echo 'just a normal cron job'",
-        "run the backup script",
-        "gateway is running fine",
-        # Regression (#30728 follow-up): legit prompts that merely mention an
-        # unrelated gateway + a restart must NOT be blocked.
-        "Summarize the API gateway logs and report any restart events from last night",
-        "Check if the payment gateway needs a restart after the deploy",
-        "Monitor the gateway and tell me if a restart is recommended",
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "restart the server application",
+            "hermes cron list",
+            "hermes update",
+            "hermes config set model claude",
+            "echo 'just a normal cron job'",
+            "run the backup script",
+            "gateway is running fine",
+            # Regression (#30728 follow-up): legit prompts that merely mention an
+            # unrelated gateway + a restart must NOT be blocked.
+            "Summarize the API gateway logs and report any restart events from last night",
+            "Check if the payment gateway needs a restart after the deploy",
+            "Monitor the gateway and tell me if a restart is recommended",
+        ],
+    )
     def test_safe_commands(self, text):
-        assert not _contains_gateway_lifecycle_command(text), f"Should NOT match: {text!r}"
+        assert not _contains_gateway_lifecycle_command(text), (
+            f"Should NOT match: {text!r}"
+        )
 
 
 class TestCronCreateLifecycleBlock:
@@ -194,12 +209,14 @@ class TestCronCreateLifecycleBlock:
 # Defense 1: gateway stop/restart refuse inside gateway
 # ---------------------------------------------------------------------------
 
+
 class TestGatewaySelfTargetingGuard:
     """Verify hermes gateway stop/restart refuse when _HERMES_GATEWAY=1."""
 
     def test_stop_refuses_inside_gateway(self, monkeypatch):
         monkeypatch.setenv("_HERMES_GATEWAY", "1")
         from openagents_cli.gateway import gateway_command
+
         args = Namespace(gateway_command="stop", all=False, system=False)
         with pytest.raises(SystemExit) as exc_info:
             gateway_command(args)
@@ -208,6 +225,7 @@ class TestGatewaySelfTargetingGuard:
     def test_restart_refuses_inside_gateway(self, monkeypatch):
         monkeypatch.setenv("_HERMES_GATEWAY", "1")
         from openagents_cli.gateway import gateway_command
+
         args = Namespace(gateway_command="restart", all=False, system=False)
         with pytest.raises(SystemExit) as exc_info:
             gateway_command(args)
@@ -257,6 +275,7 @@ class TestGatewaySelfTargetingGuard:
 # Defense 3: terminal_tool hard-blocks gateway lifecycle commands inside gateway
 # ---------------------------------------------------------------------------
 
+
 class TestTerminalToolGatewayLifecycleGuard:
     """terminal_tool must refuse gateway lifecycle commands when _HERMES_GATEWAY=1.
 
@@ -269,15 +288,23 @@ class TestTerminalToolGatewayLifecycleGuard:
     def _make_fake_env(self):
         class _FakeEnv:
             env = {}
+
             def execute(self, command, **kwargs):  # pragma: no cover
                 raise AssertionError("execute must not be reached")
+
         return _FakeEnv()
 
     def _minimal_config(self):
-        return {"env_type": "local", "cwd": "/tmp", "timeout": 60, "lifetime_seconds": 3600}
+        return {
+            "env_type": "local",
+            "cwd": "/tmp",
+            "timeout": 60,
+            "lifetime_seconds": 3600,
+        }
 
     def _patch_env(self, monkeypatch, fake_env, *, inside_gateway: bool):
         import tools.terminal_tool as tt
+
         eid = "default"
         monkeypatch.setattr(tt, "_active_environments", {eid: fake_env})
         monkeypatch.setattr(tt, "_last_activity", {eid: 0.0})
@@ -288,16 +315,20 @@ class TestTerminalToolGatewayLifecycleGuard:
         else:
             monkeypatch.delenv("_HERMES_GATEWAY", raising=False)
 
-    @pytest.mark.parametrize("cmd", [
-        "systemctl restart openagents-gateway",
-        "systemctl --user restart openagents-gateway",
-        "systemctl stop openagents-gateway.service",
-        "hermes gateway restart",
-        "launchctl kickstart gui/501/ai.openagents.gateway",
-        "pkill -f hermes.*gateway",
-    ])
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "systemctl restart openagents-gateway",
+            "systemctl --user restart openagents-gateway",
+            "systemctl stop openagents-gateway.service",
+            "hermes gateway restart",
+            "launchctl kickstart gui/501/ai.openagents.gateway",
+            "pkill -f hermes.*gateway",
+        ],
+    )
     def test_blocks_lifecycle_commands_inside_gateway(self, monkeypatch, cmd):
         import tools.terminal_tool as tt
+
         self._patch_env(monkeypatch, self._make_fake_env(), inside_gateway=True)
 
         result = json.loads(tt.terminal_tool(command=cmd))
@@ -307,11 +338,12 @@ class TestTerminalToolGatewayLifecycleGuard:
 
     def test_force_true_cannot_bypass_block(self, monkeypatch):
         import tools.terminal_tool as tt
+
         self._patch_env(monkeypatch, self._make_fake_env(), inside_gateway=True)
 
-        result = json.loads(tt.terminal_tool(
-            command="systemctl restart openagents-gateway", force=True
-        ))
+        result = json.loads(
+            tt.terminal_tool(command="systemctl restart openagents-gateway", force=True)
+        )
 
         assert result["exit_code"] == 1
         assert "Blocked" in result["error"]
@@ -324,12 +356,15 @@ class TestTerminalToolGatewayLifecycleGuard:
 
         class _FakeEnv:
             env = {}
+
             def execute(self, command, **kwargs):
                 calls.append(command)
                 return {"output": "Active: running", "returncode": 0}
 
         self._patch_env(monkeypatch, _FakeEnv(), inside_gateway=True)
-        monkeypatch.setattr(tt, "_check_all_guards", lambda cmd, env, **kwargs: {"approved": True})
+        monkeypatch.setattr(
+            tt, "_check_all_guards", lambda cmd, env, **kwargs: {"approved": True}
+        )
 
         result = json.loads(tt.terminal_tool(command="systemctl status nginx"))
 
@@ -344,14 +379,19 @@ class TestTerminalToolGatewayLifecycleGuard:
 
         class _FakeEnv:
             env = {}
+
             def execute(self, command, **kwargs):
                 calls.append(command)
                 return {"output": "restarting...", "returncode": 0}
 
         self._patch_env(monkeypatch, _FakeEnv(), inside_gateway=False)
-        monkeypatch.setattr(tt, "_check_all_guards", lambda cmd, env, **kwargs: {"approved": True})
+        monkeypatch.setattr(
+            tt, "_check_all_guards", lambda cmd, env, **kwargs: {"approved": True}
+        )
 
-        result = json.loads(tt.terminal_tool(command="systemctl restart openagents-gateway"))
+        result = json.loads(
+            tt.terminal_tool(command="systemctl restart openagents-gateway")
+        )
 
         # Outside the gateway the lifecycle guard doesn't block — the normal
         # approval flow handles it (here mocked as approved).

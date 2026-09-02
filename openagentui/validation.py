@@ -35,19 +35,31 @@ def validate_workflow(workflow: Workflow) -> List[str]:
             errors.append(f"node {node.id}: unsupported type {node.type!r}")
             continue
         data = node.data or {}
-        if node.type == "agent" and not (data.get("instructions") or data.get("systemPrompt")):
+        if node.type == "agent" and not (
+            data.get("instructions") or data.get("systemPrompt")
+        ):
             errors.append(f"node {node.id}: agent node needs instructions")
         if node.type == "mcp" and not (data.get("mcpTool") or data.get("mcpAction")):
             errors.append(f"node {node.id}: tool node needs mcpTool")
         if node.type in ("if-else", "while") and not data.get("condition"):
             errors.append(f"node {node.id}: {node.type} node needs condition")
-        if node.type == "codex" and not (data.get("prompt") or data.get("instructions")):
+        if node.type == "codex" and not (
+            data.get("prompt") or data.get("instructions")
+        ):
             errors.append(f"node {node.id}: codex node needs prompt")
         if node.type == "workflow" and not data.get("subWorkflowId"):
             errors.append(f"node {node.id}: sub-workflow node needs subWorkflowId")
         if node.type in ("if-else", "while", "user-approval"):
-            handles = {e.source_handle for e in workflow.outgoing_edges(node.id) if e.source_handle}
-            if node.type == "if-else" and not {"true", "false"} & {h.lower() for h in handles if h}:
-                errors.append(f"node {node.id}: if-else needs true/false outgoing edges")
+            handles = {
+                e.source_handle
+                for e in workflow.outgoing_edges(node.id)
+                if e.source_handle
+            }
+            if node.type == "if-else" and not {"true", "false"} & {
+                h.lower() for h in handles if h
+            }:
+                errors.append(
+                    f"node {node.id}: if-else needs true/false outgoing edges"
+                )
 
     return errors

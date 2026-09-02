@@ -60,7 +60,9 @@ class TestOfferOpenclawMigration:
         fake_migrator = MagicMock()
         fake_migrator.migrate.return_value = {
             "summary": {"migrated": 3, "skipped": 1, "conflict": 0, "error": 0},
-            "items": [{"kind": "config", "status": "migrated", "destination": "/tmp/x"}],
+            "items": [
+                {"kind": "config", "status": "migrated", "destination": "/tmp/x"}
+            ],
             "output_dir": str(hermes_home / "migration"),
         }
         fake_mod.Migrator = MagicMock(return_value=fake_migrator)
@@ -128,7 +130,9 @@ class TestOfferOpenclawMigration:
         fake_migrator = MagicMock()
         fake_migrator.migrate.return_value = {
             "summary": {"migrated": 3, "skipped": 0, "conflict": 0, "error": 0},
-            "items": [{"kind": "config", "status": "migrated", "destination": "/tmp/x"}],
+            "items": [
+                {"kind": "config", "status": "migrated", "destination": "/tmp/x"}
+            ],
         }
         fake_mod.Migrator = MagicMock(return_value=fake_migrator)
 
@@ -410,8 +414,11 @@ class TestGetSectionConfigSummary:
         # test on the same xdist worker) makes the gateway section report
         # platforms-configured and the test sees a non-None summary.
         import openagents_cli.gateway as gateway_mod
-        with patch.object(setup_mod, "get_env_value", return_value=""), \
-             patch.object(gateway_mod, "get_env_value", return_value=""):
+
+        with (
+            patch.object(setup_mod, "get_env_value", return_value=""),
+            patch.object(gateway_mod, "get_env_value", return_value=""),
+        ):
             result = setup_mod._get_section_config_summary({}, "gateway")
         assert result is None
 
@@ -427,8 +434,11 @@ class TestGetSectionConfigSummary:
         # reads from openagents_cli.gateway.get_env_value after the setup
         # flows were unified via platform_registry.
         import openagents_cli.gateway as gateway_mod
-        with patch.object(setup_mod, "get_env_value", side_effect=env_side), \
-             patch.object(gateway_mod, "get_env_value", side_effect=env_side):
+
+        with (
+            patch.object(setup_mod, "get_env_value", side_effect=env_side),
+            patch.object(gateway_mod, "get_env_value", side_effect=env_side),
+        ):
             result = setup_mod._get_section_config_summary({}, "gateway")
         assert "Telegram" in result
         assert "Discord" in result
@@ -454,6 +464,7 @@ class TestGetSectionConfigSummary:
 
     def test_model_recognises_zai_glm_api_key(self):
         """GLM_API_KEY (zai provider) should count as configured."""
+
         def env_side(key):
             return "glm-test-key" if key == "GLM_API_KEY" else ""
 
@@ -465,6 +476,7 @@ class TestGetSectionConfigSummary:
 
     def test_model_recognises_minimax_api_key(self):
         """MINIMAX_API_KEY should count as configured."""
+
         def env_side(key):
             return "minimax-key" if key == "MINIMAX_API_KEY" else ""
 
@@ -477,24 +489,32 @@ class TestGetSectionConfigSummary:
 
     def test_gateway_recognises_whatsapp_enabled(self):
         """WhatsApp uses WHATSAPP_ENABLED (not WHATSAPP_PHONE_NUMBER_ID)."""
+
         def env_side(key):
             return "true" if key == "WHATSAPP_ENABLED" else ""
 
         import openagents_cli.gateway as gateway_mod
-        with patch.object(setup_mod, "get_env_value", side_effect=env_side), \
-             patch.object(gateway_mod, "get_env_value", side_effect=env_side):
+
+        with (
+            patch.object(setup_mod, "get_env_value", side_effect=env_side),
+            patch.object(gateway_mod, "get_env_value", side_effect=env_side),
+        ):
             result = setup_mod._get_section_config_summary({}, "gateway")
         assert result is not None
         assert "WhatsApp" in result
 
     def test_gateway_recognises_signal_http_url(self):
         """Signal uses SIGNAL_HTTP_URL (not SIGNAL_ACCOUNT)."""
+
         def env_side(key):
             return "http://signal.local" if key == "SIGNAL_HTTP_URL" else ""
 
         import openagents_cli.gateway as gateway_mod
-        with patch.object(setup_mod, "get_env_value", side_effect=env_side), \
-             patch.object(gateway_mod, "get_env_value", side_effect=env_side):
+
+        with (
+            patch.object(setup_mod, "get_env_value", side_effect=env_side),
+            patch.object(gateway_mod, "get_env_value", side_effect=env_side),
+        ):
             result = setup_mod._get_section_config_summary({}, "gateway")
         assert result is not None
         assert "Signal" in result
@@ -503,6 +523,7 @@ class TestGetSectionConfigSummary:
         """GH_TOKEN is commonly set for `gh` / git and must NOT count as a
         configured inference provider on its own — mirrors the copilot
         exclusion in resolve_provider()."""
+
         def env_side(key):
             return "gho_xxx" if key == "GH_TOKEN" else ""
 
@@ -512,6 +533,7 @@ class TestGetSectionConfigSummary:
 
     def test_model_ignores_bare_github_token(self):
         """GITHUB_TOKEN is commonly set in CI and must not trigger skip."""
+
         def env_side(key):
             return "ghp_xxx" if key == "GITHUB_TOKEN" else ""
 
@@ -523,6 +545,7 @@ class TestGetSectionConfigSummary:
         """CLAUDE_CODE_OAUTH_TOKEN is set by Claude Code itself and must not
         trigger skip — mirrors the _IMPLICIT_ENV_VARS guard in
         is_provider_explicitly_configured()."""
+
         def env_side(key):
             return "sk-ant-oat01-xxx" if key == "CLAUDE_CODE_OAUTH_TOKEN" else ""
 
@@ -533,6 +556,7 @@ class TestGetSectionConfigSummary:
     def test_model_copilot_recognised_when_explicitly_chosen(self):
         """If the user picked copilot in config, GH_TOKEN *does* count —
         only the auto-detect path excludes it."""
+
         def env_side(key):
             return "gho_xxx" if key == "GH_TOKEN" else ""
 
@@ -552,6 +576,7 @@ class TestGetSectionConfigSummary:
             env_var = plat.get("token_var")
             if not env_var:
                 continue
+
             # Some platforms require a specific value shape (e.g. WhatsApp
             # needs the literal "true"). Use a sentinel that satisfies every
             # real validator _platform_status() currently checks.
@@ -561,9 +586,13 @@ class TestGetSectionConfigSummary:
                 if _target == "WHATSAPP_ENABLED":
                     return "true"
                 return "x"
+
             import openagents_cli.gateway as gateway_mod
-            with patch.object(setup_mod, "get_env_value", side_effect=env_side), \
-                 patch.object(gateway_mod, "get_env_value", side_effect=env_side):
+
+            with (
+                patch.object(setup_mod, "get_env_value", side_effect=env_side),
+                patch.object(gateway_mod, "get_env_value", side_effect=env_side),
+            ):
                 result = setup_mod._get_section_config_summary({}, "gateway")
             expected = setup_mod._gateway_platform_short_label(label)
             assert result is not None, f"{label} ({env_var}) not recognised"
@@ -642,7 +671,8 @@ class TestSetupWizardSkipsConfiguredSections:
         with (
             patch.object(setup_mod, "ensure_hermes_home"),
             patch.object(
-                setup_mod, "load_config",
+                setup_mod,
+                "load_config",
                 side_effect=[{}, reloaded_config],
             ),
             patch.object(setup_mod, "get_openagents_home", return_value=tmp_path),
@@ -654,7 +684,8 @@ class TestSetupWizardSkipsConfiguredSections:
             patch.object(setup_mod, "prompt_choice", return_value=1),
             # Migration succeeds and flips the env_side flag
             patch.object(
-                setup_mod, "_offer_openclaw_migration",
+                setup_mod,
+                "_offer_openclaw_migration",
                 side_effect=fake_migration,
             ),
             # User says No to all reconfig prompts

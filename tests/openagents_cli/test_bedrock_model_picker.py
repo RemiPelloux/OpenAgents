@@ -21,11 +21,9 @@ from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers / fixtures
 # ---------------------------------------------------------------------------
-
 
 
 @contextmanager
@@ -35,19 +33,41 @@ def _mock_botocore_session(*, return_value=None):
     session_mod = ModuleType("botocore.session")
     session_mod.get_session = MagicMock(return_value=return_value)
     botocore_mod.session = session_mod
-    with patch.dict("sys.modules", {"botocore": botocore_mod, "botocore.session": session_mod}):
+    with patch.dict(
+        "sys.modules", {"botocore": botocore_mod, "botocore.session": session_mod}
+    ):
         yield session_mod.get_session
 
 
 _EU_MODELS = [
-    {"id": "eu.anthropic.claude-sonnet-4-6-20250514-v1:0", "name": "Claude Sonnet 4.6 (EU)", "provider": "inference-profile"},
-    {"id": "eu.anthropic.claude-haiku-4-5-20251015-v1:0",  "name": "Claude Haiku 4.5 (EU)",  "provider": "inference-profile"},
-    {"id": "eu.amazon.nova-pro-v1:0",                       "name": "Nova Pro (EU)",           "provider": "inference-profile"},
+    {
+        "id": "eu.anthropic.claude-sonnet-4-6-20250514-v1:0",
+        "name": "Claude Sonnet 4.6 (EU)",
+        "provider": "inference-profile",
+    },
+    {
+        "id": "eu.anthropic.claude-haiku-4-5-20251015-v1:0",
+        "name": "Claude Haiku 4.5 (EU)",
+        "provider": "inference-profile",
+    },
+    {
+        "id": "eu.amazon.nova-pro-v1:0",
+        "name": "Nova Pro (EU)",
+        "provider": "inference-profile",
+    },
 ]
 
 _US_MODELS = [
-    {"id": "us.anthropic.claude-sonnet-4-6-20250514-v1:0", "name": "Claude Sonnet 4.6 (US)", "provider": "inference-profile"},
-    {"id": "us.amazon.nova-pro-v1:0",                       "name": "Nova Pro (US)",           "provider": "inference-profile"},
+    {
+        "id": "us.anthropic.claude-sonnet-4-6-20250514-v1:0",
+        "name": "Claude Sonnet 4.6 (US)",
+        "provider": "inference-profile",
+    },
+    {
+        "id": "us.amazon.nova-pro-v1:0",
+        "name": "Nova Pro (US)",
+        "provider": "inference-profile",
+    },
 ]
 
 
@@ -60,6 +80,7 @@ def _mock_discover(region: str):
 # 1. provider_model_ids("bedrock")
 # ---------------------------------------------------------------------------
 
+
 class TestProviderModelIdsBedrock:
     """provider_model_ids("bedrock") should use live Bedrock discovery."""
 
@@ -69,8 +90,16 @@ class TestProviderModelIdsBedrock:
 
         monkeypatch.setenv("AWS_REGION", "eu-central-1")
 
-        with patch("agent.bedrock_adapter.discover_bedrock_models", side_effect=_mock_discover), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models",
+                side_effect=_mock_discover,
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             result = provider_model_ids("bedrock")
 
         assert "eu.anthropic.claude-sonnet-4-6-20250514-v1:0" in result
@@ -81,10 +110,17 @@ class TestProviderModelIdsBedrock:
         """Different regions produce different model ID prefixes (eu.* vs us.*)."""
         from openagents_cli.models import provider_model_ids
 
-        with patch("agent.bedrock_adapter.discover_bedrock_models", side_effect=_mock_discover):
-            with patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with patch(
+            "agent.bedrock_adapter.discover_bedrock_models", side_effect=_mock_discover
+        ):
+            with patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ):
                 eu_result = provider_model_ids("bedrock")
-            with patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="us-east-1"):
+            with patch(
+                "agent.bedrock_adapter.resolve_bedrock_region", return_value="us-east-1"
+            ):
                 us_result = provider_model_ids("bedrock")
 
         assert all(m.startswith("eu.") for m in eu_result)
@@ -95,8 +131,13 @@ class TestProviderModelIdsBedrock:
         """When discover_bedrock_models() returns [], fall back to curated static list."""
         from openagents_cli.models import provider_model_ids
 
-        with patch("agent.bedrock_adapter.discover_bedrock_models", return_value=[]), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch("agent.bedrock_adapter.discover_bedrock_models", return_value=[]),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             result = provider_model_ids("bedrock")
 
         # Should fall back to static table (may be empty or populated depending on
@@ -107,9 +148,16 @@ class TestProviderModelIdsBedrock:
         """When discover_bedrock_models() raises, fall back gracefully."""
         from openagents_cli.models import provider_model_ids
 
-        with patch("agent.bedrock_adapter.discover_bedrock_models",
-                   side_effect=Exception("boto3 not installed")), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models",
+                side_effect=Exception("boto3 not installed"),
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             result = provider_model_ids("bedrock")
 
         assert isinstance(result, list)  # no crash
@@ -120,17 +168,26 @@ class TestProviderModelIdsBedrock:
 
         _expected_ids = [m["id"] for m in _US_MODELS]
 
-        with patch("agent.bedrock_adapter.discover_bedrock_models", side_effect=_mock_discover), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="us-east-1"):
+        with (
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models",
+                side_effect=_mock_discover,
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region", return_value="us-east-1"
+            ),
+        ):
             for alias in ("aws", "aws-bedrock", "amazon-bedrock"):
                 result = provider_model_ids(alias)
-                assert result == _expected_ids, \
+                assert result == _expected_ids, (
                     f"alias {alias!r} should return live-discovered US model IDs, got {result!r}"
+                )
 
 
 # ---------------------------------------------------------------------------
 # 2. list_authenticated_providers() — bedrock via HERMES_OVERLAYS (Section 2)
 # ---------------------------------------------------------------------------
+
 
 class TestListAuthenticatedProvidersBedrock:
     """Bedrock should appear in the /model picker when AWS creds are present."""
@@ -142,13 +199,23 @@ class TestListAuthenticatedProvidersBedrock:
         monkeypatch.setenv("AWS_PROFILE", "my-sso-profile")
         monkeypatch.setenv("AWS_REGION", "eu-central-1")
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", return_value=True), \
-             patch("agent.bedrock_adapter.discover_bedrock_models", side_effect=_mock_discover), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch("agent.bedrock_adapter.has_aws_credentials", return_value=True),
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models",
+                side_effect=_mock_discover,
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             providers = list_authenticated_providers(current_provider="bedrock")
 
         bedrock = next((p for p in providers if p["slug"] == "bedrock"), None)
-        assert bedrock is not None, "bedrock should appear when AWS credentials are present"
+        assert bedrock is not None, (
+            "bedrock should appear when AWS credentials are present"
+        )
 
     def test_bedrock_uses_live_discovery_not_static_list(self, monkeypatch):
         """Model IDs come from discover_bedrock_models(), not the static _PROVIDER_MODELS table."""
@@ -156,9 +223,17 @@ class TestListAuthenticatedProvidersBedrock:
 
         monkeypatch.setenv("AWS_PROFILE", "my-sso-profile")
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", return_value=True), \
-             patch("agent.bedrock_adapter.discover_bedrock_models", side_effect=_mock_discover), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch("agent.bedrock_adapter.has_aws_credentials", return_value=True),
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models",
+                side_effect=_mock_discover,
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             providers = list_authenticated_providers(current_provider="bedrock")
 
         bedrock = next((p for p in providers if p["slug"] == "bedrock"), None)
@@ -166,8 +241,9 @@ class TestListAuthenticatedProvidersBedrock:
 
         # All returned model IDs should have eu.* prefix — live discovery result
         for model_id in bedrock["models"]:
-            assert model_id.startswith("eu."), \
+            assert model_id.startswith("eu."), (
                 f"Expected eu.* model ID from live discovery, got {model_id!r}"
+            )
 
     def test_bedrock_total_models_matches_discovery(self, monkeypatch):
         """total_models reflects the actual discovered count."""
@@ -175,9 +251,16 @@ class TestListAuthenticatedProvidersBedrock:
 
         monkeypatch.setenv("AWS_PROFILE", "my-sso-profile")
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", return_value=True), \
-             patch("agent.bedrock_adapter.discover_bedrock_models", return_value=_EU_MODELS), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch("agent.bedrock_adapter.has_aws_credentials", return_value=True),
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models", return_value=_EU_MODELS
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             providers = list_authenticated_providers(current_provider="openai")
 
         bedrock = next((p for p in providers if p["slug"] == "bedrock"), None)
@@ -190,9 +273,16 @@ class TestListAuthenticatedProvidersBedrock:
 
         monkeypatch.setenv("AWS_PROFILE", "my-sso-profile")
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", return_value=True), \
-             patch("agent.bedrock_adapter.discover_bedrock_models", return_value=_EU_MODELS), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch("agent.bedrock_adapter.has_aws_credentials", return_value=True),
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models", return_value=_EU_MODELS
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             providers = list_authenticated_providers(current_provider="bedrock")
 
         bedrock = next((p for p in providers if p["slug"] == "bedrock"), None)
@@ -214,7 +304,9 @@ class TestListAuthenticatedProvidersBedrock:
             providers = list_authenticated_providers(current_provider="openai")
 
         bedrock = next((p for p in providers if p["slug"] == "bedrock"), None)
-        assert bedrock is None, "bedrock should NOT appear when AWS credentials are absent"
+        assert bedrock is None, (
+            "bedrock should NOT appear when AWS credentials are absent"
+        )
 
     def test_non_bedrock_picker_does_not_probe_full_aws_chain(self, monkeypatch):
         """Non-Bedrock provider discovery must not touch boto3's full credential chain."""
@@ -234,8 +326,13 @@ class TestListAuthenticatedProvidersBedrock:
             calls["has_aws_credentials"] += 1
             return False
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", side_effect=_has_aws_credentials):
-            providers = list_authenticated_providers(current_provider="openrouter", max_models=0)
+        with patch(
+            "agent.bedrock_adapter.has_aws_credentials",
+            side_effect=_has_aws_credentials,
+        ):
+            providers = list_authenticated_providers(
+                current_provider="openrouter", max_models=0
+            )
 
         assert calls["has_aws_credentials"] == 0
         assert all(p["slug"] != "bedrock" for p in providers)
@@ -246,10 +343,17 @@ class TestListAuthenticatedProvidersBedrock:
 
         monkeypatch.setenv("AWS_PROFILE", "my-sso-profile")
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", return_value=True), \
-             patch("agent.bedrock_adapter.discover_bedrock_models",
-                   side_effect=Exception("API call failed")), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch("agent.bedrock_adapter.has_aws_credentials", return_value=True),
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models",
+                side_effect=Exception("API call failed"),
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             providers = list_authenticated_providers(current_provider="bedrock")
 
         # Should not raise — bedrock entry may or may not appear depending on
@@ -262,19 +366,28 @@ class TestListAuthenticatedProvidersBedrock:
 
         monkeypatch.setenv("AWS_PROFILE", "my-sso-profile")
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", return_value=True), \
-             patch("agent.bedrock_adapter.discover_bedrock_models", return_value=_EU_MODELS), \
-             patch("agent.bedrock_adapter.resolve_bedrock_region", return_value="eu-central-1"):
+        with (
+            patch("agent.bedrock_adapter.has_aws_credentials", return_value=True),
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models", return_value=_EU_MODELS
+            ),
+            patch(
+                "agent.bedrock_adapter.resolve_bedrock_region",
+                return_value="eu-central-1",
+            ),
+        ):
             providers = list_authenticated_providers(current_provider="bedrock")
 
         bedrock_entries = [p for p in providers if p["slug"] == "bedrock"]
-        assert len(bedrock_entries) <= 1, \
+        assert len(bedrock_entries) <= 1, (
             f"bedrock should appear at most once, got {len(bedrock_entries)} entries"
+        )
 
 
 # ---------------------------------------------------------------------------
 # 3. Region routing: EU/AP users see regional model IDs
 # ---------------------------------------------------------------------------
+
 
 class TestBedrockRegionRouting:
     """End-to-end: region from botocore profile is used for discovery, so EU/AP
@@ -287,16 +400,22 @@ class TestBedrockRegionRouting:
         mock_session = MagicMock()
         mock_session.get_config_variable.return_value = "eu-central-1"
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", return_value=True), \
-             patch("agent.bedrock_adapter.discover_bedrock_models", side_effect=_mock_discover), \
-             _mock_botocore_session(return_value=mock_session):
+        with (
+            patch("agent.bedrock_adapter.has_aws_credentials", return_value=True),
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models",
+                side_effect=_mock_discover,
+            ),
+            _mock_botocore_session(return_value=mock_session),
+        ):
             providers = list_authenticated_providers(current_provider="bedrock")
 
         bedrock = next((p for p in providers if p["slug"] == "bedrock"), None)
         assert bedrock is not None
         for model_id in bedrock["models"]:
-            assert model_id.startswith("eu."), \
+            assert model_id.startswith("eu."), (
                 f"Expected eu.* model ID from eu-central-1 profile, got {model_id!r}"
+            )
 
     def test_us_region_from_env_var_yields_us_models(self, monkeypatch):
         """Explicit AWS_REGION=us-east-1 returns us.* model IDs."""
@@ -304,15 +423,21 @@ class TestBedrockRegionRouting:
 
         monkeypatch.setenv("AWS_REGION", "us-east-1")
 
-        with patch("agent.bedrock_adapter.has_aws_credentials", return_value=True), \
-             patch("agent.bedrock_adapter.discover_bedrock_models", side_effect=_mock_discover):
+        with (
+            patch("agent.bedrock_adapter.has_aws_credentials", return_value=True),
+            patch(
+                "agent.bedrock_adapter.discover_bedrock_models",
+                side_effect=_mock_discover,
+            ),
+        ):
             providers = list_authenticated_providers(current_provider="bedrock")
 
         bedrock = next((p for p in providers if p["slug"] == "bedrock"), None)
         assert bedrock is not None
         for model_id in bedrock["models"]:
-            assert model_id.startswith("us."), \
+            assert model_id.startswith("us."), (
                 f"Expected us.* model ID from us-east-1, got {model_id!r}"
+            )
 
     def test_env_var_takes_priority_over_botocore_profile(self, monkeypatch):
         """AWS_REGION env var wins over botocore profile region."""
@@ -333,29 +458,36 @@ class TestBedrockRegionRouting:
 # 4. providers.py overlay registration
 # ---------------------------------------------------------------------------
 
+
 class TestBedrockOverlayRegistration:
     """bedrock entry in HERMES_OVERLAYS is correctly configured."""
 
     def test_bedrock_overlay_exists(self):
         from openagents_cli.providers import HERMES_OVERLAYS
+
         assert "bedrock" in HERMES_OVERLAYS
 
     def test_bedrock_overlay_transport(self):
         from openagents_cli.providers import HERMES_OVERLAYS
+
         assert HERMES_OVERLAYS["bedrock"].transport == "bedrock_converse"
 
     def test_bedrock_overlay_auth_type(self):
         from openagents_cli.providers import HERMES_OVERLAYS
+
         assert HERMES_OVERLAYS["bedrock"].auth_type == "aws_sdk"
 
     def test_bedrock_label(self):
         from openagents_cli.providers import get_label
+
         label = get_label("bedrock")
         assert label  # non-empty
         assert "bedrock" in label.lower() or "aws" in label.lower()
 
     def test_bedrock_aliases_resolve(self):
         from openagents_cli.providers import normalize_provider
+
         for alias in ("aws", "aws-bedrock", "amazon-bedrock", "amazon"):
-            assert normalize_provider(alias) == "bedrock", \
+            assert normalize_provider(alias) == "bedrock", (
                 f"alias {alias!r} should normalize to 'bedrock'"
+            )

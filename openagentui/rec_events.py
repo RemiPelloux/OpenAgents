@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 def _correlation_id() -> str:
-    return os.environ.get("X_CORRELATION_ID") or os.environ.get("OPENAGENTS_CORRELATION_ID") or str(uuid.uuid4())
+    return (
+        os.environ.get("X_CORRELATION_ID")
+        or os.environ.get("OPENAGENTS_CORRELATION_ID")
+        or str(uuid.uuid4())
+    )
 
 
 def emit_execution_rec_event(execution: WorkflowExecution, workflow: Workflow) -> None:
@@ -54,7 +58,9 @@ def emit_execution_rec_event(execution: WorkflowExecution, workflow: Workflow) -
         "type": event_type,
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "tenant": {
-            "org_id": os.environ.get("OPENREC_ORG_ID", "00000000-0000-4000-8000-000000000001"),
+            "org_id": os.environ.get(
+                "OPENREC_ORG_ID", "00000000-0000-4000-8000-000000000001"
+            ),
             "environment": os.environ.get("OPENREC_ENV", "dev"),
         },
         "actor": {"type": "agent", "id": "openagents", "agent_profile": "openagentui"},

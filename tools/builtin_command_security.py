@@ -117,14 +117,12 @@ def check_command_security(command: str) -> Dict[str, Any]:
 
     for pattern, action, rule_id, title, description in _COMPILED:
         if pattern.search(command):
-            findings.append(
-                {
-                    "rule_id": rule_id,
-                    "severity": "HIGH" if action == "block" else "MEDIUM",
-                    "title": title,
-                    "description": description,
-                }
-            )
+            findings.append({
+                "rule_id": rule_id,
+                "severity": "HIGH" if action == "block" else "MEDIUM",
+                "title": title,
+                "description": description,
+            })
             if _ACTION_RANK.get(action, 0) > _ACTION_RANK.get(worst, 0):
                 worst = action
 
@@ -157,7 +155,9 @@ def merge_scan_results(*results: Dict[str, Any]) -> Dict[str, Any]:
     if not merged_findings:
         return {"action": "allow", "findings": [], "summary": ""}
 
-    summary = summaries[0] if summaries else merged_findings[0].get("title", "security issue")
+    summary = (
+        summaries[0] if summaries else merged_findings[0].get("title", "security issue")
+    )
     if len(merged_findings) > 1 and not summary.endswith("more)"):
         summary = f"{summary} (+{len(merged_findings) - 1} findings)"
     return {"action": worst, "findings": merged_findings, "summary": summary}

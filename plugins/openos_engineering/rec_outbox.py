@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from plugins.openos_engineering.rec_file_outbox import drain_file_outbox, enqueue_file_outbox
+from plugins.openos_engineering.rec_file_outbox import (
+    drain_file_outbox,
+    enqueue_file_outbox,
+)
 from plugins.openos_engineering.rec_outbox_common import (
     file_outbox_allowed,
     pg_outbox_enabled,

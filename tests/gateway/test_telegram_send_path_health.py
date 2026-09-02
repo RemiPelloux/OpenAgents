@@ -5,6 +5,7 @@ can enter a wedged state where ``bot.send_message()`` returns a valid Message
 but nothing reaches the recipient.  ``_send_path_degraded`` short-circuits
 ``send()`` so cron's live-adapter branch falls through to standalone HTTP.
 """
+
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -89,7 +90,9 @@ async def test_reconnect_storm_sets_and_heartbeat_clears_flag(monkeypatch):
         "plugins.platforms.telegram.adapter.asyncio.ensure_future", MagicMock()
     )
 
-    with patch("plugins.platforms.telegram.adapter.asyncio.sleep", new_callable=AsyncMock):
+    with patch(
+        "plugins.platforms.telegram.adapter.asyncio.sleep", new_callable=AsyncMock
+    ):
         await adapter._handle_polling_network_error(OSError("Bad Gateway"))
     # start_polling failed → path still degraded.
     assert adapter._send_path_degraded is True
@@ -97,7 +100,9 @@ async def test_reconnect_storm_sets_and_heartbeat_clears_flag(monkeypatch):
     # Now the deferred probe runs against a recovered (running) updater and
     # a responsive bot — it clears the flag.
     adapter._app.updater.running = True
-    with patch("plugins.platforms.telegram.adapter.asyncio.sleep", new_callable=AsyncMock):
+    with patch(
+        "plugins.platforms.telegram.adapter.asyncio.sleep", new_callable=AsyncMock
+    ):
         await adapter._verify_polling_after_reconnect()
     assert adapter._send_path_degraded is False
 
@@ -122,11 +127,11 @@ async def test_successful_reconnect_clears_flag_without_probe(monkeypatch):
     )
     # Don't let the deferred probe run — prove the clear happens in the
     # reconnect handler itself, not in _verify_polling_after_reconnect.
-    monkeypatch.setattr(
-        adapter, "_verify_polling_after_reconnect", AsyncMock()
-    )
+    monkeypatch.setattr(adapter, "_verify_polling_after_reconnect", AsyncMock())
 
-    with patch("plugins.platforms.telegram.adapter.asyncio.sleep", new_callable=AsyncMock):
+    with patch(
+        "plugins.platforms.telegram.adapter.asyncio.sleep", new_callable=AsyncMock
+    ):
         await adapter._handle_polling_network_error(OSError("Bad Gateway"))
 
     assert adapter._send_path_degraded is False

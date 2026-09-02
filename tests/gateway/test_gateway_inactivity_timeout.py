@@ -22,8 +22,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 class FakeAgent:
     """Mock agent with controllable activity summary for timeout tests."""
 
-    def __init__(self, idle_seconds=0.0, activity_desc="tool_call",
-                 current_tool=None, api_call_count=5, max_iterations=90):
+    def __init__(
+        self,
+        idle_seconds=0.0,
+        activity_desc="tool_call",
+        current_tool=None,
+        api_call_count=5,
+        max_iterations=90,
+    ):
         self._idle_seconds = idle_seconds
         self._activity_desc = activity_desc
         self._current_tool = current_tool
@@ -110,8 +116,11 @@ class TestStagedInactivityWarning:
                     _idle_secs = _act.get("seconds_since_activity", 0.0)
                 except Exception:
                     pass
-            if (not _warning_fired and _agent_warning > 0
-                    and _idle_secs >= _agent_warning):
+            if (
+                not _warning_fired
+                and _agent_warning > 0
+                and _idle_secs >= _agent_warning
+            ):
                 _warning_fired = True
                 _warning_send_count += 1
             if _idle_secs >= _agent_timeout:
@@ -151,8 +160,11 @@ class TestStagedInactivityWarning:
                     _idle_secs = _act.get("seconds_since_activity", 0.0)
                 except Exception:
                     pass
-            if (not _warning_fired and _agent_warning > 0
-                    and _idle_secs >= _agent_warning):
+            if (
+                not _warning_fired
+                and _agent_warning > 0
+                and _idle_secs >= _agent_warning
+            ):
                 _warning_fired = True
             if _idle_secs >= _agent_timeout:
                 break
@@ -187,8 +199,11 @@ class TestStagedInactivityWarning:
                     _idle_secs = _act.get("seconds_since_activity", 0.0)
                 except Exception:
                     pass
-            if (not _warning_count and _agent_warning > 0
-                    and _idle_secs >= _agent_warning):
+            if (
+                not _warning_count
+                and _agent_warning > 0
+                and _idle_secs >= _agent_warning
+            ):
                 _warning_count += 1
             if _idle_secs >= _agent_timeout:
                 break
@@ -225,8 +240,11 @@ class TestStagedInactivityWarning:
                     _idle_secs = _act.get("seconds_since_activity", 0.0)
                 except Exception:
                     pass
-            if (not _warning_fired and _agent_warning > 0
-                    and _idle_secs >= _agent_warning):
+            if (
+                not _warning_fired
+                and _agent_warning > 0
+                and _idle_secs >= _agent_warning
+            ):
                 _warning_fired = True
             if _idle_secs >= _agent_timeout:
                 _inactivity_timeout = True
@@ -301,8 +319,11 @@ class TestWarningThresholdBelowTimeout:
                     _idle_secs = _act.get("seconds_since_activity", 0.0)
                 except Exception:
                     pass
-            if (not _warning_fired and _agent_warning > 0
-                    and _idle_secs >= _agent_warning):
+            if (
+                not _warning_fired
+                and _agent_warning > 0
+                and _idle_secs >= _agent_warning
+            ):
                 _warning_fired = True
             if _idle_secs >= _agent_timeout:
                 _timeout_fired = True

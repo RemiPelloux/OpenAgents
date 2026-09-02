@@ -4,6 +4,7 @@ Profile-aware location: ``$OPENAGENTS_HOME/logs/dashboard-auth.log``.
 Format: one JSON object per line. Token-like kwargs are dropped before
 serialisation so we never leak refresh tokens or JWTs to disk.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,8 +28,10 @@ def test_audit_writes_jsonlines(profile_home):
     audit_log(AuditEvent.LOGIN_START, provider="nous", ip="1.2.3.4")
     audit_log(
         AuditEvent.LOGIN_SUCCESS,
-        provider="nous", user_id="u1",
-        email="a@b.com", ip="1.2.3.4",
+        provider="nous",
+        user_id="u1",
+        email="a@b.com",
+        ip="1.2.3.4",
     )
 
     path = profile_home / "logs" / "dashboard-auth.log"
@@ -47,12 +50,17 @@ def test_audit_writes_jsonlines(profile_home):
 def test_audit_redacts_token_like_fields(profile_home):
     audit_log(
         AuditEvent.LOGIN_SUCCESS,
-        provider="nous", access_token="should-not-appear",
-        refresh_token="also-not", code="not-this", state="nope",
+        provider="nous",
+        access_token="should-not-appear",
+        refresh_token="also-not",
+        code="not-this",
+        state="nope",
     )
     raw = (profile_home / "logs" / "dashboard-auth.log").read_text()
     for forbidden in ("should-not-appear", "also-not", "not-this", "nope"):
-        assert forbidden not in raw, f"token-like value leaked into audit log: {forbidden}"
+        assert forbidden not in raw, (
+            f"token-like value leaked into audit log: {forbidden}"
+        )
 
 
 def test_audit_all_event_types_have_string_values():

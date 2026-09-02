@@ -62,31 +62,43 @@ def _clear_cache():
 class TestGetCopilotModelContext:
     """Tests for get_copilot_model_context()."""
 
-    @patch("openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG)
+    @patch(
+        "openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG
+    )
     def test_returns_max_prompt_tokens(self, mock_fetch):
         assert get_copilot_model_context("claude-opus-4.6-1m") == 1_000_000
         assert get_copilot_model_context("gpt-4.1") == 128_000
 
-    @patch("openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG)
+    @patch(
+        "openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG
+    )
     def test_returns_none_for_unknown_model(self, mock_fetch):
         assert get_copilot_model_context("nonexistent-model") is None
 
-    @patch("openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG)
+    @patch(
+        "openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG
+    )
     def test_skips_models_without_limits(self, mock_fetch):
         assert get_copilot_model_context("model-without-limits") is None
 
-    @patch("openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG)
+    @patch(
+        "openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG
+    )
     def test_skips_zero_limit(self, mock_fetch):
         assert get_copilot_model_context("model-zero-limit") is None
 
-    @patch("openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG)
+    @patch(
+        "openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG
+    )
     def test_caches_results(self, mock_fetch):
         get_copilot_model_context("gpt-4.1")
         get_copilot_model_context("claude-sonnet-4")
         # Only one API call despite two lookups
         assert mock_fetch.call_count == 1
 
-    @patch("openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG)
+    @patch(
+        "openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG
+    )
     def test_cache_expires(self, mock_fetch):
         import openagents_cli.models as mod
 
@@ -110,14 +122,18 @@ class TestGetCopilotModelContext:
 class TestModelMetadataCopilotIntegration:
     """Test that get_model_context_length() uses Copilot live API for copilot provider."""
 
-    @patch("openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG)
+    @patch(
+        "openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG
+    )
     def test_copilot_provider_uses_live_api(self, mock_fetch):
         from agent.model_metadata import get_model_context_length
 
         ctx = get_model_context_length("claude-opus-4.6-1m", provider="copilot")
         assert ctx == 1_000_000
 
-    @patch("openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG)
+    @patch(
+        "openagents_cli.models.fetch_github_model_catalog", return_value=_SAMPLE_CATALOG
+    )
     def test_copilot_acp_provider_uses_live_api(self, mock_fetch):
         from agent.model_metadata import get_model_context_length
 

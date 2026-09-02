@@ -78,7 +78,9 @@ def test_active_context_engine_tools_survive_explicit_platform_toolsets():
 
     from openagents_cli.tools_config import _get_platform_tools
 
-    enabled_toolsets = _get_platform_tools(cfg, "cli", include_default_mcp_servers=False)
+    enabled_toolsets = _get_platform_tools(
+        cfg, "cli", include_default_mcp_servers=False
+    )
     assert "context_engine" in enabled_toolsets
 
     with (
@@ -102,8 +104,7 @@ def test_active_context_engine_tools_survive_explicit_platform_toolsets():
 
     assert "stub_recover" in getattr(agent, "valid_tool_names", set())
     assert "stub_recover" in {
-        tool.get("function", {}).get("name")
-        for tool in getattr(agent, "tools", [])
+        tool.get("function", {}).get("name") for tool in getattr(agent, "tools", [])
     }
 
 

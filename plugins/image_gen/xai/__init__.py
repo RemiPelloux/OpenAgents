@@ -242,7 +242,9 @@ class XAIImageGenProvider(ImageGenProvider):
             "User-Agent": hermes_xai_user_agent(),
         }
 
-        base_url = str(creds.get("base_url") or "https://api.x.ai/v1").strip().rstrip("/")
+        base_url = (
+            str(creds.get("base_url") or "https://api.x.ai/v1").strip().rstrip("/")
+        )
 
         if is_edit:
             # Editing requires the quality model per xAI docs. The source
@@ -288,7 +290,9 @@ class XAIImageGenProvider(ImageGenProvider):
             response = exc.response
             status = response.status_code if response is not None else 0
             try:
-                err_msg = response.json().get("error", {}).get("message", response.text[:300])
+                err_msg = (
+                    response.json().get("error", {}).get("message", response.text[:300])
+                )
             except Exception:
                 err_msg = response.text[:300] if response is not None else str(exc)
             logger.error("xAI image gen failed (%d): %s", status, err_msg)

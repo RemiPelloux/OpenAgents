@@ -39,6 +39,7 @@ def _cfg(*keys: str, default: Any = "") -> Any:
     """Read a cron.chronos.* config value (no network)."""
     try:
         from openagents_cli.config import cfg_get, load_config
+
         return cfg_get(load_config(), *keys, default=default)
     except Exception:
         return default
@@ -69,7 +70,10 @@ class ChronosCronScheduler(CronScheduler):
         is logged into the portal). If any is missing, resolve_cron_scheduler
         falls back to the built-in ticker.
         """
-        if not (_cfg("cron", "chronos", "portal_url") and _cfg("cron", "chronos", "callback_url")):
+        if not (
+            _cfg("cron", "chronos", "portal_url")
+            and _cfg("cron", "chronos", "callback_url")
+        ):
             return False
         return self._have_nous_token()
 
@@ -82,6 +86,7 @@ class ChronosCronScheduler(CronScheduler):
         """
         try:
             from openagents_cli.auth import get_provider_auth_state
+
             state = get_provider_auth_state("nous") or {}
             return bool(state.get("access_token"))
         except Exception:
@@ -92,6 +97,7 @@ class ChronosCronScheduler(CronScheduler):
     def _get_client(self):
         if self._client is None:
             from ._nas_client import NasCronClient
+
             self._client = NasCronClient(_cfg("cron", "chronos", "portal_url"))
         return self._client
 
@@ -195,6 +201,7 @@ class ChronosCronScheduler(CronScheduler):
             if observed.get(job_id) != fire_at:
                 # Re-fetch the full job dict to arm (need the whole record).
                 from cron.jobs import get_job
+
                 job = get_job(job_id)
                 if job:
                     try:
@@ -223,12 +230,15 @@ class ChronosCronScheduler(CronScheduler):
         ran = super().fire_due(job_id, adapters=adapters, loop=loop)
         if ran:
             from cron.jobs import get_job
+
             job = get_job(job_id)
             if job and job.get("enabled") and job.get("next_run_at"):
                 try:
                     self._arm_one_shot(job)
                 except Exception as e:
-                    logger.warning("Chronos failed to re-arm job %s after fire: %s", job_id, e)
+                    logger.warning(
+                        "Chronos failed to re-arm job %s after fire: %s", job_id, e
+                    )
         return ran
 
 

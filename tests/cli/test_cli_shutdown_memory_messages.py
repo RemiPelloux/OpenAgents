@@ -149,7 +149,9 @@ def test_cli_close_persist_falls_back_to_conversation_history():
 
     cli._persist_active_session_before_close()
 
-    agent._persist_session.assert_called_once_with(conversation_history, conversation_history)
+    agent._persist_session.assert_called_once_with(
+        conversation_history, conversation_history
+    )
 
 
 def test_cli_close_persist_skips_empty_transcripts():

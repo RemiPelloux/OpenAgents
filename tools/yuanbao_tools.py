@@ -29,6 +29,7 @@ def _get_active_adapter():
     """Lazy import to avoid ImportError when gateway.platforms.yuanbao is unavailable."""
     try:
         from gateway.platforms.yuanbao import get_active_adapter
+
         return get_active_adapter()
     except ImportError:
         return None
@@ -41,7 +42,7 @@ def _get_active_adapter():
 _USER_TYPE_LABEL = {0: "unknown", 1: "user", 2: "yuanbao_ai", 3: "bot"}
 
 MENTION_HINT = (
-    'To @mention a user, you MUST use the format: '
+    "To @mention a user, you MUST use the format: "
     'space + @ + nickname + space (e.g. " @Alice ").'
 )
 
@@ -49,6 +50,7 @@ MENTION_HINT = (
 # ---------------------------------------------------------------------------
 # 工具函数
 # ---------------------------------------------------------------------------
+
 
 async def get_group_info(group_code: str) -> dict:
     """查询群基本信息（群名、群主、成员数）。"""
@@ -253,7 +255,7 @@ async def send_sticker(
         return {
             "success": False,
             "error": f"Sticker not found: {raw!r}. "
-                     f"Use search_sticker first to discover available stickers.",
+            f"Use search_sticker first to discover available stickers.",
         }
 
     try:
@@ -324,19 +326,29 @@ async def send_dm(
     # Step 1: Resolve user_id from group member list if not provided
     if not resolved_user_id:
         if not group_code:
-            return {"success": False, "error": "group_code is required when user_id is not provided"}
+            return {
+                "success": False,
+                "error": "group_code is required when user_id is not provided",
+            }
         if not name:
-            return {"success": False, "error": "name is required when user_id is not provided"}
+            return {
+                "success": False,
+                "error": "name is required when user_id is not provided",
+            }
 
         try:
             raw = await adapter.get_group_member_list(group_code)
             if raw is None:
-                return {"success": False, "error": "get_group_member_list returned None"}
+                return {
+                    "success": False,
+                    "error": "get_group_member_list returned None",
+                }
 
             members = raw.get("members", [])
             filt = name.strip().lower()
             matched = [
-                m for m in members
+                m
+                for m in members
                 if filt in (m.get("nickname") or m.get("nick_name") or "").lower()
             ]
 
@@ -361,7 +373,9 @@ async def send_dm(
                 }
 
             resolved_user_id = matched[0].get("user_id", "")
-            resolved_nickname = matched[0].get("nickname", matched[0].get("nick_name", name))
+            resolved_nickname = matched[0].get(
+                "nickname", matched[0].get("nick_name", name)
+            )
         except Exception as exc:
             logger.exception("[yuanbao_tools] send_dm member lookup error")
             return {"success": False, "error": str(exc)}
@@ -375,7 +389,9 @@ async def send_dm(
     errors: list[str] = []
     try:
         if message and message.strip():
-            last_result = await adapter.send_dm(resolved_user_id, message, group_code=group_code)
+            last_result = await adapter.send_dm(
+                resolved_user_id, message, group_code=group_code
+            )
             if not last_result.success:
                 errors.append(last_result.error or "text send failed")
 
@@ -383,9 +399,13 @@ async def send_dm(
         for media_path, _is_voice in media_files or []:
             ext = Path(media_path).suffix.lower()
             if ext in _IMAGE_EXTS:
-                last_result = await adapter.send_image_file(chat_id, media_path, group_code=group_code)
+                last_result = await adapter.send_image_file(
+                    chat_id, media_path, group_code=group_code
+                )
             else:
-                last_result = await adapter.send_document(chat_id, media_path, group_code=group_code)
+                last_result = await adapter.send_document(
+                    chat_id, media_path, group_code=group_code
+                )
             if not last_result.success:
                 errors.append(last_result.error or "media send failed")
 
@@ -421,6 +441,7 @@ def _check_yuanbao():
     """Toolset availability check — True when running in a yuanbao gateway session."""
     try:
         from gateway.session_context import get_session_env
+
         if get_session_env("HERMES_SESSION_PLATFORM", "") == "yuanbao":
             return True
     except Exception:
@@ -429,18 +450,22 @@ def _check_yuanbao():
 
 
 async def _handle_yb_query_group_info(args, **kw):
-    return tool_result(await get_group_info(
-        group_code=args.get("group_code", ""),
-    ))
+    return tool_result(
+        await get_group_info(
+            group_code=args.get("group_code", ""),
+        )
+    )
 
 
 async def _handle_yb_query_group_members(args, **kw):
-    return tool_result(await query_group_members(
-        group_code=args.get("group_code", ""),
-        action=args.get("action", "list_all"),
-        name=args.get("name", ""),
-        mention=bool(args.get("mention", False)),
-    ))
+    return tool_result(
+        await query_group_members(
+            group_code=args.get("group_code", ""),
+            action=args.get("action", "list_all"),
+            name=args.get("name", ""),
+            mention=bool(args.get("mention", False)),
+        )
+    )
 
 
 async def _handle_yb_send_dm(args, **kw):
@@ -449,6 +474,7 @@ async def _handle_yb_send_dm(args, **kw):
     if not group_code:
         try:
             from gateway.session_context import get_session_env
+
             chat_id = get_session_env("HERMES_SESSION_CHAT_ID", "")
             # chat_id format: "group:<code>" → extract the code part
             if chat_id.startswith("group:"):
@@ -461,7 +487,10 @@ async def _handle_yb_send_dm(args, **kw):
     media_files = []
     for item in raw_media:
         if isinstance(item, dict):
-            media_files.append((item.get("path", ""), bool(item.get("is_voice", False))))
+            media_files.append((
+                item.get("path", ""),
+                bool(item.get("is_voice", False)),
+            ))
         elif isinstance(item, (list, tuple)) and len(item) >= 2:
             media_files.append((str(item[0]), bool(item[1])))
 
@@ -469,32 +498,40 @@ async def _handle_yb_send_dm(args, **kw):
     # file paths there instead of using the media_files parameter).
     message = args.get("message", "")
     from gateway.platforms.base import BasePlatformAdapter
+
     embedded_media, message = BasePlatformAdapter.extract_media(message)
     if embedded_media:
         media_files.extend(embedded_media)
     media_files = BasePlatformAdapter.filter_media_delivery_paths(media_files)
 
-    return tool_result(await send_dm(
-        group_code=group_code,        name=args.get("name", ""),
-        message=message,
-        user_id=args.get("user_id", ""),
-        media_files=media_files or None,
-    ))
+    return tool_result(
+        await send_dm(
+            group_code=group_code,
+            name=args.get("name", ""),
+            message=message,
+            user_id=args.get("user_id", ""),
+            media_files=media_files or None,
+        )
+    )
 
 
 async def _handle_yb_search_sticker(args, **kw):
-    return tool_result(await search_sticker(
-        query=args.get("query", ""),
-        limit=args.get("limit", 10),
-    ))
+    return tool_result(
+        await search_sticker(
+            query=args.get("query", ""),
+            limit=args.get("limit", 10),
+        )
+    )
 
 
 async def _handle_yb_send_sticker(args, **kw):
-    return tool_result(await send_sticker(
-        sticker=args.get("sticker", ""),
-        chat_id=args.get("chat_id", ""),
-        reply_to=args.get("reply_to", ""),
-    ))
+    return tool_result(
+        await send_sticker(
+            sticker=args.get("sticker", ""),
+            chat_id=args.get("chat_id", ""),
+            reply_to=args.get("reply_to", ""),
+        )
+    )
 
 
 _TOOLSET = "hermes-yuanbao"

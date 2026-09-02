@@ -75,7 +75,9 @@ def prompt_for_secret(cli, var_name: str, prompt: str, metadata=None) -> dict:
         if not hasattr(cli, "_secret_deadline"):
             cli._secret_deadline = 0
         try:
-            value = masked_secret_prompt(f"{prompt} (hidden, ESC or empty Enter to skip): ")
+            value = masked_secret_prompt(
+                f"{prompt} (hidden, ESC or empty Enter to skip): "
+            )
         except (EOFError, KeyboardInterrupt):
             value = ""
 
@@ -196,11 +198,13 @@ def approval_callback(cli, command: str, description: str) -> str:
     lock = getattr(cli, "_approval_lock", None)
     if lock is None:
         import threading
+
         cli._approval_lock = threading.Lock()
         lock = cli._approval_lock
 
     with lock:
         from cli import CLI_CONFIG
+
         timeout = CLI_CONFIG.get("approvals", {}).get("timeout", 60)
         response_queue = queue.Queue()
         choices = ["once", "session", "always", "deny"]

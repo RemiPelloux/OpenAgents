@@ -71,9 +71,7 @@ class TestValidatorRules:
         assert any("non-https" in rec.message for rec in caplog.records)
 
     def test_file_scheme_rejected(self):
-        assert (
-            _validate_nous_inference_url_from_network("file:///etc/passwd") is None
-        )
+        assert _validate_nous_inference_url_from_network("file:///etc/passwd") is None
 
     def test_javascript_scheme_rejected(self):
         assert (
@@ -99,8 +97,7 @@ class TestValidatorRules:
     def test_malformed_url_rejected(self):
         """Even garbled input must fall back safely, not raise."""
         assert (
-            _validate_nous_inference_url_from_network("not://a real url at all")
-            is None
+            _validate_nous_inference_url_from_network("not://a real url at all") is None
         )
 
     def test_default_inference_url_is_in_allowlist(self):
@@ -111,14 +108,14 @@ class TestValidatorRules:
         in the same change — otherwise the allowlist would reject the
         Portal's own legitimate default and break every install.
         """
-        assert (
-            _validate_nous_inference_url_from_network(DEFAULT_NOUS_INFERENCE_URL)
-            == DEFAULT_NOUS_INFERENCE_URL.rstrip("/")
-        )
+        assert _validate_nous_inference_url_from_network(
+            DEFAULT_NOUS_INFERENCE_URL
+        ) == DEFAULT_NOUS_INFERENCE_URL.rstrip("/")
 
     def test_allowlist_contains_inference_api_host(self):
         """The default's host must be in the allowlist set."""
         from urllib.parse import urlparse
+
         host = urlparse(DEFAULT_NOUS_INFERENCE_URL).hostname
         assert host in _ALLOWED_NOUS_INFERENCE_HOSTS
 
@@ -143,6 +140,7 @@ class TestCallSiteWiring:
     def _read_auth_source(self):
         import openagents_cli.auth as _auth_mod
         from pathlib import Path
+
         return Path(_auth_mod.__file__).read_text(encoding="utf-8")
 
     def test_no_unvalidated_inference_base_url_assignments_remain(self):
@@ -181,6 +179,7 @@ class TestCallSiteWiring:
         boundary."""
         from pathlib import Path
         import openagents_cli.proxy.adapters.nous_portal as _nous_adapter
+
         source = Path(_nous_adapter.__file__).read_text(encoding="utf-8")
         assert "_validate_nous_inference_url_from_network" in source
 
@@ -203,6 +202,7 @@ class TestEnvOverrideNotGated:
         validator."""
         import openagents_cli.auth as _auth_mod
         from pathlib import Path
+
         source = Path(_auth_mod.__file__).read_text(encoding="utf-8")
         # Find the env-override read line.
         for line in source.splitlines():
@@ -241,7 +241,9 @@ class TestHealsPoisonedStoredValue:
 
         # Force the refresh branch and return another rejected (staging) URL,
         # exercising the validator-returns-None heal path.
-        monkeypatch.setattr(auth, "_nous_invoke_jwt_status", lambda *a, **k: "needs_refresh")
+        monkeypatch.setattr(
+            auth, "_nous_invoke_jwt_status", lambda *a, **k: "needs_refresh"
+        )
         monkeypatch.setattr(
             auth,
             "_refresh_access_token",
@@ -253,7 +255,9 @@ class TestHealsPoisonedStoredValue:
             },
         )
         # Skip the JWT usability assertions (orthogonal to URL healing).
-        monkeypatch.setattr(auth, "_assert_nous_inference_jwt_usable", lambda *a, **k: None)
+        monkeypatch.setattr(
+            auth, "_assert_nous_inference_jwt_usable", lambda *a, **k: None
+        )
         monkeypatch.setattr(auth, "_select_nous_invoke_jwt", lambda *a, **k: None)
 
         result = auth.refresh_nous_oauth_from_state(state, force_refresh=True)
@@ -275,7 +279,9 @@ class TestHealsPoisonedStoredValue:
             "portal_base_url": auth.DEFAULT_NOUS_PORTAL_URL,
             "inference_base_url": good,
         }
-        monkeypatch.setattr(auth, "_nous_invoke_jwt_status", lambda *a, **k: "needs_refresh")
+        monkeypatch.setattr(
+            auth, "_nous_invoke_jwt_status", lambda *a, **k: "needs_refresh"
+        )
         monkeypatch.setattr(
             auth,
             "_refresh_access_token",
@@ -286,7 +292,9 @@ class TestHealsPoisonedStoredValue:
                 "inference_base_url": good,
             },
         )
-        monkeypatch.setattr(auth, "_assert_nous_inference_jwt_usable", lambda *a, **k: None)
+        monkeypatch.setattr(
+            auth, "_assert_nous_inference_jwt_usable", lambda *a, **k: None
+        )
         monkeypatch.setattr(auth, "_select_nous_invoke_jwt", lambda *a, **k: None)
 
         result = auth.refresh_nous_oauth_from_state(state, force_refresh=True)
@@ -323,9 +331,13 @@ class TestEnvOverrideWins:
         monkeypatch.setattr(auth, "_save_provider_state", lambda *a, **k: None)
         monkeypatch.setattr(auth, "_save_auth_store", lambda *a, **k: None)
         monkeypatch.setattr(auth, "_write_shared_nous_state", lambda *a, **k: None)
-        monkeypatch.setattr(auth, "_sync_nous_pool_from_auth_store", lambda *a, **k: None)
+        monkeypatch.setattr(
+            auth, "_sync_nous_pool_from_auth_store", lambda *a, **k: None
+        )
         monkeypatch.setattr(auth, "_resolve_verify", lambda *a, **k: True)
-        monkeypatch.setattr(auth, "_assert_nous_inference_jwt_usable", lambda *a, **k: None)
+        monkeypatch.setattr(
+            auth, "_assert_nous_inference_jwt_usable", lambda *a, **k: None
+        )
         monkeypatch.setattr(auth, "_select_nous_invoke_jwt", lambda *a, **k: None)
 
     def _base_state(self, auth, stored):
@@ -407,7 +419,9 @@ class TestEnvOverrideWins:
         state = self._base_state(auth, auth.DEFAULT_NOUS_INFERENCE_URL)
         self._patch_no_refresh(monkeypatch, auth, state)
         # Force the refresh branch; Portal hands back a (rejected) staging host.
-        monkeypatch.setattr(auth, "_nous_invoke_jwt_status", lambda *a, **k: "needs_refresh")
+        monkeypatch.setattr(
+            auth, "_nous_invoke_jwt_status", lambda *a, **k: "needs_refresh"
+        )
         monkeypatch.setattr(
             auth,
             "_refresh_access_token",
