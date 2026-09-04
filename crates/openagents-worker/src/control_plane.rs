@@ -8,6 +8,7 @@ use reqwest::Client;
 use reqwest::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::config::{Config, WorkerRole};
@@ -191,13 +192,7 @@ impl ControlPlaneClient {
                 "toolchains":toolchains
             }),
         };
-        let registration_key = format!(
-            "register:{}:{}:{}:{}",
-            self.worker_id,
-            healthy,
-            capacity,
-            Utc::now().timestamp() / 30
-        );
+        let registration_key = registration_idempotency_key(&payload, Utc::now().timestamp())?;
         let _: Value = self
             .send(
                 "/v1/workers/register",
@@ -485,6 +480,18 @@ fn healthy_job_types(role: WorkerRole, healthy: bool) -> Vec<String> {
         .collect()
 }
 
+fn registration_idempotency_key(
+    payload: &WorkerRegistration,
+    timestamp: i64,
+) -> anyhow::Result<String> {
+    let digest = Sha256::digest(serde_json::to_vec(payload)?);
+    Ok(format!(
+        "register:{}:{digest:x}:{}",
+        payload.worker_id,
+        timestamp / 30
+    ))
+}
+
 fn role_adapters(role: WorkerRole) -> &'static [&'static str] {
     match role {
         WorkerRole::Coding => &["opencode", "repository_inspector", "skill_author"],
@@ -558,6 +565,35 @@ mod tests {
         assert_eq!(
             healthy_job_types(WorkerRole::Delivery, true),
             vec!["engineering.delivery"]
+        );
+    }
+
+    #[test]
+    fn registration_key_tracks_scope_changes_within_a_refresh_window() {
+        let registration = WorkerRegistration {
+            worker_id: "worker-1".into(),
+            runtime_version: "1.0.0".into(),
+            capabilities: vec!["invoke_opencode".into()],
+            job_types: vec!["engineering.opencode".into()],
+            capacity: 1,
+            health: WorkerHealth::Healthy,
+            metadata: serde_json::json!({"runtime":"rust"}),
+        };
+        let same_window = registration_idempotency_key(&registration, 29).unwrap();
+        assert_eq!(
+            same_window,
+            registration_idempotency_key(&registration, 1).unwrap()
+        );
+
+        let mut changed_scope = registration.clone();
+        changed_scope.capabilities.push("toolchain.rust".into());
+        assert_ne!(
+            same_window,
+            registration_idempotency_key(&changed_scope, 29).unwrap()
+        );
+        assert_ne!(
+            same_window,
+            registration_idempotency_key(&registration, 30).unwrap()
         );
     }
 
