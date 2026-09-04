@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 #[cfg(test)]
 use std::collections::HashMap;
@@ -9,11 +9,14 @@ use sha2::{Digest, Sha256};
 #[cfg(test)]
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, Mutex};
+use tokio::time::timeout;
 use tokio_postgres::{Client, NoTls, Row};
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 const MAX_ERROR_BYTES: usize = 16 * 1024;
 const MAX_RESULT_BYTES: usize = 1024 * 1024;
+const POSTGRES_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -153,9 +156,29 @@ pub struct RunStore {
 
 #[derive(Clone)]
 enum StoreBackend {
-    Postgres(Arc<Mutex<Client>>),
+    Postgres(Arc<PostgresBackend>),
     #[cfg(test)]
     Memory(Arc<RwLock<HashMap<Uuid, RunRecord>>>),
+}
+
+struct PostgresBackend {
+    database_url: Zeroizing<String>,
+    client: Mutex<Client>,
+}
+
+async fn connect_postgres(database_url: &str) -> anyhow::Result<Client> {
+    let (client, connection) = timeout(
+        POSTGRES_CONNECT_TIMEOUT,
+        tokio_postgres::connect(database_url, NoTls),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("OpenAgents run database connection timed out"))??;
+    tokio::spawn(async move {
+        if let Err(error) = connection.await {
+            tracing::error!(%error, "OpenAgents run database connection failed");
+        }
+    });
+    Ok(client)
 }
 
 impl RunStore {
@@ -164,12 +187,7 @@ impl RunStore {
         organization_id: Uuid,
         worker_id: &str,
     ) -> anyhow::Result<Self> {
-        let (mut client, connection) = tokio_postgres::connect(database_url, NoTls).await?;
-        tokio::spawn(async move {
-            if let Err(error) = connection.await {
-                tracing::error!(%error, "OpenAgents run database connection failed");
-            }
-        });
+        let mut client = connect_postgres(database_url).await?;
         client
             .batch_execute(include_str!("../migrations/001_openagents_runs.sql"))
             .await?;
@@ -227,7 +245,10 @@ impl RunStore {
         Ok(Self {
             organization_id,
             worker_id: worker_id.to_string(),
-            backend: StoreBackend::Postgres(Arc::new(Mutex::new(client))),
+            backend: StoreBackend::Postgres(Arc::new(PostgresBackend {
+                database_url: Zeroizing::new(database_url.to_string()),
+                client: Mutex::new(client),
+            })),
             events,
         })
     }
@@ -245,8 +266,22 @@ impl RunStore {
 
     pub async fn healthy(&self) -> bool {
         match &self.backend {
-            StoreBackend::Postgres(client) => {
-                client.lock().await.simple_query("SELECT 1").await.is_ok()
+            StoreBackend::Postgres(backend) => {
+                let mut client = backend.client.lock().await;
+                if client.simple_query("SELECT 1").await.is_ok() {
+                    return true;
+                }
+                match connect_postgres(&backend.database_url).await {
+                    Ok(reconnected) => {
+                        *client = reconnected;
+                        tracing::info!("OpenAgents run database connection recovered");
+                        true
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "OpenAgents run database reconnect failed");
+                        false
+                    }
+                }
             }
             #[cfg(test)]
             StoreBackend::Memory(_) => true,
@@ -256,8 +291,8 @@ impl RunStore {
     pub async fn insert(&self, mut record: RunRecord) {
         record.organization_id = self.organization_id;
         match &self.backend {
-            StoreBackend::Postgres(client) => {
-                client.lock().await.execute(
+            StoreBackend::Postgres(backend) => {
+                backend.client.lock().await.execute(
                     "INSERT INTO openagents_runs \
                      (organization_id,worker_id,run_id,job_id,attempt,ticket_id,correlation_id,idempotency_key,status) \
                      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'queued') ON CONFLICT (run_id) DO NOTHING",
@@ -275,8 +310,8 @@ impl RunStore {
     pub async fn insert_idempotent(&self, mut record: RunRecord) -> (RunRecord, bool) {
         record.organization_id = self.organization_id;
         match &self.backend {
-            StoreBackend::Postgres(client) => {
-                let mut client = client.lock().await;
+            StoreBackend::Postgres(backend) => {
+                let mut client = backend.client.lock().await;
                 let transaction = client.transaction().await.unwrap_or_else(fatal_store_error);
                 let inserted = transaction.execute(
                     "INSERT INTO openagents_runs \
@@ -311,8 +346,8 @@ impl RunStore {
 
     pub async fn get(&self, id: Uuid) -> Option<RunRecord> {
         match &self.backend {
-            StoreBackend::Postgres(client) => {
-                let client = client.lock().await;
+            StoreBackend::Postgres(backend) => {
+                let client = backend.client.lock().await;
                 let row = client
                     .query_opt(
                         "SELECT * FROM openagents_runs WHERE organization_id=$1 AND run_id=$2",
@@ -330,8 +365,8 @@ impl RunStore {
 
     pub async fn events_after(&self, id: Uuid, sequence: u64) -> Option<Vec<RunEvent>> {
         match &self.backend {
-            StoreBackend::Postgres(client) => {
-                let client = client.lock().await;
+            StoreBackend::Postgres(backend) => {
+                let client = backend.client.lock().await;
                 let exists = client
                     .query_opt(
                         "SELECT 1 FROM openagents_runs WHERE organization_id=$1 AND run_id=$2",
@@ -360,8 +395,8 @@ impl RunStore {
 
     pub async fn find_by_job(&self, job_id: Uuid) -> Option<RunRecord> {
         match &self.backend {
-            StoreBackend::Postgres(client) => {
-                let client = client.lock().await;
+            StoreBackend::Postgres(backend) => {
+                let client = backend.client.lock().await;
                 client.query_opt(
                     "SELECT * FROM openagents_runs WHERE organization_id=$1 AND job_id=$2 ORDER BY created_at DESC LIMIT 1",
                     &[&self.organization_id, &job_id],
@@ -385,8 +420,8 @@ impl RunStore {
 
     pub async fn update(&self, id: Uuid, status: RunStatus, event: &str, data: Value) {
         match &self.backend {
-            StoreBackend::Postgres(client) => {
-                let mut client = client.lock().await;
+            StoreBackend::Postgres(backend) => {
+                let mut client = backend.client.lock().await;
                 let transaction = client.transaction().await.unwrap_or_else(fatal_store_error);
                 let row = transaction
                     .query_opt(
@@ -489,8 +524,8 @@ impl RunStore {
         let result = result.map(bound_result);
         let error = error.map(|value| bound_string(value, MAX_ERROR_BYTES));
         match &self.backend {
-            StoreBackend::Postgres(client) => {
-                client.lock().await.execute(
+            StoreBackend::Postgres(backend) => {
+                backend.client.lock().await.execute(
                     "UPDATE openagents_runs SET result=$4,error=$5,updated_at=now(), \
                      completed_at=CASE WHEN $3 IN ('completed','failed','interrupted') THEN COALESCE(completed_at,now()) ELSE completed_at END, \
                      cancelled_at=CASE WHEN $3='cancelled' THEN COALESCE(cancelled_at,now()) ELSE cancelled_at END \
