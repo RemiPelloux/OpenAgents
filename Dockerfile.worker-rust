@@ -14,8 +14,7 @@ RUN bun install --frozen-lockfile && \
     OPENCODE_VERSION="$version" OPENCODE_CHANNEL=latest \
       bun run --cwd packages/opencode build --single --baseline --skip-embed-web-ui && \
     test -f packages/opencode/dist/opencode-linux-x64-baseline/bin/opencode && \
-    install -m 0755 packages/opencode/dist/opencode-linux-x64-baseline/bin/opencode /tmp/opencode && \
-    /tmp/opencode --version
+    packages/opencode/dist/opencode-linux-x64-baseline/bin/opencode --version
 
 FROM rust:1.90.0-alpine3.22@sha256:b4b54b176a74db7e5c68fdfe6029be39a02ccbcfe72b6e5a3e18e2c61b57ae26 AS worker-builder
 RUN apk add --no-cache musl-dev && \
@@ -47,7 +46,7 @@ RUN apk upgrade --no-cache \
 
 COPY --from=worker-builder /tmp/openagents-worker /usr/local/bin/openagents-worker
 COPY --from=worker-builder /tmp/openagents-sandbox /usr/local/bin/openagents-sandbox
-COPY --from=opencode-builder /tmp/opencode /usr/local/bin/opencode
+COPY --from=opencode-builder --chmod=0755 /src/OpenCode/packages/opencode/dist/opencode-linux-x64-baseline/bin/opencode /usr/local/bin/opencode
 RUN /usr/local/bin/opencode --version
 COPY --from=worker-builder /usr/local/rustup /usr/local/rustup
 COPY --from=worker-builder /usr/local/cargo /usr/local/cargo
