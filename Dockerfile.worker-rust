@@ -10,7 +10,9 @@ COPY --from=opencontract packages/envelope /src/OpenContract/packages/envelope
 RUN cd /src/OpenContract/packages/envelope && bun install && bun run build
 RUN bun install --frozen-lockfile && \
     ln -s /src/OpenCode/node_modules /src/OpenContract/node_modules && \
-    bun run --cwd packages/opencode build --skip-embed-web-ui && \
+    version="$(bun -e 'console.log(require("./packages/opencode/package.json").version)')" && \
+    OPENCODE_VERSION="$version" OPENCODE_CHANNEL=latest \
+      bun run --cwd packages/opencode build --skip-embed-web-ui && \
     test -f packages/opencode/dist/opencode-linux-x64-baseline-musl/bin/opencode && \
     cp packages/opencode/dist/opencode-linux-x64-baseline-musl/bin/opencode /tmp/opencode
 
