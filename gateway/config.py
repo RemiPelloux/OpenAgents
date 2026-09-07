@@ -1538,30 +1538,33 @@ def _apply_env_overrides(config: GatewayConfig) -> None:
 
     # API Server
     api_server_enabled = os.getenv("API_SERVER_ENABLED", "").lower() in {"true", "1", "yes"}
-    api_server_key = os.getenv("API_SERVER_KEY", "")
+    from agent.secret_scope import UnscopedSecretError, get_secret
+
+    try:
+        api_server_key = get_secret("API_SERVER_KEY", "") or ""
+    except UnscopedSecretError:
+        api_server_key = ""
     api_server_cors_origins = os.getenv("API_SERVER_CORS_ORIGINS", "")
     api_server_port = os.getenv("API_SERVER_PORT")
     api_server_host = os.getenv("API_SERVER_HOST")
     if api_server_enabled or api_server_key:
-        if Platform.API_SERVER not in config.platforms:
-            config.platforms[Platform.API_SERVER] = PlatformConfig()
-        config.platforms[Platform.API_SERVER].enabled = True
+        api_server_config = _enable_from_env(Platform.API_SERVER)
         if api_server_key:
-            config.platforms[Platform.API_SERVER].extra["key"] = api_server_key
+            api_server_config.extra["key"] = api_server_key
         if api_server_cors_origins:
             origins = [origin.strip() for origin in api_server_cors_origins.split(",") if origin.strip()]
             if origins:
-                config.platforms[Platform.API_SERVER].extra["cors_origins"] = origins
+                api_server_config.extra["cors_origins"] = origins
         if api_server_port:
             try:
-                config.platforms[Platform.API_SERVER].extra["port"] = int(api_server_port)
+                api_server_config.extra["port"] = int(api_server_port)
             except ValueError:
                 pass
         if api_server_host:
-            config.platforms[Platform.API_SERVER].extra["host"] = api_server_host
+            api_server_config.extra["host"] = api_server_host
         api_server_model_name = os.getenv("API_SERVER_MODEL_NAME", "")
         if api_server_model_name:
-            config.platforms[Platform.API_SERVER].extra["model_name"] = api_server_model_name
+            api_server_config.extra["model_name"] = api_server_model_name
 
     # Webhook platform
     webhook_enabled = os.getenv("WEBHOOK_ENABLED", "").lower() in {"true", "1", "yes"}

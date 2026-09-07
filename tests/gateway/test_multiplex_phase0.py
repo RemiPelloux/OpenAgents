@@ -130,6 +130,18 @@ class TestMultiplexConfigFlag:
 
         assert cfg.multiplex_profiles is True
 
+    def test_profile_explicit_api_disable_wins_global_key(self, tmp_path, monkeypatch):
+        tmp_path.joinpath("config.yaml").write_text(
+            "platforms:\n  api_server:\n    enabled: false\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr("gateway.config.get_openagents_home", lambda: tmp_path)
+        monkeypatch.setenv("API_SERVER_KEY", "global-listener-key")
+
+        cfg = load_gateway_config()
+
+        assert cfg.platforms[Platform.API_SERVER].enabled is False
+
     def test_from_dict_coerces_truthy_string(self):
         cfg = GatewayConfig.from_dict({"multiplex_profiles": "true"})
         assert cfg.multiplex_profiles is True
