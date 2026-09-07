@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pyright: reportArgumentType=false, reportOptionalCall=false
 """
 Tests for the subagent delegation tool.
 
@@ -70,6 +71,8 @@ class TestDelegateRequirements(unittest.TestCase):
         self.assertIn("tasks", props)
         self.assertIn("context", props)
         self.assertIn("toolsets", props)
+        self.assertIn("model", props)
+        self.assertIn("model", props["tasks"]["items"]["properties"])
         # max_iterations is intentionally NOT exposed to the model — it's
         # config-authoritative via delegation.max_iterations so users get
         # predictable budgets.
@@ -215,6 +218,55 @@ class TestDelegateTask(unittest.TestCase):
         parent = _make_mock_parent()
         result = json.loads(delegate_task(tasks=[{"context": "no goal here"}], parent_agent=parent))
         self.assertIn("error", result)
+
+    def test_rejects_invalid_model_override(self):
+        parent = _make_mock_parent()
+        result = json.loads(delegate_task(goal="test", model=" ", parent_agent=parent))
+        self.assertIn("error", result)
+        self.assertIn("model must be a non-empty string", result["error"])
+
+    @patch("tools.delegate_tool._run_single_child")
+    @patch("tools.delegate_tool._resolve_delegation_credentials")
+    @patch("run_agent.AIAgent")
+    def test_single_model_override_wins_over_config(self, mock_agent, mock_creds, mock_run):
+        mock_creds.return_value = {
+            "provider": None, "base_url": None, "api_key": None,
+            "api_mode": None, "model": "configured-model",
+        }
+        mock_run.return_value = {
+            "task_index": 0, "status": "completed", "summary": "done",
+            "api_calls": 1, "duration_seconds": 0,
+        }
+        mock_agent.return_value = MagicMock()
+
+        delegate_task(goal="test", model="requested-model", parent_agent=_make_mock_parent())
+
+        self.assertEqual(mock_agent.call_args.kwargs["model"], "requested-model")
+
+    @patch("tools.delegate_tool._run_single_child")
+    @patch("tools.delegate_tool._resolve_delegation_credentials")
+    @patch("run_agent.AIAgent")
+    def test_batch_items_select_distinct_models(self, mock_agent, mock_creds, mock_run):
+        mock_creds.return_value = {
+            "provider": None, "base_url": None, "api_key": None,
+            "api_mode": None, "model": "configured-model",
+        }
+        mock_run.side_effect = lambda task_index, **_kwargs: {
+            "task_index": task_index, "status": "completed", "summary": "done",
+            "api_calls": 1, "duration_seconds": 0,
+        }
+        mock_agent.side_effect = [MagicMock(), MagicMock()]
+        tasks = [
+            {"goal": "fast task", "model": "fast-model"},
+            {"goal": "deep task", "model": "deep-model"},
+        ]
+
+        delegate_task(tasks=tasks, model="default-model", parent_agent=_make_mock_parent())
+
+        self.assertEqual(
+            [call.kwargs["model"] for call in mock_agent.call_args_list],
+            ["fast-model", "deep-model"],
+        )
 
     @patch("tools.delegate_tool._run_single_child")
     def test_single_task_mode(self, mock_run):

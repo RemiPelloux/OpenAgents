@@ -990,9 +990,11 @@ conversation later through the async-delegation completion queue.
 
 Two shapes:
 
-- **Single:** pass `goal` (+ optional `context`, `toolsets`).
+- **Single:** pass `goal` (+ optional `context`, `toolsets`, `model`).
 - **Batch (parallel):** pass `tasks: [...]` — each gets its own subagent
-  running concurrently. Concurrency is capped by
+  running concurrently. A top-level `model` is the batch default; each task can
+  override it with its own `model`. Model choices reuse the configured
+  delegation provider and credentials. Concurrency is capped by
   `delegation.max_concurrent_children` (default 3).
 
 Roles:

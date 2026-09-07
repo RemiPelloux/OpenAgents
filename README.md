@@ -163,7 +163,7 @@ Terminal equivalent (used by the agent after guided init):
 openagents company apply --name "Acme" --path ./acme --template startup --mission "Build our MVP"
 ```
 
-Subagents are spawned via `delegate_task` or `/company delegate <role> …`. The CEO role uses `role='orchestrator'` to fan out parallel workers.
+Subagents are spawned via `delegate_task` or `/company delegate <role> …`. The CEO role uses `role='orchestrator'` to fan out parallel workers. Pass a top-level `model` to set the default child model, or set `model` on individual batch tasks to run independent workstreams on different models while reusing the configured delegation provider credentials.
 
 ---
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pyright: reportArgumentType=false, reportAttributeAccessIssue=false, reportFunctionMemberAccess=false, reportGeneralTypeIssues=false, reportOptionalMemberAccess=false
 """
 Delegate Tool -- Subagent Architecture
 
@@ -2126,6 +2127,7 @@ def delegate_task(
     context: Optional[str] = None,
     toolsets: Optional[List[str]] = None,
     tasks: Optional[List[Dict[str, Any]]] = None,
+    model: Optional[str] = None,
     max_iterations: Optional[int] = None,
     acp_command: Optional[str] = None,
     acp_args: Optional[List[str]] = None,
@@ -2137,9 +2139,12 @@ def delegate_task(
     Spawn one or more child agents to handle delegated tasks.
 
     Supports two modes:
-      - Single: provide goal (+ optional context, toolsets, role)
-      - Batch:  provide tasks array [{goal, context, toolsets, role}, ...]
+      - Single: provide goal (+ optional context, toolsets, model, role)
+      - Batch:  provide tasks array [{goal, context, toolsets, model, role}, ...]
 
+    A top-level model applies to every child unless a batch item supplies its
+    own model. Model overrides reuse the configured delegation provider (or the
+    parent's provider) and never accept credentials or endpoint overrides.
     The 'role' parameter controls whether a child can further delegate:
     'leaf' (default) cannot; 'orchestrator' retains the delegation
     toolset and can spawn its own workers, bounded by
@@ -2232,7 +2237,13 @@ def delegate_task(
         task_list = tasks
     elif goal and isinstance(goal, str) and goal.strip():
         task_list = [
-            {"goal": goal, "context": context, "toolsets": toolsets, "role": top_role}
+            {
+                "goal": goal,
+                "context": context,
+                "toolsets": toolsets,
+                "model": model,
+                "role": top_role,
+            }
         ]
     else:
         return tool_error("Provide either 'goal' (single task) or 'tasks' (batch).")
@@ -2240,7 +2251,9 @@ def delegate_task(
     if not task_list:
         return tool_error("No tasks provided.")
 
-    # Validate each task has a goal
+    # Validate each task and normalize its optional model override. A batch
+    # item wins over the top-level model; both remain model identifiers only.
+    task_models: List[Optional[str]] = []
     for i, task in enumerate(task_list):
         if not isinstance(task, dict):
             return tool_error(
@@ -2248,6 +2261,12 @@ def delegate_task(
             )
         if not task.get("goal", "").strip():
             return tool_error(f"Task {i} is missing a 'goal'.")
+        requested_model = task.get("model", model)
+        if requested_model is not None and (
+            not isinstance(requested_model, str) or not requested_model.strip()
+        ):
+            return tool_error(f"Task {i} model must be a non-empty string.")
+        task_models.append(requested_model.strip() if requested_model else None)
 
     overall_start = time.monotonic()
     results = []
@@ -2278,7 +2297,7 @@ def delegate_task(
                 goal=t["goal"],
                 context=t.get("context"),
                 toolsets=t.get("toolsets") or toolsets,
-                model=creds["model"],
+                model=task_models[i] or creds["model"],
                 max_iterations=effective_max_iter,
                 task_count=n_tasks,
                 parent_agent=parent_agent,
@@ -2614,7 +2633,7 @@ def delegate_task(
             context=context,
             toolsets=toolsets,
             role=top_role,
-            model=creds["model"],
+            model=model or creds["model"],
             session_key=_session_key,
             runner=_batch_runner,
             interrupt_fn=_batch_interrupt,
@@ -2985,7 +3004,7 @@ def _build_top_level_description() -> str:
         f"Orchestrators are bounded by max_spawn_depth={max_depth} for this "
         f"user and can be disabled globally via "
         "delegation.orchestrator_enabled=false.\n"
-        "- Subagent model is NOT selectable per call: children inherit the parent model (plus its fallback chain) unless you pin all subagents to a model via delegation.provider / delegation.model in config.yaml.\n"
+        "- Subagent model is selectable per call with the top-level 'model' field. In batch mode, each task may set its own 'model'; a task model wins over the top-level model. Omit both to use delegation.model or inherit the parent model. Every override reuses the configured delegation provider and credentials.\n"
         "- Each subagent gets its own terminal session (separate working directory and state).\n"
         "- Results are always returned as an array, one entry per task."
     )
@@ -3110,6 +3129,14 @@ DELEGATE_TASK_SCHEMA = {
                     "['terminal', 'file', 'web'] for full-stack tasks."
                 ),
             },
+            "model": {
+                "type": "string",
+                "description": (
+                    "Model identifier for the child or default for every batch item. "
+                    "Per-task model wins. Omit to use delegation.model or inherit the "
+                    "parent model. Reuses configured provider credentials."
+                ),
+            },
             "tasks": {
                 "type": "array",
                 "items": {
@@ -3124,6 +3151,13 @@ DELEGATE_TASK_SCHEMA = {
                             "type": "array",
                             "items": {"type": "string"},
                             "description": f"Toolsets for this specific task. Available: {_TOOLSET_LIST_STR}. Use 'web' for network access, 'terminal' for shell, 'browser' for web interaction.",
+                        },
+                        "model": {
+                            "type": "string",
+                            "description": (
+                                "Model identifier for this task. Overrides the top-level model "
+                                "and reuses the configured delegation provider and credentials."
+                            ),
                         },
                         "acp_command": {
                             "type": "string",
@@ -3225,6 +3259,7 @@ registry.register(
         context=args.get("context"),
         toolsets=args.get("toolsets"),
         tasks=args.get("tasks"),
+        model=args.get("model"),
         max_iterations=args.get("max_iterations"),
         acp_command=args.get("acp_command"),
         acp_args=args.get("acp_args"),
