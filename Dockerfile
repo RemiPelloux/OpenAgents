@@ -1,4 +1,7 @@
 FROM oven/bun:1.3.14-debian AS opencode_builder
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 make g++ && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /src/OpenCode
 COPY --from=opencode . .
 COPY --from=opencontract packages/envelope /src/OpenContract/packages/envelope
