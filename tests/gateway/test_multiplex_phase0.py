@@ -11,7 +11,7 @@ Covers the three Phase 0 deliverables:
 import pytest
 from unittest.mock import patch
 
-from gateway.config import GatewayConfig, Platform
+from gateway.config import GatewayConfig, Platform, load_gateway_config
 from gateway.session import SessionSource, SessionStore, build_session_key
 
 
@@ -117,6 +117,17 @@ class TestMultiplexConfigFlag:
 
     def test_from_dict_nested_gateway(self):
         cfg = GatewayConfig.from_dict({"gateway": {"multiplex_profiles": True}})
+        assert cfg.multiplex_profiles is True
+
+    def test_load_gateway_config_reads_nested_gateway(self, tmp_path, monkeypatch):
+        tmp_path.joinpath("config.yaml").write_text(
+            "gateway:\n  multiplex_profiles: true\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr("gateway.config.get_openagents_home", lambda: tmp_path)
+
+        cfg = load_gateway_config()
+
         assert cfg.multiplex_profiles is True
 
     def test_from_dict_coerces_truthy_string(self):

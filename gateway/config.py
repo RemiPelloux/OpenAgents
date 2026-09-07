@@ -861,11 +861,17 @@ def load_gateway_config() -> GatewayConfig:
             # gateway.multiplex_profiles form (from_dict resolves the nested
             # fallback, but surface the top-level key here for parity with the
             # other session-scope flags above).
+            gateway_section = (
+                yaml_cfg.get("gateway")
+                if isinstance(yaml_cfg.get("gateway"), dict)
+                else {}
+            )
             if "multiplex_profiles" in yaml_cfg:
                 gw_data["multiplex_profiles"] = yaml_cfg["multiplex_profiles"]
+            elif "multiplex_profiles" in gateway_section:
+                gw_data["multiplex_profiles"] = gateway_section["multiplex_profiles"]
 
-            gateway_section = yaml_cfg.get("gateway")
-            if isinstance(gateway_section, dict) and "max_concurrent_sessions" in gateway_section:
+            if "max_concurrent_sessions" in gateway_section:
                 gw_data["max_concurrent_sessions"] = gateway_section["max_concurrent_sessions"]
 
             if "max_concurrent_sessions" in yaml_cfg:
