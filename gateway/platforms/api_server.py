@@ -64,6 +64,11 @@ from agent.redact import redact_sensitive_text
 
 logger = logging.getLogger(__name__)
 
+_PROFILE_NAME_KEY = "openagents.profile_name"
+_PROFILE_HOME_KEY = "openagents.profile_home"
+_PROFILE_API_KEY = "openagents.profile_api_key"
+_PROFILE_REJECTED = object()
+
 
 def _local_llm_override() -> Dict[str, Any]:
     """Resolve the local mesh provider without mutating the user's profile."""
@@ -682,6 +687,36 @@ else:
     security_headers_middleware = None  # type: ignore[assignment]
 
 
+if AIOHTTP_AVAILABLE:
+    @web.middleware
+    async def profile_scope_middleware(request, handler):
+        """Authenticate and scope /p/<profile>/ requests to one tenant profile."""
+        adapter = request.app.get("api_server_adapter")
+        if adapter is None:
+            return await handler(request)
+        resolved = adapter._resolve_request_profile(request)
+        if resolved is _PROFILE_REJECTED:
+            return web.json_response(
+                _openai_error("Unknown or unconfigured profile", code="profile_not_found"),
+                status=404,
+            )
+        if resolved is None:
+            return await handler(request)
+
+        profile_name, profile_home = resolved
+        from agent.secret_scope import build_profile_secret_scope
+        from gateway.run import _profile_runtime_scope
+
+        secrets = build_profile_secret_scope(profile_home)
+        request[_PROFILE_NAME_KEY] = profile_name
+        request[_PROFILE_HOME_KEY] = profile_home
+        request[_PROFILE_API_KEY] = secrets.get("API_SERVER_KEY", "")
+        with _profile_runtime_scope(profile_home):
+            return await handler(request)
+else:
+    profile_scope_middleware = None  # type: ignore[assignment]
+
+
 class _IdempotencyCache:
     """In-memory idempotency cache with TTL and basic LRU semantics."""
     def __init__(self, max_items: int = 1000, ttl_seconds: int = 300):
@@ -838,6 +873,7 @@ class APIServerAdapter(BasePlatformAdapter):
         self._llm_provider: str = str(local_llm.get("provider") or "")
         self._llm_base_url: str = str(local_llm.get("base_url") or "")
         self._llm_model: str = str(local_llm.get("model") or "")
+        self.gateway_runner = None
         self._app: Optional["web.Application"] = None
         self._runner: Optional["web.AppRunner"] = None
         self._site: Optional["web.TCPSite"] = None
@@ -858,6 +894,8 @@ class APIServerAdapter(BasePlatformAdapter):
         # resolves requests by session key, while API clients address the
         # in-flight run by run_id.
         self._run_approval_sessions: Dict[str, str] = {}
+        # Tenant owner for each run. ``None`` denotes the default profile.
+        self._run_profiles: Dict[str, Optional[str]] = {}
         self._session_db: Optional[Any] = None  # Lazy-init SessionDB for session continuity
         # Concurrency cap shared across all agent-serving endpoints
         # (/v1/chat/completions, /v1/responses, /v1/runs). Read from
@@ -1014,6 +1052,36 @@ class APIServerAdapter(BasePlatformAdapter):
     # Auth helper
     # ------------------------------------------------------------------
 
+    def _resolve_request_profile(self, request: "web.Request"):
+        """Resolve a multiplex URL profile to its validated profile home."""
+        profile = (request.match_info.get("profile") or "").strip()
+        if not profile:
+            return None
+        runner = getattr(self, "gateway_runner", None)
+        cfg = getattr(runner, "config", None)
+        if not getattr(cfg, "multiplex_profiles", False):
+            return _PROFILE_REJECTED
+        try:
+            from openagents_cli.profiles import profiles_to_serve
+
+            served = {
+                name: Path(home)
+                for name, home in profiles_to_serve(multiplex=True)
+            }
+        except Exception:
+            return _PROFILE_REJECTED
+        profile_home = served.get(profile)
+        if profile_home is None:
+            return _PROFILE_REJECTED
+        return profile, profile_home
+
+    def _run_visible_to_request(self, request: "web.Request", run_id: str) -> bool:
+        """Keep profile-scoped run IDs isolated across tenant API keys."""
+        request_profile = (
+            request[_PROFILE_NAME_KEY] if _PROFILE_NAME_KEY in request else None
+        )
+        return self._run_profiles.get(run_id) == request_profile
+
     def _check_auth(self, request: "web.Request") -> Optional["web.Response"]:
         """
         Validate Bearer token from Authorization header.
@@ -1022,13 +1090,23 @@ class APIServerAdapter(BasePlatformAdapter):
         connect() refuses to start the API server without API_SERVER_KEY, so
         the no-key branch only exists for tests or unsupported manual wiring.
         """
-        if not self._api_key:
+        api_key = (
+            request[_PROFILE_API_KEY]
+            if _PROFILE_API_KEY in request
+            else self._api_key
+        )
+        if not api_key:
+            if _PROFILE_NAME_KEY in request:
+                return web.json_response(
+                    _openai_error("Invalid API key", code="invalid_api_key"),
+                    status=401,
+                )
             return None
 
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:].strip()
-            if hmac.compare_digest(token, self._api_key):
+            if hmac.compare_digest(token, api_key):
                 return None  # Auth OK
 
         logger.warning(
@@ -4183,6 +4261,9 @@ class APIServerAdapter(BasePlatformAdapter):
                     conversation_history.append({"role": msg["role"], "content": str(content)})
 
         run_id = f"run_{uuid.uuid4().hex}"
+        self._run_profiles[run_id] = (
+            request[_PROFILE_NAME_KEY] if _PROFILE_NAME_KEY in request else None
+        )
         session_id = body.get("session_id") or stored_session_id or run_id
         approval_session_key = gateway_session_key or session_id or run_id
 
@@ -4325,7 +4406,7 @@ class APIServerAdapter(BasePlatformAdapter):
                     }
                     return r, u
 
-                result, usage = await asyncio.get_running_loop().run_in_executor(None, _run_sync)
+                result, usage = await asyncio.to_thread(_run_sync)
                 # Check for structured failure (non-retryable client errors like
                 # 401/400 return failed=True instead of raising, so the except
                 # block below never fires — issue #15561).
@@ -4456,7 +4537,7 @@ class APIServerAdapter(BasePlatformAdapter):
 
         run_id = request.match_info["run_id"]
         status = self._run_statuses.get(run_id)
-        if status is None:
+        if status is None or not self._run_visible_to_request(request, run_id):
             return web.json_response(
                 _openai_error(f"Run not found: {run_id}", code="run_not_found"),
                 status=404,
@@ -4470,6 +4551,11 @@ class APIServerAdapter(BasePlatformAdapter):
             return auth_err
 
         run_id = request.match_info["run_id"]
+        if not self._run_visible_to_request(request, run_id):
+            return web.json_response(
+                _openai_error(f"Run not found: {run_id}", code="run_not_found"),
+                status=404,
+            )
 
         status = self._run_statuses.get(run_id)
         if status and status.get("status") in {"completed", "failed", "cancelled"}:
@@ -4538,7 +4624,7 @@ class APIServerAdapter(BasePlatformAdapter):
 
         run_id = request.match_info["run_id"]
         status = self._run_statuses.get(run_id)
-        if status is None:
+        if status is None or not self._run_visible_to_request(request, run_id):
             return web.json_response(
                 _openai_error(f"Run not found: {run_id}", code="run_not_found"),
                 status=404,
@@ -4623,6 +4709,11 @@ class APIServerAdapter(BasePlatformAdapter):
             return auth_err
 
         run_id = request.match_info["run_id"]
+        if not self._run_visible_to_request(request, run_id):
+            return web.json_response(
+                _openai_error(f"Run not found: {run_id}", code="run_not_found"),
+                status=404,
+            )
         agent = self._active_run_agents.get(run_id)
         task = self._active_run_tasks.get(run_id)
 
@@ -4772,10 +4863,36 @@ class APIServerAdapter(BasePlatformAdapter):
             for run_id in stale_statuses:
                 self._run_statuses.pop(run_id, None)
                 self._run_event_history.pop(run_id, None)
+                self._run_profiles.pop(run_id, None)
 
     # ------------------------------------------------------------------
     # BasePlatformAdapter interface
     # ------------------------------------------------------------------
+
+    def _register_profile_routes(self) -> None:
+        """Register the OpenBrain tenant-prefixed control surface when enabled."""
+        runner_config = getattr(
+            getattr(self, "gateway_runner", None), "config", None
+        )
+        if not getattr(runner_config, "multiplex_profiles", False):
+            return
+        assert self._app is not None
+        self._app.router.add_get(
+            "/p/{profile}/v1/capabilities", self._handle_capabilities
+        )
+        self._app.router.add_post("/p/{profile}/v1/runs", self._handle_runs)
+        self._app.router.add_get(
+            "/p/{profile}/v1/runs/{run_id}", self._handle_get_run
+        )
+        self._app.router.add_get(
+            "/p/{profile}/v1/runs/{run_id}/events", self._handle_run_events
+        )
+        self._app.router.add_post(
+            "/p/{profile}/v1/runs/{run_id}/approval", self._handle_run_approval
+        )
+        self._app.router.add_post(
+            "/p/{profile}/v1/runs/{run_id}/stop", self._handle_stop_run
+        )
 
     async def connect(self, *, is_reconnect: bool = False) -> bool:
         """Start the aiohttp web server."""
@@ -4785,7 +4902,15 @@ class APIServerAdapter(BasePlatformAdapter):
 
         try:
             await asyncio.to_thread(_verify_local_llm_model)
-            mws = [mw for mw in (cors_middleware, body_limit_middleware, security_headers_middleware) if mw is not None]
+            mws = [
+                mw for mw in (
+                    cors_middleware,
+                    body_limit_middleware,
+                    security_headers_middleware,
+                    profile_scope_middleware,
+                )
+                if mw is not None
+            ]
             self._app = web.Application(middlewares=mws, client_max_size=MAX_REQUEST_BYTES)
             assert self._app is not None
             self._app.router.add_get("/health", self._handle_health)
@@ -4829,6 +4954,7 @@ class APIServerAdapter(BasePlatformAdapter):
             self._app.router.add_get("/v1/runs/{run_id}/events", self._handle_run_events)
             self._app.router.add_post("/v1/runs/{run_id}/approval", self._handle_run_approval)
             self._app.router.add_post("/v1/runs/{run_id}/stop", self._handle_stop_run)
+            self._register_profile_routes()
             # OpenAgentUI — trigger/inspect/approve saved visual-builder workflows
             self._app.router.add_post("/v1/openagentui/workflows/{workflow_id}/run", self._handle_openagentui_run)
             self._app.router.add_get(

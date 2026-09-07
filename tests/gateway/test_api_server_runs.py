@@ -11,6 +11,7 @@ Covers:
 import asyncio
 import json
 import threading
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,6 +22,7 @@ from gateway.config import PlatformConfig
 from gateway.platforms.api_server import (
     APIServerAdapter,
     cors_middleware,
+    profile_scope_middleware,
     security_headers_middleware,
 )
 
@@ -50,6 +52,23 @@ def _create_runs_app(adapter: APIServerAdapter) -> web.Application:
     app.router.add_get("/v1/runs/{run_id}/events", adapter._handle_run_events)
     app.router.add_post("/v1/runs/{run_id}/approval", adapter._handle_run_approval)
     app.router.add_post("/v1/runs/{run_id}/stop", adapter._handle_stop_run)
+    return app
+
+
+def _create_multiplex_runs_app(adapter: APIServerAdapter) -> web.Application:
+    """Create the tenant-prefixed run surface used by OpenBrain."""
+    app = web.Application(middlewares=[profile_scope_middleware])
+    app["api_server_adapter"] = adapter
+    app.router.add_post("/p/{profile}/v1/runs", adapter._handle_runs)
+    app.router.add_get("/p/{profile}/v1/runs/{run_id}", adapter._handle_get_run)
+    app.router.add_get(
+        "/p/{profile}/v1/runs/{run_id}/events",
+        adapter._handle_run_events,
+    )
+    app.router.add_post(
+        "/p/{profile}/v1/runs/{run_id}/stop",
+        adapter._handle_stop_run,
+    )
     return app
 
 
@@ -92,6 +111,113 @@ def adapter():
 @pytest.fixture
 def auth_adapter():
     return _make_adapter(api_key="sk-secret")
+
+
+# ---------------------------------------------------------------------------
+# Multiplex profile routes
+# ---------------------------------------------------------------------------
+
+
+class TestMultiplexProfileRuns:
+    def test_profile_routes_register_only_for_multiplex_runner(self):
+        adapter = _make_adapter(api_key="default-key")
+        adapter.gateway_runner = SimpleNamespace(
+            config=SimpleNamespace(multiplex_profiles=True),
+        )
+        adapter._app = web.Application()
+
+        adapter._register_profile_routes()
+
+        paths = {route.resource.canonical for route in adapter._app.router.routes()}
+        assert "/p/{profile}/v1/capabilities" in paths
+        assert "/p/{profile}/v1/runs" in paths
+        assert "/p/{profile}/v1/runs/{run_id}/events" in paths
+        assert "/p/{profile}/v1/runs/{run_id}/approval" in paths
+        assert "/p/{profile}/v1/runs/{run_id}/stop" in paths
+
+    @pytest.mark.asyncio
+    async def test_profile_key_and_runtime_scope_are_isolated(self, tmp_path):
+        profile_a = tmp_path / "profiles" / "tenant-a"
+        profile_b = tmp_path / "profiles" / "tenant-b"
+        profile_a.mkdir(parents=True)
+        profile_b.mkdir(parents=True)
+        profile_a.joinpath(".env").write_text(
+            'API_SERVER_KEY="tenant-a-key"\n'
+            'OPENBRAIN_PRIMARY_LLM_API_KEY="secret-a"\n',
+            encoding="utf-8",
+        )
+        profile_b.joinpath(".env").write_text(
+            'API_SERVER_KEY="tenant-b-key"\n'
+            'OPENBRAIN_PRIMARY_LLM_API_KEY="secret-b"\n',
+            encoding="utf-8",
+        )
+        adapter = _make_adapter(api_key="default-key")
+        adapter.gateway_runner = SimpleNamespace(
+            config=SimpleNamespace(multiplex_profiles=True),
+        )
+        observed = {}
+
+        mock_agent = MagicMock()
+
+        def run_conversation(**kwargs):
+            from agent.secret_scope import get_secret
+            from openagents_constants import get_openagents_home
+
+            observed["home"] = str(get_openagents_home())
+            observed["secret"] = get_secret("OPENBRAIN_PRIMARY_LLM_API_KEY")
+            return {"final_response": "done"}
+
+        mock_agent.run_conversation.side_effect = run_conversation
+        mock_agent.session_prompt_tokens = 1
+        mock_agent.session_completion_tokens = 1
+        mock_agent.session_total_tokens = 2
+
+        served = [("tenant-a", profile_a), ("tenant-b", profile_b)]
+        app = _create_multiplex_runs_app(adapter)
+        with patch("openagents_cli.profiles.profiles_to_serve", return_value=served):
+            async with TestClient(TestServer(app)) as cli:
+                missing = await cli.post(
+                    "/p/unknown/v1/runs",
+                    headers={"Authorization": "Bearer tenant-a-key"},
+                    json={"input": "hello"},
+                )
+                assert missing.status == 404
+
+                wrong_key = await cli.post(
+                    "/p/tenant-a/v1/runs",
+                    headers={"Authorization": "Bearer default-key"},
+                    json={"input": "hello"},
+                )
+                assert wrong_key.status == 401
+
+                with patch.object(adapter, "_create_agent", return_value=mock_agent):
+                    started = await cli.post(
+                        "/p/tenant-a/v1/runs",
+                        headers={"Authorization": "Bearer tenant-a-key"},
+                        json={"input": "hello", "model": "org-model"},
+                    )
+                    assert started.status == 202
+                    run_id = (await started.json())["run_id"]
+
+                    for _ in range(100):
+                        status_response = await cli.get(
+                            f"/p/tenant-a/v1/runs/{run_id}",
+                            headers={"Authorization": "Bearer tenant-a-key"},
+                        )
+                        status = await status_response.json()
+                        if status.get("status") == "completed":
+                            break
+                        await asyncio.sleep(0.01)
+                    assert status["status"] == "completed"
+                    assert status["model"] == "org-model"
+
+                    cross_tenant = await cli.get(
+                        f"/p/tenant-b/v1/runs/{run_id}",
+                        headers={"Authorization": "Bearer tenant-b-key"},
+                    )
+                    assert cross_tenant.status == 404
+
+        assert observed == {"home": str(profile_a), "secret": "secret-a"}
 
 
 # ---------------------------------------------------------------------------
