@@ -12,6 +12,7 @@ RUN bun install --frozen-lockfile && \
     ln -s /src/OpenCode/node_modules /src/OpenContract/node_modules && \
     test -s /src/OpenContract/packages/envelope/dist/index.js && \
     rm -rf /src/OpenCode/node_modules/@opencontract/envelope && \
+    mkdir -p /src/OpenCode/node_modules/@opencontract && \
     ln -s /src/OpenContract/packages/envelope /src/OpenCode/node_modules/@opencontract/envelope && \
     test -s /src/OpenCode/node_modules/@opencontract/envelope/dist/index.js && \
     version="$(bun -e 'const p = require("./package.json"); console.log(p.version)')" && \
