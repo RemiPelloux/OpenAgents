@@ -5,9 +5,11 @@ RUN apt-get update && \
 WORKDIR /src/OpenCode
 COPY --from=opencode . .
 COPY --from=opencontract packages/envelope /src/OpenContract/packages/envelope
+# The envelope context contains source only; install and compile its declared
+# dependencies before OpenCode resolves the package through its exports map.
+RUN cd /src/OpenContract/packages/envelope && bun install && bun run build
 RUN bun install --frozen-lockfile && \
     ln -s /src/OpenCode/node_modules /src/OpenContract/node_modules && \
-    /src/OpenCode/node_modules/.bin/tsc -p /src/OpenContract/packages/envelope/tsconfig.json && \
     test -s /src/OpenContract/packages/envelope/dist/index.js && \
     rm -rf /src/OpenCode/node_modules/@opencontract/envelope && \
     ln -s /src/OpenContract/packages/envelope /src/OpenCode/node_modules/@opencontract/envelope && \
