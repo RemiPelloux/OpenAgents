@@ -15,11 +15,13 @@ RUN bun install --frozen-lockfile && \
     mkdir -p /src/OpenCode/node_modules/@opencontract && \
     ln -s /src/OpenContract/packages/envelope /src/OpenCode/node_modules/@opencontract/envelope && \
     test -s /src/OpenCode/node_modules/@opencontract/envelope/dist/index.js && \
-    version="$(bun -e 'const p = require("./package.json"); console.log(p.version)')" && \
-    bun build main.tsx --outfile /tmp/opencode --compile \
-      --define "process.env.NODE_ENV='production'" \
-      --define "MACRO.VERSION='${version}'" \
-      --define "MACRO='{}'"
+    version="$(bun -e 'console.log(require("./packages/opencode/package.json").version)')" && \
+    OPENCODE_VERSION="$version" OPENCODE_CHANNEL=latest \
+      bun run --cwd packages/opencode build --single --baseline --skip-embed-web-ui && \
+    binary=packages/opencode/dist/opencode-linux-x64-baseline/bin/opencode && \
+    test -f "$binary" && \
+    "$binary" --version && \
+    cp "$binary" /tmp/opencode
 
 FROM ghcr.io/astral-sh/uv:0.11.6-python3.13-trixie@sha256:b3c543b6c4f23a5f2df22866bd7857e5d304b67a564f4feab6ac22044dde719b AS uv_source
 # Node 22 LTS source stage. Debian trixie's bundled nodejs is pinned to 20.x
