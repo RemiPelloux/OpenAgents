@@ -2384,7 +2384,7 @@ function shellQuote(value) {
 // restart to load the new GUI" if the swap can't be performed.
 async function applyUpdatesPosixInApp() {
   const updateRoot = resolveUpdateRoot()
-  const openagents = resolveHermesCliBinary(updateRoot)
+  const hermes = resolveHermesCliBinary(updateRoot)
   if (!hermes) {
     emitUpdateProgress({ stage: 'manual', message: 'hermes update', percent: null })
     return { ok: true, manual: true, command: 'hermes update', hermesRoot: updateRoot }
