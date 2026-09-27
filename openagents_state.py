@@ -117,6 +117,38 @@ def _delete_delegate_children(conn, parent_ids: List[str]) -> List[str]:
         conn.execute(f"DELETE FROM sessions WHERE id IN ({ph})", ids)
     return ids
 
+
+# Upper bound on bound parameters per batched ``IN (...)`` statement. Well
+# under SQLite's SQLITE_MAX_VARIABLE_NUMBER (999 on old builds, 32766 since
+# 3.32) so batched lookups never trip "too many SQL variables".
+_SQL_IN_CHUNK = 500
+
+
+def _chunked(items: List[Any], size: int = _SQL_IN_CHUNK):
+    """Yield successive ``size``-length slices of *items* (none when empty)."""
+    for start in range(0, len(items), size):
+        yield items[start:start + size]
+
+
+def _delete_sessions_and_messages(conn, session_ids: List[str]) -> None:
+    """Orphan children, then delete messages + session rows for *session_ids*.
+
+    Set-based replacement for per-session ``DELETE`` loops: one statement
+    per table per chunk instead of two statements per session.
+    """
+    for chunk in _chunked(list(session_ids)):
+        ph = ",".join("?" * len(chunk))
+        conn.execute(
+            f"UPDATE sessions SET parent_session_id = NULL "
+            f"WHERE parent_session_id IN ({ph})",
+            chunk,
+        )
+    for chunk in _chunked(list(session_ids)):
+        ph = ",".join("?" * len(chunk))
+        conn.execute(f"DELETE FROM messages WHERE session_id IN ({ph})", chunk)
+        conn.execute(f"DELETE FROM sessions WHERE id IN ({ph})", chunk)
+
+
 T = TypeVar("T")
 
 DEFAULT_DB_PATH = get_openagents_home() / "state.db"
@@ -2086,6 +2118,23 @@ class SessionDB:
             row = cursor.fetchone()
         return dict(row) if row else None
 
+    def get_sessions_by_ids(self, session_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Batched :meth:`get_session`: ``{id: row}`` for ids that exist.
+
+        Chunked ``IN`` lookup; no query for an empty input.
+        """
+        unique_ids = list(dict.fromkeys(sid for sid in session_ids if sid))
+        result: Dict[str, Dict[str, Any]] = {}
+        for chunk in _chunked(unique_ids):
+            ph = ",".join("?" * len(chunk))
+            with self._lock:
+                rows = self._conn.execute(
+                    f"SELECT * FROM sessions WHERE id IN ({ph})", chunk
+                ).fetchall()
+            for row in rows:
+                result[row["id"]] = dict(row)
+        return result
+
     def resolve_session_id(self, session_id_or_prefix: str) -> Optional[str]:
         """Resolve an exact or uniquely prefixed session ID to the full ID.
 
@@ -2399,47 +2448,80 @@ class SessionDB:
         Returns the latest continuation tip, or the input id when no
         continuation exists.
         """
-        current = session_id
-        seen = {current} if current else set()
+        return self.get_compression_tips([session_id])[session_id]
+
+    def get_compression_tips(self, session_ids: List[str]) -> Dict[str, str]:
+        """Batched :meth:`get_compression_tip` for many sessions at once.
+
+        Walks every chain forward level-by-level: one query per chain *depth*
+        (typically 1-3) for the whole batch instead of one query per hop per
+        session. The child-selection rule (filters + ORDER BY) is identical to
+        the single-session walk; ``ROW_NUMBER() OVER (PARTITION BY parent)``
+        picks the same ``LIMIT 1`` winner per parent. Returns
+        ``{input_id: tip_id}`` (tip == input when no continuation exists).
+        """
+        tips: Dict[str, str] = {}
+        # root -> (current, seen) for chains still being walked
+        active: Dict[Any, Tuple[Any, set]] = {}
+        for sid in session_ids:
+            if sid in active or sid in tips:
+                continue
+            active[sid] = (sid, {sid} if sid else set())
         # Bound the walk defensively — compression chains this deep are
         # pathological and shouldn't happen in practice. 100 = plenty.
         for _ in range(100):
-            with self._lock:
-                cursor = self._conn.execute(
-                    """
-                    SELECT child.id
-                    FROM sessions parent
-                    JOIN sessions child ON child.parent_session_id = parent.id
-                    WHERE parent.id = ?
-                      AND parent.end_reason = 'compression'
-                      AND json_extract(COALESCE(child.model_config, '{}'), '$._branched_from') IS NULL
-                      AND json_extract(COALESCE(child.model_config, '{}'), '$._delegate_from') IS NULL
-                      AND COALESCE(child.source, '') != 'tool'
-                    ORDER BY
-                      CASE
-                        WHEN child.end_reason = 'compression' THEN 0
-                        WHEN child.ended_at IS NULL THEN 1
-                        ELSE 2
-                      END,
-                      COALESCE(
-                        (SELECT MAX(m.timestamp) FROM messages m WHERE m.session_id = child.id),
-                        child.started_at
-                      ) DESC,
-                      child.started_at DESC,
-                      child.id DESC
-                    LIMIT 1
-                    """,
-                    (current,),
-                )
-                row = cursor.fetchone()
-            if row is None:
-                return current
-            child_id = row["id"]
-            if not child_id or child_id in seen:
-                return current
-            seen.add(child_id)
-            current = child_id
-        return current
+            if not active:
+                break
+            frontier = list({cur for cur, _seen in active.values() if cur})
+            next_child: Dict[str, str] = {}
+            for chunk in _chunked(frontier):
+                ph = ",".join("?" * len(chunk))
+                with self._lock:
+                    rows = self._conn.execute(
+                        f"""
+                        SELECT parent_id, child_id FROM (
+                            SELECT parent.id AS parent_id, child.id AS child_id,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY parent.id
+                                    ORDER BY
+                                      CASE
+                                        WHEN child.end_reason = 'compression' THEN 0
+                                        WHEN child.ended_at IS NULL THEN 1
+                                        ELSE 2
+                                      END,
+                                      COALESCE(
+                                        (SELECT MAX(m.timestamp) FROM messages m WHERE m.session_id = child.id),
+                                        child.started_at
+                                      ) DESC,
+                                      child.started_at DESC,
+                                      child.id DESC
+                                ) AS rn
+                            FROM sessions parent
+                            JOIN sessions child ON child.parent_session_id = parent.id
+                            WHERE parent.id IN ({ph})
+                              AND parent.end_reason = 'compression'
+                              AND json_extract(COALESCE(child.model_config, '{{}}'), '$._branched_from') IS NULL
+                              AND json_extract(COALESCE(child.model_config, '{{}}'), '$._delegate_from') IS NULL
+                              AND COALESCE(child.source, '') != 'tool'
+                        )
+                        WHERE rn = 1
+                        """,
+                        chunk,
+                    ).fetchall()
+                for row in rows:
+                    next_child[row["parent_id"]] = row["child_id"]
+            still_active: Dict[Any, Tuple[Any, set]] = {}
+            for root, (current, seen) in active.items():
+                child_id = next_child.get(current) if current else None
+                if not child_id or child_id in seen:
+                    tips[root] = current
+                    continue
+                seen.add(child_id)
+                still_active[root] = (child_id, seen)
+            active = still_active
+        for root, (current, _seen) in active.items():
+            tips[root] = current
+        return tips
 
     def distinct_session_cwds(self, include_archived: bool = False) -> List[Dict[str, Any]]:
         """Distinct non-empty session cwds with usage stats, for repo discovery.
@@ -2685,16 +2767,26 @@ class SessionDB:
         # as the live conversation. Keep the root's started_at to preserve
         # chronological ordering by original conversation start.
         if project_compression_tips and not include_children:
+            # Batched: one chain-walk query per chain depth for every
+            # compression root on the page, plus one enriched-row query for
+            # all distinct tips (instead of walk + row fetch per root).
+            root_ids = [
+                s["id"] for s in sessions if s.get("end_reason") == "compression"
+            ]
+            tip_by_root = self.get_compression_tips(root_ids) if root_ids else {}
+            tip_rows = self._get_session_rich_rows(
+                [tip for root, tip in tip_by_root.items() if tip and tip != root]
+            )
             projected = []
             for s in sessions:
                 if s.get("end_reason") != "compression":
                     projected.append(s)
                     continue
-                tip_id = self.get_compression_tip(s["id"])
+                tip_id = tip_by_root.get(s["id"], s["id"])
                 if tip_id == s["id"]:
                     projected.append(s)
                     continue
-                tip_row = self._get_session_rich_row(tip_id)
+                tip_row = tip_rows.get(tip_id)
                 if not tip_row:
                     projected.append(s)
                     continue
@@ -2779,6 +2871,47 @@ class SessionDB:
                 s["preview"] = ""
             runs.append(s)
         return runs
+
+    def _get_session_rich_rows(
+        self, session_ids: List[str]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Batched :meth:`_get_session_rich_row`: ``{id: enriched_row}``.
+
+        Missing ids are simply absent. Chunked ``IN`` lookup; no query for an
+        empty input.
+        """
+        unique_ids = list(dict.fromkeys(sid for sid in session_ids if sid))
+        result: Dict[str, Dict[str, Any]] = {}
+        for chunk in _chunked(unique_ids):
+            ph = ",".join("?" * len(chunk))
+            query = f"""
+                SELECT s.*,
+                    COALESCE(
+                        (SELECT SUBSTR(REPLACE(REPLACE(m.content, X'0A', ' '), X'0D', ' '), 1, 63)
+                         FROM messages m
+                         WHERE m.session_id = s.id AND m.role = 'user' AND m.content IS NOT NULL
+                         ORDER BY m.timestamp, m.id LIMIT 1),
+                        ''
+                    ) AS _preview_raw,
+                    COALESCE(
+                        (SELECT MAX(m2.timestamp) FROM messages m2 WHERE m2.session_id = s.id),
+                        s.started_at
+                    ) AS last_active
+                FROM sessions s
+                WHERE s.id IN ({ph})
+            """
+            with self._lock:
+                rows = self._conn.execute(query, chunk).fetchall()
+            for row in rows:
+                s = dict(row)
+                raw = s.pop("_preview_raw", "").strip()
+                if raw:
+                    text = raw[:60]
+                    s["preview"] = text + ("..." if len(raw) > 60 else "")
+                else:
+                    s["preview"] = ""
+                result[s["id"]] = s
+        return result
 
     def _get_session_rich_row(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Fetch a single session with the same enriched columns as
@@ -4097,66 +4230,82 @@ class SessionDB:
                     matches = [dict(row) for row in cursor.fetchall()]
 
         # Add surrounding context (1 message before + after each match).
-        # Done outside the lock so we don't hold it across N sequential queries.
-        for match in matches:
-            try:
+        # Batched: one query per chunk of match ids fetches every anchor with
+        # its session-neighbour (by timestamp, id) on each side, instead of
+        # one query per match.
+        def _ctx_preview(raw: Any) -> str:
+            decoded = self._decode_content(raw)
+            # Multimodal context: render a compact text-only
+            # summary for search previews.
+            if isinstance(decoded, list):
+                text_parts = [
+                    p.get("text", "") for p in decoded
+                    if isinstance(p, dict) and p.get("type") == "text"
+                ]
+                text = " ".join(t for t in text_parts if t).strip()
+                return text or "[multimodal content]"
+            if isinstance(decoded, str):
+                return decoded
+            return ""
+
+        anchor_ids = list(dict.fromkeys(
+            m.get("id") for m in matches if m.get("id") is not None
+        ))
+        context_by_id: Dict[Any, List[Dict[str, Any]]] = {}
+        try:
+            for chunk in _chunked(anchor_ids):
+                ph = ",".join("?" * len(chunk))
                 with self._lock:
-                    ctx_cursor = self._conn.execute(
-                        """WITH target AS (
-                               SELECT session_id, timestamp, id
-                               FROM messages
-                               WHERE id = ?
-                           )
-                           SELECT role, content
-                           FROM (
-                               SELECT m.id, m.timestamp, m.role, m.content
-                               FROM messages m
-                               JOIN target t ON t.session_id = m.session_id
-                               WHERE (m.timestamp < t.timestamp)
-                                  OR (m.timestamp = t.timestamp AND m.id < t.id)
-                               ORDER BY m.timestamp DESC, m.id DESC
-                               LIMIT 1
-                           )
-                           UNION ALL
-                           SELECT role, content
-                           FROM messages
-                           WHERE id = ?
-                           UNION ALL
-                           SELECT role, content
-                           FROM (
-                               SELECT m.id, m.timestamp, m.role, m.content
-                               FROM messages m
-                               JOIN target t ON t.session_id = m.session_id
-                               WHERE (m.timestamp > t.timestamp)
-                                  OR (m.timestamp = t.timestamp AND m.id > t.id)
-                               ORDER BY m.timestamp ASC, m.id ASC
-                               LIMIT 1
-                           )""",
-                        (match["id"], match["id"]),
-                    )
+                    ctx_rows = self._conn.execute(
+                        f"""SELECT x.anchor_id,
+                                   p.role AS prev_role, p.content AS prev_content,
+                                   a.role AS anchor_role, a.content AS anchor_content,
+                                   n.role AS next_role, n.content AS next_content
+                            FROM (
+                                SELECT t.id AS anchor_id,
+                                    (SELECT m.id FROM messages m
+                                     WHERE m.session_id = t.session_id
+                                       AND ((m.timestamp < t.timestamp)
+                                            OR (m.timestamp = t.timestamp AND m.id < t.id))
+                                     ORDER BY m.timestamp DESC, m.id DESC
+                                     LIMIT 1) AS prev_id,
+                                    (SELECT m.id FROM messages m
+                                     WHERE m.session_id = t.session_id
+                                       AND ((m.timestamp > t.timestamp)
+                                            OR (m.timestamp = t.timestamp AND m.id > t.id))
+                                     ORDER BY m.timestamp ASC, m.id ASC
+                                     LIMIT 1) AS next_id
+                                FROM messages t
+                                WHERE t.id IN ({ph})
+                            ) x
+                            JOIN messages a ON a.id = x.anchor_id
+                            LEFT JOIN messages p ON p.id = x.prev_id
+                            LEFT JOIN messages n ON n.id = x.next_id""",
+                        chunk,
+                    ).fetchall()
+                for r in ctx_rows:
                     context_msgs = []
-                    for r in ctx_cursor.fetchall():
-                        raw = r["content"]
-                        decoded = self._decode_content(raw)
-                        # Multimodal context: render a compact text-only
-                        # summary for search previews.
-                        if isinstance(decoded, list):
-                            text_parts = [
-                                p.get("text", "") for p in decoded
-                                if isinstance(p, dict) and p.get("type") == "text"
-                            ]
-                            text = " ".join(t for t in text_parts if t).strip()
-                            preview = text or "[multimodal content]"
-                        elif isinstance(decoded, str):
-                            preview = decoded
-                        else:
-                            preview = ""
-                        context_msgs.append(
-                            {"role": r["role"], "content": preview[:200]}
-                        )
-                match["context"] = context_msgs
-            except Exception:
-                match["context"] = []
+                    if r["prev_role"] is not None:
+                        context_msgs.append({
+                            "role": r["prev_role"],
+                            "content": _ctx_preview(r["prev_content"])[:200],
+                        })
+                    context_msgs.append({
+                        "role": r["anchor_role"],
+                        "content": _ctx_preview(r["anchor_content"])[:200],
+                    })
+                    if r["next_role"] is not None:
+                        context_msgs.append({
+                            "role": r["next_role"],
+                            "content": _ctx_preview(r["next_content"])[:200],
+                        })
+                    context_by_id[r["anchor_id"]] = context_msgs
+        except Exception:
+            context_by_id = {}
+        for match in matches:
+            ctx = context_by_id.get(match.get("id"))
+            # Fresh list per match so duplicate anchors never share state.
+            match["context"] = [dict(c) for c in ctx] if ctx else []
 
         # Remove full content from result (snippet is enough, saves tokens)
         for match in matches:
@@ -4635,24 +4784,15 @@ class SessionDB:
             if not session_ids:
                 return 0
 
-            placeholders = ",".join("?" * len(session_ids))
-            conn.execute(
-                f"UPDATE sessions SET parent_session_id = NULL "
-                f"WHERE parent_session_id IN ({placeholders})",
-                list(session_ids),
-            )
-
-            for sid in session_ids:
-                # DELETE FROM messages is paranoia — by construction
-                # these rows have ``message_count = 0`` — but if a
-                # bookkeeping bug ever lets the counter drift below the
-                # real row count, we still leave a clean FK state.
-                conn.execute(
-                    "DELETE FROM messages WHERE session_id = ?", (sid,)
-                )
-                conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
-                removed_ids.append(sid)
-            return len(session_ids)
+            # DELETE FROM messages is paranoia — by construction these
+            # rows have ``message_count = 0`` — but if a bookkeeping bug
+            # ever lets the counter drift below the real row count, we
+            # still leave a clean FK state. Set-based (chunked IN) rather
+            # than two statements per session.
+            ids = list(session_ids)
+            _delete_sessions_and_messages(conn, ids)
+            removed_ids.extend(ids)
+            return len(ids)
 
         count = self._execute_write(_do)
         for sid in removed_ids:
@@ -4694,19 +4834,12 @@ class SessionDB:
             if not session_ids:
                 return 0
 
-            # Orphan any sessions whose parent is about to be deleted
-            placeholders = ",".join("?" * len(session_ids))
-            conn.execute(
-                f"UPDATE sessions SET parent_session_id = NULL "
-                f"WHERE parent_session_id IN ({placeholders})",
-                list(session_ids),
-            )
-
-            for sid in session_ids:
-                conn.execute("DELETE FROM messages WHERE session_id = ?", (sid,))
-                conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
-                removed_ids.append(sid)
-            return len(session_ids)
+            # Orphan any sessions whose parent is about to be deleted, then
+            # delete messages + session rows set-based (chunked IN).
+            ids = list(session_ids)
+            _delete_sessions_and_messages(conn, ids)
+            removed_ids.extend(ids)
+            return len(ids)
 
         count = self._execute_write(_do)
         # Clean up on-disk files outside the DB transaction

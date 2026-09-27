@@ -45,6 +45,9 @@ def _db_returning(rows: dict) -> MagicMock:
     """SessionDB mock where get_session maps session_id -> row dict."""
     db = MagicMock()
     db.get_session.side_effect = lambda sid: rows.get(sid)
+    db.get_sessions_by_ids.side_effect = lambda ids: {
+        sid: rows[sid] for sid in ids if sid in rows
+    }
     return db
 
 
@@ -117,16 +120,35 @@ class TestPruneStaleSessionsLocked:
         store._prune_stale_sessions_locked()
 
         db.get_session.assert_not_called()
+        db.get_sessions_by_ids.assert_not_called()
 
     def test_db_error_is_non_fatal(self, tmp_path):
         db = MagicMock()
-        db.get_session.side_effect = Exception("DB locked")
+        db.get_sessions_by_ids.side_effect = Exception("DB locked")
         store = _make_store_with_db(tmp_path, db)
         store._entries["key"] = _make_entry("key", "sid_x")
 
         store._prune_stale_sessions_locked()  # must not raise
 
         assert "key" in store._entries  # safe fallback — keep on error
+
+    def test_single_batched_lookup_for_many_entries(self, tmp_path):
+        """N sessions.json entries -> one get_sessions_by_ids call, no per-row get_session."""
+        rows = {
+            f"sid_{i}": {"id": f"sid_{i}", "end_reason": "agent_close" if i % 2 else None}
+            for i in range(50)
+        }
+        db = _db_returning(rows)
+        store = _make_store_with_db(tmp_path, db)
+        for i in range(50):
+            store._entries[f"k{i}"] = _make_entry(f"k{i}", f"sid_{i}")
+        store._entries["legacy"] = _make_entry("legacy", "sid_missing")
+
+        store._prune_stale_sessions_locked()
+
+        assert db.get_sessions_by_ids.call_count == 1
+        db.get_session.assert_not_called()
+        assert set(store._entries) == {f"k{i}" for i in range(0, 50, 2)} | {"legacy"}
 
     def test_sessions_json_rewritten_after_pruning(self, tmp_path):
         db = _db_returning({"sid_stale": {"end_reason": "agent_close", "id": "sid_stale"}})
