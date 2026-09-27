@@ -1,0 +1,10 @@
+# gitleaks: default rules plus a narrow allowlist for known non-secrets.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test suites use fake credentials to exercise auth/redaction paths; skill references are vendored third-party docs"
+paths = [
+  '''^tests/''',
+  '''^optional-skills/.+/references/.+\.md$''',
+]

@@ -7,7 +7,7 @@ set -uo pipefail
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 [ -z "$ROOT" ] && ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
+cd "$ROOT" || exit 1
 
 RED="\033[0;31m"
 YELLOW="\033[0;33m"
@@ -178,7 +178,7 @@ check_unused_underscore_props() {
 # ─── 9. Duplicate function bodies across staged files (DRY heuristic) ──
 check_duplication() {
   [ -z "$STAGED_TS" ] && return
-  > "$DUP_TMP"
+  : > "$DUP_TMP"
   local file
   while IFS= read -r file; do
     [ -z "$file" ] && continue

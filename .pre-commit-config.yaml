@@ -1,0 +1,92 @@
+# Quality hooks (https://pre-commit.com), run on staged files only.
+# Runs from .husky/pre-commit (+ .husky/pre-push); enable with scripts/setup-hooks.sh or OpenOS scripts/dev/install-hooks.sh.
+# Run everything: pre-commit run --all-files   Skip one hook: SKIP=<id> git commit
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+minimum_pre_commit_version: "3.2.0"
+exclude: '(^|/)(node_modules|vendor|dist|build|target|\.venv)/|\.min\.(js|css)$'
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-yaml
+        # --unsafe: syntax-only, so compose anchors and custom tags parse.
+        args: [--allow-multiple-documents, --unsafe]
+      - id: check-json
+        exclude: '(^|/)(tsconfig[^/]*|\.vscode/[^/]*|\.devcontainer/[^/]*)\.json$'
+      - id: check-toml
+      - id: detect-private-key
+        exclude: '^(tests/|agent/redact\.py$|apps/desktop/scripts/notarize(-artifact)?\.cjs$|crates/openagents-worker/src/runtime\.rs$)'
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        # warning+ only: catch real bugs without enforcing style on legacy scripts.
+        args: [--severity=warning]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.4
+    hooks:
+      - id: ruff-check
+        # Uses [tool.ruff] in pyproject.toml (same pin as the dev extra).
+
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: rustfmt --check
+        entry: rustfmt --edition 2021 --check
+        language: system
+        types: [rust]
+      - id: cargo-clippy
+        # Pre-push only (needs a build). Denies bug-class lints, not style.
+        name: cargo clippy (correctness + suspicious)
+        entry: >-
+          bash -c 'cargo metadata --format-version 1 --no-deps  >/dev/null 2>&1
+          || { echo "cargo-clippy: path dependencies unresolved (use the OpenOS checkout) - skipped"; exit 0; };
+          exec cargo clippy  --workspace --all-targets --quiet -- -D clippy::correctness -D clippy::suspicious'
+        language: system
+        pass_filenames: false
+        files: '(\.rs|Cargo\.(toml|lock))$'
+        stages: [pre-push]
+      - id: eslint-desktop
+        name: eslint (apps/desktop)
+        # Uses the package's own eslint + config; skipped until deps are installed.
+        entry: >-
+          bash -c 'cd apps/desktop || exit 1; bin=node_modules/.bin/eslint; [ -x "$bin" ] || bin=../node_modules/.bin/eslint;
+          [ -x "$bin" ] || bin=../../node_modules/.bin/eslint;
+          [ -x "$bin" ] || { echo "eslint not installed for apps/desktop (install deps) - skipped"; exit 0; };
+          exec "$bin" --quiet --no-warn-ignored "${@#apps/desktop/}"' --
+        language: system
+        files: '^apps/desktop/(src|electron)/.*\.(ts|tsx|js|jsx|mjs|cjs)$'
+      - id: eslint-ui-tui
+        name: eslint (ui-tui)
+        # Uses the package's own eslint + config; skipped until deps are installed.
+        entry: >-
+          bash -c 'cd ui-tui || exit 1; bin=node_modules/.bin/eslint; [ -x "$bin" ] || bin=../node_modules/.bin/eslint;
+          [ -x "$bin" ] || bin=../../node_modules/.bin/eslint;
+          [ -x "$bin" ] || { echo "eslint not installed for ui-tui (install deps) - skipped"; exit 0; };
+          exec "$bin" --quiet --no-warn-ignored "${@#ui-tui/}"' --
+        language: system
+        files: '^ui-tui/(src|packages)/.*\.(ts|tsx|js|jsx|mjs|cjs)$'
+      - id: eslint-web
+        name: eslint (web)
+        # Uses the package's own eslint + config; skipped until deps are installed.
+        entry: >-
+          bash -c 'cd web || exit 1; bin=node_modules/.bin/eslint; [ -x "$bin" ] || bin=../node_modules/.bin/eslint;
+          [ -x "$bin" ] || bin=../../node_modules/.bin/eslint;
+          [ -x "$bin" ] || { echo "eslint not installed for web (install deps) - skipped"; exit 0; };
+          exec "$bin" --quiet --no-warn-ignored "${@#web/}"' --
+        language: system
+        files: '^web/.*\.(ts|tsx|js|jsx|mjs|cjs)$'

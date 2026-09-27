@@ -1,5 +1,13 @@
 #!/usr/bin/env sh
 ROOT="$(git rev-parse --show-toplevel)"
+# Staged-file quality hooks from .pre-commit-config.yaml (hygiene, gitleaks, shellcheck, linters).
+if [ -f "$ROOT/.pre-commit-config.yaml" ]; then
+  if command -v pre-commit >/dev/null 2>&1; then
+    (cd "$ROOT" && pre-commit run --hook-stage pre-commit) || exit 1
+  else
+    echo "⚠ pre-commit not installed; skipping .pre-commit-config.yaml hooks (uv tool install pre-commit)" >&2
+  fi
+fi
 bash "$ROOT/scripts/check-quality.sh" || exit 1
 cd "$ROOT" && npm run typecheck --if-present || exit 1
 cd "$ROOT" && npm test --if-present || exit 1
