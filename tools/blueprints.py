@@ -68,8 +68,10 @@ def parse_blueprint(skill_md_text: str) -> Optional[BlueprintSpec]:
         return None
 
     meta = fm.get("metadata")
-    openagents = meta.get("openagents") if isinstance(meta, dict) else None
-    blueprint = hermes.get("blueprint") if isinstance(hermes, dict) else None
+    if not isinstance(meta, dict):
+        return None
+    block = meta.get("openagents") or meta.get("hermes") or {}
+    blueprint = block.get("blueprint") if isinstance(block, dict) else None
     if blueprint is None:
         return None
     if not isinstance(blueprint, dict):
