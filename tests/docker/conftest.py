@@ -104,7 +104,7 @@ def container_name(request) -> Iterator[str]:
 def docker_exec(
     container: str,
     *args: str,
-    user: str = "openagents",
+    user: str = "hermes",
     timeout: int = 30,
     extra_docker_args: tuple[str, ...] = (),
 ) -> subprocess.CompletedProcess[str]:
@@ -126,7 +126,7 @@ def docker_exec_sh(
     container: str,
     command: str,
     *,
-    user: str = "openagents",
+    user: str = "hermes",
     timeout: int = 30,
 ) -> subprocess.CompletedProcess[str]:
     """Run ``sh -c <command>`` inside the container as ``user``."""
@@ -236,7 +236,7 @@ def poll_container(
     *,
     deadline_s: float = 30.0,
     interval_s: float = 0.5,
-    user: str = "openagents",
+    user: str = "hermes",
 ) -> tuple[bool, str]:
     """Repeatedly run ``probe`` inside the container until it exits 0 or
     ``deadline_s`` elapses.

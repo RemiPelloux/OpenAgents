@@ -33,6 +33,14 @@ S6ServiceManager().register_profile_gateway("phase3test")
 print("REGISTERED")
 """
 
+_UNREGISTER_SCRIPT = """
+import sys
+sys.path.insert(0, "/opt/hermes")
+from openagents_cli.service_manager import S6ServiceManager
+S6ServiceManager().unregister_profile_gateway("phase3test")
+print("UNREGISTERED")
+"""
+
 
 
 def test_s6_register_creates_service_dir_in_live_container(
