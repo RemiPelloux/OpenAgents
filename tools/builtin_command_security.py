@@ -155,7 +155,10 @@ def merge_scan_results(*results: Dict[str, Any]) -> Dict[str, Any]:
             summaries.append(summary)
 
     if not merged_findings:
-        return {"action": "allow", "findings": [], "summary": ""}
+        # A warn/block with no structured findings (e.g. tirith "warn" carrying only a
+        # summary) must not be silently downgraded to allow — the warning still reaches
+        # the approval flow.
+        return {"action": worst, "findings": [], "summary": " · ".join(summaries) or ""}
 
     summary = summaries[0] if summaries else merged_findings[0].get("title", "security issue")
     if len(merged_findings) > 1 and not summary.endswith("more)"):

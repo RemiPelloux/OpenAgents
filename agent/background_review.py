@@ -1,9 +1,12 @@
-"""Background memory/skill review — fork the agent to evaluate the turn. After every turn
-``AIAgent.run_conversation`` may spawn a daemon thread that replays the conversation snapshot in a
-forked :class:`AIAgent` and asks "should any skill/memory be saved or updated?". Writes go
-straight to the memory + skill stores; the main conversation and prompt cache are never touched.
-The fork inherits the parent's live runtime (provider, model, credentials, cached system prompt)
-so it hits the same prefix cache, and runs under a dispatch-side tool whitelist."""
+"""Read-only background review — fork the agent to evaluate the turn.
+
+After every turn ``AIAgent.run_conversation`` may spawn a daemon thread that replays the
+conversation snapshot in a forked :class:`AIAgent` and asks "should a reusable improvement be
+proposed?". The fork is READ-ONLY (OpenOS fork): it can only call ``propose_improvement`` and
+never writes memory, skills, or user profiles. Structured proposals are emitted via the parent's
+``cognitive_observation_callback`` for external review. The fork inherits the parent's live
+runtime (provider, model, credentials, cached system prompt) so it hits the same prefix cache.
+"""
 
 from __future__ import annotations
 
@@ -567,10 +570,6 @@ _COMBINED_REVIEW_PROMPT = (
 )
 
 _PROPOSAL_REVIEW_PROMPT = (
-    # Fork integration TODO: the read-only proposal review model (propose_improvement
-    # toolset + extract_background_review_proposals -> cognitive_observation_callback)
-    # is defined here but not yet wired into _run_review_in_thread after the
-    # v2026.9.24 upstream refactor. Re-enable in the integration pass.
     "Review the conversation for one reusable, evidence-backed improvement. "
     "Do not edit memory, user profiles, prompts, routing, or skills. "
     "When a durable correction or reusable technique is present, call propose_improvement exactly once. "
@@ -633,7 +632,7 @@ def _collect_review_call_details(review_messages: List[Dict]) -> Tuple[set, dict
     """Map review-agent tool_call ids -> parsed call arguments for notify tools. Result JSON only
     says "Entry added"; the call arguments carry action, target and content previews. Restricting
     to notify tools keeps helper tools from surfacing as memory work just because they succeeded."""
-    notify_tools = {"memory", "skill_manage"}
+    notify_tools = {"propose_improvement", "memory", "skill_manage"}
     all_tool_call_ids: set = set()
     call_details: dict = {}
     for msg in review_messages or []:
@@ -674,6 +673,9 @@ def _prior_tool_keys(prior_snapshot: List[Dict]) -> Tuple[set, set]:
 
 def _action_lines(data: Dict, detail: Dict, verbose: bool) -> List[str]:
     """Summary line(s) for one successful notify-tool result (``[]`` when nothing to report)."""
+    if detail.get("tool") == "propose_improvement":
+        # OpenOS fork: the read-only review's only output is a proposal.
+        return [data.get("message") or "Improvement proposed"]
     if data.get("staged"):
         # The fork's own review summary is never published back, so an unattended-review
         # consolidation proposal must surface here or it is silently lost (#105921).
@@ -1119,16 +1121,9 @@ def _review_tool_whitelist(
     """``(whitelist, configured_extra_tools)`` for the review fork — DISPATCH-side only, so the
     advertised ``tools[]`` stays byte-identical to the parent's (prompt-cache parity)."""
     from model_tools import get_tool_definitions
-    # Gate the built-in memory tool on BOTH the profile's memory flags and the trigger that fired
-    # (#105921): a skill-nudge review never gets the memory tool, so an unattended fork cannot
-    # act on the memory tool's "consolidate now" hint and delete entries no one reviewed.
-    memory_on = review_agent._memory_enabled or review_agent._user_profile_enabled
-    review_toolsets = ["memory", "skills"] if memory_on and review_memory else ["skills"]
-    whitelist = {t["function"]["name"] for t in get_tool_definitions(enabled_toolsets=review_toolsets, quiet_mode=True)}
-    # Read-only file tools: denying read_file/search_files caused a per-review denial storm that
-    # starved the loop (read_file also registers the read with the read-before-write guard).
-    # Write tools stay denied — autonomous maintenance goes through skill_manage's validation.
-    whitelist |= {"read_file", "search_files"}
+    # OpenOS fork: read-only review — only propose_improvement (toolset "review") is admitted.
+    review_toolsets = ["review"]
+    whitelist = {t["function"]["name"] for t in get_tool_definitions(enabled_toolsets=review_toolsets, quiet_mode=True, skip_tool_search_assembly=True)}
     # ``extra_tools`` admits named parent tools (e.g. a human-gated proposal tool). The whitelist
     # can only admit, never advertise: a listed tool must already exist in the inherited schema.
     # Read-only file tools are whitelisted too (#61521, #39996): the model naturally reaches for
@@ -1184,6 +1179,15 @@ def _run_review_fork(
     attended, so the unattended-only memory delete gate leaves the full operation set available."""
     st.review_agent, _rt, _routed = build_cache_parity_fork(
         agent, task_cfg, max_iterations=_REVIEW_MAX_ITERATIONS)
+    # OpenOS fork: the background review is READ-ONLY. It may only propose
+    # improvements (propose_improvement) — never write memory, skills, or user
+    # profiles. Strip the inherited write surfaces so the whitelist and any
+    # stray tool call fail closed.
+    st.review_agent._memory_store = None
+    st.review_agent._memory_enabled = False
+    st.review_agent._user_profile_enabled = False
+    st.review_agent._memory_nudge_interval = 0
+    st.review_agent._skill_nudge_interval = 0
     st.review_agent._review_attended = explicit
     _track_review_fork(agent, st.review_agent, register=True)
     from openagents_cli.plugins import set_thread_tool_whitelist, clear_thread_tool_whitelist
@@ -1191,17 +1195,12 @@ def _run_review_fork(
     extra_list = ", ".join(sorted(configured_extra_tools))
     deny_extra = f" Configured extra tools also allowed: {extra_list}." if configured_extra_tools else ""
     prompt_extra = f" Exception — these configured tools are also allowed: {extra_list}." if configured_extra_tools else ""
-    # Keep the deny/prompt wording in sync with the whitelist: a memory-less review must not
-    # tell the model that memory is available, or it will burn iterations on denied calls.
-    memory_phrase_deny = " and memory for notes (add only)" if "memory" in review_whitelist else ""
-    memory_phrase_prompt = "memory and skill " if "memory" in review_whitelist else "skill "
+    # Keep the deny/prompt wording in sync with the read-only whitelist.
     set_thread_tool_whitelist(
         review_whitelist,
         deny_msg_fmt=(
             "Background review denied non-whitelisted tool: "
-            "{tool_name}. Allowed here: skill_view/skills_list/read_file/search_files to read, "
-            "skill_manage(action='patch'|...) to change skills"
-            + memory_phrase_deny + "." + deny_extra + " Do not retry {tool_name}."
+            "{tool_name}. Only propose_improvement is allowed." + deny_extra + " Do not retry {tool_name}."
         ),
     )
     with suppress(Exception):
@@ -1213,8 +1212,7 @@ def _run_review_fork(
             # Routed -> digest (cache cold anyway); same model -> full snapshot (warm cache reads).
             st.review_agent.run_conversation(
                 user_message=(
-                    prompt + "\n\nYou can only call " + memory_phrase_prompt +
-                    "management tools. Other tools will be denied "
+                    prompt + "\n\nYou can only call propose_improvement. Other tools will be denied "
                     "at runtime — do not attempt them." + prompt_extra
                 ),
                 conversation_history=_digest_history(messages_snapshot) if _routed else messages_snapshot,
@@ -1249,8 +1247,9 @@ def _run_review_in_thread(
     task_cfg: Optional[Dict[str, Any]] = None, review_run: Optional[_BackgroundReviewRun] = None,
     review_memory: bool = False, explicit: bool = False,
 ) -> None:
-    """Daemon-thread worker: build the fork, run the prompt, surface the action summary via
-    ``agent._safe_print`` / ``background_review_callback``. ``review_run`` (from
+    """Daemon-thread worker: build the read-only fork, run the proposal prompt, surface the action
+    summary via ``agent._safe_print`` / ``background_review_callback``, and emit structured
+    proposals via ``agent.cognitive_observation_callback`` (when present). ``review_run`` (from
     :func:`prepare_background_review_run`) cancelled before the first provider call aborts
     without entering ``run_conversation()``.
 
@@ -1266,7 +1265,7 @@ def _run_review_in_thread(
     if not _parent_can_emit_tool_calls(agent) and not _resolve_review_runtime(agent, task_cfg).get("routed"):
         logger.warning(
             "Background review skipped: provider %r cannot emit OpenAgents tool calls, "
-            "so the review fork could not write memories or skills. Set "
+            "so the review fork could not propose improvements. Set "
             "auxiliary.background_review.{provider,model} to route the review to a normal model.",
             getattr(agent, "provider", "?"),
         )
@@ -1310,6 +1309,12 @@ def _run_review_in_thread(
         _log_review_completion(st.review_usage, _classify_review_result(actions))
         if actions:
             _publish_review_summary(agent, actions)
+        # OpenOS fork: emit structured proposals to the external review gate.
+        proposals = extract_background_review_proposals(st.review_messages, messages_snapshot)
+        proposal_callback = getattr(agent, "cognitive_observation_callback", None)
+        if proposals and proposal_callback:
+            with suppress(Exception):
+                proposal_callback(proposals)
     except Exception as e:
         logger.warning("Background memory/skill review failed: %s", e)
         if st.review_usage:
@@ -1349,9 +1354,9 @@ def spawn_background_review_thread(
     memory operation set."""
     if task_cfg is None:
         task_cfg = _background_review_task_config()
-    # Per-agent overrides (agent._MEMORY_REVIEW_PROMPT etc.) keep working.
-    name = _PROMPT_NAME_BY_SCOPE[(review_memory, review_skills)]
-    prompt = getattr(agent, name, globals()[name])
+    # OpenOS fork: the review is read-only — always the proposal prompt, regardless
+    # of which nudge fired. Per-agent overrides (agent._PROPOSAL_REVIEW_PROMPT) keep working.
+    prompt = getattr(agent, "_PROPOSAL_REVIEW_PROMPT", _PROPOSAL_REVIEW_PROMPT)
     if focus := (focus or "").strip():
         prompt = (
             f"{prompt}\n\nThe user explicitly requested this review with the following "
@@ -1367,9 +1372,9 @@ def spawn_background_review_thread(
 
 
 __all__ = [
-    "_MEMORY_REVIEW_PROMPT", "_SKILL_REVIEW_PROMPT", "_COMBINED_REVIEW_PROMPT", "load_background_review_settings",
-    "spawn_background_review_thread", "summarize_background_review_actions", "build_memory_write_metadata",
-    "extract_background_review_proposals",
+    "_MEMORY_REVIEW_PROMPT", "_SKILL_REVIEW_PROMPT", "_COMBINED_REVIEW_PROMPT", "_PROPOSAL_REVIEW_PROMPT",
+    "load_background_review_settings", "spawn_background_review_thread", "summarize_background_review_actions",
+    "build_memory_write_metadata", "extract_background_review_proposals",
 ]
 
 

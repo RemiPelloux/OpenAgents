@@ -10,6 +10,7 @@ import time
 import pytest
 
 from openagents_state import SessionDB
+from openagents_state_common import _SQL_IN_CHUNK
 
 
 @pytest.fixture
@@ -52,10 +53,16 @@ class _StatementCounter:
     def __enter__(self):
         self.real = self.db._conn
         self.db._conn = _CountingConn(self.real, self.raw)
+        # Force reads through db._conn (disable the WAL read pool) so the counter
+        # observes every SELECT the batched functions issue — the pooled reader
+        # would otherwise bypass db._conn and report 0 statements.
+        self._saved_wal = self.db._wal_active
+        self.db._wal_active = False
         return self
 
     def __exit__(self, *exc):
         self.db._conn = self.real
+        self.db._wal_active = self._saved_wal
 
     @property
     def statements(self):
@@ -67,13 +74,7 @@ class _StatementCounter:
         return sum(1 for s in self.statements if needle in s)
 
 
-def _legacy_compression_tip(db: SessionDB, session_id):
-    """Verbatim copy of the pre-batching single-session chain walk."""
-    current = session_id
-    seen = {current} if current else set()
-    for _ in range(100):
-        row = db._conn.execute(
-            """
+_CHAIN_STEP_LEGACY_SQL = """
             SELECT child.id
             FROM sessions parent
             JOIN sessions child ON child.parent_session_id = parent.id
@@ -95,17 +96,30 @@ def _legacy_compression_tip(db: SessionDB, session_id):
               child.started_at DESC,
               child.id DESC
             LIMIT 1
-            """,
-            (current,),
-        ).fetchone()
+            """
+
+
+def _legacy_compression_chain(db: SessionDB, session_id):
+    """Verbatim copy of the pre-batching single-session chain walk, returning the full chain."""
+    current = session_id
+    chain = [current] if current else []
+    seen = set(chain)
+    for _ in range(100):
+        row = db._conn.execute(_CHAIN_STEP_LEGACY_SQL, (current,)).fetchone()
         if row is None:
-            return current
+            return chain
         child_id = row["id"]
         if not child_id or child_id in seen:
-            return current
+            return chain
         seen.add(child_id)
         current = child_id
-    return current
+        chain.append(child_id)
+    return chain
+
+
+def _legacy_compression_tip(db: SessionDB, session_id):
+    chain = _legacy_compression_chain(db, session_id)
+    return chain[-1] if chain else session_id
 
 
 def _set(db, sid, **cols):
@@ -135,9 +149,11 @@ def _build_random_forest(db: SessionDB, seed: int, n: int = 60):
             cols["model_config"] = json.dumps({"_branched_from": "x"})
         elif mc < 0.2:
             cols["model_config"] = json.dumps({"_delegate_from": "x"})
-        _set(db, sid, **cols)
+        # Append the message BEFORE the session is marked ended/compressed:
+        # upstream's append_message now hard-guards compression-closed sessions.
         if rng.random() < 0.4:
             db.append_message(sid, role="user", content=f"hello {sid}")
+        _set(db, sid, **cols)
     # Inject a cycle (pathological, but the walk must terminate identically).
     _set(db, ids[1], parent_session_id=ids[5], end_reason="compression")
     return ids
@@ -207,6 +223,7 @@ def test_list_sessions_rich_projection_batched_and_unchanged(db):
             if key in tip_row:
                 merged[key] = tip_row[key]
         merged["_lineage_root_id"] = s["id"]
+        merged["_lineage_ids"] = _legacy_compression_chain(db, s["id"])
         expected.append(merged)
 
     with _StatementCounter(db) as ctr:
@@ -272,8 +289,9 @@ def test_search_messages_context_matches_legacy_and_is_batched(db):
     for m in matches:
         assert m["context"] == legacy_context(m["id"])
         assert len(m["context"]) in (2, 3)
-    # Context statements no longer scale with the match count.
-    assert ctr.count("LEFT JOIN messages p") == 1
+    # Context statements no longer scale with the match count: one batched
+    # _CONTEXT_WINDOW_SQL query (CTE over the match id batch), not one per hit.
+    assert ctr.count("FROM target t JOIN messages m") == 1
 
 
 def _make_prunable(db, n, prefix, empty):
@@ -284,7 +302,10 @@ def _make_prunable(db, n, prefix, empty):
         db.create_session(sid, source="cli")
         if not empty:
             db.append_message(sid, role="user", content="x")
-        _set(db, sid, started_at=old, ended_at=old + 1, end_reason="user_exit")
+            # Stamp the message old too — prune matches on the freshest of
+            # last_activity_at / latest message / started_at.
+            db._conn.execute("UPDATE messages SET timestamp = ? WHERE session_id = ?", (old, sid))
+        _set(db, sid, started_at=old, ended_at=old + 1, end_reason="user_exit", last_activity_at=old)
         ids.append(sid)
     return ids
 
@@ -295,10 +316,11 @@ def test_prune_sessions_is_set_based(db):
     db.create_session("fresh", source="cli")
     with _StatementCounter(db, prefixes=("DELETE",)) as ctr:
         assert db.prune_sessions(older_than_days=90) == 1200
-    # 3 chunks x (messages + sessions) instead of 2 x 1200 statements.
+    # Chunked IN deletes (size _SQL_IN_CHUNK) instead of one DELETE per session.
     # (FTS triggers also surface in the trace, so count top-level deletes.)
-    assert ctr.count("DELETE FROM messages WHERE session_id") == 3
-    assert ctr.count("DELETE FROM sessions WHERE id") == 3
+    n_chunks = (1200 + _SQL_IN_CHUNK - 1) // _SQL_IN_CHUNK
+    assert ctr.count("DELETE FROM messages WHERE session_id") == n_chunks
+    assert ctr.count("DELETE FROM sessions WHERE id") == n_chunks
     remaining = {r["id"] for r in db._conn.execute("SELECT id FROM sessions")}
     assert remaining == {"keep_child", "fresh"}
     assert db.get_session("keep_child")["parent_session_id"] is None

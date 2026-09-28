@@ -94,8 +94,8 @@ def reconcile_profile_gateways(
     so it is what ``hermes gateway start`` (no ``-p``) targets.
 
     Without it, bare ``hermes gateway start`` inside the container would land on ``s6-svc -u
-    /run/service/gateway-default`` → uncaught ``CalledProcessError`` → traceback to the user (PR #30136
-    review).
+    /run/openagents-services/gateway-default`` → uncaught ``CalledProcessError`` → traceback to the
+    user (PR #30136 review).
     """
     actions: list[ReconcileAction] = []
     # ONE gateway per container: named slots are registered (so `hermes -p X gateway start` has a
@@ -356,7 +356,11 @@ def main() -> int:
         return 0
 
     hermes_home = Path(os.environ.get("OPENAGENTS_HOME", "/opt/data"))
-    scandir = Path(os.environ.get("S6_PROFILE_GATEWAY_SCANDIR", "/run/service"))
+    # OpenOS fork trust domain: dynamic gateway slots live under the hermes-owned
+    # /run/openagents-services (single source of truth in service_manager), never the
+    # root /run/service scanned by PID 1. The env var is an escape hatch for tests.
+    from openagents_cli.service_manager import S6_DYNAMIC_SCANDIR
+    scandir = Path(os.environ.get("S6_PROFILE_GATEWAY_SCANDIR", str(S6_DYNAMIC_SCANDIR)))
     actions = reconcile_profile_gateways(hermes_home=hermes_home, scandir=scandir)
     folded = [a.profile for a in actions if a.profile != "default" and a.folded_into_root]
     if folded:

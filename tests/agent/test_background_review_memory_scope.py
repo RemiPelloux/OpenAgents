@@ -1,11 +1,9 @@
-"""The review fork's memory access must follow the trigger that fired (#105921).
+"""The review fork's tool surface is read-only (OpenOS fork).
 
-``spawn_background_review_thread`` already received ``review_memory`` /
-``review_skills`` but used them only to pick the prompt — the tool whitelist
-granted the whole ``memory`` toolset whenever the profile had memory enabled,
-so a skill-nudge fork held ``remove``/``replace`` on MEMORY.md it was never
-asked to use. These tests pin the scope-aware whitelist and the pass-through
-from ``spawn_background_review_thread`` down to it.
+The fork may only call ``propose_improvement`` — never memory/skill tools — so
+an unattended review cannot write MEMORY.md, USER.md, or skill files. These
+tests pin that invariant plus the pass-through of ``review_memory``/``explicit``
+from ``spawn_background_review_thread`` down to the worker.
 """
 
 from __future__ import annotations
@@ -32,11 +30,12 @@ class TestReviewToolWhitelistScope:
     def test_skill_only_review_omits_memory_tool(self):
         whitelist, _extra = bg._review_tool_whitelist(_review_agent(), None, review_memory=False)
         assert "memory" not in whitelist
-        assert "skill_manage" in whitelist  # the skill review keeps its own surface
+        assert "propose_improvement" in whitelist  # the read-only review surface
 
     def test_memory_review_keeps_memory_tool(self):
         whitelist, _extra = bg._review_tool_whitelist(_review_agent(), None, review_memory=True)
-        assert "memory" in whitelist
+        assert "memory" not in whitelist  # read-only: never memory
+        assert "propose_improvement" in whitelist
 
     def test_memory_disabled_profile_stays_memory_free(self):
         whitelist, _extra = bg._review_tool_whitelist(
@@ -44,10 +43,10 @@ class TestReviewToolWhitelistScope:
         assert "memory" not in whitelist
 
     def test_default_scope_is_memoryless_fail_closed(self):
-        # Unknown trigger (default) must not grant memory: the incident fork was a
-        # skill review that used memory nobody asked it to touch.
+        # Unknown trigger (default) must not grant memory or skill writes.
         whitelist, _extra = bg._review_tool_whitelist(_review_agent(), None)
         assert "memory" not in whitelist
+        assert "skill_manage" not in whitelist
 
 
 class TestSpawnForwardsScope:

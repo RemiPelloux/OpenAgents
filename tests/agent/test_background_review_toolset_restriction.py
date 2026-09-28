@@ -86,12 +86,10 @@ def test_background_review_matches_parent_toolset_config():
 
 
 def test_background_review_installs_thread_local_whitelist():
-    """The review fork must install a memory/skills-only thread-local whitelist.
+    """The review fork must install a read-only thread-local whitelist.
 
-    The schema-level toolset narrowing was lifted (for prefix-cache parity),
-    so #15204's safety contract now relies on the runtime whitelist gate to
-    deny terminal/send_message/delegate_task at dispatch time. Verify the
-    whitelist is set with exactly the memory+skills tool names.
+    OpenOS fork: the background review may only call propose_improvement —
+    memory/skill/read/write tools are all denied at dispatch time.
     """
     import run_agent
     from openagents_cli import plugins as _plugins
@@ -122,29 +120,16 @@ def test_background_review_installs_thread_local_whitelist():
 
     assert "whitelist" in captured, "set_thread_tool_whitelist was not called"
     whitelist = captured["whitelist"]
-    # memory + skills tools must be allowed
-    assert "memory" in whitelist
-    assert "skill_manage" in whitelist
-    assert "skill_view" in whitelist
-    assert "skills_list" in whitelist
-    # read-only file tools are allowed too (#61521): the model reaches for
-    # read_file to inspect a skill before patching; denying it caused a
-    # per-review denial storm that starved the self-improvement loop.
-    assert "read_file" in whitelist
-    assert "search_files" in whitelist
-    # write/dangerous tools must NOT be in the whitelist
-    assert "write_file" not in whitelist
-    assert "patch" not in whitelist
-    assert "terminal" not in whitelist
-    assert "send_message" not in whitelist
-    assert "delegate_task" not in whitelist
-    assert "web_search" not in whitelist
-    assert "execute_code" not in whitelist
-    # The deny message must name the correct substitutes so a single denial
-    # redirects the model instead of a 142-denial storm (#61521).
+    # read-only review: only propose_improvement is allowed
+    assert whitelist == {"propose_improvement"}
+    # memory / skill / read / write tools must NOT be in the whitelist
+    for name in ("memory", "skill_manage", "skill_view", "skills_list",
+                 "read_file", "search_files", "write_file", "patch", "terminal",
+                 "send_message", "delegate_task", "web_search", "execute_code"):
+        assert name not in whitelist
+    # The deny message must name the read-only tool so a single denial redirects the model.
     deny = captured.get("deny_msg_fmt") or ""
-    assert "skill_manage" in deny
-    assert "skill_view" in deny
+    assert "propose_improvement" in deny
 
 
 def test_read_file_registers_background_review_read_mark(tmp_path):
