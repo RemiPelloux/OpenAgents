@@ -6,11 +6,11 @@ description: "开箱即用的自动化蓝图——定时任务、GitHub 事件�
 
 # 自动化蓝图
 
-常见自动化模式的复制粘贴蓝图。每个蓝图使用 OpenAgents 内置的 [cron 调度器](/user-guide/features/cron) 实现基于时间的触发，使用 [webhook 平台](/user-guide/messaging/webhooks) 实现事件驱动触发。
+常见自动化模式的复制粘贴蓝图。每个蓝图使用 OpenAgents 内置的 [cron 调度器](../user-guide/features/cron.md) 实现基于时间的触发，使用 [webhook 平台](../user-guide/messaging/webhooks.md) 实现事件驱动触发。
 
 所有蓝图适用于**任意模型**——不绑定单一提供商。
 
-如需带表单的参数化蓝图（无需手写 cron 语法），请参阅[自动化蓝图目录](/reference/automation-blueprints-catalog)。
+如需带表单的参数化蓝图（无需手写 cron 语法），请参阅[自动化蓝图目录](../reference/automation-blueprints-catalog.mdx)。
 
 :::tip 三种触发类型
 | 触发方式 | 方式 | 工具 |
@@ -34,9 +34,9 @@ description: "开箱即用的自动化蓝图——定时任务、GitHub 事件�
 
 ```bash
 hermes cron create "0 2 * * *" \
-  "You are a project manager triaging the NousResearch/openagents GitHub repo.
+  "You are a project manager triaging the NousResearch/hermes-agent GitHub repo.
 
-1. Run: gh issue list --repo NousResearch/openagents --state open --json number,title,labels,author,createdAt --limit 30
+1. Run: gh issue list --repo NousResearch/hermes-agent --state open --json number,title,labels,author,createdAt --limit 30
 2. Identify issues opened in the last 24 hours
 3. For each new issue:
    - Suggest a priority label (P0-critical, P1-high, P2-medium, P3-low)
@@ -116,9 +116,9 @@ platforms:
 
 ```bash
 hermes cron create "0 9 * * 1" \
-  "Scan the NousResearch/openagents repo for documentation drift.
+  "Scan the NousResearch/hermes-agent repo for documentation drift.
 
-1. Run: gh pr list --repo NousResearch/openagents --state merged --json number,title,files,mergedAt --limit 30
+1. Run: gh pr list --repo NousResearch/hermes-agent --state merged --json number,title,files,mergedAt --limit 30
 2. Filter to PRs merged in the last 7 days
 3. For each merged PR, check if it modified:
    - Tool schemas (tools/*.py) — may need docs/reference/tools-reference.md update

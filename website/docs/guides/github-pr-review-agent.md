@@ -34,7 +34,7 @@ If you have a public endpoint available, check out [Automated GitHub PR Comments
 
 ## Prerequisites
 
-- **OpenAgents installed** — see the [Installation guide](/getting-started/installation)
+- **OpenAgents installed** — see the [Installation guide](../getting-started/installation.md)
 - **Gateway running** for cron jobs:
   ```bash
   hermes gateway install   # Install as a service
@@ -50,7 +50,7 @@ If you have a public endpoint available, check out [Automated GitHub PR Comments
   # Authenticate
   gh auth login
   ```
-- **Messaging configured** (optional) — [Telegram](/user-guide/messaging/telegram) or [Discord](/user-guide/messaging/discord)
+- **Messaging configured** (optional) — [Telegram](../user-guide/messaging/telegram.md) or [Discord](../user-guide/messaging/discord.md)
 
 :::tip No messaging? No problem
 Use `deliver: "local"` to save reviews to `~/.openagents/cron/output/`. Great for testing before wiring up notifications.
@@ -69,7 +69,7 @@ hermes
 Test with a simple command:
 
 ```
-Run: gh pr list --repo NousResearch/openagents --state open --limit 3
+Run: gh pr list --repo NousResearch/hermes-agent --state open --limit 3
 ```
 
 You should see a list of open PRs. If this works, you're ready.
@@ -84,7 +84,7 @@ Still in the chat, ask OpenAgents to review a real PR:
 Review this pull request. Read the diff, check for bugs, security issues,
 and code quality. Be specific about line numbers and quote problematic code.
 
-Run: gh pr diff 3888 --repo NousResearch/openagents
+Run: gh pr diff 3888 --repo NousResearch/hermes-agent
 ```
 
 OpenAgents will:
@@ -297,7 +297,7 @@ GitHub allows 5,000 API requests/hour for authenticated users. Each PR review us
 ## What's Next?
 
 - **[Webhook-Based PR Reviews](./webhook-github-pr-review.md)** — get instant reviews when PRs are opened (requires a public endpoint)
-- **[Daily Briefing Bot](/guides/daily-briefing-bot)** — combine PR reviews with your morning news digest
-- **[Build a Plugin](/guides/build-a-hermes-plugin)** — wrap the review logic into a shareable plugin
-- **[Profiles](/user-guide/profiles)** — run a dedicated reviewer profile with its own memory and config
-- **[Fallback Providers](/user-guide/features/fallback-providers)** — ensure reviews run even when one provider is down
+- **[Daily Briefing Bot](./daily-briefing-bot.md)** — combine PR reviews with your morning news digest
+- **[Build a Plugin](../developer-guide/plugins/index.md)** — wrap the review logic into a shareable plugin
+- **[Profiles](../user-guide/profiles.md)** — run a dedicated reviewer profile with its own memory and config
+- **[Fallback Providers](../user-guide/features/fallback-providers.md)** — ensure reviews run even when one provider is down

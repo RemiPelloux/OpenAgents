@@ -81,7 +81,7 @@ python $OPENAGENTS_HOME/skills/devops/watchers/scripts/watch_rss.py \
 
 ```bash
 python $OPENAGENTS_HOME/skills/devops/watchers/scripts/watch_github.py \
-  --name hermes-issues --repo NousResearch/openagents --scope issues
+  --name hermes-issues --repo NousResearch/hermes-agent --scope issues
 ```
 
 轮询任意 JSON API：

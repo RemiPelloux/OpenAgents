@@ -1,12 +1,13 @@
 ---
 sidebar_position: 11
-title: "ACP Editor Integration"
-description: "Use OpenAgents inside ACP-compatible editors such as VS Code, Zed, and JetBrains"
+title: "ACP Host Integration"
+description: "Use OpenAgents inside ACP-compatible editors and collaboration platforms"
 ---
 
-# ACP Editor Integration
+# ACP Host Integration
 
-OpenAgents can run as an ACP server, letting ACP-compatible editors talk to OpenAgents over stdio and render:
+OpenAgents can run as an ACP server, letting ACP-compatible hosts talk to
+OpenAgents over stdio. Editors can render:
 
 - chat messages
 - tool activity
@@ -15,7 +16,10 @@ OpenAgents can run as an ACP server, letting ACP-compatible editors talk to Open
 - approval prompts
 - streamed thinking / response chunks
 
-ACP is a good fit when you want OpenAgents to behave like an editor-native coding agent instead of a standalone CLI or messaging bot.
+Other hosts can use the same protocol to route collaboration events into
+Hermes. ACP is a good fit when you want OpenAgents to keep its existing identity,
+provider setup, memory, skills, and tools while another application owns the
+conversation transport.
 
 ## What OpenAgents exposes in ACP mode
 
@@ -31,12 +35,32 @@ OpenAgents runs with a curated `openagents-acp` toolset designed for editor work
 
 It intentionally excludes things that do not fit typical editor UX, such as messaging delivery and cronjob management.
 
+The toolset resolves the same way as on the messaging gateway for the same
+platform config. That includes the extras the gateway adds on top of the
+list, such as enabled plugin toolsets, so ACP sessions get those too.
+`platform_toolsets.acp` replaces the `openagents-acp` default, and
+`agent.disabled_toolsets` removes toolsets from every ACP session. MCP
+servers from `mcp_servers` follow the same rules too. By default ACP gets
+every enabled server. If you list server names in `platform_toolsets.acp`,
+only those servers are included, and `no_mcp` drops them all. `hermes tools`
+has no ACP entry, so edit `config.yaml` directly:
+
+```yaml
+platform_toolsets:
+  acp: [file, web, skills, github]   # only the github MCP server
+agent:
+  disabled_toolsets: [code_execution]
+```
+
+MCP servers that the editor sends with `session/new` are separate. The
+client asks for them per session, and they are always added.
+
 ## Installation
 
-Install OpenAgents normally, then add the ACP extra:
+Install OpenAgents normally, then add the ACP extra from the install checkout:
 
 ```bash
-pip install -e '.[acp]'
+cd ~/.openagents/openagents && uv pip install -e '.[acp]'
 ```
 
 This installs the `agent-client-protocol` dependency and enables:
@@ -44,14 +68,6 @@ This installs the `agent-client-protocol` dependency and enables:
 - `hermes acp`
 - `openagents-acp`
 - `python -m acp_adapter`
-
-For Zed registry installs, Zed launches OpenAgents through the official ACP Registry entry. That entry uses a `uvx` distribution that runs:
-
-```bash
-uvx --from 'openagents[acp]==<version>' openagents-acp
-```
-
-Make sure `uv` is available on `PATH` before using the registry install path.
 
 ## Launching the ACP server
 
@@ -89,17 +105,91 @@ hermes acp --setup-browser           # interactive (prompts before ~400 MB downl
 hermes acp --setup-browser --yes     # accept the download non-interactively
 ```
 
-This is the standalone command. The Zed registry's terminal-auth flow (`hermes acp --setup`) also offers the browser bootstrap as a follow-up question after model selection, so most users never need to run `--setup-browser` directly.
+This is the standalone command. The terminal-auth flow (`hermes acp --setup`) also offers the browser bootstrap as a follow-up question after model selection, so most users never need to run `--setup-browser` directly.
 
 What it does:
 
-- Installs Node.js 22 LTS into `~/.openagents/node/` if missing
+- Installs Node.js 26 into `~/.openagents/node/` if missing
 - `npm install -g agent-browser @askjo/camofox-browser` into that prefix (no sudo needed — `npm`'s `--prefix` points at the user-writable Hermes-managed Node)
 - Installs Playwright Chromium, or uses a detected system Chrome/Chromium when available
 
 The bootstrap is idempotent — re-running it is fast and skips work that's already done.
 
-## Editor setup
+## Host setup
+
+### Buzz channels (relay bridge)
+
+[Buzz](https://github.com/block/buzz) is a Nostr-based collaboration platform
+for people and agents. Its `buzz-acp` harness connects Buzz channels to any ACP
+agent over stdio:
+
+```text
+Buzz relay <-- WebSocket --> buzz-acp <-- ACP over stdio --> OpenAgents
+```
+
+This is a transport integration, not a second OpenAgents installation. The
+subprocess launched by `buzz-acp` uses the same OpenAgents configuration,
+credentials, memory, skills, and state as `hermes` on that host.
+
+(This is distinct from [Buzz Desktop's managed runtime](#buzz-desktop), which
+spawns OpenAgents locally as a preset harness. The relay bridge is for joining Buzz
+*channels* as an agent identity, typically on a server.)
+
+Prerequisites:
+
+- Complete the ACP installation and `hermes acp --check` above.
+- Build `buzz-acp` and the `buzz` CLI from the
+  [Buzz repository](https://github.com/block/buzz)
+  (`cargo build --release -p buzz-acp`).
+- Mint a dedicated Nostr keypair for OpenAgents (`buzz-admin generate-key`) and
+  register it as a relay member (`buzz-admin add-member`). Every agent needs
+  its own identity — do not reuse a human keypair.
+- Add that identity to the intended Buzz channels.
+
+Start a bridge with:
+
+```bash
+export BUZZ_RELAY_URL="wss://community.example.com"
+export BUZZ_PRIVATE_KEY="..."
+export BUZZ_API_TOKEN="..."
+export BUZZ_ACP_AGENT_COMMAND="openagents"
+export BUZZ_ACP_AGENT_ARGS="acp"
+
+buzz-acp
+```
+
+`BUZZ_API_TOKEN` is needed only when the relay enforces token authentication.
+Do not commit or paste the private key or API token.
+
+For a persistent server deployment, run `buzz-acp` under a service manager as
+the same operating-system user that owns the intended OpenAgents home. Setup,
+key generation, channel discovery, and per-agent options are documented in the
+[buzz-acp README](https://github.com/block/buzz/tree/main/crates/buzz-acp).
+
+The bridge discovers every Buzz channel where the OpenAgents identity is a member
+and automatically subscribes when it is added to another channel. Buzz channel
+membership therefore remains the access boundary; OpenAgents does not need a
+separate channel list in its own configuration.
+
+To expose OpenAgents ACP activity in the owner's Buzz Desktop, add:
+
+```bash
+export BUZZ_ACP_RELAY_OBSERVER="true"
+```
+
+This publishes encrypted kind `24200` observer frames addressed to the agent's
+owner (Buzz's NIP-AO). Desktop renders the live lifecycle, tool, response, and
+usage stream in the agent's **Activity log**. The relay treats these frames as
+ephemeral, so Desktop must be online before the turn starts; its local observer
+archive is the durable owner-side history.
+
+Headless bridges answer ACP permission requests themselves because no editor
+is present to show approval dialogs — see
+[Keep Buzz agents owner-only](#keep-buzz-agents-owner-only). Treat the bridge
+as privileged automation: use a dedicated operating-system account, restrict
+which Buzz users can prompt the agent (`buzz-acp` supports an owner-only
+respond gate via `BUZZ_ACP_AGENT_OWNER`), and grant membership only in channels
+where OpenAgents is expected to work.
 
 ### VS Code
 
@@ -126,19 +216,10 @@ If you want to define OpenAgents manually, add it through VS Code settings under
 
 ### Zed
 
-Zed v0.221.x and newer installs external agents through the official ACP Registry.
+Configure OpenAgents as a custom agent server in Zed settings:
 
 1. Open the Agent Panel.
-2. Click **Add Agent**, or run the `zed: acp registry` command.
-3. Search for **OpenAgents**.
-4. Install it and start a new OpenAgents external-agent thread.
-
-Prerequisites:
-
-- Configure OpenAgents provider credentials first with `hermes model`, or set them in `~/.openagents/.env` / `~/.openagents/config.yaml`.
-- Install `uv` so the registry launcher can run `uvx --from 'openagents[acp]==<version>' openagents-acp`.
-
-For local development before the registry entry is available, use a custom agent server in Zed settings:
+2. Add a custom agent server with the following configuration:
 
 ```json
 {
@@ -152,32 +233,71 @@ For local development before the registry entry is available, use a custom agent
 }
 ```
 
+3. Start a new OpenAgents external-agent thread.
+
+Prerequisites:
+
+- Configure OpenAgents provider credentials first with `hermes model`, or set them in `~/.openagents/.env` / `~/.openagents/config.yaml`.
+
 ### JetBrains
 
-Use an ACP-compatible plugin and point it at:
+Use an ACP-compatible plugin and point it at `hermes acp` or `openagents-acp`.
 
-```text
-/path/to/openagents/acp_registry
+### Buzz Desktop
+
+[Buzz](https://github.com/block/buzz) ships OpenAgents as a preset runtime.
+With OpenAgents installed the normal way, Buzz discovers it automatically —
+open **Settings → Runtimes** and OpenAgents appears under your runtimes.
+
+If discovery fails (older installs), make sure the ACP launcher resolves on a
+login-shell PATH:
+
+```bash
+command -v openagents-acp || command -v hermes
 ```
 
-## Registry manifest
+Recent installs write both `hermes` and `openagents-acp` launchers into
+`~/.local/bin`; running `hermes update` adds the `openagents-acp` launcher to
+older installs. As a manual fallback, configure Buzz's agent command as
+`hermes` with args `["acp"]`.
 
-The source copy of Hermes' official ACP Registry metadata lives at:
+#### Model picker
 
-```text
-acp_registry/agent.json
-acp_registry/icon.svg
-```
+Buzz Desktop (v0.5.1+) renders Hermes' full model menu in the agent's runtime
+settings. The list comes from OpenAgents itself over ACP: it shows every model
+from providers you have authenticated in OpenAgents (the same inventory behind
+`hermes model` and the `/model` command), so a model missing from the menu
+means its provider has no credentials configured on the OpenAgents side.
 
-The upstream registry PR copies those files into the top-level `openagents/` directory in `agentclientprotocol/registry`.
+Entry IDs take the form `provider:model` (e.g. `openrouter:z-ai/glm-5.1`), or
+`custom:<name>:<model>` for custom OpenAI-compatible endpoints defined in
+`config.yaml`. Picking a model applies to that agent's session; it does not
+change your Hermes-wide default — use `hermes model` for that.
 
-The registry entry uses a `uvx` distribution that points directly at the `openagents` PyPI release:
+#### Keep Buzz agents owner-only
 
-```text
-uvx --from 'openagents[acp]==<version>' openagents-acp
-```
+Buzz creates every agent with **Who can talk to this agent** set to `Owner only`.
+Leave it there when the runtime is Hermes.
 
-The registry CI verifies that the pinned version exists on PyPI, so the manifest's `version` and uvx `package` pin must always match `pyproject.toml`. `scripts/release.py` keeps them in lockstep automatically.
+Two behaviors combine on this path. The `openagents-acp` toolset includes `terminal`
+and `execute_code`, and Buzz's ACP bridge answers Hermes' permission requests
+itself with `allow_once` rather than surfacing them. A OpenAgents in Buzz
+therefore runs shell commands on the host without prompting. I asked one to run
+`rm -rf` against a scratch directory and it deleted it, no prompt anywhere.
+
+Selecting `Anyone` hands that same shell access to every author who can reach
+the channel. Buzz does not warn when you pick it.
+
+`approvals.mode: manual` does not help: OpenAgents raises the permission request,
+but Buzz auto-approves it and the command still runs. To take the shell away,
+narrow the toolset instead: set `platform_toolsets.acp` to a list without
+`terminal` and `code_execution`, or add them to `agent.disabled_toolsets`.
+Even an empty `platform_toolsets.acp: []` still adds enabled plugin
+toolsets, so name any plugin toolset you want gone in
+`agent.disabled_toolsets`.
+
+`!shutdown` from the owner stops the agent in any mode, and Buzz ignores that
+command from everyone else.
 
 ## Configuration and credentials
 
@@ -188,7 +308,29 @@ ACP mode uses the same OpenAgents configuration as the CLI:
 - `~/.openagents/skills/`
 - `~/.openagents/state.db`
 
-Provider resolution uses Hermes' normal runtime resolver, so ACP inherits the currently configured provider and credentials. OpenAgents also advertises a terminal auth method (`--setup`) for first-run registry clients; this opens Hermes' interactive model/provider setup.
+Provider resolution uses Hermes' normal runtime resolver, so ACP inherits the currently configured provider and credentials. OpenAgents also advertises a terminal auth method (`--setup`) for first-run ACP clients; this opens Hermes' interactive model/provider setup.
+
+## Host integration
+
+These variables are set by an **ACP host process** (an editor or another agent
+harness) on the OpenAgents subprocess it spawns. They are not user configuration —
+do not set them by hand in `.env` or `config.yaml`.
+
+| Variable | Value | Effect |
+|----------|-------|--------|
+| `HERMES_ACP_SKIP_CONFIGURED_MCP` | `1` | Skip starting the **globally configured** MCP servers from `config.yaml` before the ACP JSON-RPC loop begins. |
+
+OpenAgents normally starts every MCP server configured in `config.yaml` before it
+enters the ACP JSON-RPC loop. A host that owns MCP itself — passing the
+session's servers explicitly through `session/new` — does not need that global
+startup, and an unrelated slow or interactive MCP server would otherwise delay
+`initialize`. Setting the marker to exactly `1` lets such a host skip it.
+
+Only the global `config.yaml` discovery is skipped. **MCP servers supplied by
+the ACP session through `session/new` are still registered**, so a host loses
+no capability it asked for. Any other value (unset, empty, `0`, `false`) keeps
+the default behavior, so an unrelated truthy-looking string cannot silently
+disable MCP.
 
 ## Session behavior
 
@@ -202,7 +344,16 @@ Each session stores:
 - current conversation history
 - cancel event
 
-The underlying `AIAgent` still uses Hermes' normal persistence/logging paths, but ACP `list/load/resume/fork` are scoped to the currently running ACP server process.
+Conversations are persisted to Hermes' session database and can be listed, loaded,
+resumed, or forked after the ACP server restarts. Opening a new session without a
+prompt keeps it in memory only: model-discovery probes do not create empty history
+rows. A nonempty fork is persisted immediately, and existing session metadata can
+still be updated even when its current history is empty.
+
+Existing empty rows from older versions are not automatically deleted. An open ACP
+row does not prove its client has disconnected. After closing the relevant editor
+sessions, inspect unwanted rows with `hermes sessions show <id>` and remove only
+confirmed unwanted sessions with `hermes sessions delete <id>`.
 
 ## Working directory behavior
 
@@ -216,7 +367,14 @@ Dangerous terminal commands can be routed back to the editor as approval prompts
 - allow always
 - deny
 
-On timeout or error, the approval bridge denies the request.
+Whether you actually see a prompt is up to the host. A host is free to answer the
+request programmatically instead of showing it to you, in which case these
+options exist on the wire but never reach a human. Buzz Desktop does this, so
+treat that path as unattended execution regardless of your `approvals` setting.
+
+On timeout or error, the approval bridge denies the request. The wait is
+`approvals.timeout` from `config.yaml` (default 300 s), the same knob the CLI and
+gateway prompts use — raise it if your editor keeps approval cards open longer.
 
 ### Session-scoped edit auto-approval
 
@@ -239,11 +397,9 @@ The ACP bridge maps these options onto Hermes' internal approval semantics — `
 
 Check:
 
-- In Zed, open the ACP Registry with `zed: acp registry` and search for **OpenAgents**.
-- For manual/local development, verify the custom `agent_servers` command points to `hermes acp`.
+- For manual/local development, verify the host command points to `hermes acp`.
 - OpenAgents is installed and on your PATH.
-- The ACP extra is installed (`pip install -e '.[acp]'`).
-- `uv` is installed if launching from the official Zed registry entry.
+- The ACP extra is installed (`cd ~/.openagents/openagents && uv pip install -e '.[acp]'`).
 
 ### ACP starts but immediately errors
 
@@ -264,14 +420,11 @@ ACP mode uses Hermes' existing provider setup. Configure credentials with:
 hermes model
 ```
 
-or by editing `~/.openagents/.env`. Registry clients can also trigger Hermes' terminal auth flow, which runs the same interactive provider/model setup.
-
-### Zed registry launcher cannot find uv
-
-Install `uv` from the official uv installation docs, then retry the OpenAgents thread from Zed.
+or by editing `~/.openagents/.env`. The terminal auth flow (`hermes acp --setup`) can also trigger the interactive provider/model setup.
 
 ## See also
 
+- [Buzz ACP harness](https://github.com/block/buzz/tree/main/crates/buzz-acp)
 - [ACP Internals](../../developer-guide/acp-internals.md)
 - [Provider Runtime Resolution](../../developer-guide/provider-runtime.md)
 - [Tools Runtime](../../developer-guide/tools-runtime.md)

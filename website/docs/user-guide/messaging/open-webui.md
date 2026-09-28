@@ -30,44 +30,6 @@ Open WebUI talks to OpenAgents server-to-server, so you do not need `API_SERVER_
 
 ## Quick Setup
 
-### One-command local bootstrap (macOS/Linux, no Docker)
-
-If you want OpenAgents + Open WebUI wired together locally with a reusable launcher, run:
-
-```bash
-cd ~/.openagents/openagents
-bash scripts/setup_open_webui.sh
-```
-
-What the script does:
-
-- ensures `~/.openagents/.env` contains `API_SERVER_ENABLED`, `API_SERVER_HOST`, `API_SERVER_KEY`, `API_SERVER_PORT`, and `API_SERVER_MODEL_NAME`
-- restarts the OpenAgents gateway so the API server comes up
-- installs Open WebUI into `~/.local/open-webui-venv`
-- writes a launcher at `~/.local/bin/start-open-webui-hermes.sh`
-- on macOS, installs a `launchd` user service; on Linux with `systemd --user`, installs a user service there
-
-Defaults:
-
-- OpenAgents API: `http://127.0.0.1:8642/v1`
-- Open WebUI: `http://127.0.0.1:8080`
-- model name advertised to Open WebUI: `OpenAgents`
-
-Useful overrides:
-
-```bash
-OPEN_WEBUI_NAME='My OpenAgents UI' \
-OPEN_WEBUI_ENABLE_SIGNUP=true \
-HERMES_API_MODEL_NAME='My OpenAgents' \
-bash scripts/setup_open_webui.sh
-```
-
-On Linux, automatic background service setup requires a working `systemd --user` session. If you are on a headless SSH box and want to skip service installation, run:
-
-```bash
-OPEN_WEBUI_ENABLE_SERVICE=false bash scripts/setup_open_webui.sh
-```
-
 ### 1. Enable the API server
 
 ```bash
@@ -219,7 +181,7 @@ When you send a message in Open WebUI:
 
 Your agent has access to the same tools and capabilities as that API-server OpenAgents instance. If the API server is remote, those tools are remote too.
 
-If you need tools to run against your **local** workspace today, run OpenAgents locally and point it at a pure LLM provider or pure OpenAI-compatible model proxy (for example vLLM, LiteLLM, Ollama, llama.cpp, OpenAI, OpenRouter, etc.). A future split-runtime mode for "remote brain, local hands" is being tracked in [#18715](https://github.com/NousResearch/openagents/issues/18715); it is not the behavior of the current API server.
+If you need tools to run against your **local** workspace today, run OpenAgents locally and point it at a pure LLM provider or pure OpenAI-compatible model proxy (for example vLLM, LiteLLM, Ollama, llama.cpp, OpenAI, OpenRouter, etc.). A future split-runtime mode for "remote brain, local hands" is being tracked in [#18715](https://github.com/NousResearch/hermes-agent/issues/18715); it is not the behavior of the current API server.
 
 :::tip Tool Progress
 With streaming enabled (the default), you'll see brief inline indicators as tools run — the tool emoji and its key argument. These appear in the response stream before the agent's final answer, giving you visibility into what's happening behind the scenes.
@@ -271,7 +233,7 @@ Open WebUI persists OpenAI-compatible connection settings in its own database af
 
 ## Multi-User Setup with Profiles
 
-To run separate OpenAgents instances per user — each with their own config, memory, and skills — use [profiles](/user-guide/profiles). Each profile runs its own API server on a different port and automatically advertises the profile name as the model in Open WebUI.
+To run separate OpenAgents instances per user — each with their own config, memory, and skills — use [profiles](../profiles.md). Each profile runs its own API server on a different port and automatically advertises the profile name as the model in Open WebUI.
 
 ### 1. Create profiles and configure API servers
 

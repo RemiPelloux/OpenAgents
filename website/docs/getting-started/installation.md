@@ -15,21 +15,25 @@ platform-gated features are supported), see **[Platform Support](./platform-supp
 
 ## Quick Install
 ### With the OpenAgents Desktop installer on macOS or Windows (recommended)
-To easily install the command-line and desktop applications, [download the OpenAgents Desktop installer](https://openagents.nousresearch.com/) from our website and run it.
+To easily install the command-line and desktop applications, [download the OpenAgents Desktop installer](https://hermes-agent.nousresearch.com/) from our website and run it.
+
+:::note
+The macOS installer is **Apple Silicon only**. macOS on x86 (Intel) processors is [not a supported platform](./platform-support.md#unsupported).
+:::
 
 ### Without OpenAgents Desktop:
 For a command-line only install without OpenAgents Desktop, run:
 
 #### Linux / macOS / WSL2 / Android (Termux)
 ```bash
-curl -fsSL https://openagents.nousresearch.com/install.sh | bash
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 ```
 
 #### Windows (native)
 
 Run in powershell:
 ```powershell
-iex (irm https://openagents.nousresearch.com/install.ps1) 
+iex (irm https://hermes-agent.nousresearch.com/install.ps1) 
 ```
 
 If you want to install & run OpenAgents Desktop after a command-line only install, simply run
@@ -68,17 +72,22 @@ hermes model          # Choose your LLM provider and model
 hermes tools          # Configure which tools are enabled
 hermes gateway setup  # Set up messaging platforms
 hermes config set     # Set individual config values
+hermes config get     # Inspect individual config values
 hermes setup          # Or run the full setup wizard to configure everything at once
 ```
 
 :::tip Fastest path: Nous Portal
-One subscription covers 300+ models plus the [Tool Gateway](/user-guide/features/tool-gateway) (web search, image generation, TTS, cloud browser). Skip the per-tool key juggling:
+One subscription covers 300+ models plus the [Tool Gateway](../user-guide/features/tool-gateway.md) (web search, image generation, TTS, cloud browser). Skip the per-tool key juggling:
 
 ```bash
 hermes setup --portal
 ```
 
 That logs you in, sets Nous as your provider, and turns on the Tool Gateway in one command.
+:::
+
+:::tip Already running OpenAgents on another machine?
+You don't need to rebuild your setup from scratch. Restore a full backup with `hermes import` (see [Exporting OpenAgents to another machine](../reference/faq.md#exporting-hermes-to-another-machine)), or bring over a single agent with `hermes profile import` (see [Moving a single profile to another machine](../reference/faq.md#moving-a-single-profile-to-another-machine)). Note that a profile export excludes credentials by design, so an export alone is not a full backup — [`hermes backup` vs `hermes profile export`](../reference/faq.md#hermes-backup-vs-hermes-profile-export) explains which to use.
 :::
 
 ---
@@ -89,7 +98,7 @@ That logs you in, sets Nous as your provider, and turns on the Tool Gateway in o
 
 - **uv** (fast Python package manager)
 - **Python 3.11** (via uv, no sudo needed)
-- **Node.js v22** (for browser automation and WhatsApp bridge)
+- **Node.js v26** (for browser automation and WhatsApp bridge; existing system Node 22.22+, 24.11+, or 26+ is used as-is)
 - **ripgrep** (fast file search)
 - **ffmpeg** (audio format conversion for TTS)
 
@@ -123,13 +132,15 @@ Running OpenAgents as a dedicated unprivileged user (e.g. a `hermes` systemd ser
 
 2. **As the unprivileged service user**, run the regular installer. It will detect the missing sudo, skip `--with-deps`, and install Chromium into the user's local Playwright cache:
    ```bash
-   curl -fsSL https://openagents.nousresearch.com/install.sh | bash
+   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
    ```
 
    If you want to skip the Playwright step entirely — for example because you're running headless and don't need browser automation — pass `--skip-browser`:
    ```bash
-   curl -fsSL https://openagents.nousresearch.com/install.sh | bash -s -- --skip-browser
+   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-browser
    ```
+
+   The installer also pre-installs [`cua-driver`](../user-guide/features/computer-use.md) so the Computer Use toolset works the moment you enable it; pass `--skip-computer-use` to opt out (it will then install on demand when you enable the tool).
 
 3. **Make `hermes` available to the service user's shells.** The installer writes the launcher to `~/.local/bin/hermes`. System service accounts often have a minimal PATH that doesn't include `~/.local/bin`. Either add it to the user's environment, or symlink the launcher into a system location:
    ```bash
@@ -141,6 +152,14 @@ Running OpenAgents as a dedicated unprivileged user (e.g. a `hermes` systemd ser
    ```
 
 4. **Verify:** `hermes doctor` should now run cleanly. If you get `ModuleNotFoundError: No module named 'dotenv'`, you're invoking the repo source `hermes` file (`~/.openagents/openagents/hermes`) with system Python instead of the venv launcher (`~/.openagents/openagents/venv/bin/hermes`) — fix step 3.
+
+5. **Running the messaging gateway from this account?** A user-level service stops at logout and does not start at boot until you enable lingering for the service user:
+
+   ```bash
+   sudo loginctl enable-linger <service-user>
+   ```
+
+   See [Messaging Gateway](../user-guide/messaging/index.md) for the service setup itself.
 
 The same pattern works on Arch (the installer uses pacman with the same sudo-detection logic), Fedora/RHEL, and openSUSE — those distros don't support `--with-deps` at all, so an administrator always installs the system libraries separately. The relevant `dnf`/`zypper` commands are printed by the installer.
 
@@ -156,6 +175,26 @@ The same pattern works on Arch (the installer uses pacman with the same sudo-det
 
 For more diagnostics, run `hermes doctor` — it will tell you exactly what's missing and how to fix it.
 
+### Symlinked home directories and external storage
+
+OpenAgents supports a symlinked `OPENAGENTS_HOME` and symlinked home subdirectories,
+including `hooks`, `skills`, `sessions`, and `logs`. During home initialization,
+existing directory links are preserved, and permissions on linked directories
+(and descendants such as `logs/curator`) are left to their owner.
+
+If a link target is missing, inaccessible, or not a directory, initialization
+stops with a storage error naming the path and link target. OpenAgents does **not**
+replace the link or create its missing target: doing so could write data onto
+the local disk while an external or NAS volume is unmounted. Check the reported
+link, restore the mount or correct its target, and verify access permissions
+before retrying. For a deliberately new dotfiles target, create it yourself only
+after confirming the intended storage is available.
+
+`hermes doctor` reports these failures as storage problems, not invalid YAML.
+Keep your existing `config.yaml`; running `hermes setup` is not the repair for an
+unavailable directory. This is a directory-availability check, not a mount monitor:
+an existing directory cannot establish that the intended volume is mounted.
+
 ## Install method auto-detection
 
-OpenAgents auto-detects whether it was installed via `pip`, the git installer, Homebrew, or NixOS, and `hermes update` prints the matching update command for that path. There's no env var to set — the detection is based on the install layout (Python site-packages, `~/.openagents/openagents/`, Homebrew prefix, or Nix store path). `hermes doctor` also surfaces the detected method under its environment summary.
+OpenAgents auto-detects whether it was installed via the git installer, Docker, or NixOS, and `hermes update` prints the matching update command for that path. There's no env var to set — the detection is based on the install layout (`~/.openagents/openagents/` checkout, Docker image stamp, or Nix store path). `hermes doctor` also surfaces the detected method under its environment summary.

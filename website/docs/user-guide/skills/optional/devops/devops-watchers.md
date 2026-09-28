@@ -81,7 +81,7 @@ Watch a GitHub repo (set `GITHUB_TOKEN` in `${OPENAGENTS_HOME:-~/.openagents}/.e
 
 ```bash
 python $OPENAGENTS_HOME/skills/devops/watchers/scripts/watch_github.py \
-  --name hermes-issues --repo NousResearch/openagents --scope issues
+  --name hermes-issues --repo NousResearch/hermes-agent --scope issues
 ```
 
 Poll an arbitrary JSON API:

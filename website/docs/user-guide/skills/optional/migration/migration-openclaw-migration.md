@@ -1,14 +1,14 @@
 ---
-title: "Openclaw Migration — Migrate a user's OpenClaw customization footprint into OpenAgents"
+title: "Openclaw Migration — Import an OpenClaw setup (memories, skills) into Hermes"
 sidebar_label: "Openclaw Migration"
-description: "Migrate a user's OpenClaw customization footprint into OpenAgents"
+description: "Import an OpenClaw setup (memories, skills) into Hermes"
 ---
 
 {/* This page is auto-generated from the skill's SKILL.md by website/scripts/generate-skill-docs.py. Edit the source SKILL.md, not this page. */}
 
 # Openclaw Migration
 
-Migrate a user's OpenClaw customization footprint into OpenAgents. Imports Hermes-compatible memories, SOUL.md, command allowlists, user skills, and selected workspace assets from ~/.openclaw, then reports exactly what could not be migrated and why.
+Import an OpenClaw setup (memories, skills) into Hermes.
 
 ## Skill metadata
 
@@ -21,7 +21,7 @@ Migrate a user's OpenClaw customization footprint into OpenAgents. Imports Herme
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `Migration`, `OpenClaw`, `openagents`, `Memory`, `Persona`, `Import` |
-| Related skills | [`openagents`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-openagents) |
+| Related skills | [`openagents`](../../bundled/autonomous-ai-agents/autonomous-ai-agents-openagents.md) |
 
 ## Reference: full SKILL.md
 
@@ -247,37 +247,37 @@ The helper script still supports category-level `--include` / `--exclude`, but t
 Dry run with full discovery:
 
 ```bash
-python3 ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py
+python ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py
 ```
 
 When using the terminal tool, prefer an absolute invocation pattern such as:
 
 ```json
-{"command":"python3 /home/USER/.hermes/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py","workdir":"/home/USER"}
+{"command":"python /home/USER/.hermes/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py","workdir":"/home/USER"}
 ```
 
 Dry run with the user-data preset:
 
 ```bash
-python3 ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py --preset user-data
+python ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py --preset user-data
 ```
 
 Execute a user-data migration:
 
 ```bash
-python3 ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py --execute --preset user-data --skill-conflict skip
+python ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py --execute --preset user-data --skill-conflict skip
 ```
 
 Execute a full compatible migration:
 
 ```bash
-python3 ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py --execute --preset full --migrate-secrets --skill-conflict skip
+python ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py --execute --preset full --migrate-secrets --skill-conflict skip
 ```
 
 Execute with workspace instructions included:
 
 ```bash
-python3 ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py --execute --preset user-data --skill-conflict rename --workspace-target "/absolute/workspace/path"
+python ~/.openagents/skills/migration/openclaw-migration/scripts/openclaw_to_hermes.py --execute --preset user-data --skill-conflict rename --workspace-target "/absolute/workspace/path"
 ```
 
 Do not use `$PWD` or the home directory as the workspace target by default. Ask for an explicit workspace path first.

@@ -37,6 +37,6 @@ except (ModuleNotFoundError, ImportError):
         Mirrors ``openagents_constants.display_openagents_home()``."""
         home = get_openagents_home()
         try:
-            return "~/" + str(home.relative_to(Path.home()))
+            return "~/" + home.relative_to(Path.home()).as_posix()
         except ValueError:
             return str(home)

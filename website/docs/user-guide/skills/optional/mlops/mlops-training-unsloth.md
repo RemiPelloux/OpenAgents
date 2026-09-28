@@ -31,7 +31,7 @@ The following is the complete skill definition that OpenAgents loads when this s
 
 # Unsloth Skill
 
-Comprehensive assistance with unsloth development, generated from official documentation.
+Assistance with unsloth development, generated from official documentation.
 
 ## When to Use This Skill
 
@@ -50,7 +50,7 @@ This skill should be triggered when:
 
 ## Reference Files
 
-This skill includes comprehensive documentation in `references/`:
+This skill includes full documentation in `references/`:
 
 - **llms-txt.md** - Llms-Txt documentation
 

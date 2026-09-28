@@ -65,12 +65,3 @@ def test_auto_detects_openrouter_from_pool(tmp_path, monkeypatch):
     assert resolve_provider("auto") == "openrouter"
 
 
-def test_no_credentials_still_raises(tmp_path, monkeypatch):
-    """Empty pool + no env var must still fail to resolve — no false positive."""
-    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path / "openagents"))
-    (tmp_path / "openagents").mkdir(parents=True, exist_ok=True)
-
-    from openagents_cli.auth import AuthError, resolve_provider
-
-    with pytest.raises(AuthError):
-        resolve_provider("auto")

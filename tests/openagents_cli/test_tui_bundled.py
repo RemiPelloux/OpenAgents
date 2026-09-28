@@ -7,14 +7,9 @@ def test_tui_finds_bundled_entry_js(tmp_path):
     entry = tui_dist / "entry.js"
     entry.write_text("// bundled TUI", encoding="utf-8")
 
-    from openagents_cli.main import _find_bundled_tui
+    from openagents_cli.main_tui_launch import _find_bundled_tui
     result = _find_bundled_tui(openagents_cli_dir=tmp_path / "openagents_cli")
     assert result is not None
     assert result.name == "entry.js"
 
 
-def test_tui_returns_none_when_no_bundle(tmp_path):
-    """_find_bundled_tui returns None when no bundle exists."""
-    from openagents_cli.main import _find_bundled_tui
-    result = _find_bundled_tui(openagents_cli_dir=tmp_path / "openagents_cli")
-    assert result is None

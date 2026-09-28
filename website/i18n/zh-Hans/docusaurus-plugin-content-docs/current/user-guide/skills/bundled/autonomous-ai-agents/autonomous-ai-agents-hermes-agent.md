@@ -46,13 +46,13 @@ OpenAgents 的差异化特性：
 
 **此 skill 帮助你高效使用 OpenAgents** — 包括设置、配置功能、生成额外的 agent 实例、排查问题、找到正确的命令和设置，以及在需要扩展或贡献时理解系统的工作原理。
 
-**文档：** https://openagents.nousresearch.com/docs/
+**文档：** https://hermes-agent.nousresearch.com/docs/
 
 ## 快速开始
 
 ```bash
 # 安装
-curl -fsSL https://openagents.nousresearch.com/install.sh | bash
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 
 # 交互式聊天（默认）
 hermes
@@ -170,7 +170,7 @@ hermes gateway setup        Configure platforms
 
 支持的平台：Telegram、Discord、Slack、WhatsApp、Signal、Email、SMS、Matrix、Mattermost、Home Assistant、DingTalk、Feishu、WeCom、BlueBubbles（iMessage）、Weixin（WeChat）、API Server、Webhooks。Open WebUI 通过 API Server 适配器连接。
 
-平台文档：https://openagents.nousresearch.com/docs/user-guide/messaging/
+平台文档：https://hermes-agent.nousresearch.com/docs/user-guide/messaging/
 
 ### 会话
 
@@ -247,7 +247,7 @@ hermes uninstall            Uninstall Hermes
 
 ## 斜杠命令（会话内）
 
-在交互式聊天会话中输入这些命令。新命令会不定期上线；如果以下内容看起来过时，请在会话内运行 `/help` 获取权威列表，或查看[实时斜杠命令参考](https://openagents.nousresearch.com/docs/reference/slash-commands)。命令注册表的权威来源是 `openagents_cli/commands.py` — 每个消费方（自动补全、Telegram 菜单、Slack 映射、`/help`）均从中派生。
+在交互式聊天会话中输入这些命令。新命令会不定期上线；如果以下内容看起来过时，请在会话内运行 `/help` 获取权威列表，或查看[实时斜杠命令参考](https://hermes-agent.nousresearch.com/docs/reference/slash-commands)。命令注册表的权威来源是 `openagents_cli/commands.py` — 每个消费方（自动补全、Telegram 菜单、Slack 映射、`/help`）均从中派生。
 
 ### 会话控制
 ```
@@ -260,7 +260,7 @@ hermes uninstall            Uninstall Hermes
 /stop                Kill background processes
 /rollback [N]        Restore filesystem checkpoint
 /snapshot [sub]      Create or restore state snapshots of OpenAgents config/state (CLI)
-/background <prompt> Run prompt in background
+/bg <prompt> Run prompt in background
 /queue <prompt>      Queue for next turn
 /steer <prompt>      Inject a message after the next tool call without interrupting
 /agents (/tasks)     Show active agents and running tasks
@@ -275,11 +275,11 @@ hermes uninstall            Uninstall Hermes
 /config              Show config (CLI)
 /model [name]        Show or change model
 /personality [name]  Set personality
-/reasoning [level]   Set reasoning (none|minimal|low|medium|high|xhigh|show|hide)
+/reasoning [level]   Set reasoning (none|minimal|low|medium|high|xhigh|max|ultra|show|hide)
 /verbose             Cycle: off → new → all → verbose
 /voice [on|off|tts]  Voice mode
 /yolo                Toggle approval bypass
-/busy [sub]          Control what Enter does while OpenAgents is working (CLI)
+/busy [sub]          Control how messages behave while OpenAgents works (CLI + gateway)
                      (subcommands: queue, steer, interrupt, status)
 /indicator [style]   Pick the TUI busy-indicator style (CLI)
                      (styles: kaomoji, emoji, unicode, ascii)
@@ -376,7 +376,7 @@ Profiles 使用 `~/.openagents/profiles/<name>/`，布局相同。
 | `delegation` | `model`, `provider`, `base_url`, `api_key`, `max_iterations` (50), `reasoning_effort` |
 | `checkpoints` | `enabled`, `max_snapshots` (50) |
 
-完整配置参考：https://openagents.nousresearch.com/docs/user-guide/configuration
+完整配置参考：https://hermes-agent.nousresearch.com/docs/user-guide/configuration
 
 ### 提供商
 
@@ -400,13 +400,14 @@ Profiles 使用 `~/.openagents/profiles/<name>/`，布局相同。
 | Alibaba / DashScope | API key | `DASHSCOPE_API_KEY` |
 | Xiaomi MiMo | API key | `XIAOMI_API_KEY` |
 | Kilo Code | API key | `KILOCODE_API_KEY` |
+| AI Gateway (Vercel) | API key | `AI_GATEWAY_API_KEY` |
 | OpenCode Zen | API key | `OPENCODE_ZEN_API_KEY` |
 | OpenCode Go | API key | `OPENCODE_GO_API_KEY` |
 | Qwen OAuth | OAuth | `hermes auth add qwen-oauth` |
 | 自定义端点 | 配置 | `config.yaml` 中的 `model.base_url` + `model.api_key` |
 | GitHub Copilot ACP | 外部 | `COPILOT_CLI_PATH` 或 Copilot CLI |
 
-完整提供商文档：https://openagents.nousresearch.com/docs/integrations/providers
+完整提供商文档：https://hermes-agent.nousresearch.com/docs/integrations/providers
 
 ### Toolset
 
@@ -481,10 +482,10 @@ hermes config set privacy.redact_pii false   # 禁用（默认）
 
 ### 命令审批提示
 
-默认情况下（`approvals.mode: manual`），Hermes 在运行被标记为破坏性的 shell 命令（`rm -rf`、`git reset --hard` 等）之前会提示用户。模式如下：
+默认情况下（`approvals.mode: smart`），Hermes 会让辅助 LLM 评估被标记为破坏性的 shell 命令（`rm -rf`、`git reset --hard` 等）。模式如下：
 
-- `manual` — 始终提示（默认）
-- `smart` — 使用辅助 LLM 自动批准低风险命令，对高风险命令提示
+- `smart` — 低风险命令仅批准一次，高风险命令拒绝，不确定时提示（默认）
+- `manual` — 始终提示
 - `off` — 跳过所有审批提示（等同于 `--yolo`）
 
 ```bash
@@ -633,7 +634,7 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 
 同步子 agent 生成——父 agent 等待子 agent 的摘要后再继续自身循环。隔离的上下文和终端会话。
 
-- **单个：** `delegate_task(goal, context, toolsets)`。
+- **单个：** `delegate_task(goal, context)`。
 - **批量：** `delegate_task(tasks=[{goal, ...}, ...])` 并行运行子任务，上限由 `delegation.max_concurrent_children`（默认 3）控制。
 - **角色：** `leaf`（默认；不能再委派）vs `orchestrator`（可以生成自己的 worker，受 `delegation.max_spawn_depth` 限制）。
 - **非持久化。** 如果父 agent 被中断，子 agent 会被取消。对于必须在当前轮次之后继续的工作，使用 `cronjob` 或 `terminal(background=True, notify_on_complete=True)`。
@@ -648,7 +649,7 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 - **每任务选项：** `skills`、`model`/`provider` 覆盖、`script`（预运行数据收集；`no_agent=True` 使脚本成为整个任务）、`context_from`（将任务 A 的输出链接到任务 B）、`workdir`（在特定目录中运行，加载其 `AGENTS.md` / `CLAUDE.md`）、多平台投递。
 - **不变量：** 每次运行 3 分钟硬中断，`.tick.lock` 文件防止跨进程重复 tick，cron 会话默认传递 `skip_memory=True`，cron 投递使用页眉/页脚框架而非镜像到目标 gateway 会话（保持角色交替完整）。
 
-用户文档：https://openagents.nousresearch.com/docs/user-guide/features/cron
+用户文档：https://hermes-agent.nousresearch.com/docs/user-guide/features/cron
 
 ### Curator（skill 生命周期）
 
@@ -660,7 +661,7 @@ agent 创建的 skill 的后台维护。跟踪使用情况，将闲置 skill 标
 - **遥测：** `~/.openagents/skills/.usage.json` 中的 sidecar 保存每个 skill 的 `use_count`、`view_count`、`patch_count`、`last_activity_at`、`state`、`pinned`。
 
 配置：`curator.*`（`enabled`、`interval_hours`、`min_idle_hours`、`stale_after_days`、`archive_after_days`、`backup.*`）。
-用户文档：https://openagents.nousresearch.com/docs/user-guide/features/curator
+用户文档：https://hermes-agent.nousresearch.com/docs/user-guide/features/curator
 
 ### Kanban（多 agent 工作队列）
 
@@ -671,7 +672,7 @@ agent 创建的 skill 的后台维护。跟踪使用情况，将闲置 skill 标
 - **调度器** 默认在 gateway 内运行（`kanban.dispatch_in_gateway: true`）——回收过期认领、推进就绪任务、原子认领、生成已分配的 profile。在配置的 `kanban.failure_limit` 次连续非成功尝试后自动阻塞任务（默认：2）。
 - **隔离：** 看板是硬边界（worker 在环境中固定 `HERMES_KANBAN_BOARD`）；租户是看板内用于工作区路径和记忆键隔离的软命名空间。
 
-用户文档：https://openagents.nousresearch.com/docs/user-guide/features/kanban
+用户文档：https://hermes-agent.nousresearch.com/docs/user-guide/features/kanban
 
 ---
 
@@ -697,20 +698,20 @@ mintty / git-bash 行为相同（Alt+Enter 全屏），除非你在选项 → �
 
 ### 测试/贡献
 
-**`scripts/run_tests.sh` 在 Windows 上无法直接使用** — 它查找 POSIX venv 布局（`.venv/bin/activate`）。Hermes 安装的 venv 位于 `venv/Scripts/`，也没有 pip 或 pytest（为减小安装体积而精简）。解决方案：将 `pytest + pytest-xdist + pyyaml` 安装到系统 Python 3.11 用户站点，然后设置 `PYTHONPATH` 直接调用 pytest：
+**`scripts/run_tests.sh` 在 Windows 上无法直接使用** — 它查找 POSIX venv 布局（`.venv/bin/activate`）。Hermes 安装的 venv 位于 `venv/Scripts/`，也没有 pip 或 pytest（为减小安装体积而精简）。解决方案：将 `pytest + pyyaml` 安装到系统 Python 3.11 用户站点，然后设置 `PYTHONPATH` 直接调用 pytest：
 
 ```bash
-"/c/Program Files/Python311/python" -m pip install --user pytest pytest-xdist pyyaml
+"/c/Program Files/Python311/python" -m pip install --user pytest pyyaml
 export PYTHONPATH="$(pwd)"
-"/c/Program Files/Python311/python" -m pytest tests/foo/test_bar.py -v --tb=short -n 0
+"/c/Program Files/Python311/python" -m pytest tests/foo/test_bar.py -v --tb=short
 ```
 
-使用 `-n 0` 而非 `-n 4` — `pyproject.toml` 的默认 `addopts` 已包含 `-n`，且 wrapper 的 CI 一致性保证不适用于非 POSIX 环境。
+仓库已不再使用 pytest-xdist——规范 runner 通过 `run_tests_parallel.py` 做按文件子进程隔离，但该 wrapper 仅支持 POSIX，其 CI 一致性保证不适用于非 POSIX 环境。
 
 **仅 POSIX 的测试需要跳过守卫。** 代码库中已有的常见标记：
 - 符号链接——Windows 上需要提升权限
 - `0o600` 文件模式——POSIX 模式位在 NTFS 上默认不强制执行
-- `signal.SIGALRM`——仅 Unix（参见 `tests/conftest.py::_enforce_test_timeout`）
+- `signal.SIGALRM`——仅 Unix（每测试超时不再直接使用它；参见 `tests/conftest.py::pytest_configure` 中的 win32 timeout-method shim）
 - Winsock / Windows 特有回归——`@pytest.mark.skipif(sys.platform != "win32", ...)`
 
 使用现有的跳过模式风格（`sys.platform == "win32"` 或 `sys.platform.startswith("win")`）以与测试套件其余部分保持一致。
@@ -780,18 +781,18 @@ hermes config set auxiliary.vision.model <model_name>
 
 | 查找内容... | 位置 |
 |----------------|----------|
-| 配置选项 | `hermes config edit` 或[配置文档](https://openagents.nousresearch.com/docs/user-guide/configuration) |
-| 可用工具 | `hermes tools list` 或[工具参考](https://openagents.nousresearch.com/docs/reference/tools-reference) |
-| 斜杠命令 | 会话内 `/help` 或[斜杠命令参考](https://openagents.nousresearch.com/docs/reference/slash-commands) |
-| Skill 目录 | `hermes skills browse` 或[Skill 目录](https://openagents.nousresearch.com/docs/reference/skills-catalog) |
-| 提供商设置 | `hermes model` 或[提供商指南](https://openagents.nousresearch.com/docs/integrations/providers) |
-| 平台设置 | `hermes gateway setup` 或[消息文档](https://openagents.nousresearch.com/docs/user-guide/messaging/) |
-| MCP 服务器 | `hermes mcp list` 或[MCP 指南](https://openagents.nousresearch.com/docs/user-guide/features/mcp) |
-| Profiles | `hermes profile list` 或[Profiles 文档](https://openagents.nousresearch.com/docs/user-guide/profiles) |
-| Cron 任务 | `hermes cron list` 或[Cron 文档](https://openagents.nousresearch.com/docs/user-guide/features/cron) |
-| 记忆 | `hermes memory status` 或[记忆文档](https://openagents.nousresearch.com/docs/user-guide/features/memory) |
-| 环境变量 | `hermes config env-path` 或[环境变量参考](https://openagents.nousresearch.com/docs/reference/environment-variables) |
-| CLI 命令 | `hermes --help` 或[CLI 参考](https://openagents.nousresearch.com/docs/reference/cli-commands) |
+| 配置选项 | `hermes config edit` 或[配置文档](https://hermes-agent.nousresearch.com/docs/user-guide/configuration) |
+| 可用工具 | `hermes tools list` 或[工具参考](https://hermes-agent.nousresearch.com/docs/reference/tools-reference) |
+| 斜杠命令 | 会话内 `/help` 或[斜杠命令参考](https://hermes-agent.nousresearch.com/docs/reference/slash-commands) |
+| Skill 目录 | `hermes skills browse` 或[Skill 目录](https://hermes-agent.nousresearch.com/docs/reference/skills-catalog) |
+| 提供商设置 | `hermes model` 或[提供商指南](https://hermes-agent.nousresearch.com/docs/integrations/providers) |
+| 平台设置 | `hermes gateway setup` 或[消息文档](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/) |
+| MCP 服务器 | `hermes mcp list` 或[MCP 指南](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp) |
+| Profiles | `hermes profile list` 或[Profiles 文档](https://hermes-agent.nousresearch.com/docs/user-guide/profiles) |
+| Cron 任务 | `hermes cron list` 或[Cron 文档](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron) |
+| 记忆 | `hermes memory status` 或[记忆文档](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory) |
+| 环境变量 | `hermes config env-path` 或[环境变量参考](https://hermes-agent.nousresearch.com/docs/reference/environment-variables) |
+| CLI 命令 | `hermes --help` 或[CLI 参考](https://hermes-agent.nousresearch.com/docs/reference/cli-commands) |
 | Gateway 日志 | `~/.openagents/logs/gateway.log` |
 | 会话文件 | `~/.openagents/sessions/` 或 `hermes sessions browse` |
 | 源代码 | `~/.openagents/openagents/` |
@@ -800,7 +801,7 @@ hermes config set auxiliary.vision.model <model_name>
 
 ## 贡献者快速参考
 
-面向偶尔贡献者和 PR 作者。完整开发者文档：https://openagents.nousresearch.com/docs/developer-guide/
+面向偶尔贡献者和 PR 作者。完整开发者文档：https://hermes-agent.nousresearch.com/docs/developer-guide/
 
 ### 项目结构
 
@@ -890,19 +891,19 @@ python -m pytest tests/tools/ -q            # 特定区域
 - 推送任何变更前运行完整套件
 - 使用 `-o 'addopts='` 清除任何内置的 pytest 标志
 
-**Windows 贡献者：** `scripts/run_tests.sh` 目前查找 POSIX venv（`.venv/bin/activate` / `venv/bin/activate`），在 Windows 上会报错，因为布局是 `venv/Scripts/activate` + `python.exe`。Hermes 安装的 venv 位于 `venv/Scripts/`，也没有 `pip` 或 `pytest`——为终端用户安装体积而精简。解决方案：将 pytest + pytest-xdist + pyyaml 安装到系统 Python 3.11 用户站点（`/c/Program Files/Python311/python -m pip install --user pytest pytest-xdist pyyaml`），然后直接运行测试：
+**Windows 贡献者：** `scripts/run_tests.sh` 目前查找 POSIX venv（`.venv/bin/activate` / `venv/bin/activate`），在 Windows 上会报错，因为布局是 `venv/Scripts/activate` + `python.exe`。Hermes 安装的 venv 位于 `venv/Scripts/`，也没有 `pip` 或 `pytest`——为终端用户安装体积而精简。解决方案：将 pytest + pyyaml 安装到系统 Python 3.11 用户站点（`/c/Program Files/Python311/python -m pip install --user pytest pyyaml`），然后直接运行测试：
 
 ```bash
 export PYTHONPATH="$(pwd)"
-"/c/Program Files/Python311/python" -m pytest tests/tools/test_foo.py -v --tb=short -n 0
+"/c/Program Files/Python311/python" -m pytest tests/tools/test_foo.py -v --tb=short
 ```
 
-使用 `-n 0`（而非 `-n 4`），因为 `pyproject.toml` 的默认 `addopts` 已包含 `-n`，且 wrapper 的 CI 一致性保证不适用于非 POSIX 环境。
+仓库已不再使用 pytest-xdist——规范 runner 通过 `run_tests_parallel.py` 做按文件子进程隔离，但该 wrapper 仅支持 POSIX，其 CI 一致性保证不适用于非 POSIX 环境。
 
 **跨平台测试守卫：** 使用仅 POSIX 系统调用的测试需要跳过标记。代码库中已有的常见标记：
 - 符号链接创建 → `@pytest.mark.skipif(sys.platform == "win32", reason="Symlinks require elevated privileges on Windows")`（参见 `tests/cron/test_cron_script.py`）
 - POSIX 文件模式（0o600 等）→ `@pytest.mark.skipif(sys.platform.startswith("win"), reason="POSIX mode bits not enforced on Windows")`（参见 `tests/openagents_cli/test_auth_toctou_file_modes.py`）
-- `signal.SIGALRM` → 仅 Unix（参见 `tests/conftest.py::_enforce_test_timeout`）
+- `signal.SIGALRM` → 仅 Unix（每测试超时不再直接使用它；参见 `tests/conftest.py::pytest_configure` 中的 win32 timeout-method shim）
 - 实时 Winsock / Windows 特有回归测试 → `@pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific regression")`
 
 **仅 monkeypatch `sys.platform` 是不够的**，当被测代码还调用 `platform.system()` / `platform.release()` / `platform.mac_ver()` 时。这些函数独立重新读取真实 OS，因此在 Windows runner 上将 `sys.platform = "linux"` 的测试仍会看到 `platform.system() == "Windows"` 并走 Windows 分支。需要同时 patch 三者：
@@ -920,7 +921,7 @@ monkeypatch.setattr(platform, "release", lambda: "6.8.0-generic")
 关于宿主 OS、用户 home、cwd、终端后端和 shell（Windows 上的 bash vs PowerShell）的事实性指导从 `agent/prompt_builder.py::build_environment_hints()` 输出。WSL 提示和每个后端的探测逻辑也在此处。约定：
 
 - **本地终端后端** → 输出宿主信息（OS、`$HOME`、cwd）+ Windows 特有说明（hostname ≠ username，`terminal` 使用 bash 而非 PowerShell）。
-- **远程终端后端**（`_REMOTE_TERMINAL_BACKENDS` 中的任何内容：`docker, singularity, modal, daytona, ssh, managed_modal`）→ **完全抑制**宿主信息，仅描述后端。通过 `tools.environments.get_environment(...).execute(...)` 在后端内运行实时 `uname`/`whoami`/`pwd` 探测，每进程缓存在 `_BACKEND_PROBE_CACHE` 中，探测超时时使用静态回退。
+- **远程终端后端**（`_REMOTE_TERMINAL_BACKENDS` 中的任何内容：`docker, singularity, modal, daytona, ssh, vercel_sandbox, managed_modal`）→ **完全抑制**宿主信息，仅描述后端。通过 `tools.environments.get_environment(...).execute(...)` 在后端内运行实时 `uname`/`whoami`/`pwd` 探测，每进程缓存在 `_BACKEND_PROBE_CACHE` 中，探测超时时使用静态回退。
 - **prompt 编写的关键事实：** 当 `TERMINAL_ENV != "local"` 时，*每个*文件工具（`read_file`、`write_file`、`patch`、`search_files`）都在后端容器内运行，而非宿主上。在这种情况下，系统 prompt 绝不能描述宿主——agent 无法访问它。
 
 完整设计说明、确切输出字符串和测试陷阱：`references/prompt-builder-environment-hints.md`。
