@@ -618,46 +618,7 @@ def test_rebrand_text_replaces_openclaw_variants():
 
 
 
-<<<<<<< HEAD
-def test_rebrand_text_preserves_filesystem_path_casing():
-    """Lowercase matches — especially ``.openclaw`` filesystem paths — must
-    rewrite to lowercase ``.hermes`` (the real OpenAgents home), not the broken
-    ``.Hermes``.
 
-    Regression test for @versun's OpenClaw-residue feedback: after migration,
-    memory entries that referenced ``~/.openclaw/config.yaml`` were being
-    rewritten to ``~/.openagents/config.yaml`` — a path that doesn't exist —
-    and the agent kept trying to read it.
-    """
-    mod = load_module()
-    assert mod.rebrand_text("config is at ~/.openclaw/config.yaml") == \
-        "config is at ~/.openagents/config.yaml"
-    assert mod.rebrand_text("use .openclaw directory") == "use .hermes directory"
-    assert mod.rebrand_text("Path.home() / '.openclaw'") == "Path.home() / '.hermes'"
-    # Sentence with both lowercase path and capitalized prose.
-    assert mod.rebrand_text("openclaw config path: ~/.openclaw/") == \
-        "hermes config path: ~/.openagents/"
-||||||| cf299e9a01
-def test_rebrand_text_preserves_filesystem_path_casing():
-    """Lowercase matches — especially ``.openclaw`` filesystem paths — must
-    rewrite to lowercase ``.hermes`` (the real OpenAgents home), not the broken
-    ``.Hermes``.
-
-    Regression test for @versun's OpenClaw-residue feedback: after migration,
-    memory entries that referenced ``~/.openclaw/config.yaml`` were being
-    rewritten to ``~/.Hermes/config.yaml`` — a path that doesn't exist —
-    and the agent kept trying to read it.
-    """
-    mod = load_module()
-    assert mod.rebrand_text("config is at ~/.openclaw/config.yaml") == \
-        "config is at ~/.openagents/config.yaml"
-    assert mod.rebrand_text("use .openclaw directory") == "use .hermes directory"
-    assert mod.rebrand_text("Path.home() / '.openclaw'") == "Path.home() / '.hermes'"
-    # Sentence with both lowercase path and capitalized prose.
-    assert mod.rebrand_text("openclaw config path: ~/.openclaw/") == \
-        "hermes config path: ~/.openagents/"
-=======
->>>>>>> rb/tag
 
 
 

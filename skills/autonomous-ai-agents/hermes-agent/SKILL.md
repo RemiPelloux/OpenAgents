@@ -7,19 +7,9 @@ license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-<<<<<<< HEAD
-    tags: [hermes, setup, configuration, multi-agent, spawning, cli, gateway, development]
+    tags: [hermes, setup, configuration, multi-agent, spawning, cli, gateway, bots, bot-mode, features, themes, skins, desktop-plugins, tui-widgets, petdex, development]
     homepage: https://github.com/RemiPelloux/OpenAgents
     related_skills: [open-ecosystem-hub, open-app, open-memory, claude-code, codex, opencode]
-||||||| cf299e9a01
-    tags: [hermes, setup, configuration, multi-agent, spawning, cli, gateway, development]
-    homepage: https://github.com/NousResearch/openagents
-    related_skills: [claude-code, codex, opencode]
-=======
-    tags: [hermes, setup, configuration, multi-agent, spawning, cli, gateway, bots, bot-mode, features, themes, skins, desktop-plugins, tui-widgets, petdex, development]
-    homepage: https://github.com/NousResearch/hermes-agent
-    related_skills: [claude-code, codex, opencode]
->>>>>>> rb/tag
 ---
 
 # OpenAgents

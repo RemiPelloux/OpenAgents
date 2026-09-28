@@ -1,33 +1,7 @@
 """Container-boot reconciliation of per-profile gateway s6 services.
 
-<<<<<<< HEAD
-Service directories under /run/openagents-services/ live on **tmpfs** and are wiped
-on every container restart. Profile directories under
-``$OPENAGENTS_HOME/profiles/<name>/`` live on the persistent VOLUME, and
-each one records its gateway's last state in ``gateway_state.json``.
-This module bridges the two: on every container boot, walk the
-persistent profiles, recreate the s6 service slots, and auto-start
-only those whose last recorded state was ``running``.
-
-Wired into the image as /etc/cont-init.d/02-reconcile-profiles by the
-Dockerfile (Phase 4 Task 4.0). Runs as root after 01-hermes-setup
-(the stage2 hook) has chowned the volume and seeded $OPENAGENTS_HOME, but
-||||||| cf299e9a01
-Service directories under /run/service/ live on **tmpfs** and are wiped
-on every container restart. Profile directories under
-``$OPENAGENTS_HOME/profiles/<name>/`` live on the persistent VOLUME, and
-each one records its gateway's last state in ``gateway_state.json``.
-This module bridges the two: on every container boot, walk the
-persistent profiles, recreate the s6 service slots, and auto-start
-only those whose last recorded state was ``running``.
-
-Wired into the image as /etc/cont-init.d/02-reconcile-profiles by the
-Dockerfile (Phase 4 Task 4.0). Runs as root after 01-hermes-setup
-(the stage2 hook) has chowned the volume and seeded $OPENAGENTS_HOME, but
-=======
 Wired into the image as /etc/cont-init.d/02-reconcile-profiles. Runs as root after
 01-hermes-setup (the stage2 hook) has chowned the volume and seeded $OPENAGENTS_HOME, but
->>>>>>> rb/tag
 before s6-rc starts user services.
 """
 from __future__ import annotations
@@ -115,76 +89,13 @@ def reconcile_profile_gateways(
     container_argv: Sequence[str] | None = None) -> list[ReconcileAction]:
     """Recreate s6 service registrations for every persistent profile.
 
-<<<<<<< HEAD
-    Always registers a ``gateway-default`` slot for the root profile
-    (the implicit profile that lives at the top of ``$OPENAGENTS_HOME``,
-    not under ``profiles/``). The dispatcher in ``openagents_cli.gateway``
-    maps an empty profile suffix to ``gateway-default``, so this slot
-    is what ``hermes gateway start`` (no ``-p``) targets. Without it,
-    bare ``hermes gateway start`` inside the container would land on
-    ``s6-svc -u /run/openagents-services/gateway-default`` → uncaught
-    ``CalledProcessError`` → traceback to the user (PR #30136 review).
-||||||| cf299e9a01
-    Always registers a ``gateway-default`` slot for the root profile
-    (the implicit profile that lives at the top of ``$OPENAGENTS_HOME``,
-    not under ``profiles/``). The dispatcher in ``openagents_cli.gateway``
-    maps an empty profile suffix to ``gateway-default``, so this slot
-    is what ``hermes gateway start`` (no ``-p``) targets. Without it,
-    bare ``hermes gateway start`` inside the container would land on
-    ``s6-svc -u /run/service/gateway-default`` → uncaught
-    ``CalledProcessError`` → traceback to the user (PR #30136 review).
-=======
     Always registers a ``gateway-default`` slot for the root profile (the implicit profile at
     the top of ``$OPENAGENTS_HOME``): ``openagents_cli.gateway`` maps an empty profile suffix to it,
     so it is what ``hermes gateway start`` (no ``-p``) targets.
->>>>>>> rb/tag
 
-<<<<<<< HEAD
-    The default slot's prior state is read from
-    ``$OPENAGENTS_HOME/gateway_state.json`` (sibling to the profile root,
-    not under ``profiles/``); stale runtime files there are swept the
-    same way as for named profiles.
-
-    Args:
-        hermes_home: The container's OPENAGENTS_HOME (typically /opt/data).
-            Profiles live under ``<hermes_home>/profiles/<name>/``;
-            the default profile lives at ``<hermes_home>`` itself.
-        scandir: The hermes-owned s6 dynamic scandir (typically
-            /run/openagents-services). Service
-            directories are created at ``<scandir>/gateway-<profile>/``.
-        dry_run: When True, walk and return the action list without
-            touching the filesystem. For tests and `--dry-run` debug.
-        container_argv: Optional container PID 1 argv override. Production
-            reads ``/proc/1/cmdline``; tests inject it directly.
-
-    Returns:
-        One :class:`ReconcileAction` per profile, in this order:
-        ``default`` first, then named profiles in directory order.
-||||||| cf299e9a01
-    The default slot's prior state is read from
-    ``$OPENAGENTS_HOME/gateway_state.json`` (sibling to the profile root,
-    not under ``profiles/``); stale runtime files there are swept the
-    same way as for named profiles.
-
-    Args:
-        hermes_home: The container's OPENAGENTS_HOME (typically /opt/data).
-            Profiles live under ``<hermes_home>/profiles/<name>/``;
-            the default profile lives at ``<hermes_home>`` itself.
-        scandir: The s6 dynamic scandir (typically /run/service). Service
-            directories are created at ``<scandir>/gateway-<profile>/``.
-        dry_run: When True, walk and return the action list without
-            touching the filesystem. For tests and `--dry-run` debug.
-        container_argv: Optional container PID 1 argv override. Production
-            reads ``/proc/1/cmdline``; tests inject it directly.
-
-    Returns:
-        One :class:`ReconcileAction` per profile, in this order:
-        ``default`` first, then named profiles in directory order.
-=======
     Without it, bare ``hermes gateway start`` inside the container would land on ``s6-svc -u
     /run/service/gateway-default`` → uncaught ``CalledProcessError`` → traceback to the user (PR #30136
     review).
->>>>>>> rb/tag
     """
     actions: list[ReconcileAction] = []
     # ONE gateway per container: named slots are registered (so `hermes -p X gateway start` has a
@@ -430,38 +341,9 @@ def _write_reconcile_log(hermes_home: Path, actions: list[ReconcileAction]) -> N
     ts = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     with log_path.open("a", encoding="utf-8") as f:
         for a in actions:
-<<<<<<< HEAD
-            f.write(
-                f"{ts} profile={a.profile} prior_state={a.prior_state} "
-                f"action={a.action}\n"
-            )
-
-
-# 256 KiB soft cap on container-boot.log; rotated to .1 when crossed.
-# At ~80 B per reconcile-action line this is ~3000 lines, or about a
-# year of daily reboots on a 5-profile container. Two files = ~512 KiB
-# worst case. Tuned for visibility (small enough to grep / cat without
-# scrolling forever) more than space (the persistent volume has GB).
-_LOG_ROTATE_BYTES = 256 * 1024
-_PROFILE_GATEWAY_SCANDIR = Path("/run/openagents-services")
-||||||| cf299e9a01
-            f.write(
-                f"{ts} profile={a.profile} prior_state={a.prior_state} "
-                f"action={a.action}\n"
-            )
-
-
-# 256 KiB soft cap on container-boot.log; rotated to .1 when crossed.
-# At ~80 B per reconcile-action line this is ~3000 lines, or about a
-# year of daily reboots on a 5-profile container. Two files = ~512 KiB
-# worst case. Tuned for visibility (small enough to grep / cat without
-# scrolling forever) more than space (the persistent volume has GB).
-_LOG_ROTATE_BYTES = 256 * 1024
-=======
             f.write(f"{ts} profile={a.profile} prior_state={a.prior_state} "
                     f"action={a.action} prior_exit={a.prior_exit} "
                     f"folded_into_root={a.folded_into_root}\n")
->>>>>>> rb/tag
 
 
 def main() -> int:
@@ -474,23 +356,11 @@ def main() -> int:
         return 0
 
     hermes_home = Path(os.environ.get("OPENAGENTS_HOME", "/opt/data"))
-<<<<<<< HEAD
-    scandir = _PROFILE_GATEWAY_SCANDIR
-    actions = reconcile_profile_gateways(
-        hermes_home=hermes_home, scandir=scandir,
-    )
-||||||| cf299e9a01
-    scandir = Path(os.environ.get("S6_PROFILE_GATEWAY_SCANDIR", "/run/service"))
-    actions = reconcile_profile_gateways(
-        hermes_home=hermes_home, scandir=scandir,
-    )
-=======
     scandir = Path(os.environ.get("S6_PROFILE_GATEWAY_SCANDIR", "/run/service"))
     actions = reconcile_profile_gateways(hermes_home=hermes_home, scandir=scandir)
     folded = [a.profile for a in actions if a.profile != "default" and a.folded_into_root]
     if folded:
         print(boot_notice(folded))
->>>>>>> rb/tag
     for a in actions:
         print(f"reconcile: profile={a.profile} prior_state={a.prior_state} action={a.action}")
     return 0

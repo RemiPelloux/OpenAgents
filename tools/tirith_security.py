@@ -43,26 +43,7 @@ def _env_int(key: str, default: int) -> int:
 
 
 def _load_security_config() -> dict:
-<<<<<<< HEAD
-    """Load security settings from config.yaml, with env var overrides."""
-    defaults = {
-        "tirith_enabled": True,
-        "tirith_path": "tirith",
-        "tirith_timeout": 5,
-        "tirith_fail_open": True,
-        "builtin_command_scanner": True,
-    }
-||||||| cf299e9a01
-    """Load security settings from config.yaml, with env var overrides."""
-    defaults = {
-        "tirith_enabled": True,
-        "tirith_path": "tirith",
-        "tirith_timeout": 5,
-        "tirith_fail_open": True,
-    }
-=======
     """Security settings from config.yaml, with env var overrides."""
->>>>>>> rb/tag
     try:
         from openagents_cli.config import load_config_readonly
         cfg = load_config_readonly().get("security", {}) or {}

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# pyright: reportArgumentType=false, reportOptionalCall=false
 """
 Tests for the subagent delegation tool.
 
@@ -54,178 +53,6 @@ def _make_mock_parent(depth=0):
     return parent
 
 
-<<<<<<< HEAD
-class TestDelegateRequirements(unittest.TestCase):
-    def test_always_available(self):
-        self.assertTrue(check_delegate_requirements())
-
-    def test_schema_valid(self):
-        self.assertEqual(DELEGATE_TASK_SCHEMA["name"], "delegate_task")
-        props = DELEGATE_TASK_SCHEMA["parameters"]["properties"]
-        self.assertIn("goal", props)
-        self.assertIn("tasks", props)
-        self.assertIn("context", props)
-        self.assertIn("toolsets", props)
-        self.assertIn("model", props)
-        self.assertIn("model", props["tasks"]["items"]["properties"])
-        # max_iterations is intentionally NOT exposed to the model — it's
-        # config-authoritative via delegation.max_iterations so users get
-        # predictable budgets.
-        self.assertNotIn("max_iterations", props)
-        self.assertNotIn("maxItems", props["tasks"])  # removed — limit is now runtime-configurable
-
-    def test_schema_description_advertises_runtime_limits(self):
-        """The model must see the user's actual concurrency / spawn-depth caps,
-        not the framework defaults. Without this, models that read 'default 3'
-        will self-cap below the user's real limit.
-        """
-        from tools.delegate_tool import (
-            _build_dynamic_schema_overrides,
-            _get_max_concurrent_children,
-            _get_max_spawn_depth,
-        )
-
-        overrides = _build_dynamic_schema_overrides()
-        max_children = _get_max_concurrent_children()
-        max_depth = _get_max_spawn_depth()
-
-        desc = overrides["description"]
-        tasks_desc = overrides["parameters"]["properties"]["tasks"]["description"]
-        role_desc = overrides["parameters"]["properties"]["role"]["description"]
-
-        # Top-level description names the user's concurrency limit explicitly.
-        self.assertIn(f"up to {max_children}", desc)
-        # Top-level description names the user's spawn-depth limit explicitly.
-        self.assertIn(f"max_spawn_depth={max_depth}", desc)
-        # tasks parameter description repeats the concurrency cap.
-        self.assertIn(f"up to {max_children}", tasks_desc)
-        # role parameter description names the spawn-depth limit.
-        self.assertIn(f"max_spawn_depth={max_depth}", role_desc)
-        # The misleading "default 3" / "default 2" wording is gone from
-        # every dynamic surface (model-facing).
-        for surface in (desc, tasks_desc, role_desc):
-            self.assertNotIn("default 3", surface)
-            self.assertNotIn("default 2", surface)
-
-    def test_schema_overrides_applied_via_get_definitions(self):
-        """Registry.get_definitions() must apply dynamic_schema_overrides so
-        the model API call sees current values, not the static import-time text.
-        """
-        from tools.registry import registry
-        defs = registry.get_definitions({"delegate_task"})
-        self.assertEqual(len(defs), 1)
-        fn = defs[0]["function"]
-        # Description should mention the user's actual limits, not "default 3".
-        from tools.delegate_tool import (
-            _get_max_concurrent_children,
-            _get_max_spawn_depth,
-        )
-        self.assertIn(f"up to {_get_max_concurrent_children()}", fn["description"])
-        self.assertIn(f"max_spawn_depth={_get_max_spawn_depth()}", fn["description"])
-
-
-class TestChildSystemPrompt(unittest.TestCase):
-    def test_goal_only(self):
-        prompt = _build_child_system_prompt("Fix the tests")
-        self.assertIn("Fix the tests", prompt)
-        self.assertIn("YOUR TASK", prompt)
-        self.assertNotIn("CONTEXT", prompt)
-
-    def test_goal_with_context(self):
-        prompt = _build_child_system_prompt("Fix the tests", "Error: assertion failed in test_foo.py line 42")
-        self.assertIn("Fix the tests", prompt)
-        self.assertIn("CONTEXT", prompt)
-        self.assertIn("assertion failed", prompt)
-
-    def test_empty_context_ignored(self):
-        prompt = _build_child_system_prompt("Do something", "  ")
-        self.assertNotIn("CONTEXT", prompt)
-||||||| cf299e9a01
-class TestDelegateRequirements(unittest.TestCase):
-    def test_always_available(self):
-        self.assertTrue(check_delegate_requirements())
-
-    def test_schema_valid(self):
-        self.assertEqual(DELEGATE_TASK_SCHEMA["name"], "delegate_task")
-        props = DELEGATE_TASK_SCHEMA["parameters"]["properties"]
-        self.assertIn("goal", props)
-        self.assertIn("tasks", props)
-        self.assertIn("context", props)
-        self.assertIn("toolsets", props)
-        # max_iterations is intentionally NOT exposed to the model — it's
-        # config-authoritative via delegation.max_iterations so users get
-        # predictable budgets.
-        self.assertNotIn("max_iterations", props)
-        self.assertNotIn("maxItems", props["tasks"])  # removed — limit is now runtime-configurable
-
-    def test_schema_description_advertises_runtime_limits(self):
-        """The model must see the user's actual concurrency / spawn-depth caps,
-        not the framework defaults. Without this, models that read 'default 3'
-        will self-cap below the user's real limit.
-        """
-        from tools.delegate_tool import (
-            _build_dynamic_schema_overrides,
-            _get_max_concurrent_children,
-            _get_max_spawn_depth,
-        )
-
-        overrides = _build_dynamic_schema_overrides()
-        max_children = _get_max_concurrent_children()
-        max_depth = _get_max_spawn_depth()
-
-        desc = overrides["description"]
-        tasks_desc = overrides["parameters"]["properties"]["tasks"]["description"]
-        role_desc = overrides["parameters"]["properties"]["role"]["description"]
-
-        # Top-level description names the user's concurrency limit explicitly.
-        self.assertIn(f"up to {max_children}", desc)
-        # Top-level description names the user's spawn-depth limit explicitly.
-        self.assertIn(f"max_spawn_depth={max_depth}", desc)
-        # tasks parameter description repeats the concurrency cap.
-        self.assertIn(f"up to {max_children}", tasks_desc)
-        # role parameter description names the spawn-depth limit.
-        self.assertIn(f"max_spawn_depth={max_depth}", role_desc)
-        # The misleading "default 3" / "default 2" wording is gone from
-        # every dynamic surface (model-facing).
-        for surface in (desc, tasks_desc, role_desc):
-            self.assertNotIn("default 3", surface)
-            self.assertNotIn("default 2", surface)
-
-    def test_schema_overrides_applied_via_get_definitions(self):
-        """Registry.get_definitions() must apply dynamic_schema_overrides so
-        the model API call sees current values, not the static import-time text.
-        """
-        from tools.registry import registry
-        defs = registry.get_definitions({"delegate_task"})
-        self.assertEqual(len(defs), 1)
-        fn = defs[0]["function"]
-        # Description should mention the user's actual limits, not "default 3".
-        from tools.delegate_tool import (
-            _get_max_concurrent_children,
-            _get_max_spawn_depth,
-        )
-        self.assertIn(f"up to {_get_max_concurrent_children()}", fn["description"])
-        self.assertIn(f"max_spawn_depth={_get_max_spawn_depth()}", fn["description"])
-
-
-class TestChildSystemPrompt(unittest.TestCase):
-    def test_goal_only(self):
-        prompt = _build_child_system_prompt("Fix the tests")
-        self.assertIn("Fix the tests", prompt)
-        self.assertIn("YOUR TASK", prompt)
-        self.assertNotIn("CONTEXT", prompt)
-
-    def test_goal_with_context(self):
-        prompt = _build_child_system_prompt("Fix the tests", "Error: assertion failed in test_foo.py line 42")
-        self.assertIn("Fix the tests", prompt)
-        self.assertIn("CONTEXT", prompt)
-        self.assertIn("assertion failed", prompt)
-
-    def test_empty_context_ignored(self):
-        prompt = _build_child_system_prompt("Do something", "  ")
-        self.assertNotIn("CONTEXT", prompt)
-=======
->>>>>>> rb/tag
 
 
 class TestStripBlockedTools(unittest.TestCase):
@@ -352,409 +179,6 @@ class TestDelegateTask(unittest.TestCase):
         self.assertIn("error", result)
         self.assertIn("depth limit", result["error"].lower())
 
-<<<<<<< HEAD
-    def test_no_goal_or_tasks(self):
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(parent_agent=parent))
-        self.assertIn("error", result)
-
-    def test_empty_goal(self):
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(goal="  ", parent_agent=parent))
-        self.assertIn("error", result)
-
-    def test_task_missing_goal(self):
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(tasks=[{"context": "no goal here"}], parent_agent=parent))
-        self.assertIn("error", result)
-
-    def test_rejects_invalid_model_override(self):
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(goal="test", model=" ", parent_agent=parent))
-        self.assertIn("error", result)
-        self.assertIn("model must be a non-empty string", result["error"])
-
-    @patch("tools.delegate_tool._run_single_child")
-    @patch("tools.delegate_tool._resolve_delegation_credentials")
-    @patch("run_agent.AIAgent")
-    def test_single_model_override_wins_over_config(self, mock_agent, mock_creds, mock_run):
-        mock_creds.return_value = {
-            "provider": None, "base_url": None, "api_key": None,
-            "api_mode": None, "model": "configured-model",
-        }
-        mock_run.return_value = {
-            "task_index": 0, "status": "completed", "summary": "done",
-            "api_calls": 1, "duration_seconds": 0,
-        }
-        mock_agent.return_value = MagicMock()
-
-        delegate_task(goal="test", model="requested-model", parent_agent=_make_mock_parent())
-
-        self.assertEqual(mock_agent.call_args.kwargs["model"], "requested-model")
-
-    @patch("tools.delegate_tool._run_single_child")
-    @patch("tools.delegate_tool._resolve_delegation_credentials")
-    @patch("run_agent.AIAgent")
-    def test_batch_items_select_distinct_models(self, mock_agent, mock_creds, mock_run):
-        mock_creds.return_value = {
-            "provider": None, "base_url": None, "api_key": None,
-            "api_mode": None, "model": "configured-model",
-        }
-        mock_run.side_effect = lambda task_index, **_kwargs: {
-            "task_index": task_index, "status": "completed", "summary": "done",
-            "api_calls": 1, "duration_seconds": 0,
-        }
-        mock_agent.side_effect = [MagicMock(), MagicMock()]
-        tasks = [
-            {"goal": "fast task", "model": "fast-model"},
-            {"goal": "deep task", "model": "deep-model"},
-        ]
-
-        delegate_task(tasks=tasks, model="default-model", parent_agent=_make_mock_parent())
-
-        self.assertEqual(
-            [call.kwargs["model"] for call in mock_agent.call_args_list],
-            ["fast-model", "deep-model"],
-        )
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_single_task_mode(self, mock_run):
-        mock_run.return_value = {
-            "task_index": 0, "status": "completed",
-            "summary": "Done!", "api_calls": 3, "duration_seconds": 5.0
-        }
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(goal="Fix tests", context="error log...", parent_agent=parent))
-        self.assertIn("results", result)
-        self.assertEqual(len(result["results"]), 1)
-        self.assertEqual(result["results"][0]["status"], "completed")
-        self.assertEqual(result["results"][0]["summary"], "Done!")
-        mock_run.assert_called_once()
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_mode(self, mock_run):
-        mock_run.side_effect = [
-            {"task_index": 0, "status": "completed", "summary": "Result A", "api_calls": 2, "duration_seconds": 3.0},
-            {"task_index": 1, "status": "completed", "summary": "Result B", "api_calls": 4, "duration_seconds": 6.0},
-        ]
-        parent = _make_mock_parent()
-        tasks = [
-            {"goal": "Research topic A"},
-            {"goal": "Research topic B"},
-        ]
-        result = json.loads(delegate_task(tasks=tasks, parent_agent=parent))
-        self.assertIn("results", result)
-        self.assertEqual(len(result["results"]), 2)
-        self.assertEqual(result["results"][0]["summary"], "Result A")
-        self.assertEqual(result["results"][1]["summary"], "Result B")
-        self.assertIn("total_duration_seconds", result)
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_mode_accepts_json_string_tasks(self, mock_run):
-        mock_run.side_effect = [
-            {
-                "task_index": 0,
-                "status": "completed",
-                "summary": "Result A",
-                "api_calls": 2,
-                "duration_seconds": 3.0,
-            },
-            {
-                "task_index": 1,
-                "status": "completed",
-                "summary": "Result B",
-                "api_calls": 4,
-                "duration_seconds": 6.0,
-            },
-        ]
-        parent = _make_mock_parent()
-        tasks = json.dumps(
-            [
-                {"goal": "Research topic A"},
-                {"goal": "Research topic B"},
-            ]
-        )
-
-        result = json.loads(delegate_task(tasks=tasks, parent_agent=parent))
-
-        self.assertIn("results", result)
-        self.assertEqual(len(result["results"]), 2)
-        self.assertEqual(result["results"][0]["summary"], "Result A")
-        self.assertEqual(result["results"][1]["summary"], "Result B")
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_mode_rejects_non_object_tasks(self, mock_run):
-        parent = _make_mock_parent()
-
-        result = json.loads(
-            delegate_task(tasks=["not a task object"], parent_agent=parent)
-        )
-
-        self.assertIn("error", result)
-        self.assertIn("Task 0 must be an object", result["error"])
-        mock_run.assert_not_called()
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_mode_rejects_malformed_json_string_tasks(self, mock_run):
-        parent = _make_mock_parent()
-
-        result = json.loads(
-            delegate_task(tasks='[{"goal": "bad}', parent_agent=parent)
-        )
-
-        self.assertIn("error", result)
-        self.assertIn("could not be parsed as JSON", result["error"])
-        mock_run.assert_not_called()
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_capped_at_3(self, mock_run):
-        mock_run.return_value = {
-            "task_index": 0, "status": "completed",
-            "summary": "Done", "api_calls": 1, "duration_seconds": 1.0
-        }
-        parent = _make_mock_parent()
-        limit = _get_max_concurrent_children()
-        tasks = [{"goal": f"Task {i}"} for i in range(limit + 2)]
-        result = json.loads(delegate_task(tasks=tasks, parent_agent=parent))
-        # Should return an error instead of silently truncating
-        self.assertIn("error", result)
-        self.assertIn("Too many tasks", result["error"])
-        mock_run.assert_not_called()
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_ignores_toplevel_goal(self, mock_run):
-        """When tasks array is provided, top-level goal/context/toolsets are ignored."""
-        mock_run.return_value = {
-            "task_index": 0, "status": "completed",
-            "summary": "Done", "api_calls": 1, "duration_seconds": 1.0
-        }
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(
-            goal="This should be ignored",
-            tasks=[{"goal": "Actual task"}],
-            parent_agent=parent,
-        ))
-        # The mock was called with the tasks array item, not the top-level goal
-        call_args = mock_run.call_args
-        self.assertEqual(call_args.kwargs.get("goal") or call_args[1].get("goal", call_args[0][1] if len(call_args[0]) > 1 else None), "Actual task")
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_failed_child_included_in_results(self, mock_run):
-        mock_run.return_value = {
-            "task_index": 0, "status": "error",
-            "summary": None, "error": "Something broke",
-            "api_calls": 0, "duration_seconds": 0.5
-        }
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(goal="Break things", parent_agent=parent))
-        self.assertEqual(result["results"][0]["status"], "error")
-        self.assertIn("Something broke", result["results"][0]["error"])
-
-    def test_depth_increments(self):
-        """Verify child gets parent's depth + 1."""
-        parent = _make_mock_parent(depth=0)
-
-        with patch("run_agent.AIAgent") as MockAgent:
-            mock_child = MagicMock()
-            mock_child.run_conversation.return_value = {
-                "final_response": "done", "completed": True, "api_calls": 1
-            }
-            MockAgent.return_value = mock_child
-
-            delegate_task(goal="Test depth", parent_agent=parent)
-            self.assertEqual(mock_child._delegate_depth, 1)
-
-    def test_active_children_tracking(self):
-        """Verify children are registered/unregistered for interrupt propagation."""
-        parent = _make_mock_parent(depth=0)
-
-        with patch("run_agent.AIAgent") as MockAgent:
-            mock_child = MagicMock()
-            mock_child.run_conversation.return_value = {
-                "final_response": "done", "completed": True, "api_calls": 1
-            }
-            MockAgent.return_value = mock_child
-
-            delegate_task(goal="Test tracking", parent_agent=parent)
-            self.assertEqual(len(parent._active_children), 0)
-||||||| cf299e9a01
-    def test_no_goal_or_tasks(self):
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(parent_agent=parent))
-        self.assertIn("error", result)
-
-    def test_empty_goal(self):
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(goal="  ", parent_agent=parent))
-        self.assertIn("error", result)
-
-    def test_task_missing_goal(self):
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(tasks=[{"context": "no goal here"}], parent_agent=parent))
-        self.assertIn("error", result)
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_single_task_mode(self, mock_run):
-        mock_run.return_value = {
-            "task_index": 0, "status": "completed",
-            "summary": "Done!", "api_calls": 3, "duration_seconds": 5.0
-        }
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(goal="Fix tests", context="error log...", parent_agent=parent))
-        self.assertIn("results", result)
-        self.assertEqual(len(result["results"]), 1)
-        self.assertEqual(result["results"][0]["status"], "completed")
-        self.assertEqual(result["results"][0]["summary"], "Done!")
-        mock_run.assert_called_once()
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_mode(self, mock_run):
-        mock_run.side_effect = [
-            {"task_index": 0, "status": "completed", "summary": "Result A", "api_calls": 2, "duration_seconds": 3.0},
-            {"task_index": 1, "status": "completed", "summary": "Result B", "api_calls": 4, "duration_seconds": 6.0},
-        ]
-        parent = _make_mock_parent()
-        tasks = [
-            {"goal": "Research topic A"},
-            {"goal": "Research topic B"},
-        ]
-        result = json.loads(delegate_task(tasks=tasks, parent_agent=parent))
-        self.assertIn("results", result)
-        self.assertEqual(len(result["results"]), 2)
-        self.assertEqual(result["results"][0]["summary"], "Result A")
-        self.assertEqual(result["results"][1]["summary"], "Result B")
-        self.assertIn("total_duration_seconds", result)
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_mode_accepts_json_string_tasks(self, mock_run):
-        mock_run.side_effect = [
-            {
-                "task_index": 0,
-                "status": "completed",
-                "summary": "Result A",
-                "api_calls": 2,
-                "duration_seconds": 3.0,
-            },
-            {
-                "task_index": 1,
-                "status": "completed",
-                "summary": "Result B",
-                "api_calls": 4,
-                "duration_seconds": 6.0,
-            },
-        ]
-        parent = _make_mock_parent()
-        tasks = json.dumps(
-            [
-                {"goal": "Research topic A"},
-                {"goal": "Research topic B"},
-            ]
-        )
-
-        result = json.loads(delegate_task(tasks=tasks, parent_agent=parent))
-
-        self.assertIn("results", result)
-        self.assertEqual(len(result["results"]), 2)
-        self.assertEqual(result["results"][0]["summary"], "Result A")
-        self.assertEqual(result["results"][1]["summary"], "Result B")
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_mode_rejects_non_object_tasks(self, mock_run):
-        parent = _make_mock_parent()
-
-        result = json.loads(
-            delegate_task(tasks=["not a task object"], parent_agent=parent)
-        )
-
-        self.assertIn("error", result)
-        self.assertIn("Task 0 must be an object", result["error"])
-        mock_run.assert_not_called()
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_mode_rejects_malformed_json_string_tasks(self, mock_run):
-        parent = _make_mock_parent()
-
-        result = json.loads(
-            delegate_task(tasks='[{"goal": "bad}', parent_agent=parent)
-        )
-
-        self.assertIn("error", result)
-        self.assertIn("could not be parsed as JSON", result["error"])
-        mock_run.assert_not_called()
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_capped_at_3(self, mock_run):
-        mock_run.return_value = {
-            "task_index": 0, "status": "completed",
-            "summary": "Done", "api_calls": 1, "duration_seconds": 1.0
-        }
-        parent = _make_mock_parent()
-        limit = _get_max_concurrent_children()
-        tasks = [{"goal": f"Task {i}"} for i in range(limit + 2)]
-        result = json.loads(delegate_task(tasks=tasks, parent_agent=parent))
-        # Should return an error instead of silently truncating
-        self.assertIn("error", result)
-        self.assertIn("Too many tasks", result["error"])
-        mock_run.assert_not_called()
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_batch_ignores_toplevel_goal(self, mock_run):
-        """When tasks array is provided, top-level goal/context/toolsets are ignored."""
-        mock_run.return_value = {
-            "task_index": 0, "status": "completed",
-            "summary": "Done", "api_calls": 1, "duration_seconds": 1.0
-        }
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(
-            goal="This should be ignored",
-            tasks=[{"goal": "Actual task"}],
-            parent_agent=parent,
-        ))
-        # The mock was called with the tasks array item, not the top-level goal
-        call_args = mock_run.call_args
-        self.assertEqual(call_args.kwargs.get("goal") or call_args[1].get("goal", call_args[0][1] if len(call_args[0]) > 1 else None), "Actual task")
-
-    @patch("tools.delegate_tool._run_single_child")
-    def test_failed_child_included_in_results(self, mock_run):
-        mock_run.return_value = {
-            "task_index": 0, "status": "error",
-            "summary": None, "error": "Something broke",
-            "api_calls": 0, "duration_seconds": 0.5
-        }
-        parent = _make_mock_parent()
-        result = json.loads(delegate_task(goal="Break things", parent_agent=parent))
-        self.assertEqual(result["results"][0]["status"], "error")
-        self.assertIn("Something broke", result["results"][0]["error"])
-
-    def test_depth_increments(self):
-        """Verify child gets parent's depth + 1."""
-        parent = _make_mock_parent(depth=0)
-
-        with patch("run_agent.AIAgent") as MockAgent:
-            mock_child = MagicMock()
-            mock_child.run_conversation.return_value = {
-                "final_response": "done", "completed": True, "api_calls": 1
-            }
-            MockAgent.return_value = mock_child
-
-            delegate_task(goal="Test depth", parent_agent=parent)
-            self.assertEqual(mock_child._delegate_depth, 1)
-
-    def test_active_children_tracking(self):
-        """Verify children are registered/unregistered for interrupt propagation."""
-        parent = _make_mock_parent(depth=0)
-
-        with patch("run_agent.AIAgent") as MockAgent:
-            mock_child = MagicMock()
-            mock_child.run_conversation.return_value = {
-                "final_response": "done", "completed": True, "api_calls": 1
-            }
-            MockAgent.return_value = mock_child
-
-            delegate_task(goal="Test tracking", parent_agent=parent)
-            self.assertEqual(len(parent._active_children), 0)
-=======
->>>>>>> rb/tag
 
     def test_child_inherits_runtime_credentials(self):
         parent = _make_mock_parent(depth=0)
@@ -2181,6 +1605,64 @@ class TestOrchestratorRoleSchema(unittest.TestCase):
         self.assertNotIn("acp_args", props)
         self.assertNotIn("acp_command", task_props)
         self.assertNotIn("acp_args", task_props)
+
+
+class TestDelegateModelOverride(unittest.TestCase):
+    """OpenAgents: per-call / per-task ``model`` override for delegate_task."""
+
+    def test_schema_exposes_model_fields(self):
+        props = DELEGATE_TASK_SCHEMA["parameters"]["properties"]
+        self.assertIn("model", props)
+        self.assertIn("model", props["tasks"]["items"]["properties"])
+
+    def test_rejects_invalid_model_override(self):
+        parent = _make_mock_parent()
+        result = json.loads(delegate_task(goal="test", model=" ", parent_agent=parent))
+        self.assertIn("error", result)
+        self.assertIn("model must be a non-empty string", result["error"])
+
+    def _run(self, **kwargs):
+        with patch("tools.delegate_tool._load_config", return_value={"max_iterations": 10}), \
+                patch("tools.delegate_tool._resolve_delegation_credentials", return_value={
+                    "provider": None, "base_url": None, "api_key": None,
+                    "api_mode": None, "model": "configured-model",
+                }), patch("run_agent.AIAgent") as mock_agent:
+            mock_child = MagicMock()
+            mock_child.run_conversation.return_value = {
+                "final_response": "done", "completed": True, "api_calls": 1,
+            }
+            mock_agent.return_value = mock_child
+            delegate_task(parent_agent=_make_mock_parent(), **kwargs)
+            return [call.kwargs["model"] for call in mock_agent.call_args_list]
+
+    def test_single_model_override_wins_over_config(self):
+        self.assertEqual(self._run(goal="test", model="requested-model"), ["requested-model"])
+
+    def test_no_override_uses_configured_model(self):
+        self.assertEqual(self._run(goal="test"), ["configured-model"])
+
+    def test_batch_items_select_distinct_models(self):
+        tasks = [
+            {"goal": "fast task for the first child", "model": "fast-model"},
+            {"goal": "deep task for the second child", "model": "deep-model"},
+            {"goal": "default task for the third child"},
+        ]
+        models = self._run(tasks=tasks, model="default-model")
+        self.assertEqual(sorted(models), ["deep-model", "default-model", "fast-model"])
+
+    def test_registry_handler_and_dispatch_forward_model(self):
+        import run_agent
+        with patch("tools.delegate_tool.delegate_task", return_value="{}") as mock_delegate:
+            agent = MagicMock()
+            agent._delegate_depth = 1
+            run_agent.AIAgent._dispatch_delegate_task(agent, {"goal": "x", "model": "m1"})
+        self.assertEqual(mock_delegate.call_args.kwargs["model"], "m1")
+
+        from tools.registry import registry
+        handler = registry._tools["delegate_task"].handler
+        with patch("tools.delegate_tool.delegate_task", return_value="{}") as mock_delegate:
+            handler({"goal": "x", "model": "m2"}, parent_agent=_make_mock_parent(depth=1))
+        self.assertEqual(mock_delegate.call_args.kwargs["model"], "m2")
 
 
 # Sentinel used to distinguish "role kwarg omitted" from "role=None".

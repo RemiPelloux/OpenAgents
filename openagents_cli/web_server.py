@@ -314,41 +314,17 @@ from openagents_cli.memory_oauth import router as _memory_oauth_router  # noqa: 
 
 app.include_router(_memory_oauth_router)
 
-<<<<<<< HEAD
 # OpenAgentUI (visual workflow builder) CRUD/execute routes — kept out of
 # this file for the same reason as memory OAuth above.
 from openagents_cli.openagentui_server import router as _openagentui_router  # noqa: E402
 
 app.include_router(_openagentui_router)
 
-# ---------------------------------------------------------------------------
-# Session token for protecting sensitive endpoints (reveal).
-# The desktop shell mints the token and injects it via
-# HERMES_DASHBOARD_SESSION_TOKEN so its main process can authenticate the
-# /api calls it makes on the user's behalf; otherwise we generate one fresh
-# on every server start. Either way it dies when the process exits and is
-# injected into the SPA HTML so only the legitimate web UI can use it.
-# ---------------------------------------------------------------------------
-_SESSION_TOKEN = os.environ.get("HERMES_DASHBOARD_SESSION_TOKEN") or secrets.token_urlsafe(32)
-_SESSION_HEADER_NAME = "X-Hermes-Session-Token"
-||||||| cf299e9a01
-# ---------------------------------------------------------------------------
-# Session token for protecting sensitive endpoints (reveal).
-# The desktop shell mints the token and injects it via
-# HERMES_DASHBOARD_SESSION_TOKEN so its main process can authenticate the
-# /api calls it makes on the user's behalf; otherwise we generate one fresh
-# on every server start. Either way it dies when the process exits and is
-# injected into the SPA HTML so only the legitimate web UI can use it.
-# ---------------------------------------------------------------------------
-_SESSION_TOKEN = os.environ.get("HERMES_DASHBOARD_SESSION_TOKEN") or secrets.token_urlsafe(32)
-_SESSION_HEADER_NAME = "X-Hermes-Session-Token"
-=======
 # Session token for sensitive endpoints. The desktop shell mints it via
 # HERMES_DASHBOARD_SESSION_TOKEN; otherwise fresh per server start. It dies with
 # the process and is injected into the SPA HTML so only the web UI can use it.
 def _resolve_session_token() -> str:
     return os.environ.get("HERMES_DASHBOARD_SESSION_TOKEN") or secrets.token_urlsafe(32)
->>>>>>> rb/tag
 
 
 _SESSION_TOKEN = _resolve_session_token()
@@ -685,7 +661,6 @@ async def auth_middleware(request: Request, call_next):
     then authoritative and the loopback-only token path must not override it.
     """
     path = request.url.path
-<<<<<<< HEAD
     # OpenAgentUI runs as a separate Next.js app (port 4173) that proxies
     # /api/openagentui/* to this server. It cannot inherit the dashboard SPA's
     # injected session token, so loopback binds allow the prefix without token.
@@ -694,20 +669,6 @@ async def auth_middleware(request: Request, call_next):
         and not getattr(request.app.state, "auth_required", False)
     ):
         return await call_next(request)
-    if path.startswith("/api/") and path not in _PUBLIC_API_PATHS:
-        if not _has_valid_session_token(request) and not _has_valid_query_token(request, path):
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Unauthorized"},
-            )
-||||||| cf299e9a01
-    if path.startswith("/api/") and path not in _PUBLIC_API_PATHS:
-        if not _has_valid_session_token(request) and not _has_valid_query_token(request, path):
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Unauthorized"},
-            )
-=======
     if (
         not getattr(request.state, "token_authenticated", False)
         and not getattr(request.app.state, "auth_required", False)
@@ -718,7 +679,6 @@ async def auth_middleware(request: Request, call_next):
         and not _has_valid_query_token(request, path)
     ):
         return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
->>>>>>> rb/tag
     return await call_next(request)
 
 

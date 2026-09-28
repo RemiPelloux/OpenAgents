@@ -1,235 +1,4 @@
-<<<<<<< HEAD
-"""OpenAgents CLI skin/theme engine.
-
-A data-driven skin system that lets users customize the CLI's visual appearance.
-Skins are defined as YAML files in ~/.openagents/skins/ or as built-in presets.
-No code changes are needed to add a new skin.
-
-SKIN YAML SCHEMA
-================
-
-All fields are optional. Missing values inherit from the ``default`` skin.
-
-.. code-block:: yaml
-
-    # Required: skin identity
-    name: mytheme                         # Unique skin name (lowercase, hyphens ok)
-    description: Short description        # Shown in /skin listing
-
-    # Colors: hex values for Rich markup (banner, UI, response box)
-    colors:
-      banner_border: "#CD7F32"            # Panel border color
-      banner_title: "#FFD700"             # Panel title text color
-      banner_accent: "#FFBF00"            # Section headers (Available Tools, etc.)
-      banner_dim: "#B8860B"               # Dim/muted text (separators, labels)
-      banner_text: "#FFF8DC"              # Body text (tool names, skill names)
-      ui_accent: "#FFBF00"               # General UI accent
-      ui_label: "#DAA520"                # UI labels (warm gold; teal clashed w/ default banner gold)
-      ui_ok: "#4caf50"                   # Success indicators
-      ui_error: "#ef5350"                # Error indicators
-      ui_warn: "#ffa726"                 # Warning indicators
-      prompt: "#FFF8DC"                  # Prompt text color
-      input_rule: "#CD7F32"              # Input area horizontal rule
-      response_border: "#FFD700"         # Response box border (ANSI)
-      status_bar_bg: "#1a1a2e"           # Status bar background
-      status_bar_text: "#C0C0C0"         # Status bar default text
-      status_bar_strong: "#FFD700"       # Status bar highlighted text
-      status_bar_dim: "#8B8682"          # Status bar separators/muted text
-      status_bar_good: "#8FBC8F"         # Healthy context usage
-      status_bar_warn: "#FFD700"         # Warning context usage
-      status_bar_bad: "#FF8C00"          # High context usage
-      status_bar_critical: "#FF6B6B"     # Critical context usage
-      session_label: "#DAA520"           # Session label color
-      session_border: "#8B8682"          # Session ID dim color
-      status_bar_bg: "#1a1a2e"          # TUI status/usage bar background
-      voice_status_bg: "#1a1a2e"        # TUI voice status background
-      selection_bg: "#333355"           # TUI mouse-selection highlight background
-      completion_menu_bg: "#1a1a2e"      # Completion menu background
-      completion_menu_current_bg: "#333355"  # Active completion row background
-      completion_menu_meta_bg: "#1a1a2e"     # Completion meta column background
-      completion_menu_meta_current_bg: "#333355"  # Active completion meta background
-
-    # Spinner: customize the animated spinner during API calls
-    spinner:
-      waiting_faces:                      # Faces shown while waiting for API
-        - "(⚔)"
-        - "(⛨)"
-      thinking_faces:                     # Faces shown during reasoning
-        - "(⌁)"
-        - "(<>)"
-      thinking_verbs:                     # Verbs for spinner messages
-        - "forging"
-        - "plotting"
-      wings:                              # Optional left/right spinner decorations
-        - ["⟪⚔", "⚔⟫"]                  # Each entry is [left, right] pair
-        - ["⟪▲", "▲⟫"]
-
-    # Branding: text strings used throughout the CLI
-    branding:
-      agent_name: "OpenAgents"          # Banner title, status display
-      welcome: "Welcome message"          # Shown at CLI startup
-      goodbye: "Goodbye! ⚕"              # Shown on exit
-      response_label: " ⚕ OpenAgents "       # Response box header label
-      prompt_symbol: "❯"                 # Input prompt symbol (bare token; renderers add trailing space)
-      help_header: "(^_^)? Commands"      # /help header text
-
-    # Tool prefix: character for tool output lines (default: ┊)
-    tool_prefix: "┊"
-
-    # Tool emojis: override the default emoji for any tool (used in spinners & progress)
-    tool_emojis:
-      terminal: "⚔"           # Override terminal tool emoji
-      web_search: "🔮"        # Override web_search tool emoji
-      # Any tool not listed here uses its registry default
-
-USAGE
-=====
-
-.. code-block:: python
-
-    from openagents_cli.skin_engine import get_active_skin, list_skins, set_active_skin
-
-    skin = get_active_skin()
-    print(skin.colors["banner_title"])    # "#FFD700"
-    print(skin.get_branding("agent_name"))  # "OpenAgents"
-
-    set_active_skin("ares")               # Switch to built-in ares skin
-    set_active_skin("mytheme")            # Switch to user skin from ~/.openagents/skins/
-
-BUILT-IN SKINS
-==============
-
-- ``default`` — Classic OpenAgents gold/kawaii (the current look)
-- ``ares``    — Crimson/bronze war-god theme with custom spinner wings
-- ``mono``    — Clean grayscale monochrome
-- ``slate``   — Cool blue developer-focused theme
-- ``opencode`` — OpenCode-inspired warm dark terminal with blue accent
-- ``daylight`` — Light background theme with dark text and blue accents
-- ``warm-lightmode`` — Warm brown/gold text for light terminal backgrounds
-
-USER SKINS
-==========
-
-Drop a YAML file in ``~/.openagents/skins/<name>.yaml`` following the schema above.
-Activate with ``/skin <name>`` in the CLI or ``display.skin: <name>`` in config.yaml.
-"""
-||||||| cf299e9a01
-"""OpenAgents CLI skin/theme engine.
-
-A data-driven skin system that lets users customize the CLI's visual appearance.
-Skins are defined as YAML files in ~/.openagents/skins/ or as built-in presets.
-No code changes are needed to add a new skin.
-
-SKIN YAML SCHEMA
-================
-
-All fields are optional. Missing values inherit from the ``default`` skin.
-
-.. code-block:: yaml
-
-    # Required: skin identity
-    name: mytheme                         # Unique skin name (lowercase, hyphens ok)
-    description: Short description        # Shown in /skin listing
-
-    # Colors: hex values for Rich markup (banner, UI, response box)
-    colors:
-      banner_border: "#CD7F32"            # Panel border color
-      banner_title: "#FFD700"             # Panel title text color
-      banner_accent: "#FFBF00"            # Section headers (Available Tools, etc.)
-      banner_dim: "#B8860B"               # Dim/muted text (separators, labels)
-      banner_text: "#FFF8DC"              # Body text (tool names, skill names)
-      ui_accent: "#FFBF00"               # General UI accent
-      ui_label: "#DAA520"                # UI labels (warm gold; teal clashed w/ default banner gold)
-      ui_ok: "#4caf50"                   # Success indicators
-      ui_error: "#ef5350"                # Error indicators
-      ui_warn: "#ffa726"                 # Warning indicators
-      prompt: "#FFF8DC"                  # Prompt text color
-      input_rule: "#CD7F32"              # Input area horizontal rule
-      response_border: "#FFD700"         # Response box border (ANSI)
-      status_bar_bg: "#1a1a2e"           # Status bar background
-      status_bar_text: "#C0C0C0"         # Status bar default text
-      status_bar_strong: "#FFD700"       # Status bar highlighted text
-      status_bar_dim: "#8B8682"          # Status bar separators/muted text
-      status_bar_good: "#8FBC8F"         # Healthy context usage
-      status_bar_warn: "#FFD700"         # Warning context usage
-      status_bar_bad: "#FF8C00"          # High context usage
-      status_bar_critical: "#FF6B6B"     # Critical context usage
-      session_label: "#DAA520"           # Session label color
-      session_border: "#8B8682"          # Session ID dim color
-      status_bar_bg: "#1a1a2e"          # TUI status/usage bar background
-      voice_status_bg: "#1a1a2e"        # TUI voice status background
-      selection_bg: "#333355"           # TUI mouse-selection highlight background
-      completion_menu_bg: "#1a1a2e"      # Completion menu background
-      completion_menu_current_bg: "#333355"  # Active completion row background
-      completion_menu_meta_bg: "#1a1a2e"     # Completion meta column background
-      completion_menu_meta_current_bg: "#333355"  # Active completion meta background
-
-    # Spinner: customize the animated spinner during API calls
-    spinner:
-      waiting_faces:                      # Faces shown while waiting for API
-        - "(⚔)"
-        - "(⛨)"
-      thinking_faces:                     # Faces shown during reasoning
-        - "(⌁)"
-        - "(<>)"
-      thinking_verbs:                     # Verbs for spinner messages
-        - "forging"
-        - "plotting"
-      wings:                              # Optional left/right spinner decorations
-        - ["⟪⚔", "⚔⟫"]                  # Each entry is [left, right] pair
-        - ["⟪▲", "▲⟫"]
-
-    # Branding: text strings used throughout the CLI
-    branding:
-      agent_name: "OpenAgents"          # Banner title, status display
-      welcome: "Welcome message"          # Shown at CLI startup
-      goodbye: "Goodbye! ⚕"              # Shown on exit
-      response_label: " ⚕ OpenAgents "       # Response box header label
-      prompt_symbol: "❯"                 # Input prompt symbol (bare token; renderers add trailing space)
-      help_header: "(^_^)? Commands"      # /help header text
-
-    # Tool prefix: character for tool output lines (default: ┊)
-    tool_prefix: "┊"
-
-    # Tool emojis: override the default emoji for any tool (used in spinners & progress)
-    tool_emojis:
-      terminal: "⚔"           # Override terminal tool emoji
-      web_search: "🔮"        # Override web_search tool emoji
-      # Any tool not listed here uses its registry default
-
-USAGE
-=====
-
-.. code-block:: python
-
-    from openagents_cli.skin_engine import get_active_skin, list_skins, set_active_skin
-
-    skin = get_active_skin()
-    print(skin.colors["banner_title"])    # "#FFD700"
-    print(skin.get_branding("agent_name"))  # "OpenAgents"
-
-    set_active_skin("ares")               # Switch to built-in ares skin
-    set_active_skin("mytheme")            # Switch to user skin from ~/.openagents/skins/
-
-BUILT-IN SKINS
-==============
-
-- ``default`` — Classic OpenAgents gold/kawaii (the current look)
-- ``ares``    — Crimson/bronze war-god theme with custom spinner wings
-- ``mono``    — Clean grayscale monochrome
-- ``slate``   — Cool blue developer-focused theme
-- ``daylight`` — Light background theme with dark text and blue accents
-- ``warm-lightmode`` — Warm brown/gold text for light terminal backgrounds
-
-USER SKINS
-==========
-
-Drop a YAML file in ``~/.openagents/skins/<name>.yaml`` following the schema above.
-Activate with ``/skin <name>`` in the CLI or ``display.skin: <name>`` in config.yaml.
-"""
-=======
 """Hermes skin/theme engine — the theme SDK for every surface."""
->>>>>>> rb/tag
 
 import logging
 from dataclasses import dataclass, field
@@ -388,42 +157,19 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
     "slate": {
         "name": "slate", "description": "Cool blue — developer-focused",
         "colors": {
-<<<<<<< HEAD
-            "banner_border": "#4169e1",
-            "banner_title": "#7eb8f6",
-            "banner_accent": "#8EA8FF",
-            "banner_dim": "#4b5563",
-            "banner_text": "#c9d1d9",
-            "ui_accent": "#7eb8f6",
-            "ui_label": "#8EA8FF",
-            "ui_ok": "#63D0A6",
-            "ui_error": "#F7A072",
-            "ui_warn": "#e6a855",
-            "prompt": "#c9d1d9",
-            "input_rule": "#4169e1",
-            "response_border": "#7eb8f6",
-            "status_bar_bg": "#151C2F",
-            "status_bar_text": "#C9D1D9",
-            "status_bar_strong": "#7EB8F6",
-            "status_bar_dim": "#4B5563",
-            "status_bar_good": "#63D0A6",
-            "status_bar_warn": "#E6A855",
-            "status_bar_bad": "#F7A072",
-            "status_bar_critical": "#FF7A7A",
-            "session_label": "#7eb8f6",
-            "session_border": "#4b5563",
-        },
-        "spinner": {},
-        "branding": {
-            "agent_name": "OpenAgents",
-            "welcome": "Welcome to OpenAgents! Type your message or /help for commands.",
-            "goodbye": "Goodbye! ⚕",
-            "response_label": " ⚕ OpenAgents ",
-            "prompt_symbol": "❯",
-            "help_header": "(^_^)? Available Commands",
-        },
-        "tool_prefix": "┊",
-    },
+            "banner_border": "#4169e1", "banner_title": "#7eb8f6", "banner_accent": "#8EA8FF",
+            "banner_dim": "#545E6B", "banner_text": "#c9d1d9", "ui_accent": "#7eb8f6",
+            "ui_label": "#8EA8FF", "ui_ok": "#63D0A6", "ui_error": "#F7A072", "ui_warn": "#e6a855",
+            "prompt": "#c9d1d9", "input_rule": "#4169e1", "response_border": "#7eb8f6",
+            "status_bar_bg": "#151C2F", "status_bar_text": "#C9D1D9",
+            "status_bar_strong": "#7EB8F6", "status_bar_dim": "#5D6672",
+            "status_bar_good": "#63D0A6", "status_bar_warn": "#E6A855", "status_bar_bad": "#F7A072",
+            "status_bar_critical": "#FF7A7A", "session_label": "#7eb8f6",
+            "session_border": "#545E6B", "completion_menu_bg": "#151C2F",
+            "completion_menu_current_bg": "#324867", "selection_bg": "#3A5375",
+            "shell_dollar": "#7eb8f6", "voice_status_bg": "#151C2F"},
+        "spinner": {}, "branding": _HERMES_BRANDING, "tool_prefix": "┊"},
+    # OpenOS fork: OpenAgents/OpenPro default skin.
     "opencode": {
         "name": "opencode",
         "description": "OpenCode-inspired — warm terminal dark, blue accent, monospace energy",
@@ -501,56 +247,6 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
 [#646262]⠀⠀▄▀▀ ▀▀▄⠀⠀[/]
 [dim #9a9898]⠀ little monster · OpenPro · terminal-native ⠀[/]""",
     },
-||||||| cf299e9a01
-            "banner_border": "#4169e1",
-            "banner_title": "#7eb8f6",
-            "banner_accent": "#8EA8FF",
-            "banner_dim": "#4b5563",
-            "banner_text": "#c9d1d9",
-            "ui_accent": "#7eb8f6",
-            "ui_label": "#8EA8FF",
-            "ui_ok": "#63D0A6",
-            "ui_error": "#F7A072",
-            "ui_warn": "#e6a855",
-            "prompt": "#c9d1d9",
-            "input_rule": "#4169e1",
-            "response_border": "#7eb8f6",
-            "status_bar_bg": "#151C2F",
-            "status_bar_text": "#C9D1D9",
-            "status_bar_strong": "#7EB8F6",
-            "status_bar_dim": "#4B5563",
-            "status_bar_good": "#63D0A6",
-            "status_bar_warn": "#E6A855",
-            "status_bar_bad": "#F7A072",
-            "status_bar_critical": "#FF7A7A",
-            "session_label": "#7eb8f6",
-            "session_border": "#4b5563",
-        },
-        "spinner": {},
-        "branding": {
-            "agent_name": "OpenAgents",
-            "welcome": "Welcome to OpenAgents! Type your message or /help for commands.",
-            "goodbye": "Goodbye! ⚕",
-            "response_label": " ⚕ OpenAgents ",
-            "prompt_symbol": "❯",
-            "help_header": "(^_^)? Available Commands",
-        },
-        "tool_prefix": "┊",
-    },
-=======
-            "banner_border": "#4169e1", "banner_title": "#7eb8f6", "banner_accent": "#8EA8FF",
-            "banner_dim": "#545E6B", "banner_text": "#c9d1d9", "ui_accent": "#7eb8f6",
-            "ui_label": "#8EA8FF", "ui_ok": "#63D0A6", "ui_error": "#F7A072", "ui_warn": "#e6a855",
-            "prompt": "#c9d1d9", "input_rule": "#4169e1", "response_border": "#7eb8f6",
-            "status_bar_bg": "#151C2F", "status_bar_text": "#C9D1D9",
-            "status_bar_strong": "#7EB8F6", "status_bar_dim": "#5D6672",
-            "status_bar_good": "#63D0A6", "status_bar_warn": "#E6A855", "status_bar_bad": "#F7A072",
-            "status_bar_critical": "#FF7A7A", "session_label": "#7eb8f6",
-            "session_border": "#545E6B", "completion_menu_bg": "#151C2F",
-            "completion_menu_current_bg": "#324867", "selection_bg": "#3A5375",
-            "shell_dollar": "#7eb8f6", "voice_status_bg": "#151C2F"},
-        "spinner": {}, "branding": _HERMES_BRANDING, "tool_prefix": "┊"},
->>>>>>> rb/tag
     "daylight": {
         "name": "daylight",
         "description": "Light theme for bright terminals with dark text and cool blue accents",
@@ -867,15 +563,11 @@ def get_active_prompt_symbol(fallback: str = "❯") -> str:
     return f"{cleaned or fallback.strip()} "
 
 
-<<<<<<< HEAD
-
 def get_active_status_brand(fallback: str = "") -> str:
-    """Status-bar brand label (e.g. OpenPro). Config overrides skin."""
+    """Status-bar brand label (e.g. OpenPro). Config ``display.status_brand`` overrides skin."""
     try:
-        from openagents_cli.config import load_config
-
-        display = (load_config() or {}).get("display") or {}
-        override = display.get("status_brand")
+        display = _profile_config().get("display") or {}
+        override = display.get("status_brand") if isinstance(display, dict) else None
         if override is not None and str(override).strip():
             return str(override).strip()
         return get_active_skin().get_branding("status_brand", fallback)
@@ -883,10 +575,6 @@ def get_active_status_brand(fallback: str = "") -> str:
         return fallback
 
 
-||||||| cf299e9a01
-
-=======
->>>>>>> rb/tag
 def get_active_help_header(fallback: str = "(^_^)? Available Commands") -> str:
     return _active_branding("help_header", fallback)
 

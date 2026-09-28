@@ -1899,14 +1899,8 @@ class CLICommandsMixin:
         self._console_print(result.text)
         seed = getattr(result, "agent_seed", None)
         if seed:
-<<<<<<< HEAD
-||||||| cf299e9a01
-            # One-shot: the interactive loop picks this up right after the
-            # slash command returns and runs it as a normal agent turn.
-=======
             # One-shot: the interactive loop picks this up right after the slash command
             # returns and runs it as a normal agent turn.
->>>>>>> rb/tag
             self._pending_agent_seed = seed
 
     def _handle_curator_command(self, cmd: str):
@@ -2755,35 +2749,9 @@ class CLICommandsMixin:
             lines=200, expire=7, local=local, nous="nous" in words and not local, yes=True))
 
     def _handle_update_command(self) -> bool:
-<<<<<<< HEAD
-        """Handle /update — update OpenAgents to the latest version.
-
-        In the classic CLI this exits the session and relaunches as
-        ``openagents update`` so the user sees update output directly and gets
-        the new version on next launch.
-
-        Returns ``True`` when the update was confirmed (caller should trigger
-        app exit so the relaunch is deferred to the main thread after
-        prompt_toolkit cleans up terminal modes).  Returns ``False`` / falsy
-        when cancelled.
-        """
-||||||| cf299e9a01
-        """Handle /update — update OpenAgents to the latest version.
-
-        In the classic CLI this exits the session and relaunches as
-        ``hermes update`` so the user sees update output directly and gets
-        the new version on next launch.
-
-        Returns ``True`` when the update was confirmed (caller should trigger
-        app exit so the relaunch is deferred to the main thread after
-        prompt_toolkit cleans up terminal modes).  Returns ``False`` / falsy
-        when cancelled.
-        """
-=======
-        """Handle /update — exit the session and relaunch as ``hermes update``. Returns True when
+        """Handle /update — exit the session and relaunch as ``openagents update``. Returns True when
         confirmed (the caller exits the app; the relaunch runs on the main thread after
         prompt_toolkit restores terminal modes), False when cancelled."""
->>>>>>> rb/tag
         from openagents_cli.config import is_managed, format_managed_message
         if is_managed():
             print(f"  ✗ {format_managed_message('update OpenAgents')}")
@@ -2792,23 +2760,9 @@ class CLICommandsMixin:
         choices = [("once", "Update Now", "exit the current session and update OpenAgents"),
                    ("cancel", "Cancel", "keep the current session")]
         raw = self._prompt_text_input_modal(
-<<<<<<< HEAD
-            title="⚕  Update OpenAgents",
-            detail="This will exit the current session and run `openagents update`.",
-            choices=choices,
-        )
-        if raw is None:
-||||||| cf299e9a01
-            title="⚕  Update OpenAgents",
-            detail="This will exit the current session and run `hermes update`.",
-            choices=choices,
-        )
-        if raw is None:
-=======
             title="☤  Update OpenAgents",
-            detail="This will exit the current session and run `hermes update`.", choices=choices)
+            detail="This will exit the current session and run `openagents update`.", choices=choices)
         if raw is None or self._normalize_slash_confirm_choice(raw, choices) != "once":
->>>>>>> rb/tag
             print("  🟡 /update cancelled.")
             return False
         _say_block("  ☤ Launching update...")

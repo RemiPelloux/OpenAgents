@@ -103,34 +103,6 @@ def _acp_supported(command: str, args: list[str]) -> bool | None:
     return verdict
 
 
-<<<<<<< HEAD
-||||||| cf299e9a01
-def _resolve_home_dir() -> str:
-    """Return a stable HOME for child ACP processes."""
-    home = os.environ.get("HOME", "").strip()
-    if home:
-        return home
-
-    expanded = os.path.expanduser("~")
-    if expanded and expanded != "~":
-        return expanded
-
-    try:
-        import pwd
-
-        resolved = pwd.getpwuid(os.getuid()).pw_dir.strip()  # windows-footgun: ok — POSIX fallback inside try/except (pwd import fails on Windows)
-        if resolved:
-            return resolved
-    except Exception:
-        pass
-
-    # Last resort: /tmp (writable on any POSIX system). Avoids crashing the
-    # subprocess with no HOME; callers can set OPENAGENTS_HOME explicitly if they
-    # need a different writable dir.
-    return "/tmp"
-
-
-=======
 def _resolve_home_dir() -> str:
     """Stable HOME for child ACP processes; the temp dir as a last resort so the child never starts HOME-less."""
     if home := os.environ.get("HOME", "").strip():
@@ -145,37 +117,18 @@ def _resolve_home_dir() -> str:
         return tempfile.gettempdir()
 
 
->>>>>>> rb/tag
 def _build_subprocess_env() -> dict[str, str]:
-<<<<<<< HEAD
-    # Copilot ACP is a model-driving CLI executor: it legitimately needs LLM
-    # provider credentials. Route through the central helper so Tier-1 secrets
-    # (gateway bot tokens, GitHub auth, infra) are still stripped (#29157).
-    parent_env = dict(os.environ)
-    from openagents_constants import get_real_home
+    from openagents_constants import apply_subprocess_home_env, get_real_home
 
-    real_home = get_real_home(parent_env)
-    env = hermes_subprocess_env(inherit_credentials=True)
-||||||| cf299e9a01
-    # Copilot ACP is a model-driving CLI executor: it legitimately needs LLM
-    # provider credentials. Route through the central helper so Tier-1 secrets
-    # (gateway bot tokens, GitHub auth, infra) are still stripped (#29157).
-    env = hermes_subprocess_env(inherit_credentials=True)
-    home = _resolve_home_dir()
-    env["HOME"] = home
-=======
->>>>>>> rb/tag
-    from openagents_constants import apply_subprocess_home_env
-
-<<<<<<< HEAD
-||||||| cf299e9a01
-=======
+    # OpenAgents fork: resolve the account's real HOME from the parent env *before*
+    # the subprocess contract rewrites it, so the Copilot CLI always finds its
+    # credentials under the real ``~`` (never the per-profile HOME).
+    real_home = get_real_home(dict(os.environ))
     # Copilot ACP drives a model and needs LLM provider credentials; the central helper still
     # strips Tier-1 secrets (bot tokens, GitHub auth, infra).
     # See #29157.
     env = hermes_subprocess_env(inherit_credentials=True)
     env["HOME"] = _resolve_home_dir()
->>>>>>> rb/tag
     apply_subprocess_home_env(env)
     if real_home:
         env["HOME"] = real_home

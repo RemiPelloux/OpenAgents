@@ -88,19 +88,11 @@ def test_named_profile_gateway_start_refuses_without_force(
     r = _sh(container_name, f"hermes profile create {PROFILE}")
     assert r.returncode == 0, f"profile create failed: {r.stderr}"
 
-<<<<<<< HEAD
     # Profile create's s6-register hook should have produced a service slot.
     r = _sh(
         container_name,
         f"test -d /run/openagents-services/gateway-{PROFILE}",
     )
-||||||| cf299e9a01
-    # Profile create's s6-register hook should have produced a service slot.
-    r = _sh(container_name, f"test -d /run/service/gateway-{PROFILE}")
-=======
-    # Profile create's s6-register hook still produces the slot (registered DOWN).
-    r = _sh(container_name, f"test -d /run/service/gateway-{PROFILE}")
->>>>>>> rb/tag
     assert r.returncode == 0, "s6 service slot not created on profile create"
 
     r = _sh(container_name, f"hermes -p {PROFILE} gateway start", timeout=60)
@@ -124,13 +116,7 @@ def test_named_profile_gateway_force_start_then_stop(
 
     r = _sh(container_name, f"hermes -p {PROFILE} gateway stop", timeout=30)
     assert r.returncode == 0
-<<<<<<< HEAD
-
-    time.sleep(2)
-    assert not _svstat_wants_up(container_name), (
-        f"slot want-state still up after gateway stop: "
-        f"{_svstat(container_name)!r}"
-    )
+    _wait_for_want_state(container_name, want_up=False)
 
 
 def test_profile_delete_stops_gateway(
@@ -158,37 +144,3 @@ def test_profile_delete_stops_gateway(
         f"test -d /run/openagents-services/gateway-{PROFILE}",
     )
     assert r.returncode != 0, "s6 service slot still present after profile delete"
-||||||| cf299e9a01
-
-    time.sleep(2)
-    assert not _svstat_wants_up(container_name), (
-        f"slot want-state still up after gateway stop: "
-        f"{_svstat(container_name)!r}"
-    )
-
-
-def test_profile_delete_stops_gateway(
-    built_image: str, container_name: str,
-) -> None:
-    """Deleting a profile should stop its gateway and remove the s6
-    service slot."""
-    start_container(built_image, container_name, cmd="sleep 120")
-
-    _sh(container_name, f"hermes profile create {PROFILE}")
-    _sh(container_name, f"hermes -p {PROFILE} gateway start", timeout=60)
-    time.sleep(3)
-
-    r = _sh(
-        container_name,
-        f"hermes profile delete {PROFILE} --yes",
-        timeout=30,
-    )
-    assert r.returncode == 0, f"profile delete failed: {r.stderr}"
-
-    time.sleep(2)
-    # Service slot should be gone.
-    r = _sh(container_name, f"test -d /run/service/gateway-{PROFILE}")
-    assert r.returncode != 0, "s6 service slot still present after profile delete"
-=======
-    _wait_for_want_state(container_name, want_up=False)
->>>>>>> rb/tag

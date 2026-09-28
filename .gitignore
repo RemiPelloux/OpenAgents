@@ -54,18 +54,12 @@ run_datagen_sonnet.sh
 source-data/*
 run_datagen_megascience_glm4-6.sh
 data/*
-<<<<<<< HEAD
-node_modules/
-/target/
-||||||| cf299e9a01
-node_modules/
-=======
 MagicMock/
 # No trailing slash: also matches node_modules SYMLINKS (worktrees often
 # symlink node_modules to the main checkout; the dir-only pattern let one
 # slip into a commit and break `npm ci` on CI with ENOTDIR).
 node_modules
->>>>>>> rb/tag
+/target/
 browser-use/
 agent-browser/
 # Private keys
@@ -306,12 +300,6 @@ apps/desktop/demo/
 # the first line of defence and cannot stop `git add -f` at all — the
 # infographic-check CI job is what actually enforces this.
 infographic/
-<<<<<<< HEAD
-
-# Machine-local AI provider credentials and permissions
-.claude/
-||||||| cf299e9a01
-=======
 infographics/
 infograficos/
 infografico/
@@ -324,4 +312,6 @@ native/fts5_cjk/*.so
 
 # Disposable profile created by scripts/probe_active_session_exclusivity.py
 .probe-home/
->>>>>>> rb/tag
+
+# Machine-local AI provider credentials and permissions
+.claude/

@@ -551,18 +551,7 @@ terminal:
 #   Docs: https://github.com/sheeki03/tirith
 #
 # security:
-<<<<<<< HEAD
-#   builtin_command_scanner: true
-#   tirith_enabled: true
-#   tirith_path: "tirith"
-#   tirith_timeout: 5
-#   tirith_fail_open: true
-||||||| cf299e9a01
-#   tirith_enabled: true        # Enable/disable tirith scanning
-#   tirith_path: "tirith"       # Path to tirith binary (supports ~ expansion)
-#   tirith_timeout: 5           # Scan timeout in seconds
-#   tirith_fail_open: true      # Allow commands if tirith unavailable
-=======
+#   builtin_command_scanner: true   # OpenAgents built-in scanner (always on)
 #   tirith_enabled: true        # Enable/disable tirith scanning
 #   tirith_path: "tirith"       # Path to tirith binary (supports ~ expansion)
 #   tirith_timeout: 5           # Scan timeout in seconds
@@ -576,7 +565,6 @@ terminal:
 #   # disable the gate; add fnmatch patterns on the basename to protect more files.
 #   protected_instruction_files: true
 #   protected_instruction_extra_patterns: []
->>>>>>> rb/tag
 
 # =============================================================================
 # Browser Tool Configuration

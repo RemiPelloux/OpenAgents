@@ -170,36 +170,10 @@ def test_seed_supervise_skeleton_sets_setgid_on_event_dirs(tmp_path) -> None:
 
     _seed_supervise_skeleton(svc_dir)
 
-<<<<<<< HEAD
-    # Logger's own supervise tree is seeded the same way.
-    log_event = svc_dir / "log" / "event"
-    log_supervise = svc_dir / "log" / "supervise"
-    log_supervise_event = log_supervise / "event"
-    log_control = log_supervise / "control"
-
-    assert log_event.is_dir()
-    assert stat.S_IMODE(log_event.stat().st_mode) == 0o3730
-    assert log_supervise.is_dir()
-    assert stat.S_IMODE(log_supervise.stat().st_mode) == 0o755
-    assert log_supervise_event.is_dir()
-    assert log_control.exists() and stat.S_ISFIFO(log_control.stat().st_mode)
-||||||| cf299e9a01
-    # Logger's own supervise tree is seeded the same way.
-    log_event = svc_dir / "log" / "event"
-    log_supervise = svc_dir / "log" / "supervise"
-    log_supervise_event = log_supervise / "event"
-    log_control = log_supervise / "control"
-
-    assert log_event.is_dir()
-    assert stat.S_IMODE(log_event.stat().st_mode) == 0o3730
-    assert log_supervise.is_dir()
-    assert log_supervise_event.is_dir()
-    assert log_control.exists() and stat.S_ISFIFO(log_control.stat().st_mode)
-=======
     for rel in ("event", "supervise/event"):
         mode = stat.S_IMODE((svc_dir / rel).stat().st_mode)
         assert mode == 0o3730, f"{rel}/ mode = {oct(mode)}, want 0o3730"
->>>>>>> rb/tag
+    assert stat.S_IMODE((svc_dir / "log" / "supervise").stat().st_mode) == 0o755
 
 
 

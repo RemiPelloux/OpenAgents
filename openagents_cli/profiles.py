@@ -1703,16 +1703,6 @@ def delete_profile(name: str, yes: bool = False) -> Path:
 
     # 1. Disable service (prevents auto-restart); drop the s6 slot on container (host no-op).
     _cleanup_gateway_service(canon, profile_dir)
-<<<<<<< HEAD
-    # 1b. Phase 4: unregister the s6 service slot (container path).
-    # On host this is a no-op; on container it removes
-    # /run/openagents-services/gateway-<profile>/ so s6-supervise drops it.
-||||||| cf299e9a01
-    # 1b. Phase 4: unregister the s6 service slot (container path).
-    # On host this is a no-op; on container it removes
-    # /run/service/gateway-<profile>/ so s6-supervise drops it.
-=======
->>>>>>> rb/tag
     _maybe_unregister_gateway_service(canon)
 
     # 2. Stop the gateway, then other backends bound to this profile (Desktop-spawned

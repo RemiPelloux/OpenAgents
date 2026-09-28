@@ -244,8 +244,8 @@ COMMAND_REGISTRY: list[CommandDef] = [
                "Tools & Skills", aliases=("bp",), args_hint="[name] [slot=value ...]"),
     CommandDef("curator", "Background skill maintenance (status, run, pin, archive, list-archived)",
                "Tools & Skills", args_hint="[subcommand]",
-<<<<<<< HEAD
-               subcommands=("status", "run", "pause", "resume", "pin", "unpin", "restore", "list-archived")),
+               subcommands=("status", "run", "pause", "resume", "pin", "unpin", "restore", "list-archived"),
+               desktop="advanced"),
     CommandDef("company", "Scaffold a multi-agent company folder (roles, subagents, skills)",
                "Tools & Skills", aliases=("co",),
                args_hint="[init|status|roles|delegate] ...",
@@ -258,12 +258,6 @@ COMMAND_REGISTRY: list[CommandDef] = [
                "Tools & Skills", aliases=("oac",),
                args_hint="[list|show|run|approve|reject] <name> [key=value ...]",
                subcommands=("list", "show", "run", "approve", "reject")),
-||||||| cf299e9a01
-               subcommands=("status", "run", "pause", "resume", "pin", "unpin", "restore", "list-archived")),
-=======
-               subcommands=("status", "run", "pause", "resume", "pin", "unpin", "restore", "list-archived"),
-               desktop="advanced"),
->>>>>>> rb/tag
     CommandDef("kanban", "Multi-profile collaboration board (tasks, links, comments)",
                "Tools & Skills", args_hint="[subcommand]",
                subcommands=("init", "boards", "create", "list", "ls", "show", "assign",

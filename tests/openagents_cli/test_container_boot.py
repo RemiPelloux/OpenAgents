@@ -248,234 +248,6 @@ def test_profiles_default_subdir_is_skipped_with_warning(
 # ---------------------------------------------------------------------------
 
 
-<<<<<<< HEAD
-@pytest.mark.parametrize(
-    "container_argv",
-    [
-        # Bare subcommand (docker run ... dashboard ...).
-        ("dashboard",),
-        ("dashboard", "--host", "127.0.0.1", "--no-open"),
-        # Through s6 /init + the main-wrapper that re-execs `hermes`.
-        ("/init", "/opt/hermes/docker/main-wrapper.sh", "dashboard"),
-        (
-            "/init",
-            "/opt/hermes/docker/main-wrapper.sh",
-            "dashboard",
-            "--host",
-            "127.0.0.1",
-            "--no-open",
-        ),
-        # Wrapper that kept the explicit `hermes` argv0.
-        ("/init", "/opt/hermes/docker/main-wrapper.sh", "openagents", "dashboard"),
-        # s6-overlay v3: PID 1 is s6-svscan, so the role is read off the
-        # rc.init-launched process whose argv is
-        # `/bin/sh -e .../rc.init top .../main-wrapper.sh dashboard ...`.
-        # This is the exact shape that regressed in issue #49196.
-        (
-            "/bin/sh",
-            "-e",
-            "/run/s6/basedir/scripts/rc.init",
-            "top",
-            "/opt/hermes/docker/main-wrapper.sh",
-            "dashboard",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            "9119",
-            "--no-open",
-            "--insecure",
-        ),
-    ],
-)
-def test_is_dashboard_container_true_for_dashboard_argv(
-    container_argv: tuple[str, ...],
-) -> None:
-    """A dashboard command is detected across every wrapper prefix shape."""
-    from openagents_cli.container_boot import _is_dashboard_container
-
-    assert _is_dashboard_container(container_argv) is True
-
-
-@pytest.mark.parametrize(
-    "container_argv",
-    [
-        (),  # empty (/proc/1/cmdline unreadable) — not the dashboard
-        ("gateway", "run"),
-        ("/init", "/opt/hermes/docker/main-wrapper.sh", "gateway", "run"),
-        ("/init", "/opt/hermes/docker/main-wrapper.sh", "openagents", "gateway", "run"),
-        ("chat",),
-        # A profile literally named "dashboard" must NOT match — the token
-        # we key on is the SUBCOMMAND, and `gateway run -p dashboard` is a
-        # gateway container.
-        ("gateway", "run", "-p", "dashboard"),
-        # s6-overlay v3 gateway container — the rc.init-launched argv for a
-        # gateway role must still read as non-dashboard (issue #49196 shape).
-        (
-            "/bin/sh",
-            "-e",
-            "/run/s6/basedir/scripts/rc.init",
-            "top",
-            "/opt/hermes/docker/main-wrapper.sh",
-            "gateway",
-            "run",
-        ),
-    ],
-)
-def test_is_dashboard_container_false_for_non_dashboard_argv(
-    container_argv: tuple[str, ...],
-) -> None:
-    """Gateway / other commands (and empty argv) are not the dashboard."""
-    from openagents_cli.container_boot import _is_dashboard_container
-
-    assert _is_dashboard_container(container_argv) is False
-
-
-def test_main_skips_reconcile_in_dashboard_container(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """main() must NOT reconcile when PID 1 argv is the dashboard command.
-
-    A running profile is seeded so that, if reconcile ran, it would create
-    the gateway-<profile> slot. Asserting the slot is absent proves the
-    skip is real, not just a log line.
-    """
-    from openagents_cli import container_boot
-
-    scandir = tmp_path / "run-service"; scandir.mkdir()
-    _make_profile(tmp_path, "worker", state="running")
-    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setattr(container_boot, "_PROFILE_GATEWAY_SCANDIR", scandir)
-    monkeypatch.setattr(
-        container_boot,
-        "_read_container_argv",
-        lambda: ("/init", "/opt/hermes/docker/main-wrapper.sh", "dashboard"),
-    )
-
-    rc = container_boot.main()
-
-    assert rc == 0
-    assert not (scandir / "gateway-worker").exists()
-    assert not (scandir / "gateway-default").exists()
-    assert "skipping (dashboard container" in capsys.readouterr().out
-
-
-||||||| cf299e9a01
-@pytest.mark.parametrize(
-    "container_argv",
-    [
-        # Bare subcommand (docker run ... dashboard ...).
-        ("dashboard",),
-        ("dashboard", "--host", "127.0.0.1", "--no-open"),
-        # Through s6 /init + the main-wrapper that re-execs `hermes`.
-        ("/init", "/opt/hermes/docker/main-wrapper.sh", "dashboard"),
-        (
-            "/init",
-            "/opt/hermes/docker/main-wrapper.sh",
-            "dashboard",
-            "--host",
-            "127.0.0.1",
-            "--no-open",
-        ),
-        # Wrapper that kept the explicit `hermes` argv0.
-        ("/init", "/opt/hermes/docker/main-wrapper.sh", "openagents", "dashboard"),
-        # s6-overlay v3: PID 1 is s6-svscan, so the role is read off the
-        # rc.init-launched process whose argv is
-        # `/bin/sh -e .../rc.init top .../main-wrapper.sh dashboard ...`.
-        # This is the exact shape that regressed in issue #49196.
-        (
-            "/bin/sh",
-            "-e",
-            "/run/s6/basedir/scripts/rc.init",
-            "top",
-            "/opt/hermes/docker/main-wrapper.sh",
-            "dashboard",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            "9119",
-            "--no-open",
-            "--insecure",
-        ),
-    ],
-)
-def test_is_dashboard_container_true_for_dashboard_argv(
-    container_argv: tuple[str, ...],
-) -> None:
-    """A dashboard command is detected across every wrapper prefix shape."""
-    from openagents_cli.container_boot import _is_dashboard_container
-
-    assert _is_dashboard_container(container_argv) is True
-
-
-@pytest.mark.parametrize(
-    "container_argv",
-    [
-        (),  # empty (/proc/1/cmdline unreadable) — not the dashboard
-        ("gateway", "run"),
-        ("/init", "/opt/hermes/docker/main-wrapper.sh", "gateway", "run"),
-        ("/init", "/opt/hermes/docker/main-wrapper.sh", "openagents", "gateway", "run"),
-        ("chat",),
-        # A profile literally named "dashboard" must NOT match — the token
-        # we key on is the SUBCOMMAND, and `gateway run -p dashboard` is a
-        # gateway container.
-        ("gateway", "run", "-p", "dashboard"),
-        # s6-overlay v3 gateway container — the rc.init-launched argv for a
-        # gateway role must still read as non-dashboard (issue #49196 shape).
-        (
-            "/bin/sh",
-            "-e",
-            "/run/s6/basedir/scripts/rc.init",
-            "top",
-            "/opt/hermes/docker/main-wrapper.sh",
-            "gateway",
-            "run",
-        ),
-    ],
-)
-def test_is_dashboard_container_false_for_non_dashboard_argv(
-    container_argv: tuple[str, ...],
-) -> None:
-    """Gateway / other commands (and empty argv) are not the dashboard."""
-    from openagents_cli.container_boot import _is_dashboard_container
-
-    assert _is_dashboard_container(container_argv) is False
-
-
-def test_main_skips_reconcile_in_dashboard_container(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """main() must NOT reconcile when PID 1 argv is the dashboard command.
-
-    A running profile is seeded so that, if reconcile ran, it would create
-    the gateway-<profile> slot. Asserting the slot is absent proves the
-    skip is real, not just a log line.
-    """
-    from openagents_cli import container_boot
-
-    scandir = tmp_path / "run-service"; scandir.mkdir()
-    _make_profile(tmp_path, "worker", state="running")
-    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setenv("S6_PROFILE_GATEWAY_SCANDIR", str(scandir))
-    monkeypatch.setattr(
-        container_boot,
-        "_read_container_argv",
-        lambda: ("/init", "/opt/hermes/docker/main-wrapper.sh", "dashboard"),
-    )
-
-    rc = container_boot.main()
-
-    assert rc == 0
-    assert not (scandir / "gateway-worker").exists()
-    assert not (scandir / "gateway-default").exists()
-    assert "skipping (dashboard container" in capsys.readouterr().out
-
-
-=======
->>>>>>> rb/tag
 def test_main_skips_reconcile_in_dashboard_container_s6v3(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -495,7 +267,7 @@ def test_main_skips_reconcile_in_dashboard_container_s6v3(
     scandir = tmp_path / "run-service"; scandir.mkdir()
     _make_profile(tmp_path, "worker", state="running")
     monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setattr(container_boot, "_PROFILE_GATEWAY_SCANDIR", scandir)
+    monkeypatch.setenv("S6_PROFILE_GATEWAY_SCANDIR", str(scandir))
     monkeypatch.setattr(
         container_boot,
         "_read_container_argv",
@@ -522,61 +294,9 @@ def test_main_skips_reconcile_in_dashboard_container_s6v3(
     assert not (scandir / "gateway-default").exists()
 
 
-<<<<<<< HEAD
-def test_main_reconciles_in_gateway_container(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """main() reconciles normally when PID 1 argv is the gateway command —
-    the dashboard skip is scoped strictly to the dashboard role."""
-    from openagents_cli import container_boot
-
-    scandir = tmp_path / "run-service"; scandir.mkdir()
-    _make_profile(tmp_path, "worker", state="running")
-    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setattr(container_boot, "_PROFILE_GATEWAY_SCANDIR", scandir)
-    monkeypatch.setattr(
-        container_boot,
-        "_read_container_argv",
-        lambda: ("/init", "/opt/hermes/docker/main-wrapper.sh", "gateway", "run"),
-    )
-
-    rc = container_boot.main()
-
-    assert rc == 0
-    # The worker slot was registered + started (prior_state running).
-    assert (scandir / "gateway-worker").exists()
-    assert not (scandir / "gateway-worker" / "down").exists()
-||||||| cf299e9a01
-def test_main_reconciles_in_gateway_container(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """main() reconciles normally when PID 1 argv is the gateway command —
-    the dashboard skip is scoped strictly to the dashboard role."""
-    from openagents_cli import container_boot
-
-    scandir = tmp_path / "run-service"; scandir.mkdir()
-    _make_profile(tmp_path, "worker", state="running")
-    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setenv("S6_PROFILE_GATEWAY_SCANDIR", str(scandir))
-    monkeypatch.setattr(
-        container_boot,
-        "_read_container_argv",
-        lambda: ("/init", "/opt/hermes/docker/main-wrapper.sh", "gateway", "run"),
-    )
-
-    rc = container_boot.main()
-
-    assert rc == 0
-    # The worker slot was registered + started (prior_state running).
-    assert (scandir / "gateway-worker").exists()
-    assert not (scandir / "gateway-worker" / "down").exists()
-=======
 # ---------------------------------------------------------------------------
 # Multiplex-only: the root slot inherits every named slot's autostart intent
 # ---------------------------------------------------------------------------
->>>>>>> rb/tag
 
 
 def test_a_named_slots_autostart_intent_boots_the_root_slot(tmp_path: Path) -> None:
@@ -588,32 +308,8 @@ def test_a_named_slots_autostart_intent_boots_the_root_slot(tmp_path: Path) -> N
     hermes_home.mkdir()
     _make_profile(hermes_home, "coder", state=None, desired_state="running")
 
-<<<<<<< HEAD
-    scandir = tmp_path / "run-service"; scandir.mkdir()
-    _make_profile(tmp_path, "worker", state="running")
-    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setattr(container_boot, "_PROFILE_GATEWAY_SCANDIR", scandir)
-    monkeypatch.setenv("HERMES_SKIP_PROFILE_RECONCILE", "1")
-    monkeypatch.setattr(
-        container_boot,
-        "_read_container_argv",
-        lambda: ("/init", "/opt/hermes/docker/main-wrapper.sh", "gateway", "run"),
-    )
-||||||| cf299e9a01
-    scandir = tmp_path / "run-service"; scandir.mkdir()
-    _make_profile(tmp_path, "worker", state="running")
-    monkeypatch.setenv("OPENAGENTS_HOME", str(tmp_path))
-    monkeypatch.setenv("S6_PROFILE_GATEWAY_SCANDIR", str(scandir))
-    monkeypatch.setenv("HERMES_SKIP_PROFILE_RECONCILE", "1")
-    monkeypatch.setattr(
-        container_boot,
-        "_read_container_argv",
-        lambda: ("/init", "/opt/hermes/docker/main-wrapper.sh", "gateway", "run"),
-    )
-=======
     actions = reconcile_profile_gateways(
         hermes_home=hermes_home, scandir=tmp_path / "svc", dry_run=True, container_argv=())
->>>>>>> rb/tag
 
     by_profile = {a.profile: a for a in actions}
     assert by_profile["default"].action == "started", "something must serve this container"

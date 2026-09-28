@@ -60,12 +60,26 @@ def _get_platform_default_openagents_home() -> Path:
         if not modern.exists() and legacy.exists():
             return legacy
         return modern
-    modern = Path.home() / ".openagents"
+    return _posix_default_home_under(Path.home())
+
+
+def _posix_default_home_under(user_home: Path) -> Path:
+    """``<user_home>/.openagents``, or a pre-existing legacy ``.Hermes``/``.hermes`` dir (OpenAgents fork)."""
+    modern = user_home / ".openagents"
     for legacy_name in (".Hermes", ".hermes"):
-        legacy = Path.home() / legacy_name
+        legacy = user_home / legacy_name
         if not modern.exists() and legacy.exists():
             return legacy
     return modern
+
+
+def _env_openagents_home() -> str:
+    """``OPENAGENTS_HOME`` with the fork's legacy ``HERMES_HOME`` / ``Hermes_HOME`` fallbacks."""
+    return (
+        os.environ.get("OPENAGENTS_HOME", "").strip()
+        or os.environ.get("HERMES_HOME", "").strip()
+        or os.environ.get("Hermes_HOME", "").strip()
+    )
 
 
 def sudo_invoker_default_home() -> Path | None:
@@ -82,7 +96,7 @@ def sudo_invoker_default_home() -> Path | None:
     import pwd
 
     try:
-        return Path(pwd.getpwnam(sudo_user).pw_dir) / ".hermes"
+        return _posix_default_home_under(Path(pwd.getpwnam(sudo_user).pw_dir))
     except KeyError:  # SUDO_USER not in passwd (chroot/container)
         return None
 
@@ -123,23 +137,10 @@ def get_openagents_home() -> Path:
     override = get_openagents_home_override()
     if override:
         return _expand_hermes_home(override)
-    if not os.environ.get("OPENAGENTS_HOME", "").strip():
+    if not _env_openagents_home():
         _warn_profile_fallback_once()
     return get_process_hermes_home()
 
-<<<<<<< HEAD
-    val = (
-        os.environ.get("OPENAGENTS_HOME", "").strip()
-        or os.environ.get("HERMES_HOME", "").strip()
-        or os.environ.get("Hermes_HOME", "").strip()
-    )
-    if val:
-        return Path(val)
-||||||| cf299e9a01
-    val = os.environ.get("OPENAGENTS_HOME", "").strip()
-    if val:
-        return Path(val)
-=======
 
 # Resolved keys, keyed by the path string that was handed in. Path.resolve()
 # is a filesystem call, and this function sits under every ToolRegistry
@@ -188,9 +189,8 @@ def get_process_hermes_home() -> Path:
     ``OPENAGENTS_HOME`` live on purpose: routed-profile DECISIONS compare against
     :func:`get_routing_process_hermes_home` instead (#119242).
     """
-    val = os.environ.get("OPENAGENTS_HOME", "").strip()
+    val = _env_openagents_home()
     return _expand_hermes_home(val) if val else _get_platform_default_openagents_home()
->>>>>>> rb/tag
 
 
 # Host-pinned identity of the profile this process serves as its own (None: follow OPENAGENTS_HOME).
@@ -261,6 +261,8 @@ def get_default_openagents_root() -> Path:
 _DELETED_PROFILES_DIR = ".deleted"
 # Files marking a real OpenAgents home; arbitrary dirs with a ``profiles`` segment lack them.
 _OPENAGENTS_HOME_MARKERS = ("config.yaml", ".env", "state.db")
+# Basenames of a POSIX default home: the fork's ~/.openagents plus legacy ~/.hermes / ~/.Hermes.
+_DEFAULT_HOME_DIRNAMES = frozenset({".openagents", ".hermes", ".Hermes"})
 
 
 def _is_hermes_profiles_root(profiles_dir: Path) -> bool:
@@ -270,7 +272,7 @@ def _is_hermes_profiles_root(profiles_dir: Path) -> bool:
     ``profiles/.deleted`` tombstone dir (only ``profile delete`` creates it), or the default root.
     """
     root = profiles_dir.parent
-    if root.name == ".hermes":
+    if root.name in _DEFAULT_HOME_DIRNAMES:
         return True
     try:
         if (profiles_dir / _DELETED_PROFILES_DIR).is_dir() or any(
@@ -296,7 +298,7 @@ def named_profile_home(path: str | Path) -> Path | None:
         if (candidate.parent.name == "profiles" and not candidate.name.startswith(".")
                 and _is_hermes_profiles_root(candidate.parent)):
             return candidate
-        if candidate.name == ".hermes":  # default home: a coincidental profiles/ ancestor is not a root
+        if candidate.name in _DEFAULT_HOME_DIRNAMES:  # default home: a coincidental profiles/ ancestor is not a root
             return None
     return None
 
@@ -1681,4 +1683,3 @@ get_hermes_dir = get_openagents_dir
 set_hermes_home_override = set_openagents_home_override
 reset_hermes_home_override = reset_openagents_home_override
 get_hermes_home_override = get_openagents_home_override
-

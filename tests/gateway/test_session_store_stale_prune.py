@@ -204,33 +204,17 @@ class TestPruneStaleSessionsLocked:
         assert stale_entry.origin is not None
         current = store.get_or_create_session(stale_entry.origin)
 
-<<<<<<< HEAD
-        db.get_session.assert_not_called()
-        db.get_sessions_by_ids.assert_not_called()
-||||||| cf299e9a01
-        db.get_session.assert_not_called()
-=======
         assert current.session_id not in {"sid_before_reset", "sid_reset"}
         assert store._entries[key].session_id == current.session_id
         reset_row = db.get_session("sid_reset")
         assert reset_row is not None
         assert reset_row["end_reason"] == "session_reset"
->>>>>>> rb/tag
 
-<<<<<<< HEAD
     def test_db_error_is_non_fatal(self, tmp_path):
         db = MagicMock()
         db.get_sessions_by_ids.side_effect = Exception("DB locked")
         store = _make_store_with_db(tmp_path, db)
         store._entries["key"] = _make_entry("key", "sid_x")
-||||||| cf299e9a01
-    def test_db_error_is_non_fatal(self, tmp_path):
-        db = MagicMock()
-        db.get_session.side_effect = Exception("DB locked")
-        store = _make_store_with_db(tmp_path, db)
-        store._entries["key"] = _make_entry("key", "sid_x")
-=======
->>>>>>> rb/tag
 
 # ---------------------------------------------------------------------------
 # Startup recovery honours the reset policy
@@ -239,7 +223,6 @@ class TestPruneStaleSessionsLocked:
 class TestStartupRecovery:
     """Recovery keeps the durable session and activity timestamp."""
 
-<<<<<<< HEAD
     def test_single_batched_lookup_for_many_entries(self, tmp_path):
         """N sessions.json entries -> one get_sessions_by_ids call, no per-row get_session."""
         rows = {
@@ -262,13 +245,6 @@ class TestStartupRecovery:
         db = _db_returning({"sid_stale": {"end_reason": "agent_close", "id": "sid_stale"}})
         store = _make_store_with_db(tmp_path, db)
         store._entries["stale_key"] = _make_entry("stale_key", "sid_stale")
-||||||| cf299e9a01
-    def test_sessions_json_rewritten_after_pruning(self, tmp_path):
-        db = _db_returning({"sid_stale": {"end_reason": "agent_close", "id": "sid_stale"}})
-        store = _make_store_with_db(tmp_path, db)
-        store._entries["stale_key"] = _make_entry("stale_key", "sid_stale")
-=======
->>>>>>> rb/tag
 
     def test_startup_repoint_unchanged(self, tmp_path):
         """Startup repoints to the recovered row."""

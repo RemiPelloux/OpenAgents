@@ -1,32 +1,4 @@
-<<<<<<< HEAD
-"""
-OpenAgents CLI - Unified command-line interface for OpenAgents.
-
-Provides subcommands for:
-- openagents chat          - Interactive chat
-- openagents gateway       - Run gateway in foreground
-- openagents gateway start - Start gateway service
-- openagents gateway stop  - Stop gateway service
-- openagents setup         - Interactive setup wizard
-- openagents status        - Show status of all components
-- openagents cron          - Manage cron jobs
-"""
-||||||| cf299e9a01
-"""
-OpenAgents CLI - Unified command-line interface for OpenAgents.
-
-Provides subcommands for:
-- hermes chat          - Interactive chat (same as ./hermes)
-- hermes gateway       - Run gateway in foreground
-- hermes gateway start - Start gateway service
-- hermes gateway stop  - Stop gateway service
-- hermes setup         - Interactive setup wizard
-- hermes status        - Show status of all components
-- hermes cron          - Manage cron jobs
-"""
-=======
 """OpenAgents CLI - Unified command-line interface for OpenAgents."""
->>>>>>> rb/tag
 
 import os
 import sys

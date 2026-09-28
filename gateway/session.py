@@ -63,28 +63,8 @@ _CHAT_TYPE_PREFIX = {"group": "group: ", "channel": "channel: "}
 
 @dataclass
 class SessionSource:
-<<<<<<< HEAD
-    """
-    Describes where a message originated from.
-
-    This information is used to:
-    1. Route responses back to the right place
-    2. Inject context into the system prompt
-    3. Track origin for cron job delivery
-    """
-||||||| cf299e9a01
-    """
-    Describes where a message originated from.
-    
-    This information is used to:
-    1. Route responses back to the right place
-    2. Inject context into the system prompt
-    3. Track origin for cron job delivery
-    """
-=======
     """Where a message originated: routes responses, feeds the system-prompt
     context block, and records origin for cron delivery."""
->>>>>>> rb/tag
     platform: Platform
     chat_id: str
     chat_name: Optional[str] = None
@@ -136,40 +116,6 @@ class SessionSource:
         """Human-readable description of the source."""
         if self.platform == Platform.LOCAL:
             return "CLI terminal"
-<<<<<<< HEAD
-
-        parts = []
-        if self.chat_type == "dm":
-            parts.append(f"DM with {self.user_name or self.user_id or 'user'}")
-        elif self.chat_type == "group":
-            parts.append(f"group: {self.chat_name or self.chat_id}")
-        elif self.chat_type == "channel":
-            parts.append(f"channel: {self.chat_name or self.chat_id}")
-        else:
-            parts.append(self.chat_name or self.chat_id)
-
-        if self.thread_id:
-            parts.append(f"thread: {self.thread_id}")
-
-        return ", ".join(parts)
-||||||| cf299e9a01
-        
-        parts = []
-        if self.chat_type == "dm":
-            parts.append(f"DM with {self.user_name or self.user_id or 'user'}")
-        elif self.chat_type == "group":
-            parts.append(f"group: {self.chat_name or self.chat_id}")
-        elif self.chat_type == "channel":
-            parts.append(f"channel: {self.chat_name or self.chat_id}")
-        else:
-            parts.append(self.chat_name or self.chat_id)
-        
-        if self.thread_id:
-            parts.append(f"thread: {self.thread_id}")
-        
-        return ", ".join(parts)
-    
-=======
         user, chat = self.user_name or self.user_id or "user", self.chat_name or self.chat_id
         desc = self._describe(self.chat_type, user, chat)
         return f"{desc}, thread: {self.thread_id}" if self.thread_id else desc
@@ -180,7 +126,6 @@ class SessionSource:
     _OPTIONAL_PRE_SCOPE = ("user_id_alt", "chat_id_alt")
     _OPTIONAL_POST_SCOPE = ("parent_chat_id", "message_id", "profile")
     _OPTIONAL_TAIL = ("auto_thread_initial_name", "prospective_thread_id")
->>>>>>> rb/tag
 
     def to_dict(self) -> Dict[str, Any]:
         d = {"platform": self.platform.value}
@@ -213,49 +158,15 @@ class SessionSource:
             scope_id=data.get("scope_id", data.get("guild_id")),
             auto_thread_created=bool(data.get("auto_thread_created", False)), **plain,
         )
-<<<<<<< HEAD
-
-||||||| cf299e9a01
-    
-=======
->>>>>>> rb/tag
 
 
 @dataclass
 class SessionContext:
-<<<<<<< HEAD
-    """
-    Full context for a session, used for dynamic system prompt injection.
-
-    The agent receives this information to understand:
-    - Where messages are coming from
-    - What platforms are available
-    - Where it can deliver scheduled task outputs
-    """
-||||||| cf299e9a01
-    """
-    Full context for a session, used for dynamic system prompt injection.
-    
-    The agent receives this information to understand:
-    - Where messages are coming from
-    - What platforms are available
-    - Where it can deliver scheduled task outputs
-    """
-=======
     """Full session context for dynamic system prompt injection."""
->>>>>>> rb/tag
     source: SessionSource
     connected_platforms: List[Platform]
     home_channels: Dict[Platform, HomeChannel]
     shared_multi_user_session: bool = False
-<<<<<<< HEAD
-
-    # Session metadata
-||||||| cf299e9a01
-    
-    # Session metadata
-=======
->>>>>>> rb/tag
     session_key: str = ""
     session_id: str = ""
     created_at: Optional[datetime] = None
@@ -568,51 +479,17 @@ def sanitize_model_override(override: Optional[Dict[str, Any]]) -> Optional[Dict
 
 @dataclass
 class SessionEntry:
-<<<<<<< HEAD
-    """
-    Entry in the session store.
-
-    Maps a session key to its current session ID and metadata.
-    """
-||||||| cf299e9a01
-    """
-    Entry in the session store.
-    
-    Maps a session key to its current session ID and metadata.
-    """
-=======
     """Routing-index entry: maps a session key to its current session ID and metadata."""
->>>>>>> rb/tag
     session_key: str
     session_id: str
     created_at: datetime
     updated_at: datetime
-<<<<<<< HEAD
-
-    # Origin metadata for delivery routing
-    origin: Optional[SessionSource] = None
-
-    # Display metadata
-||||||| cf299e9a01
-    
-    # Origin metadata for delivery routing
-    origin: Optional[SessionSource] = None
-    
-    # Display metadata
-=======
     origin: Optional[SessionSource] = None  # delivery routing
->>>>>>> rb/tag
     display_name: Optional[str] = None
     platform: Optional[Platform] = None
     chat_type: str = "dm"
-<<<<<<< HEAD
-
-||||||| cf299e9a01
-    
-=======
     # Small, JSON-serializable per-entry state (e.g. Slack thread watermarks).
     metadata: Dict[str, Any] = field(default_factory=dict)
->>>>>>> rb/tag
     # Token tracking
     input_tokens: int = 0
     output_tokens: int = 0
@@ -621,45 +498,15 @@ class SessionEntry:
     total_tokens: int = 0
     estimated_cost_usd: float = 0.0
     cost_status: str = "unknown"
-<<<<<<< HEAD
-
-    # Last API-reported prompt tokens (for accurate compression pre-check)
-    last_prompt_tokens: int = 0
-
-    # Set when a session was created because the previous one expired;
-    # consumed once by the message handler to inject a notice into context
-||||||| cf299e9a01
-    
-    # Last API-reported prompt tokens (for accurate compression pre-check)
-    last_prompt_tokens: int = 0
-    
-    # Set when a session was created because the previous one expired;
-    # consumed once by the message handler to inject a notice into context
-=======
     last_prompt_tokens: int = 0  # last API-reported prompt tokens (compression pre-check)
     # Suspension replacement metadata; historical automatic-reset rows retain these fields.
->>>>>>> rb/tag
     was_auto_reset: bool = False
     auto_reset_reason: Optional[str] = None
     reset_had_activity: bool = False
     prev_session_id: Optional[str] = None  # feeds the continuity note
     # Explicit /new or /reset triggers topic/channel skill re-injection on the first turn.
     is_fresh_reset: bool = False
-<<<<<<< HEAD
-
-    # Set by the background expiry watcher after it finalizes an expired
-    # session (invoking on_session_finalize hooks and evicting the cached
-    # agent).  Persisted to sessions.json so the flag survives gateway
-    # restarts — prevents redundant finalization runs.
-||||||| cf299e9a01
-    
-    # Set by the background expiry watcher after it finalizes an expired
-    # session (invoking on_session_finalize hooks and evicting the cached
-    # agent).  Persisted to sessions.json so the flag survives gateway
-    # restarts — prevents redundant finalization runs.
-=======
     # Historical finalization fence; timers no longer write it.
->>>>>>> rb/tag
     expiry_finalized: bool = False
     # Next get_or_create_session() auto-resets; set by /stop to break stuck-resume loops.
     # When True the next call to get_or_create_session() will auto-reset this session (create a new
@@ -723,20 +570,8 @@ class SessionEntry:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SessionEntry":
-<<<<<<< HEAD
-        origin = None
-        if "origin" in data and isinstance(data["origin"], dict):
-            origin = SessionSource.from_dict(data["origin"])
-
-||||||| cf299e9a01
-        origin = None
-        if "origin" in data and isinstance(data["origin"], dict):
-            origin = SessionSource.from_dict(data["origin"])
-        
-=======
         origin = data.get("origin")
         origin = SessionSource.from_dict(origin) if isinstance(origin, dict) else None
->>>>>>> rb/tag
         platform = None
         if data.get("platform"):
             try:
@@ -879,29 +714,6 @@ def build_session_key(
     return ":".join(str(part) for part in parts)
 
 
-<<<<<<< HEAD
-class SessionStore:
-    """
-    Manages session storage and retrieval.
-
-    Uses SQLite (via SessionDB) for session metadata and message transcripts.
-    Falls back to legacy JSONL files if SQLite is unavailable.
-    """
-
-    def __init__(self, sessions_dir: Path, config: GatewayConfig,
-                 has_active_processes_fn=None):
-||||||| cf299e9a01
-class SessionStore:
-    """
-    Manages session storage and retrieval.
-    
-    Uses SQLite (via SessionDB) for session metadata and message transcripts.
-    Falls back to legacy JSONL files if SQLite is unavailable.
-    """
-    
-    def __init__(self, sessions_dir: Path, config: GatewayConfig,
-                 has_active_processes_fn=None):
-=======
 class _SessionFlight:
     def __init__(self) -> None:
         self.event = threading.Event()
@@ -963,7 +775,6 @@ class SessionStore(
     """Session routing index + transcripts: SQLite (SessionDB), legacy JSONL fallback."""
 
     def __init__(self, sessions_dir: Path, config: GatewayConfig, has_active_processes_fn=None):
->>>>>>> rb/tag
         self.sessions_dir = sessions_dir
         self.config = config
         self._entries: Dict[str, SessionEntry] = {}
@@ -994,15 +805,6 @@ class SessionStore(
         # SessionTranscriptMixin._rebuild_fts_once for the cooldown this gates.
         self._fts_rebuild_last_attempt_at: Optional[float] = None
         self._has_active_processes_fn = has_active_processes_fn
-<<<<<<< HEAD
-
-        # Initialize SQLite session database
-        self._db = None
-||||||| cf299e9a01
-        
-        # Initialize SQLite session database
-        self._db = None
-=======
         self._write_sessions_json = bool(getattr(config, "write_sessions_json", True))
 
         # SQLite handles are cached per path and resolved through ``_db`` per call, never bound
@@ -1032,31 +834,8 @@ class SessionStore(
         )
         # The routing index needs exactly one home for its lifetime: the gateway's own, captured
         # before any profile scope exists (see ``_routing_db``).
->>>>>>> rb/tag
         try:
-<<<<<<< HEAD
-            from openagents_state import SessionDB
-            self._db = SessionDB()
-        except Exception as e:
-            print(f"[gateway] Warning: SQLite session store unavailable, falling back to JSONL: {e}")
-
-    def _ensure_loaded(self) -> None:
-        """Load sessions index from disk if not already loaded."""
-        with self._lock:
-            self._ensure_loaded_locked()
-||||||| cf299e9a01
-            from openagents_state import SessionDB
-            self._db = SessionDB()
-        except Exception as e:
-            print(f"[gateway] Warning: SQLite session store unavailable, falling back to JSONL: {e}")
-    
-    def _ensure_loaded(self) -> None:
-        """Load sessions index from disk if not already loaded."""
-        with self._lock:
-            self._ensure_loaded_locked()
-=======
             from openagents_constants import get_openagents_home
->>>>>>> rb/tag
 
             self._routing_home: Optional[Path] = Path(get_openagents_home())
         except Exception:
@@ -1077,40 +856,7 @@ class SessionStore(
         if self._has_active_processes_fn is None:
             return False
         try:
-<<<<<<< HEAD
-            # One batched lookup for every routed session instead of a
-            # get_session() round-trip per sessions.json entry.
-            rows_by_id = db.get_sessions_by_ids(
-                [entry.session_id for entry in self._entries.values()]
-            )
-            for key, entry in self._entries.items():
-                row = rows_by_id.get(entry.session_id)
-                # row is None        -> not in DB (legacy / pre-SQLite) — keep
-                # end_reason is None  -> session alive — keep
-                # end_reason not None -> session ended — prune
-                if row is not None and row.get("end_reason") is not None:
-                    logger.warning(
-                        "gateway.session: pruning stale sessions.json entry "
-                        "%r -> %s (end_reason=%r); left by a crashed gateway",
-                        key, entry.session_id, row["end_reason"],
-                    )
-                    stale_keys.append(key)
-||||||| cf299e9a01
-            for key, entry in self._entries.items():
-                row = db.get_session(entry.session_id)
-                # row is None        -> not in DB (legacy / pre-SQLite) — keep
-                # end_reason is None  -> session alive — keep
-                # end_reason not None -> session ended — prune
-                if row is not None and row.get("end_reason") is not None:
-                    logger.warning(
-                        "gateway.session: pruning stale sessions.json entry "
-                        "%r -> %s (end_reason=%r); left by a crashed gateway",
-                        key, entry.session_id, row["end_reason"],
-                    )
-                    stale_keys.append(key)
-=======
             return bool(self._has_active_processes_fn(session_key))
->>>>>>> rb/tag
         except Exception as exc:
             logger.warning(
                 "has_active_processes_fn raised during %s for %s; keeping session alive: %s",
@@ -1118,510 +864,6 @@ class SessionStore(
             )
             return True
 
-<<<<<<< HEAD
-        for key in stale_keys:
-            del self._entries[key]
-
-        if stale_keys:
-            self._save()
-
-    def _save(self) -> None:
-        """Save sessions index to disk (kept for session key -> ID mapping)."""
-        import tempfile
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
-        sessions_file = self.sessions_dir / "sessions.json"
-
-        data = {key: entry.to_dict() for key, entry in self._entries.items()}
-        # Self-documenting sentinel so anyone who inspects this file directly
-        # understands what it is and where CLI/TUI sessions actually live. Keys
-        # starting with "_" are skipped on load (see _ensure_loaded_locked), so
-        # this never round-trips into a SessionEntry. Ordered first via a fresh
-        # dict so it renders at the top of the pretty-printed JSON.
-        data = {
-            "_README": (
-                "Gateway routing index ONLY: maps messaging session keys "
-                "(agent:main:<platform>:...) to active session IDs. This is NOT "
-                "the session list. ALL sessions (CLI, TUI, and gateway) live in "
-                "~/.openagents/state.db and are shown by `hermes sessions list` and "
-                "`/sessions`. Seeing only gateway entries here is expected and "
-                "does not mean CLI sessions are missing."
-            ),
-            **data,
-        }
-        fd, tmp_path = tempfile.mkstemp(
-            dir=str(self.sessions_dir), suffix=".tmp", prefix=".sessions_"
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-                f.flush()
-                os.fsync(f.fileno())
-            atomic_replace(tmp_path, sessions_file)
-        except BaseException:
-            try:
-                os.unlink(tmp_path)
-            except OSError as e:
-                logger.debug("Could not remove temp file %s: %s", tmp_path, e)
-            raise
-
-    def _resolve_profile_for_key(self, source: Optional[SessionSource] = None) -> Optional[str]:
-        """Return the profile namespace for session keys, or None when off.
-
-        When ``multiplex_profiles`` is disabled (default), returns ``None`` so
-        keys stay in the legacy ``agent:main`` namespace — byte-identical to
-        before. When enabled, prefers the profile the inbound source was routed
-        to (``source.profile`` — set by the /p/<profile>/ URL prefix or
-        per-credential adapter), falling back to the active profile name.
-        """
-        if not getattr(self.config, "multiplex_profiles", False):
-            return None
-        if source is not None and source.profile:
-            return source.profile
-        try:
-            from openagents_cli.profiles import get_active_profile_name
-            return get_active_profile_name() or "default"
-        except Exception:
-            return None
-
-    def _generate_session_key(self, source: SessionSource) -> str:
-        """Generate a session key from a source."""
-        return build_session_key(
-            source,
-            group_sessions_per_user=getattr(self.config, "group_sessions_per_user", True),
-            thread_sessions_per_user=getattr(self.config, "thread_sessions_per_user", False),
-            profile=self._resolve_profile_for_key(source),
-        )
-
-    def _create_entry_from_recovered_row(
-        self,
-        *,
-        row: Dict[str, Any],
-        session_key: str,
-        source: SessionSource,
-        now: datetime,
-    ) -> SessionEntry:
-        started_at = row.get("started_at")
-        try:
-            created_at = datetime.fromtimestamp(float(started_at)) if started_at else now
-        except (TypeError, ValueError, OSError):
-            created_at = now
-        return SessionEntry(
-            session_key=session_key,
-            session_id=str(row["id"]),
-            created_at=created_at,
-            updated_at=now,
-            origin=source,
-            display_name=source.chat_name,
-            platform=source.platform,
-            chat_type=source.chat_type,
-        )
-
-    def _recover_session_from_db(
-        self,
-        *,
-        session_key: str,
-        source: SessionSource,
-        now: datetime,
-    ) -> Optional[SessionEntry]:
-        """Rebuild a missing session-key mapping from durable state.db data."""
-        if not self._db:
-            return None
-        finder = getattr(self._db, "find_latest_gateway_session_for_peer", None)
-        if not callable(finder):
-            return None
-        try:
-            recovered = finder(
-                source=source.platform.value,
-                user_id=source.user_id,
-                session_key=session_key,
-                chat_id=source.chat_id,
-                chat_type=source.chat_type,
-                thread_id=source.thread_id,
-            )
-        except Exception as exc:
-            logger.debug("Gateway session DB recovery failed for %s: %s", session_key, exc)
-            return None
-        if not recovered:
-            return None
-        try:
-            self._db.reopen_session(str(recovered["id"]))
-        except Exception as exc:
-            logger.debug("Gateway session DB reopen failed for %s: %s", session_key, exc)
-        return self._create_entry_from_recovered_row(
-            row=recovered,
-            session_key=session_key,
-            source=source,
-            now=now,
-        )
-
-    def _record_gateway_session_peer(
-        self,
-        session_id: str,
-        session_key: str,
-        source: Optional[SessionSource],
-    ) -> None:
-        """Persist the routing peer for an existing gateway session row."""
-        if not self._db or not source:
-            return
-        recorder = getattr(self._db, "record_gateway_session_peer", None)
-        if not callable(recorder):
-            return
-        try:
-            recorder(
-                session_id,
-                source=source.platform.value,
-                user_id=source.user_id,
-                session_key=session_key,
-                chat_id=source.chat_id,
-                chat_type=source.chat_type,
-                thread_id=source.thread_id,
-            )
-        except Exception as exc:
-            logger.debug("Gateway session peer record failed for %s: %s", session_key, exc)
-
-    def _is_session_expired(self, entry: SessionEntry) -> bool:
-        """Check if a session has expired based on its reset policy.
-
-        Works from the entry alone — no SessionSource needed.
-        Used by the background expiry watcher to proactively flush memories.
-        Sessions with active background processes are never considered expired.
-        """
-        if self._has_active_processes_fn:
-            if self._has_active_processes_fn(entry.session_key):
-                logger.debug(
-                    "Session %s not expired — active background processes",
-                    entry.session_key,
-                )
-                return False
-
-        policy = self.config.get_reset_policy(
-            platform=entry.platform,
-            session_type=entry.chat_type,
-        )
-
-        if policy.mode == "none":
-            return False
-
-        now = _now()
-
-        if policy.mode in {"idle", "both"}:
-            idle_deadline = entry.updated_at + timedelta(minutes=policy.idle_minutes)
-            if now > idle_deadline:
-                return True
-
-        if policy.mode in {"daily", "both"}:
-            today_reset = now.replace(
-                hour=policy.at_hour,
-                minute=0, second=0, microsecond=0,
-            )
-            if now.hour < policy.at_hour:
-                today_reset -= timedelta(days=1)
-            if entry.updated_at < today_reset:
-                return True
-
-        return False
-
-    def _should_reset(self, entry: SessionEntry, source: SessionSource) -> Optional[str]:
-        """
-        Check if a session should be reset based on policy.
-
-        Returns the reset reason ("idle" or "daily") if a reset is needed,
-        or None if the session is still valid.
-
-        Sessions with active background processes are never reset.
-        """
-        if self._has_active_processes_fn:
-            session_key = self._generate_session_key(source)
-            if self._has_active_processes_fn(session_key):
-                logger.debug(
-                    "Session reset skipped for %s — active background processes",
-                    session_key,
-                )
-                return None
-
-        policy = self.config.get_reset_policy(
-            platform=source.platform,
-            session_type=source.chat_type
-        )
-
-        if policy.mode == "none":
-            return None
-
-        now = _now()
-
-        if policy.mode in {"idle", "both"}:
-            idle_deadline = entry.updated_at + timedelta(minutes=policy.idle_minutes)
-            if now > idle_deadline:
-                return "idle"
-
-        if policy.mode in {"daily", "both"}:
-            today_reset = now.replace(
-                hour=policy.at_hour,
-                minute=0,
-                second=0,
-                microsecond=0
-            )
-            if now.hour < policy.at_hour:
-                today_reset -= timedelta(days=1)
-
-            if entry.updated_at < today_reset:
-                return "daily"
-
-        return None
-
-||||||| cf299e9a01
-        for key in stale_keys:
-            del self._entries[key]
-
-        if stale_keys:
-            self._save()
-
-    def _save(self) -> None:
-        """Save sessions index to disk (kept for session key -> ID mapping)."""
-        import tempfile
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
-        sessions_file = self.sessions_dir / "sessions.json"
-
-        data = {key: entry.to_dict() for key, entry in self._entries.items()}
-        # Self-documenting sentinel so anyone who inspects this file directly
-        # understands what it is and where CLI/TUI sessions actually live. Keys
-        # starting with "_" are skipped on load (see _ensure_loaded_locked), so
-        # this never round-trips into a SessionEntry. Ordered first via a fresh
-        # dict so it renders at the top of the pretty-printed JSON.
-        data = {
-            "_README": (
-                "Gateway routing index ONLY: maps messaging session keys "
-                "(agent:main:<platform>:...) to active session IDs. This is NOT "
-                "the session list. ALL sessions (CLI, TUI, and gateway) live in "
-                "~/.openagents/state.db and are shown by `hermes sessions list` and "
-                "`/sessions`. Seeing only gateway entries here is expected and "
-                "does not mean CLI sessions are missing."
-            ),
-            **data,
-        }
-        fd, tmp_path = tempfile.mkstemp(
-            dir=str(self.sessions_dir), suffix=".tmp", prefix=".sessions_"
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-                f.flush()
-                os.fsync(f.fileno())
-            atomic_replace(tmp_path, sessions_file)
-        except BaseException:
-            try:
-                os.unlink(tmp_path)
-            except OSError as e:
-                logger.debug("Could not remove temp file %s: %s", tmp_path, e)
-            raise
-    
-    def _resolve_profile_for_key(self, source: Optional[SessionSource] = None) -> Optional[str]:
-        """Return the profile namespace for session keys, or None when off.
-
-        When ``multiplex_profiles`` is disabled (default), returns ``None`` so
-        keys stay in the legacy ``agent:main`` namespace — byte-identical to
-        before. When enabled, prefers the profile the inbound source was routed
-        to (``source.profile`` — set by the /p/<profile>/ URL prefix or
-        per-credential adapter), falling back to the active profile name.
-        """
-        if not getattr(self.config, "multiplex_profiles", False):
-            return None
-        if source is not None and source.profile:
-            return source.profile
-        try:
-            from openagents_cli.profiles import get_active_profile_name
-            return get_active_profile_name() or "default"
-        except Exception:
-            return None
-
-    def _generate_session_key(self, source: SessionSource) -> str:
-        """Generate a session key from a source."""
-        return build_session_key(
-            source,
-            group_sessions_per_user=getattr(self.config, "group_sessions_per_user", True),
-            thread_sessions_per_user=getattr(self.config, "thread_sessions_per_user", False),
-            profile=self._resolve_profile_for_key(source),
-        )
-
-    def _create_entry_from_recovered_row(
-        self,
-        *,
-        row: Dict[str, Any],
-        session_key: str,
-        source: SessionSource,
-        now: datetime,
-    ) -> SessionEntry:
-        started_at = row.get("started_at")
-        try:
-            created_at = datetime.fromtimestamp(float(started_at)) if started_at else now
-        except (TypeError, ValueError, OSError):
-            created_at = now
-        return SessionEntry(
-            session_key=session_key,
-            session_id=str(row["id"]),
-            created_at=created_at,
-            updated_at=now,
-            origin=source,
-            display_name=source.chat_name,
-            platform=source.platform,
-            chat_type=source.chat_type,
-        )
-
-    def _recover_session_from_db(
-        self,
-        *,
-        session_key: str,
-        source: SessionSource,
-        now: datetime,
-    ) -> Optional[SessionEntry]:
-        """Rebuild a missing session-key mapping from durable state.db data."""
-        if not self._db:
-            return None
-        finder = getattr(self._db, "find_latest_gateway_session_for_peer", None)
-        if not callable(finder):
-            return None
-        try:
-            recovered = finder(
-                source=source.platform.value,
-                user_id=source.user_id,
-                session_key=session_key,
-                chat_id=source.chat_id,
-                chat_type=source.chat_type,
-                thread_id=source.thread_id,
-            )
-        except Exception as exc:
-            logger.debug("Gateway session DB recovery failed for %s: %s", session_key, exc)
-            return None
-        if not recovered:
-            return None
-        try:
-            self._db.reopen_session(str(recovered["id"]))
-        except Exception as exc:
-            logger.debug("Gateway session DB reopen failed for %s: %s", session_key, exc)
-        return self._create_entry_from_recovered_row(
-            row=recovered,
-            session_key=session_key,
-            source=source,
-            now=now,
-        )
-
-    def _record_gateway_session_peer(
-        self,
-        session_id: str,
-        session_key: str,
-        source: Optional[SessionSource],
-    ) -> None:
-        """Persist the routing peer for an existing gateway session row."""
-        if not self._db or not source:
-            return
-        recorder = getattr(self._db, "record_gateway_session_peer", None)
-        if not callable(recorder):
-            return
-        try:
-            recorder(
-                session_id,
-                source=source.platform.value,
-                user_id=source.user_id,
-                session_key=session_key,
-                chat_id=source.chat_id,
-                chat_type=source.chat_type,
-                thread_id=source.thread_id,
-            )
-        except Exception as exc:
-            logger.debug("Gateway session peer record failed for %s: %s", session_key, exc)
-    
-    def _is_session_expired(self, entry: SessionEntry) -> bool:
-        """Check if a session has expired based on its reset policy.
-        
-        Works from the entry alone — no SessionSource needed.
-        Used by the background expiry watcher to proactively flush memories.
-        Sessions with active background processes are never considered expired.
-        """
-        if self._has_active_processes_fn:
-            if self._has_active_processes_fn(entry.session_key):
-                logger.debug(
-                    "Session %s not expired — active background processes",
-                    entry.session_key,
-                )
-                return False
-
-        policy = self.config.get_reset_policy(
-            platform=entry.platform,
-            session_type=entry.chat_type,
-        )
-
-        if policy.mode == "none":
-            return False
-
-        now = _now()
-
-        if policy.mode in {"idle", "both"}:
-            idle_deadline = entry.updated_at + timedelta(minutes=policy.idle_minutes)
-            if now > idle_deadline:
-                return True
-
-        if policy.mode in {"daily", "both"}:
-            today_reset = now.replace(
-                hour=policy.at_hour,
-                minute=0, second=0, microsecond=0,
-            )
-            if now.hour < policy.at_hour:
-                today_reset -= timedelta(days=1)
-            if entry.updated_at < today_reset:
-                return True
-
-        return False
-
-    def _should_reset(self, entry: SessionEntry, source: SessionSource) -> Optional[str]:
-        """
-        Check if a session should be reset based on policy.
-        
-        Returns the reset reason ("idle" or "daily") if a reset is needed,
-        or None if the session is still valid.
-        
-        Sessions with active background processes are never reset.
-        """
-        if self._has_active_processes_fn:
-            session_key = self._generate_session_key(source)
-            if self._has_active_processes_fn(session_key):
-                logger.debug(
-                    "Session reset skipped for %s — active background processes",
-                    session_key,
-                )
-                return None
-
-        policy = self.config.get_reset_policy(
-            platform=source.platform,
-            session_type=source.chat_type
-        )
-        
-        if policy.mode == "none":
-            return None
-        
-        now = _now()
-        
-        if policy.mode in {"idle", "both"}:
-            idle_deadline = entry.updated_at + timedelta(minutes=policy.idle_minutes)
-            if now > idle_deadline:
-                return "idle"
-        
-        if policy.mode in {"daily", "both"}:
-            today_reset = now.replace(
-                hour=policy.at_hour, 
-                minute=0, 
-                second=0, 
-                microsecond=0
-            )
-            if now.hour < policy.at_hour:
-                today_reset -= timedelta(days=1)
-            
-            if entry.updated_at < today_reset:
-                return "daily"
-        
-        return None
-    
-=======
->>>>>>> rb/tag
     def has_any_sessions(self) -> bool:
         """Whether any session has ever been created. SQLite is the source of truth (ended sessions
         count); the current session is already in the DB when this runs, hence ``> 1``."""
@@ -2012,215 +1254,11 @@ class SessionStore(
             return None
         with self._lock:
             self._ensure_loaded_locked()
-<<<<<<< HEAD
-            for entry in self._entries.values():
-                if entry.session_id == session_id:
-                    return entry
-        return None
-
-    def append_to_transcript(self, session_id: str, message: Dict[str, Any], skip_db: bool = False) -> None:
-        """Append a message to a session's transcript (SQLite).
-||||||| cf299e9a01
-            for entry in self._entries.values():
-                if entry.session_id == session_id:
-                    return entry
-        return None
-    
-    def append_to_transcript(self, session_id: str, message: Dict[str, Any], skip_db: bool = False) -> None:
-        """Append a message to a session's transcript (SQLite).
-=======
             return next((e for e in self._entries.values() if e.session_id == session_id), None)
->>>>>>> rb/tag
 
-<<<<<<< HEAD
-        Args:
-            skip_db: When True, skip the SQLite write. Used when the agent
-                     already persisted messages to SQLite via its own
-                     _flush_messages_to_session_db(), preventing the
-                     duplicate-write bug (#860).
-        """
-        if self._db and not skip_db:
-            try:
-                self._db.append_message(
-                    session_id=session_id,
-                    role=message.get("role", "unknown"),
-                    content=message.get("content"),
-                    tool_name=message.get("tool_name"),
-                    tool_calls=message.get("tool_calls"),
-                    tool_call_id=message.get("tool_call_id"),
-                    reasoning=message.get("reasoning") if message.get("role") == "assistant" else None,
-                    reasoning_content=message.get("reasoning_content") if message.get("role") == "assistant" else None,
-                    reasoning_details=message.get("reasoning_details") if message.get("role") == "assistant" else None,
-                    codex_reasoning_items=message.get("codex_reasoning_items") if message.get("role") == "assistant" else None,
-                    codex_message_items=message.get("codex_message_items") if message.get("role") == "assistant" else None,
-                    # Platform-side message id (yuanbao msg_id, telegram update_id, …).
-                    # Accept either explicit ``platform_message_id`` or the legacy
-                    # ``message_id`` key the JSONL transcript used.
-                    platform_message_id=(
-                        message.get("platform_message_id") or message.get("message_id")
-                    ),
-                    observed=bool(message.get("observed")),
-                    timestamp=message.get("timestamp"),
-                )
-            except Exception as e:
-                logger.debug("Session DB operation failed: %s", e)
-
-    def has_platform_message_id(
-        self, session_id: str, platform_message_id: str
-    ) -> bool:
-        """Check if a message with the given platform_message_id is persisted.
-
-        Thin wrapper over SessionDB.has_platform_message_id(). Returns False
-        when no DB is available (in-memory sessions). Used by the gateway's
-        transient-failure dedupe guard (#47237).
-        """
-        if not self._db:
-            return False
-        try:
-            return self._db.has_platform_message_id(
-                session_id, platform_message_id
-            )
-        except Exception:
-            logger.debug("has_platform_message_id lookup failed", exc_info=True)
-            return False
-
-    def rewrite_transcript(self, session_id: str, messages: List[Dict[str, Any]]) -> None:
-        """Replace the entire transcript for a session with new messages.
-
-        Used by /retry, /undo, and /compress to persist modified conversation
-        history. state.db is the canonical store.
-        """
-        if self._db:
-            try:
-                self._db.replace_messages(session_id, messages)
-            except Exception as e:
-                logger.debug("Failed to rewrite transcript in DB: %s", e)
-
-    def load_transcript(self, session_id: str) -> List[Dict[str, Any]]:
-        """Load all messages from a session's transcript.
-
-        state.db is the canonical store. The legacy JSONL fallback was removed
-        in spec 002 — pre-DB sessions on existing disks have already been
-        migrated (their DB row holds the full message history).
-        """
-        if not self._db:
-            return []
-        try:
-            return self._db.get_messages_as_conversation(session_id)
-        except Exception as e:
-            logger.debug("Could not load messages from DB: %s", e)
-            return []
-
-    def rewind_session(self, session_id: str, n: int = 1) -> Optional[Dict[str, Any]]:
-        """Back up ``n`` user turns via soft-delete, keeping rows for audit.
-
-        Unlike :meth:`rewrite_transcript` (a hard replace used by /retry),
-        this flips the truncated rows to ``active=0`` in state.db so they
-        survive for audit and stay hidden from re-prompts and search. Mirrors
-        the CLI/TUI ``/undo [N]`` behavior via ``SessionDB.rewind_to_message``.
-
-        Returns a dict ``{"rewound_count", "turns_undone", "target_text"}`` on
-        success, or ``None`` if there's no DB or no user message to back up to.
-        ``n`` clamps to the oldest user turn when it exceeds the turn count.
-        """
-        if not self._db:
-||||||| cf299e9a01
-        Args:
-            skip_db: When True, skip the SQLite write. Used when the agent
-                     already persisted messages to SQLite via its own
-                     _flush_messages_to_session_db(), preventing the
-                     duplicate-write bug (#860).
-        """
-        if self._db and not skip_db:
-            try:
-                self._db.append_message(
-                    session_id=session_id,
-                    role=message.get("role", "unknown"),
-                    content=message.get("content"),
-                    tool_name=message.get("tool_name"),
-                    tool_calls=message.get("tool_calls"),
-                    tool_call_id=message.get("tool_call_id"),
-                    reasoning=message.get("reasoning") if message.get("role") == "assistant" else None,
-                    reasoning_content=message.get("reasoning_content") if message.get("role") == "assistant" else None,
-                    reasoning_details=message.get("reasoning_details") if message.get("role") == "assistant" else None,
-                    codex_reasoning_items=message.get("codex_reasoning_items") if message.get("role") == "assistant" else None,
-                    codex_message_items=message.get("codex_message_items") if message.get("role") == "assistant" else None,
-                    # Platform-side message id (yuanbao msg_id, telegram update_id, …).
-                    # Accept either explicit ``platform_message_id`` or the legacy
-                    # ``message_id`` key the JSONL transcript used.
-                    platform_message_id=(
-                        message.get("platform_message_id") or message.get("message_id")
-                    ),
-                    observed=bool(message.get("observed")),
-                    timestamp=message.get("timestamp"),
-                )
-            except Exception as e:
-                logger.debug("Session DB operation failed: %s", e)
-    
-    def has_platform_message_id(
-        self, session_id: str, platform_message_id: str
-    ) -> bool:
-        """Check if a message with the given platform_message_id is persisted.
-
-        Thin wrapper over SessionDB.has_platform_message_id(). Returns False
-        when no DB is available (in-memory sessions). Used by the gateway's
-        transient-failure dedupe guard (#47237).
-        """
-        if not self._db:
-            return False
-        try:
-            return self._db.has_platform_message_id(
-                session_id, platform_message_id
-            )
-        except Exception:
-            logger.debug("has_platform_message_id lookup failed", exc_info=True)
-            return False
-
-    def rewrite_transcript(self, session_id: str, messages: List[Dict[str, Any]]) -> None:
-        """Replace the entire transcript for a session with new messages.
-
-        Used by /retry, /undo, and /compress to persist modified conversation
-        history. state.db is the canonical store.
-        """
-        if self._db:
-            try:
-                self._db.replace_messages(session_id, messages)
-            except Exception as e:
-                logger.debug("Failed to rewrite transcript in DB: %s", e)
-
-    def load_transcript(self, session_id: str) -> List[Dict[str, Any]]:
-        """Load all messages from a session's transcript.
-
-        state.db is the canonical store. The legacy JSONL fallback was removed
-        in spec 002 — pre-DB sessions on existing disks have already been
-        migrated (their DB row holds the full message history).
-        """
-        if not self._db:
-            return []
-        try:
-            return self._db.get_messages_as_conversation(session_id)
-        except Exception as e:
-            logger.debug("Could not load messages from DB: %s", e)
-            return []
-
-    def rewind_session(self, session_id: str, n: int = 1) -> Optional[Dict[str, Any]]:
-        """Back up ``n`` user turns via soft-delete, keeping rows for audit.
-
-        Unlike :meth:`rewrite_transcript` (a hard replace used by /retry),
-        this flips the truncated rows to ``active=0`` in state.db so they
-        survive for audit and stay hidden from re-prompts and search. Mirrors
-        the CLI/TUI ``/undo [N]`` behavior via ``SessionDB.rewind_to_message``.
-
-        Returns a dict ``{"rewound_count", "turns_undone", "target_text"}`` on
-        success, or ``None`` if there's no DB or no user message to back up to.
-        ``n`` clamps to the oldest user turn when it exceeds the turn count.
-        """
-        if not self._db:
-=======
     def lookup_by_session_key(self, session_key: str) -> Optional[SessionEntry]:
         """Return the persisted routing entry for an exact session key."""
         if not session_key:
->>>>>>> rb/tag
             return None
         with self._lock:
             return self._entry_locked(session_key)
@@ -2237,68 +1275,20 @@ class SessionStore(
 def build_session_context(
     source: SessionSource, config: GatewayConfig, session_entry: Optional[SessionEntry] = None
 ) -> SessionContext:
-<<<<<<< HEAD
-    """
-    Build a full session context from a source and config.
-
-    This is used to inject context into the agent's system prompt.
-    """
-||||||| cf299e9a01
-    """
-    Build a full session context from a source and config.
-    
-    This is used to inject context into the agent's system prompt.
-    """
-=======
     """Build a full session context (for system prompt injection)."""
->>>>>>> rb/tag
     connected = config.get_connected_platforms()
-<<<<<<< HEAD
-
-    home_channels = {}
-    for platform in connected:
-        home = config.get_home_channel(platform)
-        if home:
-            home_channels[platform] = home
-
-||||||| cf299e9a01
-    
-    home_channels = {}
-    for platform in connected:
-        home = config.get_home_channel(platform)
-        if home:
-            home_channels[platform] = home
-    
-=======
     shared = is_shared_multi_user_session(
         source, group_sessions_per_user=getattr(config, "group_sessions_per_user", True),
         thread_sessions_per_user=getattr(config, "thread_sessions_per_user", False),
     )
->>>>>>> rb/tag
     context = SessionContext(
         source=source, connected_platforms=connected, shared_multi_user_session=shared,
         home_channels={p: home for p in connected if (home := config.get_home_channel(p))},
     )
-<<<<<<< HEAD
-
-||||||| cf299e9a01
-    
-=======
->>>>>>> rb/tag
     if session_entry:
         context.session_key = session_entry.session_key
         context.session_id = session_entry.session_id
-<<<<<<< HEAD
-        context.created_at = session_entry.created_at
-        context.updated_at = session_entry.updated_at
-
-||||||| cf299e9a01
-        context.created_at = session_entry.created_at
-        context.updated_at = session_entry.updated_at
-    
-=======
         context.created_at, context.updated_at = session_entry.created_at, session_entry.updated_at
->>>>>>> rb/tag
     return context
 
 

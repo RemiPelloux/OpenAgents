@@ -895,13 +895,6 @@ class TestCapabilitiesEndpoint:
             assert data["runtime"]["mode"] == "server_agent"
             assert data["runtime"]["tool_execution"] == "server"
             assert data["runtime"]["split_runtime"] is False
-<<<<<<< HEAD
-            assert set(data["profiles"]) == {"catalog", "available"}
-            assert "API-server host" in data["runtime"]["description"]
-||||||| cf299e9a01
-            assert "API-server host" in data["runtime"]["description"]
-=======
->>>>>>> rb/tag
             assert data["features"]["chat_completions"] is True
             assert data["features"]["run_status"] is True
             assert data["features"]["run_events_sse"] is True

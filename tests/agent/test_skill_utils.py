@@ -5,6 +5,8 @@ from unittest.mock import patch
 import pytest
 
 from agent.skill_utils import (
+    extract_skill_conditions,
+    extract_skill_config_vars,
     get_disabled_skill_names,
     get_external_skills_dirs,
     is_excluded_skill_path,
@@ -19,43 +21,6 @@ from agent.skill_utils import (
 
 
 
-<<<<<<< HEAD
-def test_metadata_legacy_hermes_key():
-    """Legacy skills still using metadata.hermes continue to work."""
-    frontmatter = {
-        "metadata": {
-            "hermes": {
-                "requires_toolsets": ["legacy_toolset"],
-            }
-        }
-    }
-    result = extract_skill_conditions(frontmatter)
-    assert result["requires_toolsets"] == ["legacy_toolset"]
-
-
-def test_metadata_as_string_does_not_crash():
-    """Bug case: metadata is a non-dict truthy value (e.g. a YAML string)."""
-    frontmatter = {"metadata": "some text"}
-    result = extract_skill_conditions(frontmatter)
-    assert result == {
-        "fallback_for_toolsets": [],
-        "requires_toolsets": [],
-        "fallback_for_tools": [],
-        "requires_tools": [],
-    }
-||||||| cf299e9a01
-def test_metadata_as_string_does_not_crash():
-    """Bug case: metadata is a non-dict truthy value (e.g. a YAML string)."""
-    frontmatter = {"metadata": "some text"}
-    result = extract_skill_conditions(frontmatter)
-    assert result == {
-        "fallback_for_toolsets": [],
-        "requires_toolsets": [],
-        "fallback_for_tools": [],
-        "requires_tools": [],
-    }
-=======
->>>>>>> rb/tag
 
 
 
@@ -375,3 +340,28 @@ class TestBOMToleranceSiblingSites:
         assert fm is not None
         assert fm.get("name") == "bp"
 
+
+def test_metadata_openagents_key():
+    """Fork skills declare conditions under metadata.openagents."""
+    frontmatter = {"metadata": {"openagents": {"requires_tools": ["tool_y"]}}}
+    assert extract_skill_conditions(frontmatter)["requires_tools"] == ["tool_y"]
+
+
+def test_metadata_legacy_hermes_key():
+    """Legacy skills still using metadata.hermes continue to work."""
+    frontmatter = {
+        "metadata": {
+            "hermes": {
+                "requires_toolsets": ["legacy_toolset"],
+                "config": [{"key": "legacy.key", "description": "Legacy"}],
+            }
+        }
+    }
+    result = extract_skill_conditions(frontmatter)
+    assert result["requires_toolsets"] == ["legacy_toolset"]
+    assert [v["key"] for v in extract_skill_config_vars(frontmatter)] == ["legacy.key"]
+
+
+def test_metadata_malformed_namespace_is_ignored():
+    frontmatter = {"metadata": {"openagents": "not-a-dict"}}
+    assert extract_skill_conditions(frontmatter)["requires_tools"] == []

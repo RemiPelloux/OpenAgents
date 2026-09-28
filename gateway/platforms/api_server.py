@@ -24,10 +24,10 @@ import sys
 import threading
 import time
 import uuid
-from urllib.parse import urlparse
-from urllib.request import Request as UrlRequest, urlopen
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
+from urllib.request import Request as UrlRequest, urlopen
 
 # _resolve_request_profile result for a /p/<profile>/ prefix this gateway does not serve (-> 404);
 # distinct from None (no prefix / multiplexing off -> default profile).
@@ -147,10 +147,10 @@ from gateway.platforms.tcp_site import start_tcp_site
 
 logger = logging.getLogger(__name__)
 
-_PROFILE_NAME_KEY = "openagents.profile_name"
-_PROFILE_HOME_KEY = "openagents.profile_home"
-_PROFILE_API_KEY = "openagents.profile_api_key"
-_PROFILE_REJECTED = object()
+# OpenOS mesh: explicit local LLM override (LLM_PROVIDER/LLM_BASE_URL/LLM_MODEL).
+# When set, every API-server agent runs on this provider with no fallback chain;
+# request model routes / providers / session overrides cannot switch provider.
+_LOCAL_LLM_VERIFY_TIMEOUT_SECONDS = 8
 
 
 def _local_llm_override() -> Dict[str, Any]:
@@ -186,7 +186,7 @@ def _verify_local_llm_model() -> None:
         headers["Authorization"] = f"Bearer {override['api_key']}"
     try:
         request = UrlRequest(url, headers=headers)
-        with urlopen(request, timeout=8) as response:  # noqa: S310 - configured local provider
+        with urlopen(request, timeout=_LOCAL_LLM_VERIFY_TIMEOUT_SECONDS) as response:  # noqa: S310 - configured local provider
             payload = json.loads(response.read().decode("utf-8"))
     except Exception as exc:
         raise RuntimeError(f"Configured LLM is unavailable at {url}: {exc}") from exc
@@ -1050,36 +1050,6 @@ def _reserve_pending_api_work(adapter):
             _release_pending_api_work(adapter, reservation)
 
 
-if AIOHTTP_AVAILABLE:
-    @web.middleware
-    async def profile_scope_middleware(request, handler):
-        """Authenticate and scope /p/<profile>/ requests to one tenant profile."""
-        adapter = request.app.get("api_server_adapter")
-        if adapter is None:
-            return await handler(request)
-        resolved = adapter._resolve_request_profile(request)
-        if resolved is _PROFILE_REJECTED:
-            return web.json_response(
-                _openai_error("Unknown or unconfigured profile", code="profile_not_found"),
-                status=404,
-            )
-        if resolved is None:
-            return await handler(request)
-
-        profile_name, profile_home = resolved
-        from agent.secret_scope import build_profile_secret_scope
-        from gateway.run import _profile_runtime_scope
-
-        secrets = build_profile_secret_scope(profile_home)
-        request[_PROFILE_NAME_KEY] = profile_name
-        request[_PROFILE_HOME_KEY] = profile_home
-        request[_PROFILE_API_KEY] = secrets.get("API_SERVER_KEY", "")
-        with _profile_runtime_scope(profile_home):
-            return await handler(request)
-else:
-    profile_scope_middleware = None  # type: ignore[assignment]
-
-
 class _IdempotencyCache:
     """In-memory idempotency cache with TTL and basic LRU semantics."""
     def __init__(self, max_items: int = 1000, ttl_seconds: int = 300):
@@ -1264,18 +1234,6 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
         self._cors_origins: tuple[str, ...] = self._parse_cors_origins(
             extra.get("cors_origins", os.getenv("API_SERVER_CORS_ORIGINS", "")))
         self._model_name: str = self._resolve_model_name(
-<<<<<<< HEAD
-            extra.get("model_name", os.getenv("API_SERVER_MODEL_NAME", "")),
-        )
-        local_llm = _local_llm_override()
-        self._llm_provider: str = str(local_llm.get("provider") or "")
-        self._llm_base_url: str = str(local_llm.get("base_url") or "")
-        self._llm_model: str = str(local_llm.get("model") or "")
-        self.gateway_runner = None
-||||||| cf299e9a01
-            extra.get("model_name", os.getenv("API_SERVER_MODEL_NAME", "")),
-        )
-=======
             extra.get("model_name", _get_scoped_secret("API_SERVER_MODEL_NAME", "")))
         # alias (client "model") -> {model, provider?, api_key? (UPSTREAM, never logged), base_url?}
         self._model_routes: Dict[str, Dict[str, Any]] = self._parse_model_routes(extra.get("model_routes"))
@@ -1288,64 +1246,14 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
         # @mssteuer.)
         self._direct_model_requests: bool = _coerce_request_bool(
             extra.get("direct_model_requests"), default=False)
->>>>>>> rb/tag
+        # OpenOS mesh LLM override (advertised in /v1/capabilities; enforced in _create_agent).
+        local_llm = _local_llm_override()
+        self._llm_provider: str = str(local_llm.get("provider") or "")
+        self._llm_base_url: str = str(local_llm.get("base_url") or "")
+        self._llm_model: str = str(local_llm.get("model") or "")
         self._app: Optional["web.Application"] = None
         self._runner: Optional["web.AppRunner"] = None
         self._site: Optional["web.TCPSite"] = None
-<<<<<<< HEAD
-        self._response_store = ResponseStore()
-        # Active run streams: run_id -> asyncio.Queue of SSE event dicts
-        self._run_streams: Dict[str, "asyncio.Queue[Optional[Dict]]"] = {}
-        # Bounded history keeps terminal runs observable after a live SSE
-        # consumer (such as OpenOrchestrator) has drained their queue.
-        self._run_event_history: Dict[str, List[Dict[str, Any]]] = {}
-        # Creation timestamps for orphaned-run TTL sweep
-        self._run_streams_created: Dict[str, float] = {}
-        # Active run agent/task references for stop support
-        self._active_run_agents: Dict[str, Any] = {}
-        self._active_run_tasks: Dict[str, "asyncio.Task"] = {}
-        # Pollable run status for dashboards and external control-plane UIs.
-        self._run_statuses: Dict[str, Dict[str, Any]] = {}
-        # Active approval session key for each run_id.  The approval core
-        # resolves requests by session key, while API clients address the
-        # in-flight run by run_id.
-        self._run_approval_sessions: Dict[str, str] = {}
-        # Tenant owner for each run. ``None`` denotes the default profile.
-        self._run_profiles: Dict[str, Optional[str]] = {}
-        self._session_db: Optional[Any] = None  # Lazy-init SessionDB for session continuity
-        # Concurrency cap shared across all agent-serving endpoints
-        # (/v1/chat/completions, /v1/responses, /v1/runs). Read from
-        # config.yaml gateway.api_server.max_concurrent_runs; 0 disables
-        # the cap. Bounds CPU / memory / upstream-LLM-quota exhaustion
-        # from a request flood (#7483).
-        self._max_concurrent_runs: int = self._resolve_max_concurrent_runs()
-        # Number of in-flight runs on the non-streaming chat/responses paths
-        # (the /v1/runs path tracks its own in-flight set via _run_streams).
-||||||| cf299e9a01
-        self._response_store = ResponseStore()
-        # Active run streams: run_id -> asyncio.Queue of SSE event dicts
-        self._run_streams: Dict[str, "asyncio.Queue[Optional[Dict]]"] = {}
-        # Creation timestamps for orphaned-run TTL sweep
-        self._run_streams_created: Dict[str, float] = {}
-        # Active run agent/task references for stop support
-        self._active_run_agents: Dict[str, Any] = {}
-        self._active_run_tasks: Dict[str, "asyncio.Task"] = {}
-        # Pollable run status for dashboards and external control-plane UIs.
-        self._run_statuses: Dict[str, Dict[str, Any]] = {}
-        # Active approval session key for each run_id.  The approval core
-        # resolves requests by session key, while API clients address the
-        # in-flight run by run_id.
-        self._run_approval_sessions: Dict[str, str] = {}
-        self._session_db: Optional[Any] = None  # Lazy-init SessionDB for session continuity
-        # Concurrency cap shared across all agent-serving endpoints
-        # (/v1/chat/completions, /v1/responses, /v1/runs). Read from
-        # config.yaml gateway.api_server.max_concurrent_runs; 0 disables
-        # the cap. Bounds CPU / memory / upstream-LLM-quota exhaustion
-        # from a request flood (#7483).
-        self._max_concurrent_runs: int = self._resolve_max_concurrent_runs()
-        # Number of in-flight runs on the non-streaming chat/responses paths
-        # (the /v1/runs path tracks its own in-flight set via _run_streams).
-=======
         from openagents_constants import get_openagents_home
         self._response_store = ResponseStore()  # this home's; a /p/<profile>/ route gets its own
         self._response_store_home = str(get_openagents_home())
@@ -1368,7 +1276,6 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
         # /v1/runs, /api/sessions/{id}/chat[/stream]). Read from config.yaml
         # gateway.api_server.max_concurrent_runs; 0 disables the cap.
         # Bounds CPU / memory / upstream-LLM-quota exhaustion from a request flood (#7483).
->>>>>>> rb/tag
         self._inflight_agent_runs: int = 0
         # Every agent inside _run_agent() for shutdown interrupt, keyed by id() (the strong ref
         # keeps the id() from recycling); distinct from the run_id-keyed _active_run_agents.
@@ -1579,70 +1486,7 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
                        "code": "gateway_auth_failed"}},
             status=401)
 
-    def _resolve_request_profile(self, request: "web.Request"):
-        """Resolve a multiplex URL profile to its validated profile home."""
-        profile = (request.match_info.get("profile") or "").strip()
-        if not profile:
-            return None
-        runner = getattr(self, "gateway_runner", None)
-        cfg = getattr(runner, "config", None)
-        if not getattr(cfg, "multiplex_profiles", False):
-            return _PROFILE_REJECTED
-        try:
-            from openagents_cli.profiles import profiles_to_serve
-
-            served = {
-                name: Path(home)
-                for name, home in profiles_to_serve(multiplex=True)
-            }
-        except Exception:
-            return _PROFILE_REJECTED
-        profile_home = served.get(profile)
-        if profile_home is None:
-            return _PROFILE_REJECTED
-        return profile, profile_home
-
-    def _run_visible_to_request(self, request: "web.Request", run_id: str) -> bool:
-        """Keep profile-scoped run IDs isolated across tenant API keys."""
-        request_profile = (
-            request[_PROFILE_NAME_KEY] if _PROFILE_NAME_KEY in request else None
-        )
-        return self._run_profiles.get(run_id) == request_profile
-
     def _check_auth(self, request: "web.Request") -> Optional["web.Response"]:
-<<<<<<< HEAD
-        """
-        Validate Bearer token from Authorization header.
-
-        Returns None if auth is OK, or a 401 web.Response on failure.
-        connect() refuses to start the API server without API_SERVER_KEY, so
-        the no-key branch only exists for tests or unsupported manual wiring.
-        """
-        api_key = (
-            request[_PROFILE_API_KEY]
-            if _PROFILE_API_KEY in request
-            else self._api_key
-        )
-        if not api_key:
-            if _PROFILE_NAME_KEY in request:
-                return web.json_response(
-                    _openai_error("Invalid API key", code="invalid_api_key"),
-                    status=401,
-                )
-            return None
-
-||||||| cf299e9a01
-        """
-        Validate Bearer token from Authorization header.
-
-        Returns None if auth is OK, or a 401 web.Response on failure.
-        connect() refuses to start the API server without API_SERVER_KEY, so
-        the no-key branch only exists for tests or unsupported manual wiring.
-        """
-        if not self._api_key:
-            return None
-
-=======
         """Validate the Bearer token; None when OK, else a 401. The no-key branch (connect()
         refuses to start without API_SERVER_KEY) exists for tests/manual wiring on the default
         listener only; named profiles fail closed rather than inherit the owner's key."""
@@ -1656,24 +1500,15 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
                 "API_SERVER_KEY is configured; %s",
                 profile, self._request_audit_log_suffix(request))
             return self._auth_failed_response()
->>>>>>> rb/tag
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:].strip()
-<<<<<<< HEAD
-            if hmac.compare_digest(token, api_key):
-                return None  # Auth OK
-||||||| cf299e9a01
-            if hmac.compare_digest(token, self._api_key):
-                return None  # Auth OK
-=======
             # Compare as bytes: compare_digest raises TypeError on non-ASCII str, and the
             # token is raw client input — a stray byte must 401, not 500.
             if hmac.compare_digest(token.encode(), expected_key.encode()):
                 return None
         logger.warning("API server rejected invalid API key: %s", self._request_audit_log_suffix(request))
         return self._auth_failed_response()
->>>>>>> rb/tag
 
     @staticmethod
     def _normalize_callback_platform(value: str) -> str:
@@ -2419,59 +2254,6 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
         return model, session_override, request_model, request_provider
 
     def _create_agent(
-<<<<<<< HEAD
-        self,
-        ephemeral_system_prompt: Optional[str] = None,
-        session_id: Optional[str] = None,
-        stream_delta_callback=None,
-        tool_progress_callback=None,
-        tool_start_callback=None,
-        tool_complete_callback=None,
-        gateway_session_key: Optional[str] = None,
-        model: Optional[str] = None,
-        agent_profile: Optional[str] = None,
-    ) -> Any:
-        """
-        Create an AIAgent instance using the gateway's runtime config.
-
-        Uses _resolve_runtime_agent_kwargs() to pick up model, api_key,
-        base_url, etc. from config.yaml / env vars.  Toolsets are resolved
-        from config.yaml platform_toolsets.api_server (same as all other
-        gateway platforms), falling back to the hermes-api-server default.
-
-        ``gateway_session_key`` is a stable per-channel identifier supplied
-        by the client (via ``X-Hermes-Session-Key``).  Unlike ``session_id``
-        which scopes the short-term transcript and rotates on /new, this
-        key is meant to persist across transcripts so long-term memory
-        providers (e.g. Honcho) can scope their per-chat state correctly
-        — matching the semantics of the native gateway's ``session_key``.
-        """
-||||||| cf299e9a01
-        self,
-        ephemeral_system_prompt: Optional[str] = None,
-        session_id: Optional[str] = None,
-        stream_delta_callback=None,
-        tool_progress_callback=None,
-        tool_start_callback=None,
-        tool_complete_callback=None,
-        gateway_session_key: Optional[str] = None,
-    ) -> Any:
-        """
-        Create an AIAgent instance using the gateway's runtime config.
-
-        Uses _resolve_runtime_agent_kwargs() to pick up model, api_key,
-        base_url, etc. from config.yaml / env vars.  Toolsets are resolved
-        from config.yaml platform_toolsets.api_server (same as all other
-        gateway platforms), falling back to the hermes-api-server default.
-
-        ``gateway_session_key`` is a stable per-channel identifier supplied
-        by the client (via ``X-Hermes-Session-Key``).  Unlike ``session_id``
-        which scopes the short-term transcript and rotates on /new, this
-        key is meant to persist across transcripts so long-term memory
-        providers (e.g. Honcho) can scope their per-chat state correctly
-        — matching the semantics of the native gateway's ``session_key``.
-        """
-=======
         self, ephemeral_system_prompt: Optional[str] = None, session_id: Optional[str] = None,
         stream_delta_callback=None, tool_progress_callback=None, tool_start_callback=None,
         tool_complete_callback=None, interim_assistant_callback=None, reasoning_callback=None,
@@ -2480,134 +2262,67 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
         model_options: Optional[Dict[str, Any]] = None, route: Optional[Dict[str, Any]] = None,
         session_model: Optional[str] = None, confirmed_runtime_lock: bool = False,
         room_dispatch: Optional[Dict[str, Any]] = None,
-        room_execution_policy: Optional[Dict[str, Any]] = None) -> Any:
+        room_execution_policy: Optional[Dict[str, Any]] = None,
+        agent_profile: Optional[str] = None) -> Any:
         """Create an AIAgent from the gateway runtime config + platform toolsets.
         ``gateway_session_key`` persists across transcripts (memory scope), unlike ``session_id``;
         ``route`` / ``session_model`` are mutually exclusive; ``confirmed_runtime_lock`` beats the
         session ``/model`` override, disables the fallback chain and fails closed."""
->>>>>>> rb/tag
         from run_agent import AIAgent
         from gateway.run import (
             _checkpoint_agent_kwargs, _current_max_iterations, _resolve_runtime_agent_kwargs,
             _resolve_gateway_model, _load_gateway_config, GatewayRunner)
         from openagents_cli.tools_config import _get_platform_tools
-<<<<<<< HEAD
-
+        # OpenOS mesh override: the configured local provider is authoritative. Request
+        # provider / model_routes / session overrides can never switch provider, base_url or
+        # credentials, and no fallback chain is loaded (errors surface, never a fallback answer).
         local_llm = _local_llm_override()
-        if local_llm:
-            runtime_kwargs = {
-                "provider": local_llm["provider"],
-                "base_url": local_llm["base_url"],
-                "api_key": local_llm.get("api_key"),
-                "api_mode": "chat_completions",
-            }
-        else:
-            runtime_kwargs = _resolve_runtime_agent_kwargs()
-        reasoning_config = GatewayRunner._load_reasoning_config()
-        resolved_model = (
-            (model or "").strip()
-            or str(local_llm.get("model") or "")
-            or _resolve_gateway_model()
-        )
-
-||||||| cf299e9a01
-
-        runtime_kwargs = _resolve_runtime_agent_kwargs()
-        reasoning_config = GatewayRunner._load_reasoning_config()
-        model = _resolve_gateway_model()
-
-=======
-        # RuntimeError is caught ONLY here (sole provider-auth raiser); the typed subclass keeps
-        # run_conversation() errors distinct.
-        try:
-            runtime_kwargs = _resolve_runtime_agent_kwargs()
-        except RuntimeError as exc:
-            raise _ProviderAuthResolutionError(str(exc)) from exc
-        # A fallback-provider runtime carries its own ``model``: pop it (overrides config, and
-        # must not collide with the ``**runtime_kwargs`` spread).
-        model = runtime_kwargs.pop("model", None) or _resolve_gateway_model()
-        runtime_kwargs.pop("_fallback_notice", None)  # raw API surface: the switch is already logged
         request_reasoning_config = _request_reasoning_config(model_options)
         request_service_tier = _request_service_tier(model_options)
-        model, session_override, request_model, request_provider = self._select_agent_runtime(
-            runtime_kwargs, model,
-            requested_model=requested_model, requested_provider=requested_provider, route=route,
-            session_model=session_model, confirmed_runtime_lock=confirmed_runtime_lock,
-            gateway_session_key=gateway_session_key, session_id=session_id)
->>>>>>> rb/tag
+        if local_llm:
+            runtime_kwargs = {
+                "provider": local_llm["provider"], "base_url": local_llm["base_url"],
+                "api_key": local_llm.get("api_key"), "api_mode": "chat_completions"}
+            session_override = None
+            request_model = _clean_request_string(requested_model)
+            request_provider = _clean_request_string(requested_provider)
+            if route is not None or request_provider or session_model:
+                logger.info(
+                    "api_server mesh LLM override active: ignoring request route/provider/session "
+                    "model selection (provider stays %s)", local_llm["base_url"])
+            # A raw request model name is forwarded to the SAME mesh provider (fork contract:
+            # /v1/runs ``model``); a model_routes alias is ignored because it names another route.
+            model = (request_model if route is None else None) or local_llm["model"]
+        else:
+            # RuntimeError is caught ONLY here (sole provider-auth raiser); the typed subclass keeps
+            # run_conversation() errors distinct.
+            try:
+                runtime_kwargs = _resolve_runtime_agent_kwargs()
+            except RuntimeError as exc:
+                raise _ProviderAuthResolutionError(str(exc)) from exc
+            # A fallback-provider runtime carries its own ``model``: pop it (overrides config, and
+            # must not collide with the ``**runtime_kwargs`` spread).
+            model = runtime_kwargs.pop("model", None) or _resolve_gateway_model()
+            runtime_kwargs.pop("_fallback_notice", None)  # raw API surface: the switch is already logged
+            model, session_override, request_model, request_provider = self._select_agent_runtime(
+                runtime_kwargs, model,
+                requested_model=requested_model, requested_provider=requested_provider, route=route,
+                session_model=session_model, confirmed_runtime_lock=confirmed_runtime_lock,
+                gateway_session_key=gateway_session_key, session_id=session_id)
         user_config = _load_gateway_config()
         enabled_toolsets = sorted(_get_platform_tools(user_config, "api_server"))
-<<<<<<< HEAD
         if agent_profile:
             from plugins.openos_engineering.profile_catalog import get_profile_spec
-
             profile_spec = get_profile_spec(agent_profile)
             if profile_spec is not None:
-                # Signed OpenOS dispatches use the managed profile's explicit
-                # tool surface. This prevents a developer run from inheriting
-                # generic API-server terminal/file/code-execution tools.
+                # Signed OpenOS dispatches use the managed profile's explicit tool surface, so a
+                # developer run never inherits generic API-server terminal/file/code tools.
                 enabled_toolsets = sorted(set(profile_spec.get("toolsets", [])))
-
-||||||| cf299e9a01
-
-=======
         # Same gate the messaging gateway and TUI apply: ``display.interim_assistant_messages``
         # off means no callback is installed, so mid-turn commentary never leaves the agent.
         if not resolve_display_setting(user_config, "api_server", "interim_assistant_messages", True):
             interim_assistant_callback = None
->>>>>>> rb/tag
         max_iterations = _current_max_iterations()
-<<<<<<< HEAD
-
-        # Load fallback provider chain so the API server platform has the
-        # same fallback behaviour as Telegram/Discord/Slack (fixes #4954).
-        fallback_model = None if local_llm else GatewayRunner._load_fallback_model()
-
-        agent = AIAgent(
-            model=resolved_model,
-            **runtime_kwargs,
-            max_iterations=max_iterations,
-            quiet_mode=True,
-            verbose_logging=False,
-            ephemeral_system_prompt=ephemeral_system_prompt or None,
-            enabled_toolsets=enabled_toolsets,
-            session_id=session_id,
-            platform="api_server",
-            stream_delta_callback=stream_delta_callback,
-            tool_progress_callback=tool_progress_callback,
-            tool_start_callback=tool_start_callback,
-            tool_complete_callback=tool_complete_callback,
-            session_db=self._ensure_session_db(),
-            fallback_model=fallback_model,
-            reasoning_config=reasoning_config,
-            gateway_session_key=gateway_session_key,
-        )
-||||||| cf299e9a01
-
-        # Load fallback provider chain so the API server platform has the
-        # same fallback behaviour as Telegram/Discord/Slack (fixes #4954).
-        fallback_model = GatewayRunner._load_fallback_model()
-
-        agent = AIAgent(
-            model=model,
-            **runtime_kwargs,
-            max_iterations=max_iterations,
-            quiet_mode=True,
-            verbose_logging=False,
-            ephemeral_system_prompt=ephemeral_system_prompt or None,
-            enabled_toolsets=enabled_toolsets,
-            session_id=session_id,
-            platform="api_server",
-            stream_delta_callback=stream_delta_callback,
-            tool_progress_callback=tool_progress_callback,
-            tool_start_callback=tool_start_callback,
-            tool_complete_callback=tool_complete_callback,
-            session_db=self._ensure_session_db(),
-            fallback_model=fallback_model,
-            reasoning_config=reasoning_config,
-            gateway_session_key=gateway_session_key,
-        )
-=======
         if room_dispatch is not None:
             from gateway.hosted_room_execution_policy import RoomExecutionPolicy
             policy = RoomExecutionPolicy.from_mapping(room_execution_policy or {})
@@ -2632,7 +2347,8 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
             "status_callback": status_callback,
             "session_db": self._ensure_session_db(),
             # Same fallback provider chain as Telegram/Discord/Slack.
-            "fallback_model": None if confirmed_runtime_lock else GatewayRunner._load_fallback_model(),
+            "fallback_model": (
+                None if (confirmed_runtime_lock or local_llm) else GatewayRunner._load_fallback_model()),
             "reasoning_config": request_reasoning_config,
             "gateway_session_key": gateway_session_key,
             # The session's provider from the previous request, so its queued recall reaches this turn
@@ -2649,7 +2365,6 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
             "provider": runtime_kwargs.get("provider") or getattr(agent, "provider", "") or "",
             "model": getattr(agent, "model", None) or model,
             "route_source": route_source}
->>>>>>> rb/tag
         return agent
 
     # -- HTTP handlers ----------------------------------------------------------------
@@ -2724,106 +2439,18 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
 
     @_require_auth
     async def _handle_capabilities(self, request: "web.Request") -> "web.Response":
-<<<<<<< HEAD
-        """GET /v1/capabilities — advertise the stable API surface.
-
-        External UIs and orchestrators use this endpoint to discover the API
-        server's plugin-safe contract without scraping docs or assuming that
-        every OpenAgents version exposes the same endpoints.
-        """
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        tools: List[str] = []
-        profiles: Dict[str, List[str]] = {"catalog": [], "available": []}
-        try:
-            from pathlib import Path
-
-            from plugins.openos_engineering.profile_catalog import list_profile_ids
-            from plugins.openos_engineering.profiles import profile_exists
-            from plugins.openos_engineering.tools import (
-                check_codex_available,
-                check_openos_engineering_available,
-            )
-            from tools.registry import registry
-
-            profile_catalog = list_profile_ids()
-            profile_home = Path(os.environ.get("OPENAGENTS_HOME", Path.home() / ".openagents"))
-            profiles = {
-                "catalog": profile_catalog,
-                "available": [
-                    profile_id
-                    for profile_id in profile_catalog
-                    if profile_exists(profile_home, profile_id)
-                ],
-            }
-            registered = set(registry.get_all_tool_names())
-            if check_openos_engineering_available():
-                tools.extend(
-                    name
-                    for name in (
-                        "create_ticket",
-                        "invoke_opencode",
-                        "run_ticket_dod_loop",
-                    )
-                    if name in registered
-                )
-            if check_codex_available():
-                if "invoke_codex" in registered:
-                    tools.append("invoke_codex")
-        except Exception as exc:
-            logger.debug("OpenOS engineering capabilities unavailable: %s", exc)
-
-||||||| cf299e9a01
-        """GET /v1/capabilities — advertise the stable API surface.
-
-        External UIs and orchestrators use this endpoint to discover the API
-        server's plugin-safe contract without scraping docs or assuming that
-        every OpenAgents version exposes the same endpoints.
-        """
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-=======
         """GET /v1/capabilities — the stable, machine-readable API surface for external UIs."""
->>>>>>> rb/tag
+        openos_tools, openos_profiles = self._openos_capabilities()
         return web.json_response({
-<<<<<<< HEAD
-            "protocol": "openos.capabilities/v1",
-            "app": "OpenAgents",
-            "version": _hermes_version(),
-            "tools": tools,
-            "profiles": profiles,
-            "object": "hermes.api_server.capabilities",
-            "platform": "openagents",
-||||||| cf299e9a01
-            "object": "hermes.api_server.capabilities",
-            "platform": "openagents",
-=======
+            # OpenOS mesh contract (openos.capabilities/v1) — additive to the upstream shape.
+            "protocol": "openos.capabilities/v1", "app": "OpenAgents", "version": _hermes_version(),
+            "tools": openos_tools, "profiles": openos_profiles,
             "object": "hermes.api_server.capabilities", "platform": "openagents",
->>>>>>> rb/tag
             "model": self._model_name,
-<<<<<<< HEAD
             "llm": {
                 "provider": "openai-compatible" if self._llm_provider == "custom" else self._llm_provider,
-                "base_url": self._llm_base_url,
-                "model": self._llm_model,
-                "fallback": False,
-            },
-            "auth": {
-                "type": "bearer",
-                "required": bool(self._api_key),
-            },
-||||||| cf299e9a01
-            "auth": {
-                "type": "bearer",
-                "required": bool(self._api_key),
-            },
-=======
+                "base_url": self._llm_base_url, "model": self._llm_model, "fallback": False},
             "auth": {"type": "bearer", "required": bool(self._api_key)},
->>>>>>> rb/tag
             "runtime": {
                 "mode": "server_agent", "tool_execution": "server", "split_runtime": False,
                 "description": (
@@ -2857,6 +2484,36 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
                         "cloud": "authenticated-gateway-rpc"}}},
             "endpoints": {name: {"method": m, "path": p} for name, (m, p) in _CAPABILITY_ENDPOINTS},
         })
+
+    @staticmethod
+    def _openos_capabilities() -> tuple:
+        """OpenOS engineering tools + managed profile catalog for /v1/capabilities; the real
+        registry/profile store is the only source, and any failure advertises nothing."""
+        tools: List[str] = []
+        profiles: Dict[str, List[str]] = {"catalog": [], "available": []}
+        try:
+            from plugins.openos_engineering.profile_catalog import list_profile_ids
+            from plugins.openos_engineering.profiles import profile_exists
+            from plugins.openos_engineering.tools import (
+                check_codex_available, check_openos_engineering_available)
+            from tools.registry import registry
+
+            profile_catalog = list_profile_ids()
+            # Root home (not the /p/<profile>/ scoped home): managed profiles live under it.
+            profile_home = Path(os.environ.get("OPENAGENTS_HOME", Path.home() / ".openagents"))
+            profiles = {
+                "catalog": profile_catalog,
+                "available": [pid for pid in profile_catalog if profile_exists(profile_home, pid)]}
+            registered = set(registry.get_all_tool_names())
+            if check_openos_engineering_available():
+                tools.extend(
+                    name for name in ("create_ticket", "invoke_opencode", "run_ticket_dod_loop")
+                    if name in registered)
+            if check_codex_available() and "invoke_codex" in registered:
+                tools.append("invoke_codex")
+        except Exception as exc:
+            logger.debug("OpenOS engineering capabilities unavailable: %s", exc)
+        return tools, profiles
 
     # -- Browser-extension control (authenticated local/VPS API) ----------------------
 
@@ -4351,27 +4008,10 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
 
     @staticmethod
     def _bind_api_server_session(
-<<<<<<< HEAD
-        *,
-        chat_id: str = "",
-        session_key: str = "",
-        session_id: str = "",
-        cwd: str = "",
-    ) -> list:
-        """Bind session contextvars for an API-server agent run.
-||||||| cf299e9a01
-        *,
-        chat_id: str = "",
-        session_key: str = "",
-        session_id: str = "",
-    ) -> list:
-        """Bind session contextvars for an API-server agent run.
-=======
         *, chat_id: str = "", session_key: str = "", session_id: str = "", profile: str = "",
         browser_control_principal: str = "", browser_control_transport_family: str = "",
         session_history_delivery: str = "") -> list:
         """Bind an API turn with push disabled and history delivery default-denied.
->>>>>>> rb/tag
 
         Only routes whose continuation reads SessionDB may pass "1". An omitted
         declaration or fingerprint-derived identity keeps delegation synchronous.
@@ -4381,22 +4021,6 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
         unbound profile collapses every profile's turns onto the default sandbox (#96370)."""
         from gateway.session_context import set_session_vars
         return set_session_vars(
-<<<<<<< HEAD
-            platform="api_server",
-            chat_id=chat_id,
-            session_key=session_key,
-            session_id=session_id,
-            cwd=cwd,
-            async_delivery=False,
-        )
-||||||| cf299e9a01
-            platform="api_server",
-            chat_id=chat_id,
-            session_key=session_key,
-            session_id=session_id,
-            async_delivery=False,
-        )
-=======
             platform="api_server", chat_id=chat_id, session_key=session_key, session_id=session_id,
             profile=profile, browser_control_principal=browser_control_principal,
             browser_control_transport_family=browser_control_transport_family,
@@ -4470,7 +4094,6 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
                 result["runtime"] = runtime
             usage["runtime"] = runtime
         return result, usage
->>>>>>> rb/tag
 
     async def _run_agent(
         self, user_message: str, conversation_history: List[Dict[str, str]],
@@ -4623,176 +4246,15 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
 
     _RUN_STREAM_TTL = 300  # seconds before orphaned runs are swept
     _RUN_STATUS_TTL = 3600  # seconds to retain terminal run status for polling
-    _RUN_EVENT_HISTORY_LIMIT = 10000
-
-    def _notify_orchestrator_outcome(
-        self,
-        run_id: str,
-        *,
-        success: bool,
-        reason: str,
-        usage: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        status = self._run_statuses.get(run_id) or {}
-        task_id = status.get("orchestrator_task_id")
-        if not task_id:
-            return
-        try:
-            from plugins.openos_engineering.orchestrator_client import notify_task_outcome
-
-            created = float(status.get("created_at") or time.time())
-            latency_ms = int(max(0, (time.time() - created) * 1000))
-            cost_usd = None
-            if usage:
-                total = int(usage.get("total_tokens") or 0)
-                if total:
-                    cost_usd = round(total * 0.00001, 4)
-            notify_task_outcome(
-                task_id=str(task_id),
-                correlation_id=str(status.get("correlation_id") or ""),
-                success=success,
-                reason=reason,
-                cost_usd=cost_usd,
-                latency_ms=latency_ms,
-            )
-        except Exception:
-            logger.exception("[api_server] orchestrator outcome notify failed for %s", run_id)
 
     def _set_run_status(self, run_id: str, status: str, **fields: Any) -> Dict[str, Any]:
         return _api_runs._set_run_status(self, run_id, status, **fields)
 
-    def _publish_run_event(self, run_id: str, event: Dict[str, Any]) -> None:
-        """Record an event and deliver it to the live SSE queue when present."""
-        history = self._run_event_history.setdefault(run_id, [])
-        history.append(event)
-        if len(history) > self._RUN_EVENT_HISTORY_LIMIT:
-            del history[: len(history) - self._RUN_EVENT_HISTORY_LIMIT]
-
-        q = self._run_streams.get(run_id)
-        if q is not None:
-            q.put_nowait(event)
-
     def _make_run_event_callback(self, run_id: str, loop: "asyncio.AbstractEventLoop"):
-<<<<<<< HEAD
-        """Return a tool_progress_callback that pushes structured events to the run's SSE queue."""
-        def _push(event: Dict[str, Any]) -> None:
-            def _record_and_publish() -> None:
-                fields: Dict[str, Any] = {"last_event": event.get("event")}
-                if event.get("opencode"):
-                    current = dict(event["opencode"])
-                    previous = self._run_statuses.get(run_id, {}).get("opencode")
-                    if isinstance(previous, dict):
-                        current_files = current.get("files_edited") or []
-                        previous_files = previous.get("files_edited") or []
-                        current["files_edited"] = list(dict.fromkeys([*previous_files, *current_files]))
-                    session_ids = list(
-                        self._run_statuses.get(run_id, {}).get("opencode_session_ids") or []
-                    )
-                    session_id = current.get("session_id")
-                    if session_id and session_id not in session_ids:
-                        session_ids.append(session_id)
-                    fields["opencode"] = current
-                    fields["opencode_session_ids"] = session_ids
-                self._set_run_status(
-                    run_id,
-                    self._run_statuses.get(run_id, {}).get("status", "running"),
-                    **fields,
-                )
-                self._publish_run_event(run_id, event)
-
-            try:
-                loop.call_soon_threadsafe(_record_and_publish)
-            except Exception:
-                pass
-||||||| cf299e9a01
-        """Return a tool_progress_callback that pushes structured events to the run's SSE queue."""
-        def _push(event: Dict[str, Any]) -> None:
-            self._set_run_status(
-                run_id,
-                self._run_statuses.get(run_id, {}).get("status", "running"),
-                last_event=event.get("event"),
-            )
-            q = self._run_streams.get(run_id)
-            if q is None:
-                return
-            try:
-                loop.call_soon_threadsafe(q.put_nowait, event)
-            except Exception:
-                pass
-=======
         return _api_runs._make_run_event_callback(self, run_id, loop, _api_server=sys.modules[__name__])
->>>>>>> rb/tag
 
-<<<<<<< HEAD
-        def _callback(event_type: str, tool_name: str = None, preview: str = None, args=None, **kwargs):
-            ts = time.time()
-            if event_type == "tool.started":
-                _push({
-                    "event": "tool.started",
-                    "run_id": run_id,
-                    "timestamp": ts,
-                    "tool": tool_name,
-                    "preview": preview,
-                })
-            elif event_type == "tool.completed":
-                event = {
-                    "event": "tool.completed",
-                    "run_id": run_id,
-                    "timestamp": ts,
-                    "tool": tool_name,
-                    "duration": round(kwargs.get("duration", 0), 3),
-                    "error": kwargs.get("is_error", False),
-                }
-                if tool_name == "invoke_opencode":
-                    result = kwargs.get("result")
-                    if isinstance(result, str) and "Evidence: " in result:
-                        try:
-                            evidence = json.loads(result.rsplit("Evidence: ", 1)[1].strip())
-                            if isinstance(evidence, dict):
-                                event["opencode"] = evidence
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-                _push(event)
-            elif event_type == "reasoning.available":
-                _push({
-                    "event": "reasoning.available",
-                    "run_id": run_id,
-                    "timestamp": ts,
-                    "text": preview or "",
-                })
-            # _thinking and subagent_progress are intentionally not forwarded
-||||||| cf299e9a01
-        def _callback(event_type: str, tool_name: str = None, preview: str = None, args=None, **kwargs):
-            ts = time.time()
-            if event_type == "tool.started":
-                _push({
-                    "event": "tool.started",
-                    "run_id": run_id,
-                    "timestamp": ts,
-                    "tool": tool_name,
-                    "preview": preview,
-                })
-            elif event_type == "tool.completed":
-                _push({
-                    "event": "tool.completed",
-                    "run_id": run_id,
-                    "timestamp": ts,
-                    "tool": tool_name,
-                    "duration": round(kwargs.get("duration", 0), 3),
-                    "error": kwargs.get("is_error", False),
-                })
-            elif event_type == "reasoning.available":
-                _push({
-                    "event": "reasoning.available",
-                    "run_id": run_id,
-                    "timestamp": ts,
-                    "text": preview or "",
-                })
-            # _thinking and subagent_progress are intentionally not forwarded
-=======
     def _run_idempotency_scope(self, request: "web.Request") -> str:
         return _api_runs._run_idempotency_scope(self, request, _api_server=sys.modules[__name__])
->>>>>>> rb/tag
 
     @staticmethod
     def _room_grant_token(request: "web.Request") -> str:
@@ -4831,1126 +4293,11 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
     def _release_run_owner_if_forgotten(self, run_id: str) -> None:
         _api_runs._release_run_owner_if_forgotten(self, run_id)
 
-<<<<<<< HEAD
-        try:
-            body = await request.json()
-        except Exception:
-            return web.json_response(_openai_error("Invalid JSON"), status=400)
-
-        from plugins.openos_engineering.orchestrator_dispatch import unwrap_orchestrator_run_body
-
-        try:
-            body = unwrap_orchestrator_run_body(body)
-        except ValueError as exc:
-            return web.json_response(_openai_error(str(exc)), status=400)
-
-        raw_input = body.get("input")
-        if not raw_input:
-            return web.json_response(_openai_error("Missing 'input' field"), status=400)
-
-        user_message = raw_input if isinstance(raw_input, str) else (raw_input[-1].get("content", "") if isinstance(raw_input, list) else "")
-        if not user_message:
-            return web.json_response(_openai_error("No user message found in input"), status=400)
-
-        instructions = body.get("instructions")
-        previous_response_id = body.get("previous_response_id")
-
-        # Accept explicit conversation_history from the request body.
-        # Precedence: explicit conversation_history > previous_response_id.
-        conversation_history: List[Dict[str, str]] = []
-        raw_history = body.get("conversation_history")
-        if raw_history:
-            if not isinstance(raw_history, list):
-                return web.json_response(
-                    _openai_error("'conversation_history' must be an array of message objects"),
-                    status=400,
-                )
-            for i, entry in enumerate(raw_history):
-                if not isinstance(entry, dict) or "role" not in entry or "content" not in entry:
-                    return web.json_response(
-                        _openai_error(f"conversation_history[{i}] must have 'role' and 'content' fields"),
-                        status=400,
-                    )
-                conversation_history.append({"role": str(entry["role"]), "content": str(entry["content"])})
-            if previous_response_id:
-                logger.debug("Both conversation_history and previous_response_id provided; using conversation_history")
-
-        stored_session_id = None
-        if not conversation_history and previous_response_id:
-            stored = self._response_store.get(previous_response_id)
-            if stored:
-                conversation_history = list(stored.get("conversation_history", []))
-                stored_session_id = stored.get("session_id")
-                if instructions is None:
-                    instructions = stored.get("instructions")
-
-        # When input is a multi-message array, extract all but the last
-        # message as conversation history (the last becomes user_message).
-        # Only fires when no explicit history was provided.
-        if not conversation_history and isinstance(raw_input, list) and len(raw_input) > 1:
-            for msg in raw_input[:-1]:
-                if isinstance(msg, dict) and msg.get("role") and msg.get("content"):
-                    content = msg["content"]
-                    if isinstance(content, list):
-                        # Flatten multi-part content blocks to text
-                        content = " ".join(
-                            part.get("text", "") for part in content
-                            if isinstance(part, dict) and part.get("type") == "text"
-                        )
-                    conversation_history.append({"role": msg["role"], "content": str(content)})
-
-        run_id = f"run_{uuid.uuid4().hex}"
-        self._run_profiles[run_id] = (
-            request[_PROFILE_NAME_KEY] if _PROFILE_NAME_KEY in request else None
-        )
-        session_id = body.get("session_id") or stored_session_id or run_id
-        approval_session_key = gateway_session_key or session_id or run_id
-
-        task_ctx = body.get("task_context") if isinstance(body.get("task_context"), dict) else {}
-        task_cwd = task_ctx.get("repo_path") or task_ctx.get("cwd") or ""
-        brief = task_ctx.get("brief")
-        if not task_cwd and isinstance(brief, dict):
-            paths = brief.get("paths")
-            if isinstance(paths, list) and paths and isinstance(paths[0], str):
-                task_cwd = paths[0]
-        from plugins.openos_engineering.ticket_client import (
-            apply_task_context_env,
-            merge_orchestrator_instructions,
-        )
-
-        apply_task_context_env(task_ctx)
-        instructions = merge_orchestrator_instructions(instructions, task_ctx)
-        ephemeral_system_prompt = instructions
-        loop = asyncio.get_running_loop()
-        q: "asyncio.Queue[Optional[Dict]]" = asyncio.Queue()
-        created_at = time.time()
-        self._run_streams[run_id] = q
-        self._run_event_history[run_id] = []
-        self._run_streams_created[run_id] = created_at
-        self._run_approval_sessions[run_id] = approval_session_key
-
-        event_cb = self._make_run_event_callback(run_id, loop)
-
-        # Also wire stream_delta_callback so message.delta events flow through.
-        def _text_cb(delta: Optional[str]) -> None:
-            if delta is None:
-                return
-            try:
-                loop.call_soon_threadsafe(self._publish_run_event, run_id, {
-                    "event": "message.delta",
-                    "run_id": run_id,
-                    "timestamp": time.time(),
-                    "delta": delta,
-                })
-            except Exception:
-                pass
-
-        self._set_run_status(
-            run_id,
-            "queued",
-            created_at=created_at,
-            session_id=session_id,
-            model=body.get("model", self._model_name),
-            orchestrator_task_id=task_ctx.get("orchestrator_task_id"),
-            correlation_id=task_ctx.get("correlation_id") or body.get("session_id"),
-            agent_profile=body.get("agent_profile"),
-        )
-
-        async def _run_and_close():
-            try:
-                self._set_run_status(run_id, "running")
-                agent = self._create_agent(
-                    ephemeral_system_prompt=ephemeral_system_prompt,
-                    session_id=session_id,
-                    stream_delta_callback=_text_cb,
-                    tool_progress_callback=event_cb,
-                    gateway_session_key=gateway_session_key,
-                    model=body.get("model") if isinstance(body.get("model"), str) else None,
-                    agent_profile=body.get("agent_profile") if isinstance(body.get("agent_profile"), str) else None,
-                )
-                self._active_run_agents[run_id] = agent
-
-                def _approval_notify(approval_data: Dict[str, Any]) -> None:
-                    event = dict(approval_data or {})
-                    # Redact credentials from the command before it enters the
-                    # SSE/API event stream — same egress bug as #48456, second
-                    # transport: API/desktop clients would otherwise receive the
-                    # raw command Tirith flagged. Reuse the gateway seam.
-                    if "command" in event:
-                        from gateway.run import _redact_approval_command
-
-                        event["command"] = _redact_approval_command(event.get("command"))
-                    event.update({
-                        "event": "approval.request",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                        "choices": ["once", "session", "always", "deny"],
-                    })
-                    self._set_run_status(
-                        run_id,
-                        "waiting_for_approval",
-                        last_event="approval.request",
-                    )
-                    try:
-                        loop.call_soon_threadsafe(self._publish_run_event, run_id, event)
-                    except Exception:
-                        pass
-
-                def _run_sync():
-                    from gateway.session_context import clear_session_vars
-                    from tools.approval import (
-                        register_gateway_notify,
-                        reset_current_session_key,
-                        set_current_session_key,
-                        unregister_gateway_notify,
-                    )
-
-                    effective_task_id = session_id or run_id
-                    approval_token = None
-                    session_tokens = []
-                    try:
-                        # Bind approval/session identity for this API run via
-                        # contextvars so concurrent runs do not share process
-                        # environment state.
-                        approval_token = set_current_session_key(approval_session_key)
-                        session_tokens = self._bind_api_server_session(
-                            session_key=approval_session_key,
-                            session_id=session_id,
-                            cwd=str(task_cwd),
-                        )
-                        register_gateway_notify(approval_session_key, _approval_notify)
-                        r = agent.run_conversation(
-                            user_message=user_message,
-                            conversation_history=conversation_history,
-                            task_id=effective_task_id,
-                        )
-                    finally:
-                        try:
-                            unregister_gateway_notify(approval_session_key)
-                        finally:
-                            if approval_token is not None:
-                                try:
-                                    reset_current_session_key(approval_token)
-                                except Exception:
-                                    pass
-                            if session_tokens:
-                                try:
-                                    clear_session_vars(session_tokens)
-                                except Exception:
-                                    pass
-                    u = {
-                        "input_tokens": getattr(agent, "session_prompt_tokens", 0) or 0,
-                        "output_tokens": getattr(agent, "session_completion_tokens", 0) or 0,
-                        "total_tokens": getattr(agent, "session_total_tokens", 0) or 0,
-                    }
-                    return r, u
-
-                result, usage = await asyncio.to_thread(_run_sync)
-                # Check for structured failure (non-retryable client errors like
-                # 401/400 return failed=True instead of raising, so the except
-                # block below never fires — issue #15561).
-                if isinstance(result, dict) and result.get("failed"):
-                    error_msg = _redact_api_error_text(result.get("error") or "agent run failed")
-                    self._publish_run_event(run_id, {
-                        "event": "run.failed",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                        "error": error_msg,
-                    })
-                    self._set_run_status(
-                        run_id,
-                        "failed",
-                        error=error_msg,
-                        last_event="run.failed",
-                    )
-                    self._notify_orchestrator_outcome(
-                        run_id,
-                        success=False,
-                        reason=error_msg,
-                        usage=usage,
-                    )
-                else:
-                    final_response = result.get("final_response", "") if isinstance(result, dict) else ""
-                    self._publish_run_event(run_id, {
-                        "event": "run.completed",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                        "output": final_response,
-                        "usage": usage,
-                    })
-                    self._set_run_status(
-                        run_id,
-                        "completed",
-                        output=final_response,
-                        usage=usage,
-                        last_event="run.completed",
-                    )
-                    self._notify_orchestrator_outcome(
-                        run_id,
-                        success=True,
-                        reason=(final_response or "run completed")[:500],
-                        usage=usage,
-                    )
-            except asyncio.CancelledError:
-                self._set_run_status(
-                    run_id,
-                    "cancelled",
-                    last_event="run.cancelled",
-                )
-                try:
-                    self._publish_run_event(run_id, {
-                        "event": "run.cancelled",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                    })
-                except Exception:
-                    pass
-                raise
-            except Exception as exc:
-                logger.exception("[api_server] run %s failed", run_id)
-                err_text = _redact_api_error_text(exc)
-                self._set_run_status(
-                    run_id,
-                    "failed",
-                    error=err_text,
-                    last_event="run.failed",
-                )
-                self._notify_orchestrator_outcome(
-                    run_id,
-                    success=False,
-                    reason=err_text,
-                )
-                try:
-                    self._publish_run_event(run_id, {
-                        "event": "run.failed",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                        "error": err_text,
-                    })
-                except Exception:
-                    pass
-            finally:
-                # If the asyncio wrapper is cancelled (for example via
-                # /stop), the executor thread can still be blocked waiting
-                # on an approval Event.  Unregistering here releases those
-                # waits immediately; the in-thread unregister is harmlessly
-                # idempotent on normal completion.
-                try:
-                    from tools.approval import unregister_gateway_notify
-
-                    unregister_gateway_notify(approval_session_key)
-                except Exception:
-                    pass
-                # Sentinel: signal SSE stream to close
-                try:
-                    q.put_nowait(None)
-                except Exception:
-                    pass
-                self._active_run_agents.pop(run_id, None)
-                self._active_run_tasks.pop(run_id, None)
-                self._run_approval_sessions.pop(run_id, None)
-
-        task = asyncio.create_task(_run_and_close())
-        self._active_run_tasks[run_id] = task
-        try:
-            self._background_tasks.add(task)
-        except TypeError:
-            pass
-        if hasattr(task, "add_done_callback"):
-            task.add_done_callback(self._background_tasks.discard)
-
-        response_headers = (
-            {"X-Hermes-Session-Key": gateway_session_key} if gateway_session_key else {}
-        )
-        return web.json_response(
-            {"run_id": run_id, "status": "started"},
-            status=202,
-            headers=response_headers,
-        )
-
-    async def _handle_get_run(self, request: "web.Request") -> "web.Response":
-        """GET /v1/runs/{run_id} — return pollable run status for external UIs."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        run_id = request.match_info["run_id"]
-        status = self._run_statuses.get(run_id)
-        if status is None or not self._run_visible_to_request(request, run_id):
-            return web.json_response(
-                _openai_error(f"Run not found: {run_id}", code="run_not_found"),
-                status=404,
-            )
-        return web.json_response(status)
-
-    async def _handle_run_events(self, request: "web.Request") -> "web.StreamResponse":
-        """GET /v1/runs/{run_id}/events — SSE stream of structured agent lifecycle events."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        run_id = request.match_info["run_id"]
-        if not self._run_visible_to_request(request, run_id):
-            return web.json_response(
-                _openai_error(f"Run not found: {run_id}", code="run_not_found"),
-                status=404,
-            )
-
-        status = self._run_statuses.get(run_id)
-        if status and status.get("status") in {"completed", "failed", "cancelled"}:
-            response = web.StreamResponse(
-                status=200,
-                headers={
-                    "Content-Type": "text/event-stream",
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no",
-                },
-            )
-            await response.prepare(request)
-            for event in self._run_event_history.get(run_id, []):
-                payload = f"data: {json.dumps(event)}\n\n"
-                await response.write(payload.encode())
-            await response.write(b": stream replayed\n\n")
-            return response
-
-        # Allow subscribing slightly before the run is registered (race condition window)
-        for _ in range(20):
-            if run_id in self._run_streams:
-                break
-            await asyncio.sleep(0.05)
-        else:
-            return web.json_response(_openai_error(f"Run not found: {run_id}", code="run_not_found"), status=404)
-
-        q = self._run_streams[run_id]
-
-        response = web.StreamResponse(
-            status=200,
-            headers={
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",
-            },
-        )
-        await response.prepare(request)
-
-        try:
-            while True:
-                try:
-                    event = await asyncio.wait_for(q.get(), timeout=30.0)
-                except asyncio.TimeoutError:
-                    await response.write(b": keepalive\n\n")
-                    continue
-                if event is None:
-                    # Run finished — send final SSE comment and close
-                    await response.write(b": stream closed\n\n")
-                    break
-                payload = f"data: {json.dumps(event)}\n\n"
-                await response.write(payload.encode())
-        except Exception as exc:
-            logger.debug("[api_server] SSE stream error for run %s: %s", run_id, exc)
-        finally:
-            self._run_streams.pop(run_id, None)
-            self._run_streams_created.pop(run_id, None)
-
-        return response
-
-
-    async def _handle_run_approval(self, request: "web.Request") -> "web.Response":
-        """POST /v1/runs/{run_id}/approval — resolve a pending run approval."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        run_id = request.match_info["run_id"]
-        status = self._run_statuses.get(run_id)
-        if status is None or not self._run_visible_to_request(request, run_id):
-            return web.json_response(
-                _openai_error(f"Run not found: {run_id}", code="run_not_found"),
-                status=404,
-            )
-
-        try:
-            body = await request.json()
-        except Exception:
-            return web.json_response(_openai_error("Invalid JSON"), status=400)
-
-        raw_choice = str(body.get("choice", "")).strip().lower()
-        aliases = {"approve": "once", "approved": "once", "allow": "once"}
-        choice = aliases.get(raw_choice, raw_choice)
-        allowed = {"once", "session", "always", "deny"}
-        if choice not in allowed:
-            return web.json_response(
-                _openai_error(
-                    "Invalid approval choice; expected one of: once, session, always, deny",
-                    code="invalid_approval_choice",
-                ),
-                status=400,
-            )
-
-        approval_session_key = self._run_approval_sessions.get(run_id)
-        if not approval_session_key:
-            return web.json_response(
-                _openai_error(
-                    f"Run has no active approval session: {run_id}",
-                    code="approval_not_active",
-                ),
-                status=409,
-            )
-
-        resolve_all = (
-            _coerce_request_bool(body.get("all"), default=False)
-            or _coerce_request_bool(body.get("resolve_all"), default=False)
-        )
-        try:
-            from tools.approval import resolve_gateway_approval
-
-            resolved = resolve_gateway_approval(
-                approval_session_key,
-                choice,
-                resolve_all=resolve_all,
-            )
-        except Exception as exc:
-            logger.exception("[api_server] approval resolution failed for run %s", run_id)
-            return web.json_response(_openai_error(str(exc)), status=500)
-
-        if resolved <= 0:
-            return web.json_response(
-                _openai_error(
-                    f"Run has no pending approval: {run_id}",
-                    code="approval_not_pending",
-                ),
-                status=409,
-            )
-
-        self._set_run_status(run_id, "running", last_event="approval.responded")
-        try:
-            self._publish_run_event(run_id, {
-                "event": "approval.responded",
-                "run_id": run_id,
-                "timestamp": time.time(),
-                "choice": choice,
-                "resolved": resolved,
-            })
-        except Exception:
-            pass
-
-        return web.json_response({
-            "object": "hermes.run.approval_response",
-            "run_id": run_id,
-            "choice": choice,
-            "resolved": resolved,
-        })
-
-    async def _handle_stop_run(self, request: "web.Request") -> "web.Response":
-        """POST /v1/runs/{run_id}/stop — interrupt a running agent."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        run_id = request.match_info["run_id"]
-        if not self._run_visible_to_request(request, run_id):
-            return web.json_response(
-                _openai_error(f"Run not found: {run_id}", code="run_not_found"),
-                status=404,
-            )
-        agent = self._active_run_agents.get(run_id)
-        task = self._active_run_tasks.get(run_id)
-
-        if agent is None and task is None:
-            return web.json_response(_openai_error(f"Run not found: {run_id}", code="run_not_found"), status=404)
-
-        self._set_run_status(run_id, "stopping", last_event="run.stopping")
-
-        if agent is not None:
-            try:
-                agent.interrupt("Stop requested via API")
-            except Exception:
-                pass
-
-        if task is not None and not task.done():
-            task.cancel()
-            # Bounded wait: run_conversation() executes in the default
-            # executor thread which task.cancel() cannot preempt — we rely on
-            # agent.interrupt() above to break the loop. Cap the wait so a
-            # slow/unresponsive interrupt can't hang this handler.
-            try:
-                await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
-            except asyncio.TimeoutError:
-                logger.warning(
-                    "[api_server] stop for run %s timed out after 5s; "
-                    "agent may still be finishing the current step",
-                    run_id,
-                )
-            except (asyncio.CancelledError, Exception):
-                pass
-
-        return web.json_response({"run_id": run_id, "status": "stopping"})
-||||||| cf299e9a01
-        try:
-            body = await request.json()
-        except Exception:
-            return web.json_response(_openai_error("Invalid JSON"), status=400)
-
-        raw_input = body.get("input")
-        if not raw_input:
-            return web.json_response(_openai_error("Missing 'input' field"), status=400)
-
-        user_message = raw_input if isinstance(raw_input, str) else (raw_input[-1].get("content", "") if isinstance(raw_input, list) else "")
-        if not user_message:
-            return web.json_response(_openai_error("No user message found in input"), status=400)
-
-        instructions = body.get("instructions")
-        previous_response_id = body.get("previous_response_id")
-
-        # Accept explicit conversation_history from the request body.
-        # Precedence: explicit conversation_history > previous_response_id.
-        conversation_history: List[Dict[str, str]] = []
-        raw_history = body.get("conversation_history")
-        if raw_history:
-            if not isinstance(raw_history, list):
-                return web.json_response(
-                    _openai_error("'conversation_history' must be an array of message objects"),
-                    status=400,
-                )
-            for i, entry in enumerate(raw_history):
-                if not isinstance(entry, dict) or "role" not in entry or "content" not in entry:
-                    return web.json_response(
-                        _openai_error(f"conversation_history[{i}] must have 'role' and 'content' fields"),
-                        status=400,
-                    )
-                conversation_history.append({"role": str(entry["role"]), "content": str(entry["content"])})
-            if previous_response_id:
-                logger.debug("Both conversation_history and previous_response_id provided; using conversation_history")
-
-        stored_session_id = None
-        if not conversation_history and previous_response_id:
-            stored = self._response_store.get(previous_response_id)
-            if stored:
-                conversation_history = list(stored.get("conversation_history", []))
-                stored_session_id = stored.get("session_id")
-                if instructions is None:
-                    instructions = stored.get("instructions")
-
-        # When input is a multi-message array, extract all but the last
-        # message as conversation history (the last becomes user_message).
-        # Only fires when no explicit history was provided.
-        if not conversation_history and isinstance(raw_input, list) and len(raw_input) > 1:
-            for msg in raw_input[:-1]:
-                if isinstance(msg, dict) and msg.get("role") and msg.get("content"):
-                    content = msg["content"]
-                    if isinstance(content, list):
-                        # Flatten multi-part content blocks to text
-                        content = " ".join(
-                            part.get("text", "") for part in content
-                            if isinstance(part, dict) and part.get("type") == "text"
-                        )
-                    conversation_history.append({"role": msg["role"], "content": str(content)})
-
-        run_id = f"run_{uuid.uuid4().hex}"
-        session_id = body.get("session_id") or stored_session_id or run_id
-        approval_session_key = gateway_session_key or session_id or run_id
-        ephemeral_system_prompt = instructions
-        loop = asyncio.get_running_loop()
-        q: "asyncio.Queue[Optional[Dict]]" = asyncio.Queue()
-        created_at = time.time()
-        self._run_streams[run_id] = q
-        self._run_streams_created[run_id] = created_at
-        self._run_approval_sessions[run_id] = approval_session_key
-
-        event_cb = self._make_run_event_callback(run_id, loop)
-
-        # Also wire stream_delta_callback so message.delta events flow through.
-        def _text_cb(delta: Optional[str]) -> None:
-            if delta is None:
-                return
-            try:
-                loop.call_soon_threadsafe(q.put_nowait, {
-                    "event": "message.delta",
-                    "run_id": run_id,
-                    "timestamp": time.time(),
-                    "delta": delta,
-                })
-            except Exception:
-                pass
-
-        self._set_run_status(
-            run_id,
-            "queued",
-            created_at=created_at,
-            session_id=session_id,
-            model=body.get("model", self._model_name),
-        )
-
-        async def _run_and_close():
-            try:
-                self._set_run_status(run_id, "running")
-                agent = self._create_agent(
-                    ephemeral_system_prompt=ephemeral_system_prompt,
-                    session_id=session_id,
-                    stream_delta_callback=_text_cb,
-                    tool_progress_callback=event_cb,
-                    gateway_session_key=gateway_session_key,
-                )
-                self._active_run_agents[run_id] = agent
-
-                def _approval_notify(approval_data: Dict[str, Any]) -> None:
-                    event = dict(approval_data or {})
-                    # Redact credentials from the command before it enters the
-                    # SSE/API event stream — same egress bug as #48456, second
-                    # transport: API/desktop clients would otherwise receive the
-                    # raw command Tirith flagged. Reuse the gateway seam.
-                    if "command" in event:
-                        from gateway.run import _redact_approval_command
-
-                        event["command"] = _redact_approval_command(event.get("command"))
-                    event.update({
-                        "event": "approval.request",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                        "choices": ["once", "session", "always", "deny"],
-                    })
-                    self._set_run_status(
-                        run_id,
-                        "waiting_for_approval",
-                        last_event="approval.request",
-                    )
-                    try:
-                        loop.call_soon_threadsafe(q.put_nowait, event)
-                    except Exception:
-                        pass
-
-                def _run_sync():
-                    from gateway.session_context import clear_session_vars
-                    from tools.approval import (
-                        register_gateway_notify,
-                        reset_current_session_key,
-                        set_current_session_key,
-                        unregister_gateway_notify,
-                    )
-
-                    effective_task_id = session_id or run_id
-                    approval_token = None
-                    session_tokens = []
-                    try:
-                        # Bind approval/session identity for this API run via
-                        # contextvars so concurrent runs do not share process
-                        # environment state.
-                        approval_token = set_current_session_key(approval_session_key)
-                        session_tokens = self._bind_api_server_session(
-                            session_key=approval_session_key,
-                        )
-                        register_gateway_notify(approval_session_key, _approval_notify)
-                        r = agent.run_conversation(
-                            user_message=user_message,
-                            conversation_history=conversation_history,
-                            task_id=effective_task_id,
-                        )
-                    finally:
-                        try:
-                            unregister_gateway_notify(approval_session_key)
-                        finally:
-                            if approval_token is not None:
-                                try:
-                                    reset_current_session_key(approval_token)
-                                except Exception:
-                                    pass
-                            if session_tokens:
-                                try:
-                                    clear_session_vars(session_tokens)
-                                except Exception:
-                                    pass
-                    u = {
-                        "input_tokens": getattr(agent, "session_prompt_tokens", 0) or 0,
-                        "output_tokens": getattr(agent, "session_completion_tokens", 0) or 0,
-                        "total_tokens": getattr(agent, "session_total_tokens", 0) or 0,
-                    }
-                    return r, u
-
-                result, usage = await asyncio.get_running_loop().run_in_executor(None, _run_sync)
-                # Check for structured failure (non-retryable client errors like
-                # 401/400 return failed=True instead of raising, so the except
-                # block below never fires — issue #15561).
-                if isinstance(result, dict) and result.get("failed"):
-                    error_msg = _redact_api_error_text(result.get("error") or "agent run failed")
-                    q.put_nowait({
-                        "event": "run.failed",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                        "error": error_msg,
-                    })
-                    self._set_run_status(
-                        run_id,
-                        "failed",
-                        error=error_msg,
-                        last_event="run.failed",
-                    )
-                else:
-                    final_response = result.get("final_response", "") if isinstance(result, dict) else ""
-                    q.put_nowait({
-                        "event": "run.completed",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                        "output": final_response,
-                        "usage": usage,
-                    })
-                    self._set_run_status(
-                        run_id,
-                        "completed",
-                        output=final_response,
-                        usage=usage,
-                        last_event="run.completed",
-                    )
-            except asyncio.CancelledError:
-                self._set_run_status(
-                    run_id,
-                    "cancelled",
-                    last_event="run.cancelled",
-                )
-                try:
-                    q.put_nowait({
-                        "event": "run.cancelled",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                    })
-                except Exception:
-                    pass
-                raise
-            except Exception as exc:
-                logger.exception("[api_server] run %s failed", run_id)
-                self._set_run_status(
-                    run_id,
-                    "failed",
-                    error=_redact_api_error_text(exc),
-                    last_event="run.failed",
-                )
-                try:
-                    q.put_nowait({
-                        "event": "run.failed",
-                        "run_id": run_id,
-                        "timestamp": time.time(),
-                        "error": _redact_api_error_text(exc),
-                    })
-                except Exception:
-                    pass
-            finally:
-                # If the asyncio wrapper is cancelled (for example via
-                # /stop), the executor thread can still be blocked waiting
-                # on an approval Event.  Unregistering here releases those
-                # waits immediately; the in-thread unregister is harmlessly
-                # idempotent on normal completion.
-                try:
-                    from tools.approval import unregister_gateway_notify
-
-                    unregister_gateway_notify(approval_session_key)
-                except Exception:
-                    pass
-                # Sentinel: signal SSE stream to close
-                try:
-                    q.put_nowait(None)
-                except Exception:
-                    pass
-                self._active_run_agents.pop(run_id, None)
-                self._active_run_tasks.pop(run_id, None)
-                self._run_approval_sessions.pop(run_id, None)
-
-        task = asyncio.create_task(_run_and_close())
-        self._active_run_tasks[run_id] = task
-        try:
-            self._background_tasks.add(task)
-        except TypeError:
-            pass
-        if hasattr(task, "add_done_callback"):
-            task.add_done_callback(self._background_tasks.discard)
-
-        response_headers = (
-            {"X-Hermes-Session-Key": gateway_session_key} if gateway_session_key else {}
-        )
-        return web.json_response(
-            {"run_id": run_id, "status": "started"},
-            status=202,
-            headers=response_headers,
-        )
-
-    async def _handle_get_run(self, request: "web.Request") -> "web.Response":
-        """GET /v1/runs/{run_id} — return pollable run status for external UIs."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        run_id = request.match_info["run_id"]
-        status = self._run_statuses.get(run_id)
-        if status is None:
-            return web.json_response(
-                _openai_error(f"Run not found: {run_id}", code="run_not_found"),
-                status=404,
-            )
-        return web.json_response(status)
-
-    async def _handle_run_events(self, request: "web.Request") -> "web.StreamResponse":
-        """GET /v1/runs/{run_id}/events — SSE stream of structured agent lifecycle events."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        run_id = request.match_info["run_id"]
-
-        # Allow subscribing slightly before the run is registered (race condition window)
-        for _ in range(20):
-            if run_id in self._run_streams:
-                break
-            await asyncio.sleep(0.05)
-        else:
-            return web.json_response(_openai_error(f"Run not found: {run_id}", code="run_not_found"), status=404)
-
-        q = self._run_streams[run_id]
-
-        response = web.StreamResponse(
-            status=200,
-            headers={
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",
-            },
-        )
-        await response.prepare(request)
-
-        try:
-            while True:
-                try:
-                    event = await asyncio.wait_for(q.get(), timeout=30.0)
-                except asyncio.TimeoutError:
-                    await response.write(b": keepalive\n\n")
-                    continue
-                if event is None:
-                    # Run finished — send final SSE comment and close
-                    await response.write(b": stream closed\n\n")
-                    break
-                payload = f"data: {json.dumps(event)}\n\n"
-                await response.write(payload.encode())
-        except Exception as exc:
-            logger.debug("[api_server] SSE stream error for run %s: %s", run_id, exc)
-        finally:
-            self._run_streams.pop(run_id, None)
-            self._run_streams_created.pop(run_id, None)
-
-        return response
-
-
-    async def _handle_run_approval(self, request: "web.Request") -> "web.Response":
-        """POST /v1/runs/{run_id}/approval — resolve a pending run approval."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        run_id = request.match_info["run_id"]
-        status = self._run_statuses.get(run_id)
-        if status is None:
-            return web.json_response(
-                _openai_error(f"Run not found: {run_id}", code="run_not_found"),
-                status=404,
-            )
-
-        try:
-            body = await request.json()
-        except Exception:
-            return web.json_response(_openai_error("Invalid JSON"), status=400)
-
-        raw_choice = str(body.get("choice", "")).strip().lower()
-        aliases = {"approve": "once", "approved": "once", "allow": "once"}
-        choice = aliases.get(raw_choice, raw_choice)
-        allowed = {"once", "session", "always", "deny"}
-        if choice not in allowed:
-            return web.json_response(
-                _openai_error(
-                    "Invalid approval choice; expected one of: once, session, always, deny",
-                    code="invalid_approval_choice",
-                ),
-                status=400,
-            )
-
-        approval_session_key = self._run_approval_sessions.get(run_id)
-        if not approval_session_key:
-            return web.json_response(
-                _openai_error(
-                    f"Run has no active approval session: {run_id}",
-                    code="approval_not_active",
-                ),
-                status=409,
-            )
-
-        resolve_all = (
-            _coerce_request_bool(body.get("all"), default=False)
-            or _coerce_request_bool(body.get("resolve_all"), default=False)
-        )
-        try:
-            from tools.approval import resolve_gateway_approval
-
-            resolved = resolve_gateway_approval(
-                approval_session_key,
-                choice,
-                resolve_all=resolve_all,
-            )
-        except Exception as exc:
-            logger.exception("[api_server] approval resolution failed for run %s", run_id)
-            return web.json_response(_openai_error(str(exc)), status=500)
-
-        if resolved <= 0:
-            return web.json_response(
-                _openai_error(
-                    f"Run has no pending approval: {run_id}",
-                    code="approval_not_pending",
-                ),
-                status=409,
-            )
-
-        self._set_run_status(run_id, "running", last_event="approval.responded")
-        q = self._run_streams.get(run_id)
-        if q is not None:
-            try:
-                q.put_nowait({
-                    "event": "approval.responded",
-                    "run_id": run_id,
-                    "timestamp": time.time(),
-                    "choice": choice,
-                    "resolved": resolved,
-                })
-            except Exception:
-                pass
-
-        return web.json_response({
-            "object": "hermes.run.approval_response",
-            "run_id": run_id,
-            "choice": choice,
-            "resolved": resolved,
-        })
-
-    async def _handle_stop_run(self, request: "web.Request") -> "web.Response":
-        """POST /v1/runs/{run_id}/stop — interrupt a running agent."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        run_id = request.match_info["run_id"]
-        agent = self._active_run_agents.get(run_id)
-        task = self._active_run_tasks.get(run_id)
-
-        if agent is None and task is None:
-            return web.json_response(_openai_error(f"Run not found: {run_id}", code="run_not_found"), status=404)
-
-        self._set_run_status(run_id, "stopping", last_event="run.stopping")
-
-        if agent is not None:
-            try:
-                agent.interrupt("Stop requested via API")
-            except Exception:
-                pass
-
-        if task is not None and not task.done():
-            task.cancel()
-            # Bounded wait: run_conversation() executes in the default
-            # executor thread which task.cancel() cannot preempt — we rely on
-            # agent.interrupt() above to break the loop. Cap the wait so a
-            # slow/unresponsive interrupt can't hang this handler.
-            try:
-                await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
-            except asyncio.TimeoutError:
-                logger.warning(
-                    "[api_server] stop for run %s timed out after 5s; "
-                    "agent may still be finishing the current step",
-                    run_id,
-                )
-            except (asyncio.CancelledError, Exception):
-                pass
-
-        return web.json_response({"run_id": run_id, "status": "stopping"})
-=======
     _handle_get_run = _run_route_delegate("_handle_get_run")
     _handle_run_events = _run_route_delegate("_handle_run_events")
     _handle_run_approval = _run_route_delegate("_handle_run_approval")
     _handle_steer_run = _run_route_delegate("_handle_steer_run")
     _handle_stop_run = _run_route_delegate("_handle_stop_run")
->>>>>>> rb/tag
-
-    # ------------------------------------------------------------------
-    # OpenAgentUI — mesh REST for other apps (OpenTeam, OpenOrchestrator)
-    # to trigger saved visual-builder workflows. Mirrors the /v1/runs
-    # trigger/status/approval shape above; execution itself lives in
-    # openagentui.engine (local JSON store, no run_streams bookkeeping
-    # needed since a workflow execution is already persisted per-node).
-    # ------------------------------------------------------------------
-
-    async def _handle_openagentui_run(self, request: "web.Request") -> "web.Response":
-        """POST /v1/openagentui/workflows/{workflow_id}/run — CC-OA-OAUI-001."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        workflow_id = request.match_info["workflow_id"]
-        try:
-            body = await request.json()
-        except Exception:
-            body = {}
-
-        from openagentui import store as _oaui_store
-
-        workflow = _oaui_store.get_workflow(workflow_id) or _oaui_store.find_workflow_by_name(workflow_id)
-        if workflow is None:
-            return web.json_response(
-                _openai_error(f"Unknown OpenAgentUI workflow: {workflow_id}", code="workflow_not_found"),
-                status=404,
-            )
-
-        inputs = body.get("inputs") if isinstance(body, dict) else None
-        if inputs is not None and not isinstance(inputs, dict):
-            return web.json_response(_openai_error("'inputs' must be an object"), status=400)
-
-        loop = asyncio.get_running_loop()
-        from openagentui.engine import run_workflow as _run_workflow
-
-        execution = await loop.run_in_executor(None, lambda: _run_workflow(workflow, inputs or {}))
-        return web.json_response(execution.to_dict(), status=202)
-
-    async def _handle_openagentui_get_execution(self, request: "web.Request") -> "web.Response":
-        """GET /v1/openagentui/workflows/{workflow_id}/executions/{run_id} — CC-OA-OAUI-002."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        from openagentui import store as _oaui_store
-
-        execution = _oaui_store.get_execution(request.match_info["run_id"])
-        if execution is None or execution.workflow_id != request.match_info["workflow_id"]:
-            return web.json_response(_openai_error("Execution not found", code="execution_not_found"), status=404)
-        return web.json_response(execution.to_dict())
-
-    async def _handle_openagentui_approval(self, request: "web.Request") -> "web.Response":
-        """POST /v1/openagentui/workflows/{workflow_id}/executions/{run_id}/approval."""
-        auth_err = self._check_auth(request)
-        if auth_err:
-            return auth_err
-
-        try:
-            body = await request.json()
-        except Exception:
-            return web.json_response(_openai_error("Invalid JSON"), status=400)
-
-        raw_choice = str(body.get("choice") or body.get("decision") or "").strip().lower()
-        decision = {"approve": "approved", "allow": "approved", "deny": "rejected"}.get(raw_choice, raw_choice)
-        if decision not in {"approved", "rejected"}:
-            return web.json_response(
-                _openai_error("'choice' must be one of: approve, deny (or approved/rejected)"), status=400,
-            )
-
-        from openagentui.approvals import resolve_approval
-
-        try:
-            loop = asyncio.get_running_loop()
-            execution = await loop.run_in_executor(
-                None, resolve_approval, request.match_info["run_id"], decision
-            )
-        except ValueError as exc:
-            return web.json_response(_openai_error(str(exc), code="approval_error"), status=409)
-        return web.json_response(execution.to_dict())
 
     async def _sweep_orphaned_runs(self) -> None:
         return await _api_runs._sweep_orphaned_runs(self)
@@ -5958,29 +4305,7 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
     def _sweep_orphaned_runs_once(self, now: Optional[float] = None) -> None:
         return _api_runs._sweep_orphaned_runs_once(self, now)
 
-<<<<<<< HEAD
-            stale_statuses = [
-                run_id
-                for run_id, status in list(self._run_statuses.items())
-                if status.get("status") in {"completed", "failed", "cancelled"}
-                and now - float(status.get("updated_at", 0) or 0) > self._RUN_STATUS_TTL
-            ]
-            for run_id in stale_statuses:
-                self._run_statuses.pop(run_id, None)
-                self._run_event_history.pop(run_id, None)
-                self._run_profiles.pop(run_id, None)
-||||||| cf299e9a01
-            stale_statuses = [
-                run_id
-                for run_id, status in list(self._run_statuses.items())
-                if status.get("status") in {"completed", "failed", "cancelled"}
-                and now - float(status.get("updated_at", 0) or 0) > self._RUN_STATUS_TTL
-            ]
-            for run_id in stale_statuses:
-                self._run_statuses.pop(run_id, None)
-=======
     # -- BasePlatformAdapter interface ------------------------------------------------
->>>>>>> rb/tag
 
     def _api_key_passes_startup_guard(self) -> bool:
         """Return True when API_SERVER_KEY is present and strong enough to start."""
@@ -6013,31 +4338,6 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
             return False
         return True
 
-    def _register_profile_routes(self) -> None:
-        """Register the OpenBrain tenant-prefixed control surface when enabled."""
-        runner_config = getattr(
-            getattr(self, "gateway_runner", None), "config", None
-        )
-        if not getattr(runner_config, "multiplex_profiles", False):
-            return
-        assert self._app is not None
-        self._app.router.add_get(
-            "/p/{profile}/v1/capabilities", self._handle_capabilities
-        )
-        self._app.router.add_post("/p/{profile}/v1/runs", self._handle_runs)
-        self._app.router.add_get(
-            "/p/{profile}/v1/runs/{run_id}", self._handle_get_run
-        )
-        self._app.router.add_get(
-            "/p/{profile}/v1/runs/{run_id}/events", self._handle_run_events
-        )
-        self._app.router.add_post(
-            "/p/{profile}/v1/runs/{run_id}/approval", self._handle_run_approval
-        )
-        self._app.router.add_post(
-            "/p/{profile}/v1/runs/{run_id}/stop", self._handle_stop_run
-        )
-
     async def connect(self, *, is_reconnect: bool = False) -> bool:
         """Start the aiohttp web server."""
         if not AIOHTTP_AVAILABLE:
@@ -6066,130 +4366,11 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
                 retryable=False)
             return False
         try:
-<<<<<<< HEAD
-            await asyncio.to_thread(_verify_local_llm_model)
-            mws = [
-                mw for mw in (
-                    cors_middleware,
-                    body_limit_middleware,
-                    security_headers_middleware,
-                    profile_scope_middleware,
-                )
-                if mw is not None
-            ]
-||||||| cf299e9a01
-            mws = [mw for mw in (cors_middleware, body_limit_middleware, security_headers_middleware) if mw is not None]
-=======
             mws = [mw for mw in (
                 self._make_profile_prefix_middleware(), cors_middleware, body_limit_middleware,
                 security_headers_middleware) if mw is not None]
->>>>>>> rb/tag
             self._app = web.Application(middlewares=mws, client_max_size=MAX_REQUEST_BYTES)
             assert self._app is not None
-<<<<<<< HEAD
-            self._app.router.add_get("/health", self._handle_health)
-            self._app.router.add_get("/health/detailed", self._handle_health_detailed)
-            self._app.router.add_get("/v1/health", self._handle_health)
-            self._app.router.add_get("/v1/models", self._handle_models)
-            self._app.router.add_get("/v1/capabilities", self._handle_capabilities)
-            self._app.router.add_get("/v1/skills", self._handle_skills)
-            self._app.router.add_get("/v1/toolsets", self._handle_toolsets)
-            # Session/client control surface (thin wrappers over SessionDB + _run_agent)
-            self._app.router.add_get("/api/sessions", self._handle_list_sessions)
-            self._app.router.add_post("/api/sessions", self._handle_create_session)
-            self._app.router.add_get("/api/sessions/{session_id}", self._handle_get_session)
-            self._app.router.add_patch("/api/sessions/{session_id}", self._handle_patch_session)
-            self._app.router.add_delete("/api/sessions/{session_id}", self._handle_delete_session)
-            self._app.router.add_get("/api/sessions/{session_id}/messages", self._handle_session_messages)
-            self._app.router.add_post("/api/sessions/{session_id}/fork", self._handle_fork_session)
-            self._app.router.add_post("/api/sessions/{session_id}/chat", self._handle_session_chat)
-            self._app.router.add_post("/api/sessions/{session_id}/chat/stream", self._handle_session_chat_stream)
-            self._app.router.add_post("/v1/chat/completions", self._handle_chat_completions)
-            self._app.router.add_post("/v1/responses", self._handle_responses)
-            self._app.router.add_get("/v1/responses/{response_id}", self._handle_get_response)
-            self._app.router.add_delete("/v1/responses/{response_id}", self._handle_delete_response)
-            # Cron jobs management API
-            self._app.router.add_get("/api/jobs", self._handle_list_jobs)
-            self._app.router.add_post("/api/jobs", self._handle_create_job)
-            self._app.router.add_get("/api/jobs/{job_id}", self._handle_get_job)
-            self._app.router.add_patch("/api/jobs/{job_id}", self._handle_update_job)
-            self._app.router.add_delete("/api/jobs/{job_id}", self._handle_delete_job)
-            self._app.router.add_post("/api/jobs/{job_id}/pause", self._handle_pause_job)
-            self._app.router.add_post("/api/jobs/{job_id}/resume", self._handle_resume_job)
-            self._app.router.add_post("/api/jobs/{job_id}/run", self._handle_run_job)
-
-            # Chronos managed-cron fire webhook (NAS → agent). Authenticated by a
-            # NAS-minted JWT (NOT API_SERVER_KEY), so it has its own auth path.
-            if _CRON_AVAILABLE:
-                self._app.router.add_post("/api/cron/fire", self._handle_cron_fire)
-            # Structured event streaming
-            self._app.router.add_post("/v1/runs", self._handle_runs)
-            self._app.router.add_get("/v1/runs/{run_id}", self._handle_get_run)
-            self._app.router.add_get("/v1/runs/{run_id}/events", self._handle_run_events)
-            self._app.router.add_post("/v1/runs/{run_id}/approval", self._handle_run_approval)
-            self._app.router.add_post("/v1/runs/{run_id}/stop", self._handle_stop_run)
-            self._register_profile_routes()
-            # OpenAgentUI — trigger/inspect/approve saved visual-builder workflows
-            self._app.router.add_post("/v1/openagentui/workflows/{workflow_id}/run", self._handle_openagentui_run)
-            self._app.router.add_get(
-                "/v1/openagentui/workflows/{workflow_id}/executions/{run_id}",
-                self._handle_openagentui_get_execution,
-            )
-            self._app.router.add_post(
-                "/v1/openagentui/workflows/{workflow_id}/executions/{run_id}/approval",
-                self._handle_openagentui_approval,
-            )
-            # Store the adapter after native routes are registered. Local Hermes-Relay
-            # bootstrap shims use this key as a feature-detection hook; registering
-            # native routes first lets those shims no-op instead of shadowing the
-            # upstream session-control handlers.
-||||||| cf299e9a01
-            self._app.router.add_get("/health", self._handle_health)
-            self._app.router.add_get("/health/detailed", self._handle_health_detailed)
-            self._app.router.add_get("/v1/health", self._handle_health)
-            self._app.router.add_get("/v1/models", self._handle_models)
-            self._app.router.add_get("/v1/capabilities", self._handle_capabilities)
-            self._app.router.add_get("/v1/skills", self._handle_skills)
-            self._app.router.add_get("/v1/toolsets", self._handle_toolsets)
-            # Session/client control surface (thin wrappers over SessionDB + _run_agent)
-            self._app.router.add_get("/api/sessions", self._handle_list_sessions)
-            self._app.router.add_post("/api/sessions", self._handle_create_session)
-            self._app.router.add_get("/api/sessions/{session_id}", self._handle_get_session)
-            self._app.router.add_patch("/api/sessions/{session_id}", self._handle_patch_session)
-            self._app.router.add_delete("/api/sessions/{session_id}", self._handle_delete_session)
-            self._app.router.add_get("/api/sessions/{session_id}/messages", self._handle_session_messages)
-            self._app.router.add_post("/api/sessions/{session_id}/fork", self._handle_fork_session)
-            self._app.router.add_post("/api/sessions/{session_id}/chat", self._handle_session_chat)
-            self._app.router.add_post("/api/sessions/{session_id}/chat/stream", self._handle_session_chat_stream)
-            self._app.router.add_post("/v1/chat/completions", self._handle_chat_completions)
-            self._app.router.add_post("/v1/responses", self._handle_responses)
-            self._app.router.add_get("/v1/responses/{response_id}", self._handle_get_response)
-            self._app.router.add_delete("/v1/responses/{response_id}", self._handle_delete_response)
-            # Cron jobs management API
-            self._app.router.add_get("/api/jobs", self._handle_list_jobs)
-            self._app.router.add_post("/api/jobs", self._handle_create_job)
-            self._app.router.add_get("/api/jobs/{job_id}", self._handle_get_job)
-            self._app.router.add_patch("/api/jobs/{job_id}", self._handle_update_job)
-            self._app.router.add_delete("/api/jobs/{job_id}", self._handle_delete_job)
-            self._app.router.add_post("/api/jobs/{job_id}/pause", self._handle_pause_job)
-            self._app.router.add_post("/api/jobs/{job_id}/resume", self._handle_resume_job)
-            self._app.router.add_post("/api/jobs/{job_id}/run", self._handle_run_job)
-
-            # Chronos managed-cron fire webhook (NAS → agent). Authenticated by a
-            # NAS-minted JWT (NOT API_SERVER_KEY), so it has its own auth path.
-            if _CRON_AVAILABLE:
-                self._app.router.add_post("/api/cron/fire", self._handle_cron_fire)
-            # Structured event streaming
-            self._app.router.add_post("/v1/runs", self._handle_runs)
-            self._app.router.add_get("/v1/runs/{run_id}", self._handle_get_run)
-            self._app.router.add_get("/v1/runs/{run_id}/events", self._handle_run_events)
-            self._app.router.add_post("/v1/runs/{run_id}/approval", self._handle_run_approval)
-            self._app.router.add_post("/v1/runs/{run_id}/stop", self._handle_stop_run)
-            # Store the adapter after native routes are registered. Local Hermes-Relay
-            # bootstrap shims use this key as a feature-detection hook; registering
-            # native routes first lets those shims no-op instead of shadowing the
-            # upstream session-control handlers.
-=======
             # Native routes + multiplex /p/<profile>/ mirrors (the prefix middleware validates and
             # scopes config/credentials when multiplexing is on).
             for method, path, handler in self._http_route_table():
@@ -6200,7 +4381,6 @@ class APIServerAdapter(OpenAICompatRoutesMixin, BasePlatformAdapter):
             self._app.router.add_route("*", "/p/{profile}/{tail:.*}", self._handle_profile_ingress)
             # After native routes: Relay bootstrap shims feature-detect on this key and must
             # no-op rather than shadow the native session-control handlers.
->>>>>>> rb/tag
             self._app["api_server_adapter"] = self
             if self.gateway_runner is not None:
                 self._app["gateway_runner"] = self.gateway_runner

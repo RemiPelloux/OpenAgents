@@ -43,45 +43,7 @@ class TestGetDefaultHermesRoot:
 
         assert get_default_openagents_root() == tmp_path / ".openagents"
 
-<<<<<<< HEAD
-    def test_hermes_home_is_native(self, tmp_path, monkeypatch):
-        """When OPENAGENTS_HOME = ~/.openagents, returns ~/.openagents."""
-        native = tmp_path / ".openagents"
-        native.mkdir()
-        monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("OPENAGENTS_HOME", str(native))
-        assert get_default_openagents_root() == native
-||||||| cf299e9a01
-    def test_hermes_home_is_native(self, tmp_path, monkeypatch):
-        """When OPENAGENTS_HOME = ~/.openagents, returns ~/.openagents."""
-        native = tmp_path / ".hermes"
-        native.mkdir()
-        monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("OPENAGENTS_HOME", str(native))
-        assert get_default_openagents_root() == native
-=======
->>>>>>> rb/tag
 
-<<<<<<< HEAD
-    def test_hermes_home_is_profile(self, tmp_path, monkeypatch):
-        """When OPENAGENTS_HOME is a profile under ~/.openagents, returns ~/.openagents."""
-        native = tmp_path / ".openagents"
-        profile = native / "profiles" / "coder"
-        profile.mkdir(parents=True)
-        monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("OPENAGENTS_HOME", str(profile))
-        assert get_default_openagents_root() == native
-||||||| cf299e9a01
-    def test_hermes_home_is_profile(self, tmp_path, monkeypatch):
-        """When OPENAGENTS_HOME is a profile under ~/.openagents, returns ~/.openagents."""
-        native = tmp_path / ".hermes"
-        profile = native / "profiles" / "coder"
-        profile.mkdir(parents=True)
-        monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("OPENAGENTS_HOME", str(profile))
-        assert get_default_openagents_root() == native
-=======
->>>>>>> rb/tag
 
 
 

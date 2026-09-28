@@ -646,10 +646,15 @@ def is_external_skill_path(path) -> bool:
 
 
 def _hermes_metadata(frontmatter: Dict[str, Any]) -> Dict[str, Any]:
-    """``metadata.hermes`` mapping from frontmatter, or ``{}`` when malformed."""
+    """``metadata.openagents`` (preferred) or legacy ``metadata.hermes`` mapping.
+
+    Returns ``{}`` when metadata or the namespace block is malformed.
+    """
     metadata = frontmatter.get("metadata")
-    openagents = metadata.get("openagents") if isinstance(metadata, dict) else None
-    return hermes if isinstance(hermes, dict) else {}
+    if not isinstance(metadata, dict):
+        return {}
+    block = metadata.get("openagents") or metadata.get("hermes") or {}
+    return block if isinstance(block, dict) else {}
 
 
 # ``session_platforms`` is the gateway-channel gate: session platforms the skill
@@ -657,108 +662,16 @@ def _hermes_metadata(frontmatter: Dict[str, Any]) -> Dict[str, Any]:
 _CONDITION_KEYS = ("fallback_for_toolsets", "requires_toolsets", "fallback_for_tools", "requires_tools", "session_platforms")
 
 
-def _metadata_namespace(metadata: Dict[str, Any]) -> Dict[str, Any]:
-    """Return ``metadata.openagents`` (preferred) or legacy ``metadata.hermes``."""
-    block = metadata.get("openagents") or metadata.get("hermes") or {}
-    return block if isinstance(block, dict) else {}
-
-
 def extract_skill_conditions(frontmatter: Dict[str, Any]) -> Dict[str, List]:
-<<<<<<< HEAD
-    """Extract conditional activation fields from parsed frontmatter."""
-    metadata = frontmatter.get("metadata")
-    # Handle cases where metadata is not a dict (e.g., a string from malformed YAML)
-    if not isinstance(metadata, dict):
-        metadata = {}
-    openagents = _metadata_namespace(metadata)
-    return {
-        "fallback_for_toolsets": openagents.get("fallback_for_toolsets", []),
-        "requires_toolsets": openagents.get("requires_toolsets", []),
-        "fallback_for_tools": openagents.get("fallback_for_tools", []),
-        "requires_tools": openagents.get("requires_tools", []),
-    }
-
-
-# ── Skill config extraction ───────────────────────────────────────────────
-||||||| cf299e9a01
-    """Extract conditional activation fields from parsed frontmatter."""
-    metadata = frontmatter.get("metadata")
-    # Handle cases where metadata is not a dict (e.g., a string from malformed YAML)
-    if not isinstance(metadata, dict):
-        metadata = {}
-    openagents = metadata.get("openagents") or {}
-    if not isinstance(hermes, dict):
-        openagents = {}
-    return {
-        "fallback_for_toolsets": hermes.get("fallback_for_toolsets", []),
-        "requires_toolsets": hermes.get("requires_toolsets", []),
-        "fallback_for_tools": hermes.get("fallback_for_tools", []),
-        "requires_tools": hermes.get("requires_tools", []),
-    }
-
-
-# ── Skill config extraction ───────────────────────────────────────────────
-=======
     """Extract conditional activation fields from parsed frontmatter (absent = ``[]``)."""
     openagents = _hermes_metadata(frontmatter)
-    return {key: hermes.get(key, []) for key in _CONDITION_KEYS}
->>>>>>> rb/tag
+    return {key: openagents.get(key, []) for key in _CONDITION_KEYS}
 
 
 def extract_skill_config_vars(frontmatter: Dict[str, Any]) -> List[Dict[str, Any]]:
-<<<<<<< HEAD
-    """Extract config variable declarations from parsed frontmatter.
-
-    Skills declare config.yaml settings they need via::
-
-        metadata:
-          hermes:
-            config:
-              - key: wiki.path
-                description: Path to the LLM Wiki knowledge base directory
-                default: "~/wiki"
-                prompt: Wiki directory path
-
-    Returns a list of dicts with keys: ``key``, ``description``, ``default``,
-    ``prompt``.  Invalid or incomplete entries are silently skipped.
-    """
-    metadata = frontmatter.get("metadata")
-    if not isinstance(metadata, dict):
-        return []
-    openagents = _metadata_namespace(metadata)
-    raw = openagents.get("config")
-    if not raw:
-        return []
-||||||| cf299e9a01
-    """Extract config variable declarations from parsed frontmatter.
-
-    Skills declare config.yaml settings they need via::
-
-        metadata:
-          hermes:
-            config:
-              - key: wiki.path
-                description: Path to the LLM Wiki knowledge base directory
-                default: "~/wiki"
-                prompt: Wiki directory path
-
-    Returns a list of dicts with keys: ``key``, ``description``, ``default``,
-    ``prompt``.  Invalid or incomplete entries are silently skipped.
-    """
-    metadata = frontmatter.get("metadata")
-    if not isinstance(metadata, dict):
-        return []
-    openagents = metadata.get("openagents")
-    if not isinstance(hermes, dict):
-        return []
-    raw = hermes.get("config")
-    if not raw:
-        return []
-=======
     """Extract ``metadata.hermes.config`` declarations (key/description/default/prompt).
     Entries missing ``key`` or ``description`` are skipped; ``prompt`` defaults to the description."""
     raw = _hermes_metadata(frontmatter).get("config")
->>>>>>> rb/tag
     if isinstance(raw, dict):
         raw = [raw]
     if not raw or not isinstance(raw, list):

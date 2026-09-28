@@ -13,14 +13,7 @@ from datetime import datetime
 from unittest.mock import patch
 import yaml
 
-<<<<<<< HEAD
 from gateway.config import GatewayConfig, Platform, load_gateway_config
-||||||| cf299e9a01
-from gateway.config import GatewayConfig, Platform
-=======
-from openagents_constants import reset_openagents_home_override, set_openagents_home_override
-from gateway.config import GatewayConfig, Platform
->>>>>>> rb/tag
 from gateway.session import SessionSource, SessionStore, build_session_key
 
 
@@ -115,11 +108,6 @@ class TestMultiplexConfigFlag:
         cfg = GatewayConfig.from_dict({"multiplex_profiles": True})
         assert cfg.multiplex_profiles is True
 
-<<<<<<< HEAD
-    def test_from_dict_nested_gateway(self):
-        cfg = GatewayConfig.from_dict({"gateway": {"multiplex_profiles": True}})
-        assert cfg.multiplex_profiles is True
-
     def test_load_gateway_config_reads_nested_gateway(self, tmp_path, monkeypatch):
         tmp_path.joinpath("config.yaml").write_text(
             "gateway:\n  multiplex_profiles: true\n",
@@ -143,29 +131,7 @@ class TestMultiplexConfigFlag:
 
         assert cfg.platforms[Platform.API_SERVER].enabled is False
 
-    def test_from_dict_coerces_truthy_string(self):
-        cfg = GatewayConfig.from_dict({"multiplex_profiles": "true"})
-        assert cfg.multiplex_profiles is True
 
-    def test_roundtrip(self):
-        cfg = GatewayConfig.from_dict(GatewayConfig(multiplex_profiles=True).to_dict())
-        assert cfg.multiplex_profiles is True
-
-||||||| cf299e9a01
-    def test_from_dict_nested_gateway(self):
-        cfg = GatewayConfig.from_dict({"gateway": {"multiplex_profiles": True}})
-        assert cfg.multiplex_profiles is True
-
-    def test_from_dict_coerces_truthy_string(self):
-        cfg = GatewayConfig.from_dict({"multiplex_profiles": "true"})
-        assert cfg.multiplex_profiles is True
-
-    def test_roundtrip(self):
-        cfg = GatewayConfig.from_dict(GatewayConfig(multiplex_profiles=True).to_dict())
-        assert cfg.multiplex_profiles is True
-
-=======
->>>>>>> rb/tag
 
 class TestSessionStoreProfileResolution:
     """SessionStore._generate_session_key honors the flag: legacy namespace

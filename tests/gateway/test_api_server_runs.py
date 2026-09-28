@@ -10,22 +10,10 @@ Covers:
 """
 
 import asyncio
-<<<<<<< HEAD
-import json
-||||||| cf299e9a01
-=======
 import hashlib
->>>>>>> rb/tag
 import threading
-<<<<<<< HEAD
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
-||||||| cf299e9a01
-from unittest.mock import MagicMock, patch
-=======
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
->>>>>>> rb/tag
 
 import pytest
 from aiohttp import web
@@ -37,7 +25,6 @@ from gateway.platforms.api_server import (
     _api_request_profile,
     _approval_event_choices,
     cors_middleware,
-    profile_scope_middleware,
     security_headers_middleware,
 )
 from tools import approval as approval_mod
@@ -120,23 +107,6 @@ def _create_runs_app(adapter: APIServerAdapter) -> web.Application:
     return app
 
 
-def _create_multiplex_runs_app(adapter: APIServerAdapter) -> web.Application:
-    """Create the tenant-prefixed run surface used by OpenBrain."""
-    app = web.Application(middlewares=[profile_scope_middleware])
-    app["api_server_adapter"] = adapter
-    app.router.add_post("/p/{profile}/v1/runs", adapter._handle_runs)
-    app.router.add_get("/p/{profile}/v1/runs/{run_id}", adapter._handle_get_run)
-    app.router.add_get(
-        "/p/{profile}/v1/runs/{run_id}/events",
-        adapter._handle_run_events,
-    )
-    app.router.add_post(
-        "/p/{profile}/v1/runs/{run_id}/stop",
-        adapter._handle_stop_run,
-    )
-    return app
-
-
 def _make_slow_agent(**kwargs):
     """Create a mock agent that blocks in run_conversation until interrupted.
 
@@ -176,113 +146,6 @@ def adapter():
 @pytest.fixture
 def auth_adapter():
     return _make_adapter(api_key="sk-secret")
-
-
-# ---------------------------------------------------------------------------
-# Multiplex profile routes
-# ---------------------------------------------------------------------------
-
-
-class TestMultiplexProfileRuns:
-    def test_profile_routes_register_only_for_multiplex_runner(self):
-        adapter = _make_adapter(api_key="default-key")
-        adapter.gateway_runner = SimpleNamespace(
-            config=SimpleNamespace(multiplex_profiles=True),
-        )
-        adapter._app = web.Application()
-
-        adapter._register_profile_routes()
-
-        paths = {route.resource.canonical for route in adapter._app.router.routes()}
-        assert "/p/{profile}/v1/capabilities" in paths
-        assert "/p/{profile}/v1/runs" in paths
-        assert "/p/{profile}/v1/runs/{run_id}/events" in paths
-        assert "/p/{profile}/v1/runs/{run_id}/approval" in paths
-        assert "/p/{profile}/v1/runs/{run_id}/stop" in paths
-
-    @pytest.mark.asyncio
-    async def test_profile_key_and_runtime_scope_are_isolated(self, tmp_path):
-        profile_a = tmp_path / "profiles" / "tenant-a"
-        profile_b = tmp_path / "profiles" / "tenant-b"
-        profile_a.mkdir(parents=True)
-        profile_b.mkdir(parents=True)
-        profile_a.joinpath(".env").write_text(
-            'API_SERVER_KEY="tenant-a-key"\n'
-            'OPENBRAIN_PRIMARY_LLM_API_KEY="secret-a"\n',
-            encoding="utf-8",
-        )
-        profile_b.joinpath(".env").write_text(
-            'API_SERVER_KEY="tenant-b-key"\n'
-            'OPENBRAIN_PRIMARY_LLM_API_KEY="secret-b"\n',
-            encoding="utf-8",
-        )
-        adapter = _make_adapter(api_key="default-key")
-        adapter.gateway_runner = SimpleNamespace(
-            config=SimpleNamespace(multiplex_profiles=True),
-        )
-        observed = {}
-
-        mock_agent = MagicMock()
-
-        def run_conversation(**kwargs):
-            from agent.secret_scope import get_secret
-            from openagents_constants import get_openagents_home
-
-            observed["home"] = str(get_openagents_home())
-            observed["secret"] = get_secret("OPENBRAIN_PRIMARY_LLM_API_KEY")
-            return {"final_response": "done"}
-
-        mock_agent.run_conversation.side_effect = run_conversation
-        mock_agent.session_prompt_tokens = 1
-        mock_agent.session_completion_tokens = 1
-        mock_agent.session_total_tokens = 2
-
-        served = [("tenant-a", profile_a), ("tenant-b", profile_b)]
-        app = _create_multiplex_runs_app(adapter)
-        with patch("openagents_cli.profiles.profiles_to_serve", return_value=served):
-            async with TestClient(TestServer(app)) as cli:
-                missing = await cli.post(
-                    "/p/unknown/v1/runs",
-                    headers={"Authorization": "Bearer tenant-a-key"},
-                    json={"input": "hello"},
-                )
-                assert missing.status == 404
-
-                wrong_key = await cli.post(
-                    "/p/tenant-a/v1/runs",
-                    headers={"Authorization": "Bearer default-key"},
-                    json={"input": "hello"},
-                )
-                assert wrong_key.status == 401
-
-                with patch.object(adapter, "_create_agent", return_value=mock_agent):
-                    started = await cli.post(
-                        "/p/tenant-a/v1/runs",
-                        headers={"Authorization": "Bearer tenant-a-key"},
-                        json={"input": "hello", "model": "org-model"},
-                    )
-                    assert started.status == 202
-                    run_id = (await started.json())["run_id"]
-
-                    for _ in range(100):
-                        status_response = await cli.get(
-                            f"/p/tenant-a/v1/runs/{run_id}",
-                            headers={"Authorization": "Bearer tenant-a-key"},
-                        )
-                        status = await status_response.json()
-                        if status.get("status") == "completed":
-                            break
-                        await asyncio.sleep(0.01)
-                    assert status["status"] == "completed"
-                    assert status["model"] == "org-model"
-
-                    cross_tenant = await cli.get(
-                        f"/p/tenant-b/v1/runs/{run_id}",
-                        headers={"Authorization": "Bearer tenant-b-key"},
-                    )
-                    assert cross_tenant.status == 404
-
-        assert observed == {"home": str(profile_a), "secret": "secret-a"}
 
 
 # ---------------------------------------------------------------------------
@@ -716,103 +579,6 @@ class TestRunEvents:
                 assert "run.completed" in body
                 assert "Hello!" in body
 
-<<<<<<< HEAD
-    @pytest.mark.asyncio
-    async def test_completed_events_replay_after_live_stream_is_consumed(self, adapter):
-        app = _create_runs_app(adapter)
-        run_id = "run_replay"
-        adapter._run_streams[run_id] = asyncio.Queue()
-        adapter._run_streams_created[run_id] = 0
-        adapter._run_event_history[run_id] = []
-        adapter._set_run_status(run_id, "running")
-
-        async with TestClient(TestServer(app)) as cli:
-            live_response_task = asyncio.create_task(cli.get(f"/v1/runs/{run_id}/events"))
-            await asyncio.sleep(0)
-            adapter._publish_run_event(run_id, {
-                "event": "tool.started",
-                "run_id": run_id,
-                "tool": "invoke_opencode",
-            })
-            adapter._publish_run_event(run_id, {
-                "event": "run.completed",
-                "run_id": run_id,
-                "output": "done",
-            })
-            adapter._run_streams[run_id].put_nowait(None)
-
-            live_response = await live_response_task
-            live_body = await live_response.text()
-            assert "invoke_opencode" in live_body
-            assert run_id not in adapter._run_streams
-
-            adapter._set_run_status(run_id, "completed")
-            replay_response = await cli.get(f"/v1/runs/{run_id}/events")
-            replay_body = await replay_response.text()
-
-        assert replay_response.status == 200
-        assert "invoke_opencode" in replay_body
-        assert "run.completed" in replay_body
-
-    @pytest.mark.asyncio
-    async def test_opencode_evidence_is_preserved_in_run_status_and_sse(self, adapter):
-        run_id = "run_opencode_evidence"
-        adapter._run_streams[run_id] = asyncio.Queue()
-        adapter._run_event_history[run_id] = []
-        adapter._set_run_status(run_id, "running")
-        callback = adapter._make_run_event_callback(run_id, asyncio.get_running_loop())
-        evidence = {
-            "ticket_id": "ticket-1",
-            "session_id": "session-1",
-            "branch": "agent/ticket-1",
-            "commit_sha": "a" * 40,
-            "git_clean": True,
-            "files_edited": ["hello.py", "test_hello.py"],
-            "exit_code": 0,
-            "stderr": "",
-            "summary": "python -m unittest passed",
-        }
-
-        callback(
-            "tool.completed",
-            "invoke_opencode",
-            duration=1.25,
-            is_error=False,
-            result=f"OpenCode completed.\nEvidence: {json.dumps(evidence)}",
-        )
-        await asyncio.sleep(0)
-
-        event = await adapter._run_streams[run_id].get()
-        assert event["opencode"] == evidence
-        assert adapter._run_statuses[run_id]["opencode"] == evidence
-        assert adapter._run_statuses[run_id]["opencode_session_ids"] == ["session-1"]
-
-        second = {**evidence, "session_id": "session-2", "files_edited": []}
-        callback(
-            "tool.completed",
-            "invoke_opencode",
-            duration=0.5,
-            is_error=False,
-            result=f"OpenCode completed.\nEvidence: {json.dumps(second)}",
-        )
-        await asyncio.sleep(0)
-
-        assert adapter._run_statuses[run_id]["opencode"]["files_edited"] == [
-            "hello.py",
-            "test_hello.py",
-        ]
-        assert adapter._run_statuses[run_id]["opencode_session_ids"] == [
-            "session-1",
-            "session-2",
-        ]
-
-
-
-||||||| cf299e9a01
-
-
-=======
->>>>>>> rb/tag
     @pytest.mark.asyncio
     async def test_completed_event_carries_served_runtime_and_cache_tokens(self, adapter):
         """The run.completed SSE event discloses the same served runtime and cache tokens as the

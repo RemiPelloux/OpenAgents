@@ -11,14 +11,8 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 from openagents_constants import get_openagents_home
-<<<<<<< HEAD
 from openagents_fork import DISTRIBUTION_REPO_HTTPS, DISTRIBUTION_REPO_CANONICAL
-from typing import TYPE_CHECKING, Dict, List, Optional
-||||||| cf299e9a01
-from typing import TYPE_CHECKING, Dict, List, Optional
-=======
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
->>>>>>> rb/tag
 
 # rich and prompt_toolkit are imported lazily: this module sits on the TUI gateway's critical
 # startup path purely for the lightweight update-check helpers, and eager rich/prompt_toolkit
@@ -151,16 +145,8 @@ _last_target_rev: Optional[str] = None
 # Returned when an update is known to exist but commits can't be counted (e.g. nix builds).
 UPDATE_AVAILABLE_NO_COUNT = -1
 
-<<<<<<< HEAD
 _UPSTREAM_REPO_URL = DISTRIBUTION_REPO_HTTPS
 _OFFICIAL_REPO_CANONICAL = DISTRIBUTION_REPO_CANONICAL
-||||||| cf299e9a01
-_UPSTREAM_REPO_URL = "https://github.com/NousResearch/openagents.git"
-_OFFICIAL_REPO_CANONICAL = "github.com/nousresearch/openagents"
-=======
-_UPSTREAM_REPO_URL = "https://github.com/NousResearch/hermes-agent.git"
-_OFFICIAL_REPO_CANONICAL = "github.com/nousresearch/hermes-agent"
->>>>>>> rb/tag
 
 
 def _canonical_github_remote(url: str | None) -> str:
@@ -484,15 +470,8 @@ def _compute_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]
     return {"upstream": upstream, "local": local, "ahead": max(ahead, 0)}
 
 
-<<<<<<< HEAD
 _RELEASE_URL_BASE = "https://github.com/RemiPelloux/OpenAgents/releases/tag"
 _latest_release_cache: Optional[tuple] = None  # (tag, url) once resolved
-||||||| cf299e9a01
-_RELEASE_URL_BASE = "https://github.com/NousResearch/openagents/releases/tag"
-_latest_release_cache: Optional[tuple] = None  # (tag, url) once resolved
-=======
-_RELEASE_URL_BASE = "https://github.com/NousResearch/hermes-agent/releases/tag"
->>>>>>> rb/tag
 
 
 def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:
@@ -893,57 +872,12 @@ def _banner_left_lines(model: str, cwd: str, session_id, context_length, provide
     lines = []
     pin = " (pinned)" if context_pinned else ""
     ctx_str = _dim_sep(f"{_format_context_length(context_length)} context{pin}") if context_length else ""
-    nous_str = _dim_sep("Nous Research")
+    nous_str = _dim_sep("OpenPro")
     if not (model or "").strip():
         # Credentials resolve lazily on the first message; the banner prints first. Ask the route
         # the same question so a fresh free-tier install shows its model, not a red "unconfigured".
         model = _quiet(lambda: _route_model_for_banner(provider), "") or model
     if (provider or "").strip().lower() == "moa":
-<<<<<<< HEAD
-        # MoA virtual provider: ``model`` is a preset name. Show the preset and
-        # its aggregator so the banner is meaningful instead of a bare slug.
-        preset_name = model
-        agg_label = ""
-        try:
-            from openagents_cli.config import load_config
-            from openagents_cli.moa_config import normalize_moa_config
-
-            _moa = normalize_moa_config(load_config().get("moa") or {})
-            _preset = _moa.get("presets", {}).get(preset_name)
-            if _preset:
-                _agg = _preset.get("aggregator") or {}
-                _am = str(_agg.get("model") or "")
-                agg_label = _am.split("/")[-1] if "/" in _am else _am
-        except Exception:
-            agg_label = ""
-        if len(preset_name) > 28:
-            preset_name = preset_name[:25] + "..."
-        agg_str = f" [dim {dim}]·[/] [dim {dim}]agg {agg_label}[/]" if agg_label else ""
-        ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_format_context_length(context_length)} context[/]" if context_length else ""
-        left_lines.append(f"[{accent}]MoA: {preset_name}[/]{agg_str}{ctx_str} [dim {dim}]·[/] [dim {dim}]OpenPro[/]")
-||||||| cf299e9a01
-        # MoA virtual provider: ``model`` is a preset name. Show the preset and
-        # its aggregator so the banner is meaningful instead of a bare slug.
-        preset_name = model
-        agg_label = ""
-        try:
-            from openagents_cli.config import load_config
-            from openagents_cli.moa_config import normalize_moa_config
-
-            _moa = normalize_moa_config(load_config().get("moa") or {})
-            _preset = _moa.get("presets", {}).get(preset_name)
-            if _preset:
-                _agg = _preset.get("aggregator") or {}
-                _am = str(_agg.get("model") or "")
-                agg_label = _am.split("/")[-1] if "/" in _am else _am
-        except Exception:
-            agg_label = ""
-        if len(preset_name) > 28:
-            preset_name = preset_name[:25] + "..."
-        agg_str = f" [dim {dim}]·[/] [dim {dim}]agg {agg_label}[/]" if agg_label else ""
-        ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_format_context_length(context_length)} context[/]" if context_length else ""
-        left_lines.append(f"[{accent}]MoA: {preset_name}[/]{agg_str}{ctx_str} [dim {dim}]·[/] [dim {dim}]Nous Research[/]")
-=======
         # MoA virtual provider: ``model`` is a preset name; show it with its aggregator.
         agg_label = _quiet(lambda: _moa_aggregator_label(model), "")
         agg_str = _dim_sep(f"agg {agg_label}") if agg_label else ""
@@ -951,30 +885,9 @@ def _banner_left_lines(model: str, cwd: str, session_id, context_length, provide
     elif not (model or "").strip() or (model or "").strip().lower() == "unknown":
         # Unconfigured install: the clearest place to say what is wrong and how to fix it.
         lines.append(f"[bold red]no model configured[/] [dim {dim}]— run /model or hermes setup[/]")
->>>>>>> rb/tag
     else:
-<<<<<<< HEAD
-        model_short = model.split("/")[-1] if "/" in model else model
-        if model_short.endswith(".gguf"):
-            model_short = model_short[:-5]
-        if len(model_short) > 28:
-            model_short = model_short[:25] + "..."
-        ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_format_context_length(context_length)} context[/]" if context_length else ""
-        left_lines.append(f"[{accent}]{model_short}[/]{ctx_str} [dim {dim}]·[/] [dim {dim}]OpenPro[/]")
-
-||||||| cf299e9a01
-        model_short = model.split("/")[-1] if "/" in model else model
-        if model_short.endswith(".gguf"):
-            model_short = model_short[:-5]
-        if len(model_short) > 28:
-            model_short = model_short[:25] + "..."
-        ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_format_context_length(context_length)} context[/]" if context_length else ""
-        left_lines.append(f"[{accent}]{model_short}[/]{ctx_str} [dim {dim}]·[/] [dim {dim}]Nous Research[/]")
-
-=======
         model_short = model.split("/")[-1].removesuffix(".gguf")
         lines.append(f"[{accent}]{_short_label(model_short)}[/]{ctx_str}{nous_str}")
->>>>>>> rb/tag
     if os.getenv("HERMES_YOLO_MODE"):
         lines.append(f"[bold red]⚠ YOLO mode[/] [dim {dim}]— all approval prompts bypassed[/]")
     lines.append(f"[dim {dim}]{cwd}[/]")

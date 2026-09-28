@@ -1156,6 +1156,25 @@ def _tirith_scan(command: str) -> dict:
         }]}
 
 
+
+def _command_scan(command: str) -> dict:
+    """Tirith result merged with the OpenAgents built-in command scanner (when
+    ``security.builtin_command_scanner`` is enabled). Same result shape."""
+    scan_results = [_tirith_scan(command)]
+    try:
+        from tools.builtin_command_security import (
+            check_command_security as builtin_scan,
+            is_enabled as builtin_scan_enabled,
+            merge_scan_results,
+        )
+    except ImportError:
+        return scan_results[0]
+    if builtin_scan_enabled():
+        scan_results.append(builtin_scan(command))
+    if len(scan_results) == 1:
+        return scan_results[0]
+    return merge_scan_results(*scan_results)
+
 def check_all_command_guards(command: str, env_type: str,
                              approval_callback=None,
                              has_host_access: bool = False) -> dict:
@@ -1191,155 +1210,22 @@ def check_all_command_guards(command: str, env_type: str,
                 return result
         return _approved()
 
-<<<<<<< HEAD
-    # --- Phase 1: Gather findings from both checks ---
-
-    # Tirith check — wrapper guarantees no raise for expected failures.
-    # Only catch ImportError (module not installed).
-    tirith_result = {"action": "allow", "findings": [], "summary": ""}
-    scan_results = []
-    try:
-        from tools.tirith_security import check_command_security as tirith_scan
-        scan_results.append(tirith_scan(command))
-    except ImportError:
-        # Tirith module not installed.  When tirith_fail_open is True (the
-        # default) we silently allow, matching the pre-existing behaviour.
-        # When tirith_fail_open is False the operator has explicitly opted into
-        # fail-closed; an import failure must not silently grant access, so we
-        # synthesize a warn result that will be surfaced to the user through the
-        # normal approval flow.  Fixes #20733.
-        _tirith_fail_open = True  # safe default if config is unreadable
-        try:
-            from openagents_cli.config import load_config as _load_cfg
-            _sec = (_load_cfg() or {}).get("security", {}) or {}
-            _tirith_enabled = _sec.get("tirith_enabled", True)
-            if _tirith_enabled:
-                _tirith_fail_open = _sec.get("tirith_fail_open", True)
-        except Exception:
-            pass
-        if not _tirith_fail_open:
-            scan_results.append({
-                "action": "warn",
-                "findings": [
-                    {
-                        "rule_id": "tirith-import-error",
-                        "severity": "HIGH",
-                        "title": "Tirith security module unavailable",
-                        "description": (
-                            "The Tirith security scanner could not be imported. "
-                            "Because security.tirith_fail_open is false, this "
-                            "command cannot be silently allowed. Approve only if "
-                            "you have verified the command is safe."
-                        ),
-                    }
-                ],
-                "summary": "Tirith unavailable (fail-closed)",
-            })
-        # else: tirith_fail_open is True — allow as before (no tirith result added)
-
-    try:
-        from tools.builtin_command_security import (
-            check_command_security as builtin_scan,
-            is_enabled as builtin_scan_enabled,
-            merge_scan_results,
-        )
-        if builtin_scan_enabled():
-            scan_results.append(builtin_scan(command))
-    except ImportError:
-        pass
-
-    if len(scan_results) == 1:
-        tirith_result = scan_results[0]
-    elif len(scan_results) > 1:
-        tirith_result = merge_scan_results(*scan_results)
-
-    # Dangerous command check (detection only, no approval)
-||||||| cf299e9a01
-    # --- Phase 1: Gather findings from both checks ---
-
-    # Tirith check — wrapper guarantees no raise for expected failures.
-    # Only catch ImportError (module not installed).
-    tirith_result = {"action": "allow", "findings": [], "summary": ""}
-    try:
-        from tools.tirith_security import check_command_security
-        tirith_result = check_command_security(command)
-    except ImportError:
-        # Tirith module not installed.  When tirith_fail_open is True (the
-        # default) we silently allow, matching the pre-existing behaviour.
-        # When tirith_fail_open is False the operator has explicitly opted into
-        # fail-closed; an import failure must not silently grant access, so we
-        # synthesize a warn result that will be surfaced to the user through the
-        # normal approval flow.  Fixes #20733.
-        _tirith_fail_open = True  # safe default if config is unreadable
-        try:
-            from openagents_cli.config import load_config as _load_cfg
-            _sec = (_load_cfg() or {}).get("security", {}) or {}
-            _tirith_enabled = _sec.get("tirith_enabled", True)
-            if _tirith_enabled:
-                _tirith_fail_open = _sec.get("tirith_fail_open", True)
-        except Exception:
-            pass
-        if not _tirith_fail_open:
-            tirith_result = {
-                "action": "warn",
-                "findings": [
-                    {
-                        "rule_id": "tirith-import-error",
-                        "severity": "HIGH",
-                        "title": "Tirith security module unavailable",
-                        "description": (
-                            "The Tirith security scanner could not be imported. "
-                            "Because security.tirith_fail_open is false, this "
-                            "command cannot be silently allowed. Approve only if "
-                            "you have verified the command is safe."
-                        ),
-                    }
-                ],
-                "summary": "Tirith unavailable (fail-closed)",
-            }
-        # else: tirith_fail_open is True — allow as before (tirith_result stays "allow")
-
-    # Dangerous command check (detection only, no approval)
-=======
     # Gather findings: warnings = [(pattern_key, description, is_tirith)]. Tirith block AND warn both go through the
     # approval flow (block used to be a hard stop) so users can inspect the findings and approve.
-    tirith_result = _tirith_scan(command)
->>>>>>> rb/tag
+    # OpenAgents: the built-in Python scanner runs alongside Tirith; findings are merged and approved
+    # under a scanner-neutral ``scanner:<rule_id>`` key.
+    tirith_result = _command_scan(command)
     is_dangerous, pattern_key, description = detect_dangerous_command(command)
     warnings = []
     session_key = get_current_session_key()
     if tirith_result["action"] in {"block", "warn"}:
         findings = tirith_result.get("findings") or []
         rule_id = findings[0].get("rule_id", "unknown") if findings else "unknown"
-<<<<<<< HEAD
         scan_key = f"scanner:{rule_id}"
-        tirith_desc = _format_tirith_description(tirith_result)
         if not is_approved(session_key, scan_key):
-            warnings.append((scan_key, tirith_desc, True))
-
-    if is_dangerous:
-        if not is_approved(session_key, pattern_key):
-            warnings.append((pattern_key, description, False))
-
-    # Nothing to warn about
-||||||| cf299e9a01
-        tirith_key = f"tirith:{rule_id}"
-        tirith_desc = _format_tirith_description(tirith_result)
-        if not is_approved(session_key, tirith_key):
-            warnings.append((tirith_key, tirith_desc, True))
-
-    if is_dangerous:
-        if not is_approved(session_key, pattern_key):
-            warnings.append((pattern_key, description, False))
-
-    # Nothing to warn about
-=======
-        tirith_key = f"tirith:{rule_id}"
-        if not is_approved(session_key, tirith_key):
-            warnings.append((tirith_key, _format_tirith_description(tirith_result), True))
+            warnings.append((scan_key, _format_tirith_description(tirith_result), True))
     if is_dangerous and not is_approved(session_key, pattern_key):
         warnings.append((pattern_key, description, False))
->>>>>>> rb/tag
     if not warnings:
         return _approved()
 

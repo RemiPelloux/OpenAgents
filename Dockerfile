@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 FROM oven/bun:1.3.14-debian AS opencode_builder
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 make g++ && \
@@ -23,8 +22,7 @@ RUN bun install --frozen-lockfile && \
     test -f "$binary" && \
     "$binary" --version && \
     cp "$binary" /tmp/opencode
-||||||| cf299e9a01
-=======
+
 # Debian 13 still ships SQLite 3.46.1, which contains the upstream WAL-reset
 # corruption bug. Build a pinned shared library for the runtime image instead
 # of relying on a distro backport that trixie does not currently provide.
@@ -66,7 +64,6 @@ RUN apt-get -o Acquire::Retries=3 update && \
         ./configure --prefix=/opt/sqlite-fixed --disable-static && \
     make -j"$(nproc)" && \
     make install
->>>>>>> rb/tag
 
 FROM ghcr.io/astral-sh/uv:0.11.6-python3.13-trixie@sha256:b3c543b6c4f23a5f2df22866bd7857e5d304b67a564f4feab6ac22044dde719b AS uv_source
 # Node 26 source stage. Debian trixie's bundled nodejs is pinned to 20.x
@@ -288,13 +285,7 @@ RUN cd plugins/platforms/photon/sidecar && \
 # frontend stats the readme path during dep resolution, so we `touch` an
 # empty placeholder — the real README is restored by `COPY . .` below.
 #
-<<<<<<< HEAD
-# `uv sync --frozen --no-install-project --extra all --extra messaging --extra mesh`
-||||||| cf299e9a01
-# `uv sync --frozen --no-install-project --extra all --extra messaging`
-=======
-# `uv sync --frozen --no-install-project --extra all --extra messaging --extra otlp`
->>>>>>> rb/tag
+# `uv sync --frozen --no-install-project --extra all --extra messaging --extra mesh --extra otlp`
 # installs the deps reachable through the composite `[all]` extra
 # (handpicked set intended for the production image — excludes `[dev]`),
 # plus gateway messaging adapters that should work in the published image
@@ -331,13 +322,7 @@ RUN cd plugins/platforms/photon/sidecar && \
 # The editable link is created after the source copy below.
 COPY pyproject.toml uv.lock ./
 RUN touch ./README.md
-<<<<<<< HEAD
-RUN uv sync --frozen --no-install-project --extra all --extra messaging --extra mesh --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
-||||||| cf299e9a01
-RUN uv sync --frozen --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
-=======
-RUN uv sync --frozen --no-install-project --extra all --extra messaging --extra otlp --extra anthropic --extra bedrock --extra azure-identity --extra matrix --extra google-chat
->>>>>>> rb/tag
+RUN uv sync --frozen --no-install-project --extra all --extra messaging --extra mesh --extra otlp --extra anthropic --extra bedrock --extra azure-identity --extra matrix --extra google-chat
 
 # ---------- Frontend build (cached independently from Python source) ----------
 # Copy only the frontend source trees first so that Python-only changes don't

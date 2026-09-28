@@ -49,17 +49,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # reported "0 tests passed" (which reads green at a glance even though the
 # exit code is 1). Skip such a venv and keep probing instead.
 VENV=""
-<<<<<<< HEAD
-if [ -n "${UV_PROJECT_ENVIRONMENT:-}" ] && [ -f "$UV_PROJECT_ENVIRONMENT/bin/activate" ]; then
-  VENV="$UV_PROJECT_ENVIRONMENT"
-fi
-||||||| cf299e9a01
-=======
 VENV_PYTHON=""
 SKIPPED_VENVS=""
->>>>>>> rb/tag
-for candidate in "$REPO_ROOT/.venv" "$REPO_ROOT/venv" "$HOME/.hermes/openagents/venv"; do
-  [ -n "$VENV" ] && break
+# UV_PROJECT_ENVIRONMENT (e.g. a venv outside the checkout) is probed first.
+for candidate in ${UV_PROJECT_ENVIRONMENT:+"$UV_PROJECT_ENVIRONMENT"} "$REPO_ROOT/.venv" "$REPO_ROOT/venv" "$HOME/.hermes/openagents/venv"; do
   if [ -f "$candidate/bin/activate" ]; then
     if "$candidate/bin/python" -c 'import pytest' 2>/dev/null; then
       VENV="$candidate"
@@ -82,20 +75,10 @@ for candidate in "$REPO_ROOT/.venv" "$REPO_ROOT/venv" "$HOME/.hermes/openagents/
   fi
 done
 
-<<<<<<< HEAD
-if [ -z "$VENV" ]; then
-  echo "error: no virtualenv found in UV_PROJECT_ENVIRONMENT, $REPO_ROOT/.venv, $REPO_ROOT/venv, or $HOME/.hermes/openagents/venv" >&2
-  exit 1
-||||||| cf299e9a01
-if [ -z "$VENV" ]; then
-  echo "error: no virtualenv found in $REPO_ROOT/.venv or $REPO_ROOT/venv" >&2
-  exit 1
-=======
 if [ -n "$SKIPPED_VENVS" ]; then
   for skipped in $SKIPPED_VENVS; do
     echo "▶ skipping venv without pytest: $skipped" >&2
   done
->>>>>>> rb/tag
 fi
 
 if [ -n "$VENV" ]; then
@@ -108,7 +91,7 @@ elif [ -n "${HERMES_PYTHON:-}" ] && [ -x "$HERMES_PYTHON" ] \
   PYTHON="$HERMES_PYTHON"
   echo "▶ no local venv — using Nix dev venv via HERMES_PYTHON: $PYTHON"
 else
-  echo "error: no virtualenv with pytest found in $REPO_ROOT/.venv or $REPO_ROOT/venv," >&2
+  echo "error: no virtualenv with pytest found in UV_PROJECT_ENVIRONMENT, $REPO_ROOT/.venv, $REPO_ROOT/venv, or $HOME/.hermes/openagents/venv," >&2
   echo "       and HERMES_PYTHON is not a python with pytest (enter the Nix devShell or create a venv)" >&2
   if [ -n "$SKIPPED_VENVS" ]; then
     echo "       (skipped for missing pytest:$SKIPPED_VENVS — install dev extras there, or create $REPO_ROOT/.venv)" >&2

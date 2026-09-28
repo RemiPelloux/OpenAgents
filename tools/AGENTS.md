@@ -123,8 +123,10 @@ it is never the first signal a live parent receives.
 
 Spawns a subagent with isolated context + terminal session; the parent waits for the summary unless
 `background=true`, which returns a delegation id and re-enters the result via the async-delegation
-completion queue. Shapes: single (`goal` + optional `context`, `toolsets`) or batch (`tasks: [...]`,
-concurrency capped by `delegation.max_concurrent_children`, default 3). A background batch returns as ONE
+completion queue. Shapes: single (`goal` + optional `context`, `toolsets`, `model`) or batch (`tasks: [...]`,
+concurrency capped by `delegation.max_concurrent_children`, default 3). A top-level `model` is
+the batch default; each task can override it with its own `model`. Model choices reuse the
+configured delegation provider and credentials. A background batch returns as ONE
 completion by default; with `delegation.independent_completions` it is split into completion **units**
 (`delegate_tool_dispatch._units_of`): tasks sharing a `group` join and report together; each ungrouped
 task reports alone as it finishes. Units of one call share ONE pool slot (`slot_key` in

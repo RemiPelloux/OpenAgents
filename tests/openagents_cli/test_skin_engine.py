@@ -14,29 +14,17 @@ def reset_skin_state():
     skin_engine._active_skin_name = "default"
 
 
-<<<<<<< HEAD
-class TestSkinConfig:
-    def test_default_skin_has_required_fields(self):
-        from openagents_cli.skin_engine import load_skin
-        skin = load_skin("default")
-        assert skin.name == "default"
-        assert skin.tool_prefix == "┊"
-        assert "banner_title" in skin.colors
-        assert "banner_border" in skin.colors
-        assert "agent_name" in skin.branding
 
-    def test_get_color_with_fallback(self):
-        from openagents_cli.skin_engine import load_skin
-        skin = load_skin("default")
-        assert skin.get_color("banner_title") == "#FFD700"
-        assert skin.get_color("nonexistent", "#000") == "#000"
 
-    def test_get_branding_with_fallback(self):
-        from openagents_cli.skin_engine import load_skin
-        skin = load_skin("default")
-        assert skin.get_branding("agent_name") == "OpenAgents"
-        assert skin.get_branding("nonexistent", "fallback") == "fallback"
 
+
+
+
+
+
+
+
+class TestForkSkins:
     def test_opencode_skin_has_spinner_and_colors(self):
         from openagents_cli.skin_engine import load_skin
         skin = load_skin("opencode")
@@ -45,48 +33,6 @@ class TestSkinConfig:
         assert skin.get_color("status_bar_bg") == "#201d1d"
         assert skin.spinner.get("thinking_verbs")
         assert skin.get_branding("prompt_symbol") == "›"
-
-    def test_get_spinner_wings_empty_for_default(self):
-        from openagents_cli.skin_engine import load_skin
-        skin = load_skin("default")
-        assert skin.get_spinner_wings() == []
-||||||| cf299e9a01
-class TestSkinConfig:
-    def test_default_skin_has_required_fields(self):
-        from openagents_cli.skin_engine import load_skin
-        skin = load_skin("default")
-        assert skin.name == "default"
-        assert skin.tool_prefix == "┊"
-        assert "banner_title" in skin.colors
-        assert "banner_border" in skin.colors
-        assert "agent_name" in skin.branding
-
-    def test_get_color_with_fallback(self):
-        from openagents_cli.skin_engine import load_skin
-        skin = load_skin("default")
-        assert skin.get_color("banner_title") == "#FFD700"
-        assert skin.get_color("nonexistent", "#000") == "#000"
-
-    def test_get_branding_with_fallback(self):
-        from openagents_cli.skin_engine import load_skin
-        skin = load_skin("default")
-        assert skin.get_branding("agent_name") == "OpenAgents"
-        assert skin.get_branding("nonexistent", "fallback") == "fallback"
-
-    def test_get_spinner_wings_empty_for_default(self):
-        from openagents_cli.skin_engine import load_skin
-        skin = load_skin("default")
-        assert skin.get_spinner_wings() == []
-=======
->>>>>>> rb/tag
-
-
-
-
-
-
-
-
 
 
 class TestSkinManagement:

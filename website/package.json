@@ -22,82 +22,40 @@
     "@docusaurus/core": "3.10.2",
     "@docusaurus/plugin-client-redirects": "3.10.2",
     "@docusaurus/preset-classic": "3.10.2",
-<<<<<<< HEAD
-    "@docusaurus/theme-mermaid": "^3.10.2",
-    "@easyops-cn/docusaurus-search-local": "^0.55.1",
-    "@mdx-js/react": "^3.0.0",
-    "clsx": "^2.0.0",
-    "image-size": "file:vendor/image-size",
-    "prism-react-renderer": "^2.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-||||||| cf299e9a01
-    "@docusaurus/core": "3.9.2",
-    "@docusaurus/plugin-client-redirects": "3.9.2",
-    "@docusaurus/preset-classic": "3.9.2",
-    "@docusaurus/theme-mermaid": "^3.9.2",
-    "@easyops-cn/docusaurus-search-local": "^0.55.1",
-    "@mdx-js/react": "^3.0.0",
-    "clsx": "^2.0.0",
-    "prism-react-renderer": "^2.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-=======
     "@docusaurus/theme-mermaid": "3.10.2",
     "@mdx-js/react": "3.1.1",
     "clsx": "2.1.1",
     "prism-react-renderer": "2.3.0",
     "react": "19.2.7",
     "react-dom": "19.2.7"
->>>>>>> rb/tag
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.2",
     "@docusaurus/tsconfig": "3.10.2",
     "@docusaurus/types": "3.10.2",
-<<<<<<< HEAD
-    "typescript": "^6.0.3"
-||||||| cf299e9a01
-    "@docusaurus/module-type-aliases": "3.9.2",
-    "@docusaurus/tsconfig": "3.9.2",
-    "@docusaurus/types": "3.9.2",
-    "typescript": "^6.0.3"
-=======
     "typescript": "6.0.3"
->>>>>>> rb/tag
   },
   "overrides": {
-<<<<<<< HEAD
     "brace-expansion": "2.1.4",
+    "dompurify": "3.4.14",
     "fast-uri": "3.1.5",
     "http-proxy-middleware": "2.0.10",
-    "image-size": "$image-size",
+    "image-size": "npm:@nous-research/image-size@2.0.3",
     "joi": "17.13.4",
     "js-yaml": "4.3.1",
+    "mermaid": "11.17.2",
+    "minimatch": "10.2.6",
     "nanoid": "3.3.18",
     "postcss": "8.5.26",
-    "serialize-javascript": "^7.0.5",
+    "serialize-javascript": "7.0.7",
     "shell-quote": "1.9.0",
     "svgo": "3.3.4",
+    "tar": "7.5.22",
     "undici": "7.29.0",
-    "uuid": "^14.0.0",
+    "uuid": "14.0.1",
     "webpack-dev-server": "5.2.6",
     "websocket-driver": "0.7.5",
     "ws": "8.21.0"
-||||||| cf299e9a01
-    "serialize-javascript": "^7.0.5",
-    "uuid": "^14.0.0"
-=======
-    "serialize-javascript": "7.0.7",
-    "uuid": "14.0.1",
-    "minimatch": "10.2.6",
-    "nanoid": "3.3.17",
-    "js-yaml": "4.3.1",
-    "dompurify": "3.4.13",
-    "mermaid": "11.16.1",
-    "image-size": "npm:@nous-research/image-size@2.0.3",
-    "tar": "7.5.22"
->>>>>>> rb/tag
   },
   "browserslist": {
     "production": [
