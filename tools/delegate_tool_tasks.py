@@ -160,3 +160,17 @@ def _coerce_task_images(
             return [], err
         task_images.append(cleaned)
     return task_images, None
+
+def _coerce_task_models(
+    task_list: List[Dict[str, Any]], model: Optional[str]
+) -> tuple[List[Optional[str]], Optional[str]]:
+    """OpenAgents per-call / per-task model override: a task's own ``model`` wins over the top-level ``model``; both
+    are model identifiers only (provider, endpoint and credentials stay the configured delegation route). Returns the
+    normalized per-task model (``None`` = use the configured/inherited model) or an error before any child spawns."""
+    task_models: List[Optional[str]] = []
+    for i, task in enumerate(task_list):
+        requested = task.get("model", model)
+        if requested is not None and (not isinstance(requested, str) or not requested.strip()):
+            return [], f"Task {i} model must be a non-empty string."
+        task_models.append(requested.strip() if requested else None)
+    return task_models, None

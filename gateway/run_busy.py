@@ -1252,6 +1252,45 @@ class GatewayBusySessionMixin:
             from openagents_cli.blueprint_cmd import BlueprintCommandResult
             return BlueprintCommandResult(f"Cron blueprint command failed: {e}")
 
+    async def _handle_company_command(self, event: MessageEvent):
+        """Handle /company in the gateway (shared handler with CLI/TUI)."""
+        args = (event.get_command_args() or "").strip()
+        try:
+            from openagents_cli.company_cmd import handle_company_command
+
+            return handle_company_command(args)
+        except Exception as e:
+            logger.debug("company command failed: %s", e)
+            from openagents_cli.company_cmd import CompanyCommandResult
+
+            return CompanyCommandResult(f"Company command failed: {e}")
+
+    async def _handle_openagentui_command(self, event: MessageEvent):
+        """Handle /OpenAgentUI in the gateway (shared handler with CLI/TUI)."""
+        args = (event.get_command_args() or "").strip()
+        try:
+            from openagents_cli.openagentui_cmd import handle_openagentui_command
+
+            return handle_openagentui_command(args)
+        except Exception as e:
+            logger.debug("openagentui command failed: %s", e)
+            from openagents_cli.openagentui_cmd import OpenAgentUiCommandResult
+
+            return OpenAgentUiCommandResult(f"OpenAgentUI command failed: {e}")
+
+    async def _handle_openagentconfig_command(self, event: MessageEvent):
+        """Handle /OpenAgentConfig in the gateway (shared handler with CLI/TUI)."""
+        args = (event.get_command_args() or "").strip()
+        try:
+            from openagents_cli.openagentui_config_cmd import handle_openagentconfig_command
+
+            return handle_openagentconfig_command(args)
+        except Exception as e:
+            logger.debug("openagentconfig command failed: %s", e)
+            from openagents_cli.openagentui_config_cmd import OpenAgentConfigCommandResult
+
+            return OpenAgentConfigCommandResult(f"OpenAgentConfig command failed: {e}")
+
     async def _maybe_confirm_destructive_slash(
         self, *, event: MessageEvent, command: str, title: str, detail: str, execute
     ) -> Union[str, "EphemeralReply", None]:

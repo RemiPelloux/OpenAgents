@@ -107,7 +107,7 @@ import { isDashboardEmbeddedChatEnabled } from "@/lib/dashboard-flags";
 import { latchChatActivation } from "@/lib/chat-activation";
 import { sharedGatewayProfiles, sharedGatewayRestartDescription } from "@/lib/shared-gateway";
 import { api } from "@/lib/api";
-import type { StatusResponse, UpdateCheckResponse } from "@/lib/api";
+import type { StatusResponse } from "@/lib/api";
 
 function RouteFallback({ label = "Loading…" }: { label?: string }) {
   return (
@@ -944,55 +944,9 @@ function SidebarSystemActions({
   const navigate = useNavigate();
   const { activeAction, isBusy, isRunning, pendingAction, runAction } =
     useSystemActions();
-<<<<<<< HEAD
-||||||| cf299e9a01
-  const canUpdateHermes = status?.can_update_hermes === true;
-=======
-  const canUpdateHermes = status?.can_update_hermes === true;
   // Served by the shared multiplexer: a restart blips every bot on this device — say which.
   const sharedGateway = sharedGatewayProfiles(status);
   const [restartConfirmOpen, setRestartConfirmOpen] = useState(false);
-  const [updateConfirmOpen, setUpdateConfirmOpen] = useState(false);
-  const [updateConfirmInfo, setUpdateConfirmInfo] =
-    useState<UpdateCheckResponse | null>(null);
-  const [updateConfirmChecking, setUpdateConfirmChecking] = useState(false);
-
-  useEffect(() => {
-    if (!updateConfirmOpen) {
-      setUpdateConfirmInfo(null);
-      return;
-    }
-    let cancelled = false;
-    setUpdateConfirmChecking(true);
-    api
-      .checkHermesUpdate(false)
-      .then((info) => {
-        if (!cancelled) setUpdateConfirmInfo(info);
-      })
-      .catch(() => {
-        if (!cancelled) setUpdateConfirmInfo(null);
-      })
-      .finally(() => {
-        if (!cancelled) setUpdateConfirmChecking(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [updateConfirmOpen]);
-
-  const updateConfirmDescription = useMemo(() => {
-    if (updateConfirmInfo?.behind && updateConfirmInfo.behind > 0) {
-      const cmd = updateConfirmInfo.update_command;
-      const n = updateConfirmInfo.behind;
-      return `This will run 'hermes update' (${cmd}) and pull ${n} new commit${n === 1 ? "" : "s"}. The gateway restarts when the update finishes; the current session keeps its prompt cache until then.`;
-    }
-    const cmd = updateConfirmInfo?.update_command ?? "hermes update";
-    return (
-      t.status.updateHermesConfirmMessage ??
-      `This will run 'hermes update' (${cmd}) and restart the gateway when it finishes.`
-    );
-  }, [t.status.updateHermesConfirmMessage, updateConfirmInfo]);
->>>>>>> rb/tag
 
   const items: SystemActionItem[] = [
     {
@@ -1010,10 +964,6 @@ function SidebarSystemActions({
       setRestartConfirmOpen(true);
       return;
     }
-    if (action === "update") {
-      setUpdateConfirmOpen(true);
-      return;
-    }
     void runAction(action);
     navigate("/sessions");
     onNavigate();
@@ -1022,13 +972,6 @@ function SidebarSystemActions({
   const confirmRestart = () => {
     setRestartConfirmOpen(false);
     void runAction("restart");
-    navigate("/sessions");
-    onNavigate();
-  };
-
-  const confirmUpdate = () => {
-    setUpdateConfirmOpen(false);
-    void runAction("update");
     navigate("/sessions");
     onNavigate();
   };
@@ -1092,19 +1035,6 @@ function SidebarSystemActions({
           ? "Restart the shared gateway?"
           : (t.status.restartGatewayConfirmTitle ?? `${t.status.restartGateway}?`)
       }
-    />
-
-    <ConfirmDialog
-      cancelLabel={t.common.cancel}
-      confirmLabel={t.status.updateHermesConfirmNow ?? "Update now"}
-      description={
-        updateConfirmChecking ? t.common.loading : updateConfirmDescription
-      }
-      loading={pendingAction === "update" || updateConfirmChecking}
-      onCancel={() => setUpdateConfirmOpen(false)}
-      onConfirm={confirmUpdate}
-      open={updateConfirmOpen}
-      title={t.status.updateHermesConfirmTitle ?? `${t.status.updateHermes}?`}
     />
     </>
   );

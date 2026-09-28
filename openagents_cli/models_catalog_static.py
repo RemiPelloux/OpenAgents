@@ -214,6 +214,11 @@ _PROVIDER_MODELS: dict[str, list[str]] = {
         "claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-haiku-4-5-20251001",
     ],
     "deepseek": ["deepseek-flash", "deepseek-v4-pro"],
+    # OpenOS fork: Mistral AI direct API.
+    "mistral": [
+        "mistral-medium-latest", "mistral-large-latest", "mistral-small-latest",
+        "open-mistral-nemo", "codestral-latest",
+    ],
     "xiaomi": [
         "mimo-v2.6-pro", "mimo-v2.6-flash", "mimo-v2.6-pro-ultraspeed",
         "mimo-v2.5-pro", "mimo-v2.5", "mimo-v2-pro", "mimo-v2-omni", "mimo-v2-flash",
@@ -332,7 +337,9 @@ CANONICAL_PROVIDERS: list[ProviderEntry] = [ProviderEntry(*row) for row in (
     ("huggingface", "Hugging Face", "Hugging Face Inference Providers"),
     ("gemini", "Google AI Studio", "Google AI Studio (Native Gemini API)"),
     ("vertex", "Google Vertex AI", "Google Vertex AI (Gemini via GCP; OAuth2 service account or ADC, GCP billing/quotas)"),
-    ("deepseek", "DeepSeek", "DeepSeek (V3, R1, coder, direct API)"), ("xai", "xAI", "xAI Grok (Direct API)"),
+    ("deepseek", "DeepSeek", "DeepSeek (V3, R1, coder, direct API)"),
+    ("mistral", "Mistral AI", "Mistral (medium/large/small, Codestral, direct API)"),  # OpenOS fork
+    ("xai", "xAI", "xAI Grok (Direct API)"),
     ("zai", "Z.AI / GLM", "Z.AI / GLM (Zhipu direct API)"),
     ("kimi-coding", "Kimi / Kimi Coding Plan", "Kimi Coding Plan (api.kimi.com & Moonshot API)"),
     ("kimi-coding-cn", "Kimi / Moonshot (China)", "Kimi / Moonshot China (Domestic direct API)"),

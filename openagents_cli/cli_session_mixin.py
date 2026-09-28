@@ -340,6 +340,8 @@ class CLISessionMixin:
         _cli_visible_print()
         if reason == "history":
             _cli_visible_print("(._.) No messages in the current chat yet — here are recent sessions you can resume:")
+        elif reason == "startup":
+            _cli_visible_print("(◕‿◕) Recent sessions — resume with /resume <number> or /resume <title>:")
         else:
             _cli_visible_print("  Recent sessions:")
         _cli_visible_print()

@@ -238,6 +238,16 @@ class CLITuiRuntimeMixin:
             if _term_lines > 2:
                 print("\n" * (_term_lines - 1), end="", flush=True)
 
+        # OpenOS fork: optional mascot startup animation before the banner.
+        try:
+            display_cfg = self.config.get("display") or {}
+            if display_cfg.get("startup_animation", True):
+                from openagents_cli.startup_animation import play_startup_animation
+
+                play_startup_animation(enabled=True)
+        except Exception:
+            pass
+
         self.show_banner()
         self._show_security_advisories()
         self._show_browser_backend_notice()
@@ -250,8 +260,18 @@ class CLITuiRuntimeMixin:
         except Exception:
             logger.debug("first-run setup offer failed", exc_info=True)
 
-        if self._resumed and self._preload_resumed_session():
-            self._display_resumed_history()
+        if self._resumed:
+            if self._preload_resumed_session():
+                self._display_resumed_history()
+        else:
+            # OpenOS fork: list recent sessions on launch (display.startup_show_sessions).
+            try:
+                display_cfg = self.config.get("display") or {}
+                if display_cfg.get("startup_show_sessions", True):
+                    limit = int(display_cfg.get("startup_sessions_limit", 8) or 8)
+                    self._show_recent_sessions(reason="startup", limit=limit)
+            except Exception:
+                pass
 
         _welcome_skin = None  # stays None when the skin engine failed
         _welcome_text = "Welcome to OpenAgents! Type your message or /help for commands."
@@ -264,6 +284,14 @@ class CLITuiRuntimeMixin:
         except Exception:
             pass
         self._console_print(f"[{_welcome_color}]{_welcome_text}[/]")
+        # OpenOS fork: skin tagline under the welcome line.
+        try:
+            _tagline = _welcome_skin.get_branding("tagline", "") if _welcome_skin else ""
+            if _tagline:
+                _dim = _welcome_skin.get_color("banner_dim", "#B8860B")
+                self._console_print(f"[dim {_dim}]{_tagline}[/]")
+        except Exception:
+            pass
 
         self._tui_startup_prewarm_and_warnings(_welcome_skin)
         self._print_random_tip()

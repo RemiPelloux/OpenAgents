@@ -13,6 +13,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
+from openagents_fork import (
+    DISTRIBUTION_REPO_HTTPS,
+    DISTRIBUTION_REPO_URLS,
+    IS_REBRANDED_HERMES_FORK,
+    SYNC_FROM_HERMES_SCRIPT,
+)
+
 logger = logging.getLogger("openagents_cli.update_cmd")  # log-record parity with the origin module
 
 _ORPHAN_RESCUE_REFS_TO_KEEP = 10
@@ -20,7 +27,7 @@ _ORPHAN_RESCUE_REF_MAX_AGE_DAYS = 30
 
 _GIT_TEXT_KW = dict(capture_output=True, text=True, encoding="utf-8", errors="replace")
 _BAR = "=" * 68
-_UPSTREAM_ADD_CMD = "git remote add upstream https://github.com/NousResearch/hermes-agent.git"
+_UPSTREAM_ADD_CMD = f"git remote add upstream {DISTRIBUTION_REPO_HTTPS}"
 
 
 def _git_ok(git_cmd, args, cwd, **kw) -> bool:
@@ -176,19 +183,19 @@ def _print_parked_branch_kept_notice(current_branch: str, target_branch: str, un
     )
 
 
-OFFICIAL_REPO_URLS = {
-    "https://github.com/NousResearch/hermes-agent.git",
-    "git@github.com:NousResearch/hermes-agent.git",
-    "https://github.com/NousResearch/hermes-agent",
-    "git@github.com:NousResearch/hermes-agent",
-}
-OFFICIAL_REPO_URL = "https://github.com/NousResearch/hermes-agent.git"
+OFFICIAL_REPO_URLS = DISTRIBUTION_REPO_URLS
+OFFICIAL_REPO_URL = DISTRIBUTION_REPO_HTTPS
 SKIP_UPSTREAM_PROMPT_FILE = ".skip_upstream_prompt"
 
 
 def _get_origin_url(git_cmd: list[str], cwd: Path) -> Optional[str]:
     """Get the URL of the origin remote, or None if not set."""
     return _git_stdout(git_cmd, ["remote", "get-url", "origin"], cwd)
+
+
+def _get_upstream_url(git_cmd: list[str], cwd: Path) -> Optional[str]:
+    """Return the URL of the upstream remote, if configured."""
+    return _git_stdout(git_cmd, ["remote", "get-url", "upstream"], cwd)
 
 
 def _is_fork(origin_url: Optional[str]) -> bool:
@@ -247,7 +254,7 @@ def _offer_upstream_remote(git_cmd: list[str], cwd: Path, *, assume_yes: bool, i
     from openagents_cli.update_cmd import _add_upstream_remote, _mark_skip_upstream_prompt
     print(
         "\nℹ Your fork is not tracking the official OpenAgents repository.\n"
-        "  This means you may miss updates from NousResearch/hermes-agent.\n"
+        f"  This means you may miss updates from {DISTRIBUTION_REPO_HTTPS}.\n"
     )
     if assume_yes or (input_fn is None and not (sys.stdin.isatty() and sys.stdout.isatty())):
         print(f"  Skipping upstream setup (non-interactive run).\n  Add it later with: {_UPSTREAM_ADD_CMD}")
@@ -268,7 +275,7 @@ def _offer_upstream_remote(git_cmd: list[str], cwd: Path, *, assume_yes: bool, i
     if not _add_upstream_remote(git_cmd, cwd):
         print("  ✗ Failed to add upstream remote. Skipping upstream sync.")
         return False
-    print("  ✓ Added upstream: https://github.com/NousResearch/hermes-agent.git")
+    print(f"  ✓ Added upstream: {OFFICIAL_REPO_URL}")
     return True
 
 
@@ -300,9 +307,17 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path, *, assume_yes: 
     if origin_ahead > 0:
         print(
             f"\nℹ Your fork has {origin_ahead} commit(s) not on upstream.\n"
-            "  Skipping upstream sync to preserve your changes.\n"
-            "  If you want to merge upstream changes, run:\n    git pull upstream main"
+            "  Skipping upstream sync to preserve your changes."
         )
+        if IS_REBRANDED_HERMES_FORK:
+            upstream_url = _get_upstream_url(git_cmd, cwd)
+            if upstream_url and "Hermes-agent" in upstream_url:
+                print("  To merge a new Hermes Agent release into OpenAgents, run:")
+                print(f"    ./{SYNC_FROM_HERMES_SCRIPT}")
+            else:
+                print("  If you want to merge upstream changes, run:\n    git pull upstream main")
+        else:
+            print("  If you want to merge upstream changes, run:\n    git pull upstream main")
         return True
     if upstream_ahead == 0:
         print("  ✓ Fork is up to date with upstream")
@@ -352,7 +367,7 @@ _FETCH_FAILURE_RULES = (
     # key (or lack of one) was the cause (#82169).
     (lambda s: "Permission denied (publickey)" in s or "Host key verification failed" in s,
      "✗ SSH authentication failed — check your SSH key is added to GitHub, or switch"
-     " `origin` to HTTPS: `git remote set-url origin https://github.com/NousResearch/hermes-agent.git`."),
+     f" `origin` to HTTPS: `git remote set-url origin {DISTRIBUTION_REPO_HTTPS}`."),
 )
 
 

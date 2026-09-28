@@ -731,6 +731,19 @@ def _launch_tui(
     image: Optional[str] = None, worktree: bool = False, checkpoints: bool = False,
     pass_session_id: bool = False, max_turns: Optional[int] = None, accept_hooks: bool = False):
     """Replace current process with the TUI."""
+    if not quiet and not query:
+        try:
+            from openagents_cli.config import load_config
+            from openagents_cli.skin_engine import init_skin_from_config
+            from openagents_cli.startup_animation import play_startup_animation
+
+            _cfg = load_config()
+            init_skin_from_config(_cfg)
+            _display = _cfg.get("display") or {}
+            play_startup_animation(enabled=bool(_display.get("startup_animation", True)))
+        except Exception:
+            pass
+
     from openagents_cli.main import PROJECT_ROOT
     tui_dir = PROJECT_ROOT / "ui-tui"
 

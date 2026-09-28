@@ -13,7 +13,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from openagents_state_common import (
     _BOUNDARY_END_REASONS, _COMPRESSION_LOCK_ROW_SQL as _LOCK_ROW_SQL, _ENDED_ROW_SQL, _ended_by_compression,
-    _RESET_CHILD_SQL, _sql_json_extract, _sql_session_last_active, is_automatic_end_reason)
+    _RESET_CHILD_SQL, _SQL_IN_CHUNK, _id_chunks, _placeholders, _sql_json_extract, _sql_session_last_active,
+    is_automatic_end_reason)
 
 # Log-record parity with the origin module (caplog tests pin "openagents_state").
 logger = logging.getLogger("openagents_state")
@@ -48,6 +49,37 @@ _CHAIN_STEP_SQL = f"""
                     LIMIT 1
                     """
 
+
+# OpenOS fork (N+1 fix): the SAME child filter + ORDER BY as ``_CHAIN_STEP_SQL`` for a whole
+# frontier of parents at once. ``ROW_NUMBER() OVER (PARTITION BY parent)`` picks the identical
+# ``LIMIT 1`` winner per parent, so a batched walk issues one query per chain DEPTH instead of
+# one query per hop per session.
+_CHAIN_STEP_BATCH_SQL = f"""
+                    SELECT parent_id, child_id FROM (
+                        SELECT parent.id AS parent_id, child.id AS child_id,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY parent.id
+                                ORDER BY
+                                  CASE
+                                    WHEN child.end_reason = 'compression' THEN 0
+                                    WHEN child.ended_at IS NULL THEN 1
+                                    ELSE 2
+                                  END,
+                                  {_sql_session_last_active("child")} DESC,
+                                  child.started_at DESC,
+                                  child.id DESC
+                            ) AS rn
+                        FROM sessions parent
+                        JOIN sessions child ON child.parent_session_id = parent.id
+                        WHERE parent.id IN ({{ids}})
+                          AND parent.end_reason = 'compression'
+                          AND {_sql_json_extract('child.model_config', '$._branched_from')} IS NULL
+                          AND {_sql_json_extract('child.model_config', '$._delegate_from')} IS NULL
+                          AND NOT ({_RESET_CHILD_SQL.format(a='child')})
+                          AND COALESCE(child.source, '') != 'tool'
+                    )
+                    WHERE rn = 1
+                    """
 
 def _cooldown_row(exists: bool, cooldown_until, error) -> Dict[str, Any]:
     return {"session_exists": exists,
@@ -677,6 +709,53 @@ class SessionCompressionMixin:
         id when no continuation exists."""
         chain = self.get_compression_chain(session_id)
         return chain[-1] if chain else session_id
+
+    def get_compression_chains(self, session_ids) -> Dict[Any, List[str]]:
+        """Batched :meth:`get_compression_chain` (OpenOS fork, N+1 fix): ``{input_id: chain}``.
+
+        Walks every chain forward level-by-level with ``_CHAIN_STEP_BATCH_SQL``: one query per chain
+        depth (chunked IN) for the whole batch instead of one query per hop per session. Same
+        child-selection rule, same cycle guard and 100-hop bound as the single-session walk. No query
+        for an empty input."""
+        chains: Dict[Any, List[str]] = {}
+        # root -> (chain, seen) for chains still being walked
+        active: Dict[Any, Tuple[List[str], set]] = {}
+        for sid in session_ids:
+            if sid in active or sid in chains:
+                continue
+            if not sid:
+                chains[sid] = []
+                continue
+            active[sid] = ([sid], {sid})
+        for _ in range(100):  # defensive bound; chains this deep are pathological
+            if not active:
+                break
+            frontier = list(dict.fromkeys(chain[-1] for chain, _seen in active.values()))
+            next_child: Dict[str, str] = {}
+            for chunk in _id_chunks(frontier, _SQL_IN_CHUNK):
+                sql = _CHAIN_STEP_BATCH_SQL.format(ids=_placeholders(chunk))
+                with self._read_ctx() as conn:
+                    rows = conn.execute(sql, chunk).fetchall()
+                for row in rows:
+                    next_child[row["parent_id"]] = row["child_id"]
+            still_active: Dict[Any, Tuple[List[str], set]] = {}
+            for root, (chain, seen) in active.items():
+                child_id = next_child.get(chain[-1])
+                if not child_id or child_id in seen:
+                    chains[root] = chain
+                    continue
+                seen.add(child_id)
+                chain.append(child_id)
+                still_active[root] = (chain, seen)
+            active = still_active
+        for root, (chain, _seen) in active.items():
+            chains[root] = chain
+        return chains
+
+    def get_compression_tips(self, session_ids) -> Dict[Any, Any]:
+        """Batched :meth:`get_compression_tip` (OpenOS fork): ``{input_id: tip_id}`` (the input id
+        when no continuation exists)."""
+        return {sid: (chain[-1] if chain else sid) for sid, chain in self.get_compression_chains(session_ids).items()}
 
     def _is_compression_child_row(self, child: Dict[str, Any]) -> bool:
         parent_id = child.get("parent_session_id")

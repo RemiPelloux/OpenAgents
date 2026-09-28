@@ -818,7 +818,22 @@ DEFAULT_CONFIG = {
         "interface": "cli",
         # `hermes --tui` auto-resumes the most recent human-facing session (like `hermes -c`).
         # HERMES_TUI_RESUME=<id> always wins.
-        "tui_auto_resume_recent": False,
+        "tui_auto_resume_recent": True,
+        # Launch animation (OpenCode-style little monster) before the welcome
+        # banner in interactive CLI/TUI. Set false to skip.
+        "startup_animation": True,
+        # Session behaviour when starting interactive chat without --resume/-c:
+        #   new    — start a fresh session
+        #   last   — resume the most recent CLI/TUI session (OpenPro daily default)
+        #   prompt — interactive session picker (same as `openagents sessions browse`)
+        "session_on_launch": "last",
+        # Optional override for the animated status-bar brand (empty = skin default).
+        "status_brand": "",
+        # When starting a fresh session, show a numbered list of recent sessions
+        # so you can `/resume <n>` without running sessions list first.
+        "startup_show_sessions": True,
+        # How many recent sessions to show in the startup list / launch picker.
+        "startup_sessions_limit": 8,
         # Desktop reopens the last chat/page on cold start (also in Settings → Appearance).
         "resume_last_session": True,
         # One-time TUI hint ("subagents working · /agents to watch live") on first delegation.
@@ -871,7 +886,7 @@ DEFAULT_CONFIG = {
         # /focus off restores. Never affects what the model sees (focus_view.py).
         "focus_view": False,
         "focus_saved_tool_progress": "all",
-        "skin": "default",
+        "skin": "opencode",
         # UI language for static messages (approval prompts, some gateway slash replies); not agent
         # responses/logs/tool outputs. en, zh, ja, de, es, fr, tr, uk; unknown → en.
         "language": "en",
@@ -1750,7 +1765,8 @@ DEFAULT_CONFIG = {
         # globs on the basename (e.g. "*.mdc").
         "protected_instruction_files": True,
         "protected_instruction_extra_patterns": [],
-        "tirith_enabled": True,
+        "builtin_command_scanner": True,  # OpenAgents built-in scanner (always on)
+        "tirith_enabled": True,  # External tirith binary (brew install sheeki03/tap/tirith)
         "tirith_path": "tirith",
         "tirith_timeout": 5,
         "tirith_fail_open": True,

@@ -323,13 +323,30 @@ class SessionPersistenceMixin:
         stale_keys: list = []
         recovered_keys = 0
         try:
+            # Ask the store that owns the key, not the ambient handle, or a live
+            # secondary-profile session gets pruned on the root copy. One batched
+            # get_sessions_by_ids() per owning store instead of a get_session()
+            # round-trip per sessions.json entry (N+1 fix).
+            owners: Dict[str, Any] = {}
+            ids_by_db: Dict[int, tuple] = {}
             for key, entry in self._entries.items():
-                # Ask the store that owns the key, not the ambient handle, or a live
-                # secondary-profile session gets pruned on the root copy.
                 db = self._db_for_key(key)
                 if db is None:
                     continue
-                row = db.get_session(entry.session_id)
+                owners[key] = db
+                ids_by_db.setdefault(id(db), (db, []))[1].append(entry.session_id)
+            rows_by_db: Dict[int, Dict[str, Any]] = {}
+            for db_key, (db, session_ids) in ids_by_db.items():
+                batched = getattr(db, "get_sessions_by_ids", None)
+                if callable(batched):
+                    rows_by_db[db_key] = batched(session_ids) or {}
+                else:
+                    rows_by_db[db_key] = {sid: db.get_session(sid) for sid in session_ids}
+            for key, entry in list(self._entries.items()):
+                db = owners.get(key)
+                if db is None:
+                    continue
+                row = rows_by_db[id(db)].get(entry.session_id)
                 if row is None or row.get("end_reason") is None:
                     continue
                 verdict = self._stale_entry_verdict(key, entry, row)

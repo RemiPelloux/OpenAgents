@@ -1008,6 +1008,32 @@ class CLIStatusBarMixin:
         self._status_bar_field_set_cache = result
         return result
 
+    def _status_bar_brand_label(self) -> str:
+        """OpenOS fork: animated mascot + brand (e.g. ``(◕‿◕) OpenPro``), or legacy ☤."""
+        try:
+            from openagents_cli.mascot import status_bar_prefix
+            from openagents_cli.skin_engine import get_active_status_brand
+
+            brand = get_active_status_brand("")
+            if brand:
+                return status_bar_prefix(brand)
+        except Exception:
+            pass
+        return "☤"
+
+    def _status_bar_brand_fragments(self) -> list:
+        """prompt_toolkit fragments for the status-bar leading brand (fork mascot/brand)."""
+        try:
+            from openagents_cli.mascot import animated_face
+            from openagents_cli.skin_engine import get_active_status_brand
+
+            brand = get_active_status_brand("")
+            if brand:
+                return [(_SB, " "), (_STRONG, animated_face()), (_DIM, f" {brand} ")]
+        except Exception:
+            pass
+        return [(_SB, " ☤ ")]
+
     def _status_bar_segments(
         self, snapshot, width: int, field_set, yolo_active: bool, *, styled: bool) -> list:
         """Ordered status-bar segments for one width tier (<52 / <76 / wide), each a list of
@@ -1035,9 +1061,9 @@ class CLIStatusBarMixin:
 
         if _ok("model"):
             if styled:
-                segs.append([(_SB, " ☤ "), (_STRONG, model_short)])
+                segs.append([*self._status_bar_brand_fragments(), (_STRONG, model_short)])
             else:
-                segs.append([("", f"☤ {model_short}")])
+                segs.append([("", f"{self._status_bar_brand_label()} {model_short}")])
         narrow, wide = width < 52, width >= 76
         if narrow:
             # Narrow bars put duration ahead of the goal segment; the other tiers reverse it.
@@ -1122,7 +1148,7 @@ class CLIStatusBarMixin:
                 text = (" · " if width < 76 else " │ ").join(parts)
             return self._right_align_status_title(text, session_title, width)
         except Exception:
-            return f"☤ {self.model if getattr(self, 'model', None) else 'Hermes'}"
+            return f"{self._status_bar_brand_label()} · {self.model if getattr(self, 'model', None) else 'OpenAgents'}"
 
     def _get_status_bar_fragments(self):
         if (

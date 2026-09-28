@@ -923,11 +923,17 @@ def _build_compact_banner() -> str:
     title_color = _color("banner_title", "#FFBF00")
     dim_color = _color("banner_dim", "#B8860B")
 
-    if (getattr(_skin, "name", "default") if _skin else "default") == "default":
+    skin_name = getattr(_skin, "name", "default") if _skin else "default"
+    if skin_name == "default":
         tiny_line = "☤ NOUS HERMES"
+        line1 = f"{tiny_line} - AI Agent Framework"
+    elif skin_name == "opencode":
+        # OpenOS fork: OpenAgents · OpenPro compact branding.
+        tiny_line = "OpenAgents"
+        line1 = "OpenAgents · OpenPro"
     else:
         tiny_line = _skin.get_branding("agent_name", "OpenAgents") if _skin else "OpenAgents"
-    line1 = f"{tiny_line} - AI Agent Framework"
+        line1 = f"{tiny_line} - AI Agent Framework"
 
     if os.environ.get("HERMES_FAST_STARTUP_BANNER") == "1":
         from openagents_cli import __release_date__ as _release_date
@@ -939,7 +945,7 @@ def _build_compact_banner() -> str:
 
     w = min(shutil.get_terminal_size().columns - 2, 88)
     if w < 30:
-        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]- Nous Research[/]\n"
+        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]· OpenPro[/]\n"
 
     inner = w - 2  # inside the box border
     bar = "═" * w

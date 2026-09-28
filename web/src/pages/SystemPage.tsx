@@ -267,25 +267,11 @@ export default function SystemPage() {
       api.getHooks(),
       api.getCurator(),
       api.getPortal(),
-<<<<<<< HEAD
-||||||| cf299e9a01
-      // Cached (non-forced) check so the version row shows update status on
-      // load without a separate effect / a forced network round-trip.
-      api.checkHermesUpdate(false),
-=======
-      // Cached (non-forced) check so the version row shows update status on
-      // load without a separate effect / a forced network round-trip.
-      api.checkHermesUpdate(false),
+      api.getPortal(),
       api.getGatewayMigratePlan(),
->>>>>>> rb/tag
     ])
-<<<<<<< HEAD
-      .then(([s, st, m, p, c, h, cur, prt]) => {
-||||||| cf299e9a01
-      .then(([s, st, m, p, c, h, cur, prt, upd]) => {
-=======
-      .then(([s, st, m, p, c, h, cur, prt, upd, mig]) => {
->>>>>>> rb/tag
+    ])
+      .then(([s, st, m, p, c, h, cur, prt, mig]) => {
         if (s.status === "fulfilled") setStatus(s.value);
         if (st.status === "fulfilled") setStats(st.value);
         if (m.status === "fulfilled") setMemory(m.value);
@@ -294,13 +280,8 @@ export default function SystemPage() {
         if (h.status === "fulfilled") setHooks(h.value);
         if (cur.status === "fulfilled") setCurator(cur.value);
         if (prt.status === "fulfilled") setPortal(prt.value);
-<<<<<<< HEAD
-||||||| cf299e9a01
-        if (upd.status === "fulfilled") setUpdateInfo(upd.value);
-=======
-        if (upd.status === "fulfilled") setUpdateInfo(upd.value);
+        if (prt.status === "fulfilled") setPortal(prt.value);
         if (mig.status === "fulfilled") setMigratePlan(mig.value);
->>>>>>> rb/tag
       })
       .finally(() => setLoading(false));
   }, []);
@@ -583,130 +564,6 @@ export default function SystemPage() {
     }
   }, [shareRedact, showToast]);
 
-<<<<<<< HEAD
-||||||| cf299e9a01
-
-  // ── Update check / apply ───────────────────────────────────────────
-  const checkForUpdate = useCallback(
-    async (force = false) => {
-      if (status?.can_update_hermes === false) return;
-      setCheckingUpdate(true);
-      try {
-        const info = await api.checkHermesUpdate(force);
-        setUpdateInfo(info);
-        if (force) {
-          if (info.update_available) {
-            showToast(
-              info.behind && info.behind > 0
-                ? `Update available — ${info.behind} commit${info.behind === 1 ? "" : "s"} behind`
-                : "Update available",
-              "success",
-            );
-          } else if (info.behind === 0) {
-            showToast("You're on the latest version", "success");
-          } else if (info.message) {
-            showToast(info.message, "error");
-          }
-        }
-      } catch (e) {
-        showToast(`Update check failed: ${e}`, "error");
-      } finally {
-        setCheckingUpdate(false);
-      }
-    },
-    [showToast, status?.can_update_hermes],
-  );
-
-  // Auto-check (cached) runs inside loadAll on mount; this is the
-  // user-triggered forced re-check from the "Check for updates" button.
-  const applyUpdate = async () => {
-    setUpdateConfirmOpen(false);
-    if (status?.can_update_hermes === false) {
-      showToast(
-        "OpenAgents updates are managed outside this dashboard.",
-        "success",
-      );
-      return;
-    }
-    try {
-      const resp = await api.updateHermes();
-      if (!resp.ok) {
-        showToast(
-          resp.message ??
-            "Updates don't apply from this dashboard.",
-          "success",
-        );
-        return;
-      }
-      setActiveAction(resp.name ?? "hermes-update");
-      showToast("Update started", "success");
-    } catch (e) {
-      showToast(`Update failed: ${e}`, "error");
-    }
-  };
-
-=======
-
-  // ── Update check / apply ───────────────────────────────────────────
-  const checkForUpdate = useCallback(
-    async (force = false) => {
-      if (status?.can_update_hermes === false) return;
-      setCheckingUpdate(true);
-      try {
-        const info = await api.checkHermesUpdate(force);
-        setUpdateInfo(info);
-        if (force) {
-          if (info.update_available) {
-            showToast(
-              info.behind && info.behind > 0
-                ? `Update available — ${info.behind} commit${info.behind === 1 ? "" : "s"} behind`
-                : "Update available",
-              "success",
-            );
-          } else if (info.behind === 0) {
-            showToast("You're on the latest version", "success");
-          } else if (info.message) {
-            showToast(info.message, "error");
-          }
-        }
-      } catch (e) {
-        showToast(`Update check failed: ${errorMessage(e)}`, "error");
-      } finally {
-        setCheckingUpdate(false);
-      }
-    },
-    [showToast, status?.can_update_hermes],
-  );
-
-  // Auto-check (cached) runs inside loadAll on mount; this is the
-  // user-triggered forced re-check from the "Check for updates" button.
-  const applyUpdate = async () => {
-    setUpdateConfirmOpen(false);
-    if (status?.can_update_hermes === false) {
-      showToast(
-        "OpenAgents updates are managed outside this dashboard.",
-        "success",
-      );
-      return;
-    }
-    try {
-      const resp = await api.updateHermes();
-      if (!resp.ok) {
-        showToast(
-          resp.message ??
-            "Updates don't apply from this dashboard.",
-          "success",
-        );
-        return;
-      }
-      setActiveAction(resp.name ?? "hermes-update");
-      showToast("Update started", "success");
-    } catch (e) {
-      showToast(`Update failed: ${errorMessage(e)}`, "error");
-    }
-  };
-
->>>>>>> rb/tag
   const checkpointsPrune = useConfirmDelete({
     onDelete: useCallback(async () => {
       try {
@@ -776,15 +633,9 @@ export default function SystemPage() {
   }
 
   const gatewayRunning = status?.gateway_running;
-<<<<<<< HEAD
-||||||| cf299e9a01
-  const canUpdateHermes = status?.can_update_hermes !== false;
-=======
-  const canUpdateHermes = status?.can_update_hermes !== false;
   const activeMemoryProvider = memory?.active
     ? memory.providers.find((provider) => provider.name === memory.active)
     : null;
->>>>>>> rb/tag
   const validEvents = hooks?.valid_events?.length
     ? hooks.valid_events
     : HOOK_EVENTS_FALLBACK;
@@ -802,22 +653,6 @@ export default function SystemPage() {
         }}
       />
 
-<<<<<<< HEAD
-||||||| cf299e9a01
-      <ConfirmDialog
-        open={canUpdateHermes && updateConfirmOpen}
-        onCancel={() => setUpdateConfirmOpen(false)}
-        onConfirm={() => void applyUpdate()}
-        title="Update Hermes?"
-        description={
-          updateInfo && updateInfo.behind && updateInfo.behind > 0
-            ? `This will run 'hermes update' (${updateInfo.update_command}) and pull ${updateInfo.behind} new commit${updateInfo.behind === 1 ? "" : "s"}. The gateway restarts when the update finishes; the current session keeps its prompt cache until then.`
-            : `This will run 'hermes update' (${updateInfo?.update_command ?? "hermes update"}) and restart the gateway when it finishes.`
-        }
-        confirmLabel="Update now"
-      />
-
-=======
       <ConfirmDialog
         open={sharedRestartOpen}
         onCancel={() => setSharedRestartOpen(false)}
@@ -829,21 +664,6 @@ export default function SystemPage() {
         description={sharedGatewayRestartDescription(sharedGateway ?? [])}
         confirmLabel="Restart all"
       />
-
-      <ConfirmDialog
-        open={canUpdateHermes && updateConfirmOpen}
-        onCancel={() => setUpdateConfirmOpen(false)}
-        onConfirm={() => void applyUpdate()}
-        title="Update Hermes?"
-        description={
-          updateInfo && updateInfo.behind && updateInfo.behind > 0
-            ? `This will run 'hermes update' (${updateInfo.update_command}) and pull ${updateInfo.behind} new commit${updateInfo.behind === 1 ? "" : "s"}. The gateway restarts when the update finishes; the current session keeps its prompt cache until then.`
-            : `This will run 'hermes update' (${updateInfo?.update_command ?? "hermes update"}) and restart the gateway when it finishes.`
-        }
-        confirmLabel="Update now"
-      />
-
->>>>>>> rb/tag
       <DeleteConfirmDialog
         open={memoryReset.isOpen}
         onCancel={memoryReset.cancel}

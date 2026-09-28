@@ -795,6 +795,28 @@ class SessionSessionsMixin:
         )
         return self._session_row_dict(row) if row else None
 
+    def get_sessions_by_ids(self, session_ids) -> Dict[str, Dict[str, Any]]:
+        """Batched :meth:`get_session` (OpenOS fork, N+1 fix): ``{id: row}`` for ids that exist.
+
+        Same projection as ``get_session``; chunked ``IN`` lookup; no query for an empty input."""
+        unique_ids = list(dict.fromkeys(sid for sid in session_ids or () if sid))
+        result: Dict[str, Dict[str, Any]] = {}
+        if not unique_ids:
+            return result
+        self.flush_token_counts()
+        for chunk in _id_chunks(unique_ids):
+            rows = self._read_all(
+                "SELECT s.*, COALESCE(sp.prompt, s.system_prompt) AS _system_prompt_resolved, "
+                "COALESCE(tp.prompt, s.tool_names) AS _tool_names_resolved "
+                "FROM sessions s LEFT JOIN system_prompts sp ON sp.hash = s.system_prompt_hash "
+                f"LEFT JOIN system_prompts tp ON tp.hash = s.tool_names WHERE s.id IN ({_session_ids_placeholders(chunk)})",
+                chunk,
+            )
+            for row in rows:
+                data = self._session_row_dict(row)
+                result[data["id"]] = data
+        return result
+
     def get_recent_session_model_route(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Most recently used main-loop model route as one coherent per-call tuple
         (``session_model_usage`` keeps model+provider together; ``sessions`` mixes route changes).
@@ -1030,11 +1052,12 @@ class SessionSessionsMixin:
         for stable ordering), one batched query. ``_lineage_ids`` carries every chain id (a tile may
         hold a MIDDLE segment's id)."""
         chain_by_root: Dict[str, List[str]] = {}  # only roots whose tip differs from themselves
-        for s in sessions:
-            if s.get("end_reason") == "compression":
-                chain = self.get_compression_chain(s["id"])
-                if chain and chain[-1] != s["id"]:
-                    chain_by_root[s["id"]] = chain
+        # OpenOS fork (N+1 fix): one batched chain walk (one query per chain depth) for every
+        # compression root on the page instead of a per-root, per-hop walk.
+        root_ids = [s["id"] for s in sessions if s.get("end_reason") == "compression"]
+        for root_id, chain in (self.get_compression_chains(root_ids) if root_ids else {}).items():
+            if chain and chain[-1] != root_id:
+                chain_by_root[root_id] = chain
         tip_rows = (
             self._get_session_rich_rows_batch(
                 {chain[-1] for chain in chain_by_root.values()}, compact_rows=compact_rows,

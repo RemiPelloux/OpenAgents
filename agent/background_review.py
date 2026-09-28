@@ -1,46 +1,9 @@
-<<<<<<< HEAD
-"""Read-only background review that proposes versioned improvements.
-
-After every turn, ``AIAgent.run_conversation`` may call
-:func:`spawn_background_review` to fire off a daemon thread that replays
-the conversation snapshot in a forked :class:`AIAgent` and asks itself
-"should an improvement be proposed?". The fork cannot write memory or skill
-files. It emits structured candidates for the external OpenOS review gates.
-
-The fork inherits the parent's live runtime (provider, model, base_url,
-credentials, cached system prompt) so it hits the same prefix cache and
-uses the same auth. It runs with only the read-only ``propose_improvement``
-tool; everything else is denied at runtime.
-
-See the ``openagents-dev`` skill (``references/self-improvement-loop.md``)
-for invariants and PR review criteria.
-"""
-||||||| cf299e9a01
-"""Background memory/skill review — fork the agent to evaluate the turn.
-
-After every turn, ``AIAgent.run_conversation`` may call
-:func:`spawn_background_review` to fire off a daemon thread that replays
-the conversation snapshot in a forked :class:`AIAgent` and asks itself
-"should any skill/memory be saved or updated?".  Writes go straight to
-the memory + skill stores.  Main conversation and prompt cache are never
-touched.
-
-The fork inherits the parent's live runtime (provider, model, base_url,
-credentials, cached system prompt) so it hits the same prefix cache and
-uses the same auth.  It runs with a tool whitelist limited to memory and
-skill management tools; everything else is denied at runtime.
-
-See the ``openagents-dev`` skill (``references/self-improvement-loop.md``)
-for invariants and PR review criteria.
-"""
-=======
 """Background memory/skill review — fork the agent to evaluate the turn. After every turn
 ``AIAgent.run_conversation`` may spawn a daemon thread that replays the conversation snapshot in a
 forked :class:`AIAgent` and asks "should any skill/memory be saved or updated?". Writes go
 straight to the memory + skill stores; the main conversation and prompt cache are never touched.
 The fork inherits the parent's live runtime (provider, model, credentials, cached system prompt)
 so it hits the same prefix cache, and runs under a dispatch-side tool whitelist."""
->>>>>>> rb/tag
 
 from __future__ import annotations
 
@@ -604,6 +567,10 @@ _COMBINED_REVIEW_PROMPT = (
 )
 
 _PROPOSAL_REVIEW_PROMPT = (
+    # Fork integration TODO: the read-only proposal review model (propose_improvement
+    # toolset + extract_background_review_proposals -> cognitive_observation_callback)
+    # is defined here but not yet wired into _run_review_in_thread after the
+    # v2026.9.24 upstream refactor. Re-enable in the integration pass.
     "Review the conversation for one reusable, evidence-backed improvement. "
     "Do not edit memory, user profiles, prompts, routing, or skills. "
     "When a durable correction or reusable technique is present, call propose_improvement exactly once. "
@@ -628,21 +595,6 @@ def _memory_op_line(label: str, action: str, fields: Dict[str, str]) -> Optional
     text = fields.get(field_name) or "" if glyph else ""
     return f"{label} {glyph} {_preview(text, limit)}" if text else None
 
-<<<<<<< HEAD
-    # Map review-agent tool results back to the calls that produced them.  The
-    # result JSON only says "Entry added"; the call arguments contain action,
-    # target, and content previews.  Restricting to notify_tools also prevents
-    # helper tools from surfacing as memory work just because they succeeded.
-    # Keep legacy transcripts readable after migration. The review runtime
-    # itself is still restricted to propose_improvement below.
-    notify_tools = {"propose_improvement", "memory", "skill_manage"}
-||||||| cf299e9a01
-    # Map review-agent tool results back to the calls that produced them.  The
-    # result JSON only says "Entry added"; the call arguments contain action,
-    # target, and content previews.  Restricting to notify_tools also prevents
-    # helper tools from surfacing as memory work just because they succeeded.
-    notify_tools = {"memory", "skill_manage"}
-=======
 
 def _verbose_skill_line(data: Dict, detail: Dict, message: str) -> str:
     action = detail.get("action", "")
@@ -682,7 +634,6 @@ def _collect_review_call_details(review_messages: List[Dict]) -> Tuple[set, dict
     says "Entry added"; the call arguments carry action, target and content previews. Restricting
     to notify tools keeps helper tools from surfacing as memory work just because they succeeded."""
     notify_tools = {"memory", "skill_manage"}
->>>>>>> rb/tag
     all_tool_call_ids: set = set()
     call_details: dict = {}
     for msg in review_messages or []:
@@ -793,190 +744,7 @@ def summarize_background_review_actions(
         # ``success``/``_change``.
         if not isinstance(data, dict) or not data.get("success"):
             continue
-<<<<<<< HEAD
-        message = data.get("message", "")
-        detail = call_details.get(tcid, {})
-        target = data.get("target", "") or detail.get("target", "")
-        is_skill = detail.get("tool") == "skill_manage"
-        if detail.get("tool") == "propose_improvement":
-            actions.append(message or "Improvement proposed")
-            continue
-
-        message_lower = message.lower()
-        if not verbose:
-            if "created" in message_lower:
-                actions.append(message)
-                continue
-            if "updated" in message_lower:
-                actions.append(message)
-                continue
-            if is_skill and "patched" in message_lower:
-                actions.append(message)
-                continue
-
-        if is_skill:
-            label = "Skill"
-        elif target:
-            label = "Memory" if target == "memory" else "User profile" if target == "user" else target
-        else:
-            continue
-
-        if verbose:
-            action = detail.get("action", "")
-            content = detail.get("content", "")
-            old_text = detail.get("old_text", "")
-            skill_name = detail.get("name", "")
-            operations = detail.get("operations") or []
-            max_preview = 120
-            if is_skill:
-                change = data.get("_change", {})
-                old_string = change.get("old", "") or detail.get("old_string", "")
-                new_string = change.get("new", "") or detail.get("new_string", "")
-                description = change.get("description", "")
-                if action == "patch" and (old_string or new_string):
-                    old_preview = old_string[:80].replace("\n", " ") + (
-                        "…" if len(old_string) > 80 else ""
-                    )
-                    new_preview = new_string[:80].replace("\n", " ") + (
-                        "…" if len(new_string) > 80 else ""
-                    )
-                    actions.append(
-                        f"📝 Skill '{skill_name}' patched: "
-                        f"\"{old_preview}\" → \"{new_preview}\""
-                    )
-                elif action == "create" and description:
-                    actions.append(f"📝 Skill '{skill_name}' created: {description}")
-                elif action == "edit" and description:
-                    actions.append(f"📝 Skill '{skill_name}' rewritten: {description}")
-                else:
-                    actions.append(f"📝 {message}" if message else f"Skill {action}")
-            elif operations:
-                for op in operations:
-                    op = op or {}
-                    op_act = op.get("action", "")
-                    op_content = (op.get("content") or "")
-                    op_old = (op.get("old_text") or "")
-                    if op_act == "add" and op_content:
-                        preview = op_content[:max_preview] + ("…" if len(op_content) > max_preview else "")
-                        actions.append(f"{label} ➕ {preview}")
-                    elif op_act == "replace" and op_content:
-                        preview = op_content[:max_preview] + ("…" if len(op_content) > max_preview else "")
-                        actions.append(f"{label} ✏️ {preview}")
-                    elif op_act == "remove" and op_old:
-                        preview = op_old[:60] + ("…" if len(op_old) > 60 else "")
-                        actions.append(f"{label} ➖ {preview}")
-            elif action == "add" and content:
-                preview = content[:max_preview] + ("…" if len(content) > max_preview else "")
-                actions.append(f"{label} ➕ {preview}")
-            elif action == "replace" and content:
-                preview = content[:max_preview] + ("…" if len(content) > max_preview else "")
-                actions.append(f"{label} ✏️ {preview}")
-            elif action == "remove" and old_text:
-                preview = old_text[:60] + ("…" if len(old_text) > 60 else "")
-                actions.append(f"{label} ➖ {preview}")
-            else:
-                actions.append(f"{label} updated")
-        elif (
-            "added" in message_lower
-            or "replaced" in message_lower
-            or "removed" in message_lower
-            or "applied" in message_lower
-            or (target and "add" in message.lower())
-            or "Entry added" in message
-        ):
-            actions.append(f"{label} updated")
-||||||| cf299e9a01
-        message = data.get("message", "")
-        detail = call_details.get(tcid, {})
-        target = data.get("target", "") or detail.get("target", "")
-        is_skill = detail.get("tool") == "skill_manage"
-
-        message_lower = message.lower()
-        if not verbose:
-            if "created" in message_lower:
-                actions.append(message)
-                continue
-            if "updated" in message_lower:
-                actions.append(message)
-                continue
-            if is_skill and "patched" in message_lower:
-                actions.append(message)
-                continue
-
-        if is_skill:
-            label = "Skill"
-        elif target:
-            label = "Memory" if target == "memory" else "User profile" if target == "user" else target
-        else:
-            continue
-
-        if verbose:
-            action = detail.get("action", "")
-            content = detail.get("content", "")
-            old_text = detail.get("old_text", "")
-            skill_name = detail.get("name", "")
-            operations = detail.get("operations") or []
-            max_preview = 120
-            if is_skill:
-                change = data.get("_change", {})
-                old_string = change.get("old", "") or detail.get("old_string", "")
-                new_string = change.get("new", "") or detail.get("new_string", "")
-                description = change.get("description", "")
-                if action == "patch" and (old_string or new_string):
-                    old_preview = old_string[:80].replace("\n", " ") + (
-                        "…" if len(old_string) > 80 else ""
-                    )
-                    new_preview = new_string[:80].replace("\n", " ") + (
-                        "…" if len(new_string) > 80 else ""
-                    )
-                    actions.append(
-                        f"📝 Skill '{skill_name}' patched: "
-                        f"\"{old_preview}\" → \"{new_preview}\""
-                    )
-                elif action == "create" and description:
-                    actions.append(f"📝 Skill '{skill_name}' created: {description}")
-                elif action == "edit" and description:
-                    actions.append(f"📝 Skill '{skill_name}' rewritten: {description}")
-                else:
-                    actions.append(f"📝 {message}" if message else f"Skill {action}")
-            elif operations:
-                for op in operations:
-                    op = op or {}
-                    op_act = op.get("action", "")
-                    op_content = (op.get("content") or "")
-                    op_old = (op.get("old_text") or "")
-                    if op_act == "add" and op_content:
-                        preview = op_content[:max_preview] + ("…" if len(op_content) > max_preview else "")
-                        actions.append(f"{label} ➕ {preview}")
-                    elif op_act == "replace" and op_content:
-                        preview = op_content[:max_preview] + ("…" if len(op_content) > max_preview else "")
-                        actions.append(f"{label} ✏️ {preview}")
-                    elif op_act == "remove" and op_old:
-                        preview = op_old[:60] + ("…" if len(op_old) > 60 else "")
-                        actions.append(f"{label} ➖ {preview}")
-            elif action == "add" and content:
-                preview = content[:max_preview] + ("…" if len(content) > max_preview else "")
-                actions.append(f"{label} ➕ {preview}")
-            elif action == "replace" and content:
-                preview = content[:max_preview] + ("…" if len(content) > max_preview else "")
-                actions.append(f"{label} ✏️ {preview}")
-            elif action == "remove" and old_text:
-                preview = old_text[:60] + ("…" if len(old_text) > 60 else "")
-                actions.append(f"{label} ➖ {preview}")
-            else:
-                actions.append(f"{label} updated")
-        elif (
-            "added" in message_lower
-            or "replaced" in message_lower
-            or "removed" in message_lower
-            or "applied" in message_lower
-            or (target and "add" in message.lower())
-            or "Entry added" in message
-        ):
-            actions.append(f"{label} updated")
-=======
         actions.extend(_action_lines(data, call_details.get(tcid) or {}, verbose))
->>>>>>> rb/tag
     return actions
 
 
@@ -1441,272 +1209,6 @@ def _run_review_fork(
 
         _reset_background_review_read_marks()
     try:
-<<<<<<< HEAD
-        with open(os.devnull, "w", encoding="utf-8") as _devnull, \
-             contextlib.redirect_stdout(_devnull), \
-             contextlib.redirect_stderr(_devnull):
-            # Inherit the parent agent's live runtime (provider, model,
-            # base_url, api_key, api_mode) so the fork uses the exact
-            # same credentials the main turn is using.  Without this,
-            # AIAgent.__init__ re-runs auto-resolution from env vars,
-            # which fails for OAuth-only providers, session-scoped
-            # creds, or credential-pool setups where the resolver can't
-            # reconstruct auth from scratch -- producing the spurious
-            # "No LLM provider configured" warning at end of turn.
-            # _resolve_review_runtime() returns the parent's live runtime by
-            # default (routed=False; main model, warm cache), or — when the user
-            # set auxiliary.background_review.{provider,model} to a different
-            # model — that model's runtime (routed=True). The codex_app_server
-            # -> codex_responses downgrade is applied inside the resolver.
-            _rt = _resolve_review_runtime(agent)
-            _routed = bool(_rt.get("routed"))
-            # skip_memory=True keeps the review fork from
-            # touching external memory plugins (honcho, mem0,
-            # supermemory, etc.).  Without it, the fork's
-            # __init__ rebuilds its own _memory_manager from
-            # config, scoped to the parent's session_id, and
-            # run_conversation() then leaks the harness prompt
-            # into the user's real memory namespace via three
-            # ingestion sites: on_turn_start (cadence + turn
-            # message), prefetch_all (recall query), and
-            # sync_all (harness prompt + review output recorded
-            # as a (user, assistant) turn pair).  Built-in
-            # MEMORY.md / USER.md state is re-bound from the
-            # parent below so memory(action="add") writes from
-            # the review still land on disk; the review just
-            # has zero side effects on external providers.
-            # Match parent's toolset config so ``tools[]`` is byte-identical
-            # in the request body — Anthropic's cache key includes it.
-            # (The runtime whitelist below still restricts dispatch.)
-            review_agent = AIAgent(
-                model=_rt.get("model") or agent.model,
-                max_iterations=16,
-                quiet_mode=True,
-                platform=agent.platform,
-                provider=_rt.get("provider") or agent.provider,
-                api_mode=_rt.get("api_mode"),
-                base_url=_rt.get("base_url") or None,
-                api_key=_rt.get("api_key") or None,
-                credential_pool=getattr(agent, "_credential_pool", None),
-                parent_session_id=agent.session_id,
-                enabled_toolsets=getattr(agent, "enabled_toolsets", None),
-                disabled_toolsets=getattr(agent, "disabled_toolsets", None),
-                skip_memory=True,
-            )
-            review_agent._memory_write_origin = "background_review"
-            review_agent._memory_write_context = "background_review"
-            # The review fork pins the parent's cached system prompt and keeps
-            # ``tools[]`` byte-identical to the parent so its outbound request
-            # hits the same provider cache prefix (see the toolset-parity note
-            # above). The between-turns MCP refresh in build_turn_context would
-            # add late-connecting MCP tools to this fork and break that parity,
-            # so opt the review fork out of it.
-            review_agent._skip_mcp_refresh = True
-            review_agent._memory_store = None
-            review_agent._memory_enabled = False
-            review_agent._user_profile_enabled = False
-            review_agent._memory_nudge_interval = 0
-            review_agent._skill_nudge_interval = 0
-            # Suppress all status/warning emits from the fork so the
-            # user only sees the final successful-action summary.
-            # Without this, mid-review "Iteration budget exhausted",
-            # rate-limit retries, compression warnings, and other
-            # lifecycle messages bubble up through _emit_status ->
-            # _vprint and leak past the stdout redirect (they go via
-            # _print_fn/status_callback, which bypass sys.stdout).
-            review_agent.suppress_status_output = True
-            # Inherit the parent's cached system prompt verbatim so
-            # the review fork's outbound HTTP request hits the same
-            # Anthropic/OpenRouter prefix cache the parent warmed.
-            # Without this, the fork rebuilds the system prompt from
-            # scratch (fresh _hermes_now() timestamp, fresh
-            # session_id, narrower toolset → different skills_prompt)
-            # and the byte-exact prefix-cache key misses. See
-            # issue #25322 and PR #17276 for the full analysis +
-            # measured impact (~26% end-to-end cost reduction on
-            # Sonnet 4.5).
-            # Share the parent's warm cached system prompt ONLY when the review
-            # runs on the SAME model (not routed). When routed to a different
-            # model the parent's cached prompt is for the wrong model/cache key
-            # and would miss anyway, so let the routed fork build its own.
-            review_agent._cached_system_prompt = None
-            review_agent.session_id = agent.session_id
-            # The fork shares the parent's live session_id (pinned above for
-            # prefix-cache parity). It is single-lifecycle and calls close()
-            # right after this run_conversation(); without opting out, close()
-            # would finalize the parent's still-active session row mid
-            # conversation (the review fires every ~10 turns). Leave session
-            # finalization to the real owner (CLI close / gateway reset / cron).
-            review_agent._end_session_on_close = False
-            # Never let the review fork compress. It shares the parent's
-            # session_id, so if it won a compression race it would rotate the
-            # parent into a NEW child that the gateway never adopts (the fork
-            # is single-lifecycle and dies right after this run_conversation).
-            # The foreground turn would then start from the stale parent and
-            # compress it again, leaving the same parent with two sibling
-            # children (issue #38727). Review also needs full context to
-            # produce a good memory/skill summary — compressing would strip
-            # detail. Both compression triggers in conversation_loop.py gate on
-            # agent.compression_enabled, so this short-circuits both paths.
-            review_agent.compression_enabled = False
-
-            from model_tools import get_tool_definitions
-            from openagents_cli.plugins import (
-                set_thread_tool_whitelist,
-                clear_thread_tool_whitelist,
-            )
-
-            review_tools = get_tool_definitions(
-                enabled_toolsets=["review"],
-                quiet_mode=True,
-            )
-            review_agent.tools = review_tools
-            review_agent.valid_tool_names = {
-                t["function"]["name"]
-                for t in review_tools
-            }
-            set_thread_tool_whitelist(
-                review_agent.valid_tool_names,
-                deny_msg_fmt=(
-                    "Background review denied non-whitelisted tool: "
-                    "{tool_name}. Only propose_improvement is allowed."
-||||||| cf299e9a01
-        with open(os.devnull, "w", encoding="utf-8") as _devnull, \
-             contextlib.redirect_stdout(_devnull), \
-             contextlib.redirect_stderr(_devnull):
-            # Inherit the parent agent's live runtime (provider, model,
-            # base_url, api_key, api_mode) so the fork uses the exact
-            # same credentials the main turn is using.  Without this,
-            # AIAgent.__init__ re-runs auto-resolution from env vars,
-            # which fails for OAuth-only providers, session-scoped
-            # creds, or credential-pool setups where the resolver can't
-            # reconstruct auth from scratch -- producing the spurious
-            # "No LLM provider configured" warning at end of turn.
-            # _resolve_review_runtime() returns the parent's live runtime by
-            # default (routed=False; main model, warm cache), or — when the user
-            # set auxiliary.background_review.{provider,model} to a different
-            # model — that model's runtime (routed=True). The codex_app_server
-            # -> codex_responses downgrade is applied inside the resolver.
-            _rt = _resolve_review_runtime(agent)
-            _routed = bool(_rt.get("routed"))
-            # skip_memory=True keeps the review fork from
-            # touching external memory plugins (honcho, mem0,
-            # supermemory, etc.).  Without it, the fork's
-            # __init__ rebuilds its own _memory_manager from
-            # config, scoped to the parent's session_id, and
-            # run_conversation() then leaks the harness prompt
-            # into the user's real memory namespace via three
-            # ingestion sites: on_turn_start (cadence + turn
-            # message), prefetch_all (recall query), and
-            # sync_all (harness prompt + review output recorded
-            # as a (user, assistant) turn pair).  Built-in
-            # MEMORY.md / USER.md state is re-bound from the
-            # parent below so memory(action="add") writes from
-            # the review still land on disk; the review just
-            # has zero side effects on external providers.
-            # Match parent's toolset config so ``tools[]`` is byte-identical
-            # in the request body — Anthropic's cache key includes it.
-            # (The runtime whitelist below still restricts dispatch.)
-            review_agent = AIAgent(
-                model=_rt.get("model") or agent.model,
-                max_iterations=16,
-                quiet_mode=True,
-                platform=agent.platform,
-                provider=_rt.get("provider") or agent.provider,
-                api_mode=_rt.get("api_mode"),
-                base_url=_rt.get("base_url") or None,
-                api_key=_rt.get("api_key") or None,
-                credential_pool=getattr(agent, "_credential_pool", None),
-                parent_session_id=agent.session_id,
-                enabled_toolsets=getattr(agent, "enabled_toolsets", None),
-                disabled_toolsets=getattr(agent, "disabled_toolsets", None),
-                skip_memory=True,
-            )
-            review_agent._memory_write_origin = "background_review"
-            review_agent._memory_write_context = "background_review"
-            # The review fork pins the parent's cached system prompt and keeps
-            # ``tools[]`` byte-identical to the parent so its outbound request
-            # hits the same provider cache prefix (see the toolset-parity note
-            # above). The between-turns MCP refresh in build_turn_context would
-            # add late-connecting MCP tools to this fork and break that parity,
-            # so opt the review fork out of it.
-            review_agent._skip_mcp_refresh = True
-            review_agent._memory_store = agent._memory_store
-            review_agent._memory_enabled = agent._memory_enabled
-            review_agent._user_profile_enabled = agent._user_profile_enabled
-            review_agent._memory_nudge_interval = 0
-            review_agent._skill_nudge_interval = 0
-            # Suppress all status/warning emits from the fork so the
-            # user only sees the final successful-action summary.
-            # Without this, mid-review "Iteration budget exhausted",
-            # rate-limit retries, compression warnings, and other
-            # lifecycle messages bubble up through _emit_status ->
-            # _vprint and leak past the stdout redirect (they go via
-            # _print_fn/status_callback, which bypass sys.stdout).
-            review_agent.suppress_status_output = True
-            # Inherit the parent's cached system prompt verbatim so
-            # the review fork's outbound HTTP request hits the same
-            # Anthropic/OpenRouter prefix cache the parent warmed.
-            # Without this, the fork rebuilds the system prompt from
-            # scratch (fresh _hermes_now() timestamp, fresh
-            # session_id, narrower toolset → different skills_prompt)
-            # and the byte-exact prefix-cache key misses. See
-            # issue #25322 and PR #17276 for the full analysis +
-            # measured impact (~26% end-to-end cost reduction on
-            # Sonnet 4.5).
-            # Share the parent's warm cached system prompt ONLY when the review
-            # runs on the SAME model (not routed). When routed to a different
-            # model the parent's cached prompt is for the wrong model/cache key
-            # and would miss anyway, so let the routed fork build its own.
-            if not _routed:
-                review_agent._cached_system_prompt = agent._cached_system_prompt
-                # Defensive: pin session_start + session_id to the
-                # parent's so any code path that re-renders parts of
-                # the system prompt (compression, plugin hooks) still
-                # produces byte-identical output. The cached-prompt
-                # assignment above already short-circuits the normal
-                # rebuild path, but these pins guarantee parity even
-                # if a future code path bypasses the cache.
-                review_agent.session_start = agent.session_start
-            review_agent.session_id = agent.session_id
-            # The fork shares the parent's live session_id (pinned above for
-            # prefix-cache parity). It is single-lifecycle and calls close()
-            # right after this run_conversation(); without opting out, close()
-            # would finalize the parent's still-active session row mid
-            # conversation (the review fires every ~10 turns). Leave session
-            # finalization to the real owner (CLI close / gateway reset / cron).
-            review_agent._end_session_on_close = False
-            # Never let the review fork compress. It shares the parent's
-            # session_id, so if it won a compression race it would rotate the
-            # parent into a NEW child that the gateway never adopts (the fork
-            # is single-lifecycle and dies right after this run_conversation).
-            # The foreground turn would then start from the stale parent and
-            # compress it again, leaving the same parent with two sibling
-            # children (issue #38727). Review also needs full context to
-            # produce a good memory/skill summary — compressing would strip
-            # detail. Both compression triggers in conversation_loop.py gate on
-            # agent.compression_enabled, so this short-circuits both paths.
-            review_agent.compression_enabled = False
-
-            from model_tools import get_tool_definitions
-            from openagents_cli.plugins import (
-                set_thread_tool_whitelist,
-                clear_thread_tool_whitelist,
-            )
-
-            review_whitelist = {
-                t["function"]["name"]
-                for t in get_tool_definitions(
-                    enabled_toolsets=["memory", "skills"],
-                    quiet_mode=True,
-                )
-            }
-            set_thread_tool_whitelist(
-                review_whitelist,
-                deny_msg_fmt=(
-                    "Background review denied non-whitelisted tool: "
-                    "{tool_name}. Only memory/skill tools are allowed."
-=======
         if review_run is None or review_run.begin_request(st.review_agent):
             # Routed -> digest (cache cold anyway); same model -> full snapshot (warm cache reads).
             st.review_agent.run_conversation(
@@ -1714,47 +1216,9 @@ def _run_review_fork(
                     prompt + "\n\nYou can only call " + memory_phrase_prompt +
                     "management tools. Other tools will be denied "
                     "at runtime — do not attempt them." + prompt_extra
->>>>>>> rb/tag
                 ),
                 conversation_history=_digest_history(messages_snapshot) if _routed else messages_snapshot,
             )
-<<<<<<< HEAD
-            try:
-                # Routed to a different model -> replay a digest (cache is cold
-                # on that model anyway, so minimise cold-written tokens). Same
-                # model -> replay the full snapshot (warm cache reads).
-                _review_history = _digest_history(messages_snapshot)
-                review_agent.run_conversation(
-                    user_message=(
-                        prompt
-                        + "\n\nYou can only call propose_improvement. Other tools will be denied "
-                        "at runtime — do not attempt them."
-                    ),
-                    conversation_history=_review_history,
-                )
-            finally:
-                clear_thread_tool_whitelist()
-||||||| cf299e9a01
-            try:
-                # Routed to a different model -> replay a digest (cache is cold
-                # on that model anyway, so minimise cold-written tokens). Same
-                # model -> replay the full snapshot (warm cache reads).
-                _review_history = (
-                    _digest_history(messages_snapshot) if _routed
-                    else messages_snapshot
-                )
-                review_agent.run_conversation(
-                    user_message=(
-                        prompt
-                        + "\n\nYou can only call memory and skill "
-                        "management tools. Other tools will be denied "
-                        "at runtime — do not attempt them."
-                    ),
-                    conversation_history=_review_history,
-                )
-            finally:
-                clear_thread_tool_whitelist()
-=======
     finally:
         clear_thread_tool_whitelist()
         # Attribute usage to the PARENT session. Snapshot BEFORE unregister/close so counters
@@ -1770,7 +1234,6 @@ def _run_review_fork(
     st.review_messages = list(getattr(st.review_agent, "_session_messages", []))
     _release_fork_clients(st.review_agent)
     st.review_agent = None
->>>>>>> rb/tag
 
 
 def _publish_review_summary(agent: Any, actions: List[str]) -> None:
@@ -1836,35 +1299,6 @@ def _run_review_in_thread(
                 st.review_messages, messages_snapshot,
                 notification_mode=getattr(agent, "memory_notifications", "on"),
             )
-<<<<<<< HEAD
-            _bg_cb = agent.background_review_callback
-            if _bg_cb:
-                try:
-                    _bg_cb(
-                        f"💾 Self-improvement review: {summary}"
-                    )
-                except Exception:
-                    pass
-
-        proposals = extract_background_review_proposals(review_messages, messages_snapshot)
-        proposal_callback = getattr(agent, "cognitive_observation_callback", None)
-        if proposals and proposal_callback:
-            try:
-                proposal_callback(proposals)
-            except Exception:
-                pass
-
-||||||| cf299e9a01
-            _bg_cb = agent.background_review_callback
-            if _bg_cb:
-                try:
-                    _bg_cb(
-                        f"💾 Self-improvement review: {summary}"
-                    )
-                except Exception:
-                    pass
-
-=======
         except Exception as e:
             logger.warning(
                 "summarize_background_review_actions returned partial results "
@@ -1876,7 +1310,6 @@ def _run_review_in_thread(
         _log_review_completion(st.review_usage, _classify_review_result(actions))
         if actions:
             _publish_review_summary(agent, actions)
->>>>>>> rb/tag
     except Exception as e:
         logger.warning("Background memory/skill review failed: %s", e)
         if st.review_usage:
@@ -1925,62 +1358,18 @@ def spawn_background_review_thread(
             f"focus — prioritize it over the general instructions above:\n{focus}"
         )
 
-<<<<<<< HEAD
-    Returns a ``(target, prompt)`` tuple.  The caller (``AIAgent._spawn_background_review``)
-    owns the actual ``threading.Thread`` construction so test-level patches
-    of ``run_agent.threading.Thread`` keep working.
-    """
-    prompt = getattr(agent, "_PROPOSAL_REVIEW_PROMPT", _PROPOSAL_REVIEW_PROMPT)
-
-    def _target() -> None:
-        _run_review_in_thread(agent, messages_snapshot, prompt)
-||||||| cf299e9a01
-    Returns a ``(target, prompt)`` tuple.  The caller (``AIAgent._spawn_background_review``)
-    owns the actual ``threading.Thread`` construction so test-level patches
-    of ``run_agent.threading.Thread`` keep working.
-    """
-    # Pick the right prompt based on which triggers fired.  Allow per-agent
-    # override (the prompts moved to module-level constants but old code paths
-    # that set agent._MEMORY_REVIEW_PROMPT etc. directly keep working).
-    if review_memory and review_skills:
-        prompt = getattr(agent, "_COMBINED_REVIEW_PROMPT", _COMBINED_REVIEW_PROMPT)
-    elif review_memory:
-        prompt = getattr(agent, "_MEMORY_REVIEW_PROMPT", _MEMORY_REVIEW_PROMPT)
-    else:
-        prompt = getattr(agent, "_SKILL_REVIEW_PROMPT", _SKILL_REVIEW_PROMPT)
-
-    def _target() -> None:
-        _run_review_in_thread(agent, messages_snapshot, prompt)
-=======
     def _target() -> None:  # resolves _run_review_in_thread at call time (tests patch it)
         _run_review_in_thread(
             agent, messages_snapshot, prompt, task_cfg=task_cfg, review_run=review_run,
             review_memory=review_memory, explicit=explicit)
->>>>>>> rb/tag
 
     return _target, prompt
 
 
 __all__ = [
-<<<<<<< HEAD
-    "_MEMORY_REVIEW_PROMPT",
-    "_SKILL_REVIEW_PROMPT",
-    "_COMBINED_REVIEW_PROMPT",
-    "spawn_background_review_thread",
-    "summarize_background_review_actions",
-    "build_memory_write_metadata",
-    "extract_background_review_proposals",
-||||||| cf299e9a01
-    "_MEMORY_REVIEW_PROMPT",
-    "_SKILL_REVIEW_PROMPT",
-    "_COMBINED_REVIEW_PROMPT",
-    "spawn_background_review_thread",
-    "summarize_background_review_actions",
-    "build_memory_write_metadata",
-=======
     "_MEMORY_REVIEW_PROMPT", "_SKILL_REVIEW_PROMPT", "_COMBINED_REVIEW_PROMPT", "load_background_review_settings",
     "spawn_background_review_thread", "summarize_background_review_actions", "build_memory_write_metadata",
->>>>>>> rb/tag
+    "extract_background_review_proposals",
 ]
 
 

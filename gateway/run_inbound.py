@@ -917,6 +917,30 @@ class GatewayInboundMixin:
             return True, _text or None
         return False, None
 
+    # OpenOS fork: /company seeds an agent turn like /blueprint; /openagentui and
+    # /openagentconfig answer directly with the shared CLI/TUI handler text.
+    async def _hm_cmd_company(self, event, source, _quick_key):
+        _company_result = await self._handle_company_command(event)
+        _text = getattr(_company_result, "text", "") or ""
+        _company_seed = getattr(_company_result, "agent_seed", None)
+        if not _company_seed:
+            return True, _text or None
+        if _text:
+            await self._send_command_ack(source, _text, "company")
+        try:
+            event.text = _company_seed
+        except Exception:
+            return True, _text or None
+        return False, None
+
+    async def _hm_cmd_openagentui(self, event, source, _quick_key):
+        _oaui_result = await self._handle_openagentui_command(event)
+        return True, getattr(_oaui_result, "text", "") or None
+
+    async def _hm_cmd_openagentconfig(self, event, source, _quick_key):
+        _oac_result = await self._handle_openagentconfig_command(event)
+        return True, getattr(_oac_result, "text", "") or None
+
     async def _hm_cmd_undo(self, event, source, _quick_key):
         _undo_n = 1
         _undo_raw = event.get_command_args().strip()
@@ -982,6 +1006,7 @@ class GatewayInboundMixin:
     # handled by ``_hm_cmd_<name>`` → ``(handled, result)``; ``(False, None)`` falls through to the agent.
     _HM_CANONICAL_COMMANDS = frozenset({
         "new", "start", "egress", "learn", "plan", "init", "blueprint", "undo", "queue", "steer", "moa",
+        "company", "openagentui", "openagentconfig",
     })
 
     async def _hm_dispatch_canonical_command(
