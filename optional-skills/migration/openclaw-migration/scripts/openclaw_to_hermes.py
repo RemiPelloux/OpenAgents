@@ -511,7 +511,10 @@ def backup_existing(path: Path, backup_root: Path) -> Optional[Path]:
 # like ``openclaw`` → ``hermes`` (so filesystem paths like ``~/.openclaw``
 # become ``~/.hermes`` — the real Hermes home — not the broken ``~/.Hermes``).
 _REBRAND_PATTERNS: List[Tuple[re.Pattern, str]] = [
-    (re.compile(r'\bOpen[\s-]?Claw\b', re.IGNORECASE), 'Hermes'),
+    # One-word brand (OpenClaw / openclaw / OPENCLAW) -> Hermes (fork keeps the
+    # `hermes` CLI/home). Two-word + hyphenated forms -> the fork product name.
+    (re.compile(r'\bOpenClaw\b', re.IGNORECASE), 'Hermes'),
+    (re.compile(r'\bOpen[\s-]Claw\b', re.IGNORECASE), 'OpenAgents'),
     (re.compile(r'\bClawdBot\b', re.IGNORECASE), 'Hermes'),
     (re.compile(r'\bMoltBot\b', re.IGNORECASE), 'Hermes'),
 ]

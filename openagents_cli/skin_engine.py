@@ -55,9 +55,15 @@ def _wings(*glyphs) -> List[List[str]]:
             for g in glyphs]
 
 
-# Branding shared by every Hermes-named built-in (mono/daylight override help_header).
+# Branding shared by every OpenAgents-named built-in (mono/daylight override help_header).
 _HERMES_BRANDING: Dict[str, str] = _branding(
-    "Hermes", "☤", "Goodbye! ☤", prompt="❯", help_header="(^_^)? Available Commands")
+    "OpenAgents", "☤", "Goodbye! ☤", prompt="❯", help_header="(^_^)? Available Commands")
+# The OpenAgents persona drops the generic " Agent" suffix (persona skins keep it).
+_HERMES_BRANDING.update({
+    "agent_name": "OpenAgents",
+    "welcome": "Welcome to OpenAgents! Type your message or /help for commands.",
+    "response_label": " ☤ OpenAgents ",
+})
 
 _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
     "default": {

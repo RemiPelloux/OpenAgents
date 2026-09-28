@@ -173,7 +173,52 @@ def test_seed_supervise_skeleton_sets_setgid_on_event_dirs(tmp_path) -> None:
     for rel in ("event", "supervise/event"):
         mode = stat.S_IMODE((svc_dir / rel).stat().st_mode)
         assert mode == 0o3730, f"{rel}/ mode = {oct(mode)}, want 0o3730"
-    assert stat.S_IMODE((svc_dir / "log" / "supervise").stat().st_mode) == 0o755
+
+
+def test_seed_supervise_skeleton_handles_log_subservice(tmp_path) -> None:
+    """When a log/ subdir exists, its supervise tree also gets seeded.
+
+    Without this, ``unregister_profile_gateway``'s rmtree would EACCES
+    on the logger's root-owned supervise dir even after the parent
+    slot's supervise/ was hermes-owned.
+    """
+    import stat
+
+    from openagents_cli.service_manager import _seed_supervise_skeleton
+
+    svc_dir = tmp_path / "gateway-foo"
+    svc_dir.mkdir()
+    (svc_dir / "log").mkdir()  # logger subdir present
+
+    _seed_supervise_skeleton(svc_dir)
+
+    # Logger's own supervise tree is seeded the same way.
+    log_event = svc_dir / "log" / "event"
+    log_supervise = svc_dir / "log" / "supervise"
+    log_supervise_event = log_supervise / "event"
+    log_control = log_supervise / "control"
+
+    assert log_event.is_dir()
+    assert stat.S_IMODE(log_event.stat().st_mode) == 0o3730
+    assert log_supervise.is_dir()
+    assert stat.S_IMODE(log_supervise.stat().st_mode) == 0o755
+    assert log_supervise_event.is_dir()
+    assert log_control.exists() and stat.S_ISFIFO(log_control.stat().st_mode)
+
+
+def test_seed_supervise_skeleton_skips_when_no_log_subservice(tmp_path) -> None:
+    """If log/ isn't present, no logger skeleton is created."""
+    from openagents_cli.service_manager import _seed_supervise_skeleton
+
+    svc_dir = tmp_path / "gateway-foo"
+    svc_dir.mkdir()
+
+    _seed_supervise_skeleton(svc_dir)
+
+    assert not (svc_dir / "log").exists(), (
+        "helper must not synthesize a log/ subdir on its own"
+    )
+
 
 
 
