@@ -36,13 +36,15 @@ class SkillNode:
 
 
 def _fm_field(fm: dict[str, Any], key: str) -> Any:
-    """Top-level ``key`` or ``metadata.hermes.<key>``; tolerant of the string-valued
-    frontmatter that ``parse_frontmatter``'s malformed-YAML fallback produces."""
+    """Top-level ``key`` or ``metadata.openagents`` (preferred) / ``metadata.hermes``; tolerant
+    of the string-valued frontmatter that ``parse_frontmatter``'s malformed-YAML fallback produces."""
     if fm.get(key):
         return fm[key]
     meta = fm.get("metadata")
-    openagents = meta.get("openagents") if isinstance(meta, dict) else None
-    return hermes.get(key) if isinstance(hermes, dict) else None
+    if not isinstance(meta, dict):
+        return None
+    block = meta.get("openagents") or meta.get("hermes") or {}
+    return block.get(key) if isinstance(block, dict) else None
 
 
 def _related(fm: dict[str, Any]) -> list[str]:
