@@ -267,9 +267,7 @@ export default function SystemPage() {
       api.getHooks(),
       api.getCurator(),
       api.getPortal(),
-      api.getPortal(),
       api.getGatewayMigratePlan(),
-    ])
     ])
       .then(([s, st, m, p, c, h, cur, prt, mig]) => {
         if (s.status === "fulfilled") setStatus(s.value);
@@ -279,7 +277,6 @@ export default function SystemPage() {
         if (c.status === "fulfilled") setCheckpoints(c.value);
         if (h.status === "fulfilled") setHooks(h.value);
         if (cur.status === "fulfilled") setCurator(cur.value);
-        if (prt.status === "fulfilled") setPortal(prt.value);
         if (prt.status === "fulfilled") setPortal(prt.value);
         if (mig.status === "fulfilled") setMigratePlan(mig.value);
       })
