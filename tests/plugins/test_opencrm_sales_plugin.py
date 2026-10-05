@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import json
+import io
+import urllib.error
 from unittest.mock import patch
+
+import pytest
 
 
 def test_plugin_registers_tools():
@@ -119,3 +123,39 @@ def test_check_account_duplicate_degrades_gracefully_when_unreachable():
     ):
         result = check_account_duplicate("Decathlon Nice", "Nice")
     assert result == {"duplicate": False, "opencrm_unavailable": True}
+
+
+def test_check_account_duplicate_degrades_on_http_error():
+    """A 401/500 from OpenCRM must not raise: duplicate check is an optional signal."""
+    from plugins.opencrm_sales.opencrm_client import OpenCrmError, check_account_duplicate
+
+    with patch(
+        "plugins.opencrm_sales.opencrm_client.search_accounts",
+        side_effect=OpenCrmError("OpenCRM API failed (401): unauthorized"),
+    ):
+        result = check_account_duplicate("Decathlon Nice", "Nice")
+    assert result == {"duplicate": False, "opencrm_unavailable": True}
+
+
+def test_http_error_raises_typed_opencrm_error_for_writes():
+    """Write paths must fail loudly with a typed, catchable error."""
+    from plugins.opencrm_sales import opencrm_client
+
+    http_error = urllib.error.HTTPError(
+        "http://crm/v1/webhooks/openteam/prospection-lead",
+        401,
+        "Unauthorized",
+        {},
+        io.BytesIO(b'{"error":"unauthorized"}'),
+    )
+    assert issubclass(opencrm_client.OpenCrmError, RuntimeError)
+    with patch(
+        "plugins.opencrm_sales.opencrm_client.urllib.request.urlopen",
+        side_effect=http_error,
+    ):
+        with pytest.raises(opencrm_client.OpenCrmError) as caught:
+            opencrm_client._post(
+                "/v1/webhooks/openteam/prospection-lead",
+                {"company_name": "Decathlon"},
+            )
+    assert "401" in str(caught.value)

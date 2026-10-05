@@ -16,6 +16,16 @@ W1_AGENT_FOLLOWUP = "CC-W1-003"
 W1_PROSPECTION_TO_CRM = "CC-W1-004"
 
 
+class OpenCrmError(RuntimeError):
+    """The OpenCRM API returned a non-2xx response (HTTP status + body).
+
+    Subclasses ``RuntimeError`` so existing ``except RuntimeError`` callers keep
+    working, while giving callers that need graceful degradation (for example
+    ``check_account_duplicate``, which treats OpenCRM as an optional signal) a
+    single exception type to catch regardless of the HTTP verb used.
+    """
+
+
 def _api_url() -> str:
     return os.environ.get("OPENCRM_API_URL", "http://localhost:3010").rstrip("/")
 
@@ -39,8 +49,12 @@ def _headers(
 def _get(path: str) -> Dict[str, Any]:
     url = f"{_api_url()}{path}"
     req = urllib.request.Request(url, headers=_headers())
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode()
+        raise OpenCrmError(f"OpenCRM API failed ({exc.code}): {detail}") from exc
 
 
 def _request(
@@ -66,7 +80,7 @@ def _request(
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()
-        raise RuntimeError(f"OpenCRM API failed ({exc.code}): {detail}") from exc
+        raise OpenCrmError(f"OpenCRM API failed ({exc.code}): {detail}") from exc
 
 
 def _post(path: str, body: Dict[str, Any], correlation_id: Optional[str] = None) -> Dict[str, Any]:
@@ -117,7 +131,7 @@ def check_account_duplicate(company_name: str, city: Optional[str] = None) -> Di
     """
     try:
         result = search_accounts(company_name, city)
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except (urllib.error.URLError, TimeoutError, OSError, OpenCrmError):
         return {"duplicate": False, "opencrm_unavailable": True}
     accounts = result.get("accounts", [])
     return {"duplicate": len(accounts) > 0, "account": accounts[0] if accounts else None}
